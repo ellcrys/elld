@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 //Protocol defines the libp2p protocol
@@ -25,7 +26,7 @@ type ProxyService struct {
 }
 
 //NewProxyService creates a new proxy service
-func (p *ProxyService) NewProxyService(h host.Host, proxyAddr ma.Multiaddr, dest peer.ID) *ProxyService {
+func NewProxyService(h host.Host, proxyAddr ma.Multiaddr, dest peer.ID) *ProxyService {
 
 	// We let our host know that it needs to handle streams tagged with the
 	// protocol id that we have defined, and then handle them to
@@ -63,7 +64,13 @@ func streamHandler(stream inet.Stream) {
 	defer req.Body.Close()
 
 	//Set URL scheme to http
-	req.URL.Scheme = "http"
+
+	hp := strings.Split(req.Host, ":")
+	if len(hp) > 1 && hp[1] == "443" {
+		req.URL.Scheme = "https"
+	} else {
+		req.URL.Scheme = "http"
+	}
 
 	//set request URL host
 	req.URL.Host = req.Host

@@ -16,17 +16,10 @@ import (
 	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
 )
 
-//Host struct
-type Host struct {
-	port      int
-	basichost *bhost.BasicHost
-	multiaddr *ma.Multiaddr
-}
-
 //func (h *Host) new(listenPort int) {}
 
 //NewHost : Create a new host
-func (h *Host) NewHost(listenPort int) *bhost.BasicHost {
+func NewHost(listenPort int) *bhost.BasicHost {
 	// Generate an identity keypair using go's cryptographic randomness source
 	priv, pub, err := crypto.GenerateSecp256k1Key(rand.Reader)
 
@@ -39,6 +32,7 @@ func (h *Host) NewHost(listenPort int) *bhost.BasicHost {
 		log.Fatalln(err)
 	}
 
+	log.Println(listenPort)
 	//Make the listen multi address
 	listen, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", listenPort))
 	if err != nil {
@@ -72,10 +66,6 @@ func (h *Host) NewHost(listenPort int) *bhost.BasicHost {
 	fullAddr := addr.Encapsulate(hostAddr)
 
 	log.Printf("I am %s\n", fullAddr)
-
-	h.basichost = basichost
-	h.port = listenPort
-	h.multiaddr = &listen
 
 	return basichost
 
