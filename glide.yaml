@@ -1,0 +1,9 @@
+package: github.com/ellcrys/garagecoin
+import:
+- package: github.com/libp2p/go-libp2p
+- package: github.com/libp2p/go-libp2p-crypto
+- package: github.com/libp2p/go-libp2p-host
+- package: github.com/libp2p/go-libp2p-net
+- package: github.com/libp2p/go-libp2p-protocol
+- package: go.uber.org/zap
+- package: github.com/multiformats/go-multiaddr
