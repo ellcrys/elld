@@ -3,13 +3,19 @@ package main
 import (
 	"fmt"
 
+	"go.uber.org/zap"
+
 	"github.com/ellcrys/garagecoin/components"
 	"github.com/ellcrys/garagecoin/protocols/inception"
 )
 
-func main() {
+var log *zap.SugaredLogger
 
-	log := components.NewLogger("/main")
+func init() {
+	log = components.NewLogger("/main")
+}
+
+func main() {
 
 	log.Infof("Garagecoin node started")
 
