@@ -15,8 +15,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/garagecoin/components"
 	"github.com/ellcrys/garagecoin/protocols/inception"
 	"github.com/spf13/cobra"
@@ -46,7 +44,6 @@ var startCmd = &cobra.Command{
 
 		// set protocol version and handler
 		peer.SetProtocolHandler(inception.NewInception("/inception/0.0.1"))
-		fmt.Println(peer.GetAddress())
 
 		// cause main thread to wait for peer
 		peer.Wait()
