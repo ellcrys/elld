@@ -3,8 +3,6 @@ package protocol
 import (
 	"fmt"
 
-	"github.com/kr/pretty"
-
 	"github.com/ellcrys/garagecoin/modules/types"
 
 	"github.com/ellcrys/garagecoin/modules"
@@ -47,14 +45,17 @@ func (protoc *Inception) GetVersion() string {
 // Handle handles incoming request
 func (protoc *Inception) Handle(s net.Stream) {
 	log.Info(fmt.Sprintf("Received new message from peer #{%s}", protoc.version))
-	m, _ := util.ReadMessageFromStream(s)
 
-	var opMsg types.HandshakeMsg
-	m.Scan(&opMsg)
-	pretty.Println(opMsg)
-}
+	// read message from the stream
+	m, err := util.ReadMessageFromStream(s)
+	if err != nil {
+		log.Errorf(err.Error())
+		return
+	}
 
-// HandleHandshakeMsg processes a type
-func (protoc *Inception) HandleHandshakeMsg() {
-
+	// process message according to operation type
+	switch op := m.Op; op {
+	case types.OpHandshake:
+		protoc.HandleHandshake(m, s.Protocol(), s.Conn())
+	}
 }
