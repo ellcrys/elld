@@ -10,12 +10,12 @@ import (
 
 	"github.com/ellcrys/garagecoin/modules/types"
 
+	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
 	"github.com/ellcrys/garagecoin/modules"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-peer"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
@@ -30,11 +30,10 @@ func init() {
 // Peer represents a network node
 type Peer struct {
 	address            ma.Multiaddr
-	handlers           map[string]types.StreamProtocol
+	handlers           map[string]types.Protocol
 	host               host.Host
 	wg                 sync.WaitGroup
 	peers              []*Peer
-	do                 Logic
 	localPeer          *Peer
 	curProtocolVersion protocol.ID
 }
@@ -71,10 +70,9 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 
 	return &Peer{
 		address:  host.Addrs()[0],
-		handlers: make(map[string]types.StreamProtocol),
+		handlers: make(map[string]types.Protocol),
 		host:     host,
 		wg:       sync.WaitGroup{},
-		do:       &Do{},
 	}, nil
 }
 
@@ -113,7 +111,7 @@ func (p *Peer) ID() peer.ID {
 }
 
 // SetProtocolHandler sets the protocol handler for a specific protocol
-func (p *Peer) SetProtocolHandler(protoc types.StreamProtocol) {
+func (p *Peer) SetProtocolHandler(protoc types.Protocol) {
 	p.handlers[protoc.GetVersion()] = protoc
 	p.host.SetStreamHandler(protocol.ID(protoc.GetVersion()), protoc.Handle)
 }
@@ -154,11 +152,13 @@ func (p *Peer) SetBootstrapNodes(peerAddresses []string) error {
 			return fmt.Errorf("invalid bootstrap node address. Expected a valid multi address")
 		}
 		go func() {
-			err := p.do.SendHandShake(&Peer{
+			err := SendHandshake(&Peer{
 				address:   pAddr,
 				localPeer: p,
 			})
-			fmt.Println(err)
+			if err != nil {
+				peerLog.Infof(err.Error())
+			}
 		}()
 	}
 	return nil

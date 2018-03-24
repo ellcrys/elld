@@ -3,7 +3,6 @@ package cmd
 import (
 	"github.com/ellcrys/garagecoin/modules"
 	"github.com/ellcrys/garagecoin/modules/peer"
-	"github.com/ellcrys/garagecoin/modules/protocol"
 	"github.com/ellcrys/garagecoin/modules/util"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -31,28 +30,28 @@ var startCmd = &cobra.Command{
 		}
 
 		// create the peer
-		peer, err := peer.NewPeer(addressToListenOn, seed)
+		p, err := peer.NewPeer(addressToListenOn, seed)
 		if err != nil {
 			log.Fatalf("failed to create peer")
 		}
 
 		// add bootstrap nodes
 		if len(nodeToJoin) > 0 {
-			if err := peer.SetBootstrapNodes(nodeToJoin); err != nil {
+			if err := p.SetBootstrapNodes(nodeToJoin); err != nil {
 				log.Fatalf("%s", err)
 			}
 		}
 
-		log.Infof("Node is listening at %s", peer.GetMultiAddr())
+		log.Infof("Node is listening at %s", p.GetMultiAddr())
 
 		curProtocolVersion := "/inception/0.0.1"
-		peer.SetCurrentProtocol(curProtocolVersion)
+		p.SetCurrentProtocol(curProtocolVersion)
 
 		// set protocol version and handler
-		peer.SetProtocolHandler(protocol.NewInception(peer, curProtocolVersion))
+		p.SetProtocolHandler(peer.NewInception(p, curProtocolVersion))
 
 		// cause main thread to wait for peer
-		peer.Wait()
+		p.Wait()
 	},
 }
 
