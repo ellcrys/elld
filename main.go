@@ -4,13 +4,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ellcrys/garagecoin/cmd"
-	"github.com/ellcrys/garagecoin/components"
+	"github.com/ellcrys/garagecoin/modules"
 )
 
 var log *zap.SugaredLogger
 
 func init() {
-	log = components.NewLogger("/main")
+	log = modules.NewLogger("/main")
 }
 
 func main() {
