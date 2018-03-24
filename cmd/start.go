@@ -1,22 +1,10 @@
-// Copyright © 2018 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package cmd
 
 import (
-	"github.com/ellcrys/garagecoin/components"
-	"github.com/ellcrys/garagecoin/protocols/inception"
+	"github.com/ellcrys/garagecoin/modules"
+	"github.com/ellcrys/garagecoin/modules/peer"
+	"github.com/ellcrys/garagecoin/modules/protocol"
+	"github.com/ellcrys/garagecoin/modules/util"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -24,7 +12,7 @@ import (
 var log *zap.SugaredLogger
 
 func init() {
-	log = components.NewLogger("/peer")
+	log = modules.NewLogger("/peer")
 }
 
 // startCmd represents the start command
@@ -34,16 +22,34 @@ var startCmd = &cobra.Command{
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		nodeToJoin, _ := cmd.Flags().GetStringSlice("addnode")
+		addressToListenOn, _ := cmd.Flags().GetString("address")
+		seed, _ := cmd.Flags().GetInt64("seed")
+
+		if !util.IsValidHostPortAddress(addressToListenOn) {
+			log.Fatal("invalid bind address provided")
+		}
+
 		// create the peer
-		peer, err := components.NewPeer(4500, 10)
+		peer, err := peer.NewPeer(addressToListenOn, seed)
 		if err != nil {
 			log.Fatalf("failed to create peer")
 		}
 
-		log.Infof("Address is %s", peer.GetAddress())
+		// add bootstrap nodes
+		if len(nodeToJoin) > 0 {
+			if err := peer.SetBootstrapNodes(nodeToJoin); err != nil {
+				log.Fatalf("%s", err)
+			}
+		}
+
+		log.Infof("Node is listening at %s", peer.GetMultiAddr())
+
+		curProtocolVersion := "/inception/0.0.1"
+		peer.SetCurrentProtocol(curProtocolVersion)
 
 		// set protocol version and handler
-		peer.SetProtocolHandler(inception.NewInception("/inception/0.0.1"))
+		peer.SetProtocolHandler(protocol.NewInception(peer, curProtocolVersion))
 
 		// cause main thread to wait for peer
 		peer.Wait()
@@ -61,5 +67,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// startCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
+	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
+	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
 }

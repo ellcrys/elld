@@ -1,7 +1,8 @@
-package components
+package modules
 
 import (
 	"io"
+
 	crypto "github.com/libp2p/go-libp2p-crypto"
 )
 
