@@ -49,6 +49,7 @@ func (protoc *Inception) Handle(s net.Stream) {
 	// read message from the stream
 	m, err := util.ReadMessageFromStream(s)
 	if err != nil {
+		s.Reset()
 		log.Errorf(err.Error())
 		return
 	}
