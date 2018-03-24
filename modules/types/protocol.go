@@ -5,8 +5,8 @@ import (
 	protocol "github.com/libp2p/go-libp2p-protocol"
 )
 
-// StreamProtocol represents a protocol
-type StreamProtocol interface {
+// Protocol represents a protocol
+type Protocol interface {
 	GetVersion() string
 	GetCodeName() string
 	Handle(net.Stream)

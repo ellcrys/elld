@@ -1,4 +1,4 @@
-package protocol
+package peer
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"github.com/ellcrys/garagecoin/modules/types"
 
 	"github.com/ellcrys/garagecoin/modules"
-	"github.com/ellcrys/garagecoin/modules/peer"
 	"github.com/ellcrys/garagecoin/modules/util"
 	net "github.com/libp2p/go-libp2p-net"
 	"go.uber.org/zap"
@@ -23,12 +22,12 @@ func init() {
 // Inception represents the first Garagecoin protocol
 type Inception struct {
 	version string
-	peer    *peer.Peer
+	peer    *Peer
 }
 
 // NewInception creates a new instance of this protocol
 // with a version it is supposed to handle
-func NewInception(p *peer.Peer, version string) *Inception {
+func NewInception(p *Peer, version string) *Inception {
 	return &Inception{peer: p, version: version}
 }
 
@@ -58,5 +57,7 @@ func (protoc *Inception) Handle(s net.Stream) {
 	switch op := m.Op; op {
 	case types.OpHandshake:
 		protoc.HandleHandshake(m, s.Protocol(), s.Conn())
+		s.Write([]byte("Thanks"))
+		fmt.Println("Written")
 	}
 }

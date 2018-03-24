@@ -3,20 +3,18 @@ package peer
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/garagecoin/modules/types"
-
 	"github.com/ellcrys/garagecoin/modules/util"
+	"github.com/kr/pretty"
+	net "github.com/libp2p/go-libp2p-net"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 )
 
-// Do define rules and behaviours
-// that are not provided by a stream protocol
-type Do struct {
-}
-
-// SendHandShake sends a handshake request to a remote peer
-func (b *Do) SendHandShake(p *Peer) error {
+// SendHandshake sends an introduction message to a peer
+func SendHandshake(p *Peer) error {
 
 	// create a stream to remote peer
 	p.localPeer.Peerstore().AddAddr(p.ID(), p.GetIP4Addr(), pstore.PermanentAddrTTL)
@@ -37,5 +35,27 @@ func (b *Do) SendHandShake(p *Peer) error {
 		return fmt.Errorf("handshake failed. failed to write to stream -> %s", err)
 	}
 
+	time.AfterFunc(1*time.Millisecond, func() {
+		for {
+			bs := make([]byte, 30)
+			n, err := s.Read(bs)
+			if err != nil {
+				fmt.Println("Err:>", err)
+				break
+			}
+			if n > 0 {
+				fmt.Println("Read:", string(bs))
+			}
+		}
+		fmt.Println("END")
+	})
+
 	return nil
+}
+
+// HandleHandshake processes handshake message from a remote peer
+func (protoc *Inception) HandleHandshake(m *types.Message, protocol protocol.ID, conn net.Conn) {
+	var opMsg types.HandshakeMsg
+	m.Scan(&opMsg)
+	pretty.Println(opMsg)
 }
