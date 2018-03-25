@@ -1,35 +1,20 @@
 package main
 
 import (
-	"flag"
-	"log"
+	"go.uber.org/zap"
 
-	"github.com/ellcrys/garagecoin/garagecoin"
+	"github.com/ellcrys/garagecoin/cmd"
+	"github.com/ellcrys/garagecoin/modules"
 )
 
-const help = `Entry point to trigger the garagecoin service`
+var log *zap.SugaredLogger
+
+func init() {
+	log = modules.NewLogger("/main")
+}
 
 func main() {
-
-	flag.Usage = func() {
-		log.Println(help)
-		flag.PrintDefaults()
-	}
-
-	destPeer := flag.String("d", "", "destination peer address")
-
-	proxyPort := flag.Int("p", 9900, "proxy port")
-
-	listenPort := flag.Int("l", 12000, "listen port")
-
-	linkNodePeer := flag.String("link", "", "Node peer address")
-
-	flag.Parse()
-
-	if *linkNodePeer != "" {
-		garagecoin.Link(proxyPort, linkNodePeer)
-	} else {
-		garagecoin.Run(destPeer, proxyPort, listenPort)
-	}
+	log.Infof("Garagecoin node started")
+	cmd.Execute()
 
 }
