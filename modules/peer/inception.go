@@ -19,7 +19,7 @@ func init() {
 	log = modules.NewLogger("protocol/inception")
 }
 
-// Inception represents the first Garagecoin protocol
+// Inception represents the peer protocol
 type Inception struct {
 	version string
 	peer    *Peer
@@ -58,6 +58,7 @@ func (protoc *Inception) Handle(s net.Stream) {
 	case types.OpHandshake:
 		protoc.HandleHandshake(m, s.Protocol(), s.Conn())
 		s.Write([]byte("Thanks"))
+		s.Close()
 		fmt.Println("Written")
 	}
 }

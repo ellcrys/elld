@@ -3,7 +3,6 @@ package peer
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ellcrys/garagecoin/modules/types"
 	"github.com/ellcrys/garagecoin/modules/util"
@@ -32,22 +31,13 @@ func SendHandshake(p *Peer) error {
 	// write to peer. Message is encoded as hex
 	_, err = s.Write(msg.Hex())
 	if err != nil {
+		s.Reset()
 		return fmt.Errorf("handshake failed. failed to write to stream -> %s", err)
 	}
 
-	time.AfterFunc(1*time.Millisecond, func() {
-		for {
-			bs := make([]byte, 30)
-			n, err := s.Read(bs)
-			if err != nil {
-				fmt.Println("Err:>", err)
-				break
-			}
-			if n > 0 {
-				fmt.Println("Read:", string(bs))
-			}
-		}
-		fmt.Println("END")
+	// wait for response
+	util.WaitThenReadStream(util.WaitTimeBeforeRead, s, func(err error, bs []byte) {
+		pretty.Println(err, string(bs))
 	})
 
 	return nil
