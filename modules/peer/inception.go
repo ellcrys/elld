@@ -3,10 +3,10 @@ package peer
 import (
 	"fmt"
 
-	"github.com/ellcrys/garagecoin/modules/types"
+	"github.com/ellcrys/gcoin/modules/types"
 
-	"github.com/ellcrys/garagecoin/modules"
-	"github.com/ellcrys/garagecoin/modules/util"
+	"github.com/ellcrys/gcoin/modules"
+	"github.com/ellcrys/gcoin/modules/util"
 	net "github.com/libp2p/go-libp2p-net"
 	"go.uber.org/zap"
 )
@@ -59,6 +59,5 @@ func (protoc *Inception) Handle(s net.Stream) {
 		protoc.HandleHandshake(m, s.Protocol(), s.Conn())
 		s.Write([]byte("Thanks"))
 		s.Close()
-		fmt.Println("Written")
 	}
 }

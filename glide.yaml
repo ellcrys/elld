@@ -1,4 +1,4 @@
-package: github.com/ellcrys/garagecoin
+package: github.com/ellcrys/gcoin
 import:
 - package: github.com/libp2p/go-libp2p
 - package: github.com/libp2p/go-libp2p-crypto

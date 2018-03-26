@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/ellcrys/garagecoin/modules"
-	"github.com/ellcrys/garagecoin/modules/peer"
-	"github.com/ellcrys/garagecoin/modules/util"
+	"github.com/ellcrys/gcoin/modules"
+	"github.com/ellcrys/gcoin/modules/peer"
+	"github.com/ellcrys/gcoin/modules/util"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )

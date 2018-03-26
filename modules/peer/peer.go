@@ -8,12 +8,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ellcrys/garagecoin/modules/types"
+	"github.com/ellcrys/gcoin/modules/types"
 
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
-	"github.com/ellcrys/garagecoin/modules"
+	"github.com/ellcrys/gcoin/modules"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	protocol "github.com/libp2p/go-libp2p-protocol"
@@ -145,6 +145,7 @@ func (p *Peer) PostMessage(msg []byte) error {
 }
 
 // SetBootstrapNodes sets the initial nodes to communicate to
+// TODO: Log error when peerAddress is invalid. Do not return error
 func (p *Peer) SetBootstrapNodes(peerAddresses []string) error {
 	for _, addr := range peerAddresses {
 		pAddr, err := ma.NewMultiaddr(addr)

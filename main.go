@@ -3,8 +3,8 @@ package main
 import (
 	"go.uber.org/zap"
 
-	"github.com/ellcrys/garagecoin/cmd"
-	"github.com/ellcrys/garagecoin/modules"
+	"github.com/ellcrys/gcoin/cmd"
+	"github.com/ellcrys/gcoin/modules"
 )
 
 var log *zap.SugaredLogger
@@ -14,6 +14,6 @@ func init() {
 }
 
 func main() {
-	log.Infof("Garagecoin node started")
+	log.Infof("gcoin node started")
 	cmd.Execute()
 }
