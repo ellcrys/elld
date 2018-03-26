@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ellcrys/garagecoin/modules/types"
-	"github.com/ellcrys/garagecoin/modules/util"
+	"github.com/ellcrys/gcoin/modules/types"
+	"github.com/ellcrys/gcoin/modules/util"
 	"github.com/kr/pretty"
 	net "github.com/libp2p/go-libp2p-net"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -13,13 +13,13 @@ import (
 )
 
 // SendHandshake sends an introduction message to a peer
-func SendHandshake(p *Peer) error {
+func SendHandshake(remotePeer *Peer) error {
 
 	// create a stream to remote peer
-	p.localPeer.Peerstore().AddAddr(p.ID(), p.GetIP4Addr(), pstore.PermanentAddrTTL)
-	s, err := p.localPeer.host.NewStream(context.Background(), p.ID(), p.localPeer.curProtocolVersion)
+	remotePeer.localPeer.Peerstore().AddAddr(remotePeer.ID(), remotePeer.GetIP4Addr(), pstore.PermanentAddrTTL)
+	s, err := remotePeer.localPeer.host.NewStream(context.Background(), remotePeer.ID(), remotePeer.localPeer.curProtocolVersion)
 	if err != nil {
-		return fmt.Errorf("handshake failed. failed to connect to peer (%s) -> %s", p.ID().String(), err)
+		return fmt.Errorf("handshake failed. failed to connect to peer (%s) -> %s", remotePeer.ID().String(), err)
 	}
 	defer s.Close()
 

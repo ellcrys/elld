@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ellcrys/garagecoin/modules/types"
+	"github.com/ellcrys/gcoin/modules/types"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
