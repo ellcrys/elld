@@ -52,11 +52,6 @@ func (m *Message) Bytes() []byte {
 	return b
 }
 
-// Decode the message into a struct
-func (m *Message) Decode(dest interface{}) error {
-	return nil
-}
-
 // Scan copies the message into a struct or map
 func (m *Message) Scan(dest interface{}) error {
 	return json.Unmarshal(m.Msg, &dest)
