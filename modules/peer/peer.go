@@ -19,6 +19,7 @@ import (
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
+	"strconv"
 )
 
 var peerLog *zap.SugaredLogger
@@ -57,6 +58,23 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 		h = "127.0.0.1"
 	}
 
+	portInt, _ := strconv.Atoi(port)
+
+	portAvailable := IsPortAvailable(portInt)
+
+
+	if !portAvailable {
+		//Port is not available
+		//assign new port and dial again
+		newport := portInt + 1
+
+		fmt.Printf("port provided is not available; attempting port at %d \n", newport)
+
+		port = strconv.Itoa(newport)
+	}
+
+
+
 	// construct host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/%s/tcp/%s", h, port)),
@@ -76,6 +94,24 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 		wg:       sync.WaitGroup{},
 		do:       &Do{},
 	}, nil
+
+}
+
+//IsPortAvailable check if port is available
+func IsPortAvailable(port int) (status bool) {
+	// Concatenate a colon and the port
+	host := ":" + strconv.Itoa(port)
+
+	// Try to create a server with the port
+	_, err := net.Listen("tcp", host)
+
+	// if it fails then the port is likely taken
+	if err != nil {
+		fmt.Errorf("port is not available %s", err)
+		return false
+	} else {
+		return true
+	}
 }
 
 // SetCurrentProtocol sets the protocol version to use in future communications
