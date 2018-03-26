@@ -16,4 +16,5 @@ func init() {
 func main() {
 	log.Infof("Garagecoin node started")
 	cmd.Execute()
+
 }
