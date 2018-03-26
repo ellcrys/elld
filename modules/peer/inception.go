@@ -41,6 +41,11 @@ func (protoc *Inception) GetVersion() string {
 	return protoc.version
 }
 
+// GetLocalPeer returns the local peer
+func (protoc *Inception) GetLocalPeer() *Peer {
+	return protoc.peer
+}
+
 // Handle handles incoming request
 func (protoc *Inception) Handle(s net.Stream) {
 	log.Info(fmt.Sprintf("Received new message from peer #{%s}", protoc.version))
@@ -56,7 +61,7 @@ func (protoc *Inception) Handle(s net.Stream) {
 	// process message according to operation type
 	switch op := m.Op; op {
 	case types.OpHandshake:
-		protoc.HandleHandshake(m, s.Protocol(), s.Conn())
+		protoc.HandleHandshake(m, s)
 		s.Write([]byte("Thanks"))
 		s.Close()
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/kr/pretty"
 	net "github.com/libp2p/go-libp2p-net"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	protocol "github.com/libp2p/go-libp2p-protocol"
 )
 
 // SendHandshake sends an introduction message to a peer
@@ -44,7 +43,7 @@ func SendHandshake(remotePeer *Peer) error {
 }
 
 // HandleHandshake processes handshake message from a remote peer
-func (protoc *Inception) HandleHandshake(m *types.Message, protocol protocol.ID, conn net.Conn) {
+func (protoc *Inception) HandleHandshake(m *types.Message, s net.Stream) {
 	var opMsg types.HandshakeMsg
 	m.Scan(&opMsg)
 	pretty.Println(opMsg)
