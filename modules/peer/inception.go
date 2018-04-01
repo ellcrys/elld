@@ -1,44 +1,29 @@
 package peer
 
 import (
-	"fmt"
+	"bufio"
 
-	"github.com/ellcrys/gcoin/modules/types"
-
-	"github.com/ellcrys/gcoin/modules"
-	"github.com/ellcrys/gcoin/modules/util"
+	pb "github.com/ellcrys/gcoin/modules/pb"
+	"github.com/kr/pretty"
 	net "github.com/libp2p/go-libp2p-net"
+	pc "github.com/multiformats/go-multicodec/protobuf"
 	"go.uber.org/zap"
 )
-
-var (
-	log *zap.SugaredLogger
-)
-
-func init() {
-	log = modules.NewLogger("protocol/inception")
-}
 
 // Inception represents the peer protocol
 type Inception struct {
 	version string
 	peer    *Peer
+	log     *zap.SugaredLogger
 }
 
 // NewInception creates a new instance of this protocol
 // with a version it is supposed to handle
-func NewInception(p *Peer, version string) *Inception {
-	return &Inception{peer: p, version: version}
-}
-
-// GetCodeName returns the code name of the protocol
-func (protoc *Inception) GetCodeName() string {
-	return "inception"
-}
-
-// GetVersion returns the version
-func (protoc *Inception) GetVersion() string {
-	return protoc.version
+func NewInception(p *Peer) *Inception {
+	return &Inception{
+		peer: p,
+		log:  peerLog.Named("protocol.inception"),
+	}
 }
 
 // GetLocalPeer returns the local peer
@@ -46,23 +31,14 @@ func (protoc *Inception) GetLocalPeer() *Peer {
 	return protoc.peer
 }
 
-// Handle handles incoming request
-func (protoc *Inception) Handle(s net.Stream) {
-	log.Info(fmt.Sprintf("Received new message from peer #{%s}", protoc.version))
+// HandleHandshake handles incoming handshake request
+func (protoc *Inception) HandleHandshake(s net.Stream) {
 
-	// read message from the stream
-	m, err := util.ReadMessageFromStream(s)
-	if err != nil {
-		s.Reset()
-		log.Errorf(err.Error())
+	msg := &pb.Handshake{}
+	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+		protoc.log.Errorf("failed to read message from %s -> %s", s.Conn().RemotePeer().Pretty(), err)
 		return
 	}
 
-	// process message according to operation type
-	switch op := m.Op; op {
-	case types.OpHandshake:
-		protoc.HandleHandshake(m, s)
-		s.Write([]byte("Thanks"))
-		s.Close()
-	}
+	pretty.Println(msg)
 }

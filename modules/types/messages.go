@@ -59,5 +59,6 @@ func (m *Message) Scan(dest interface{}) error {
 
 // HandshakeMsg represents a handshake message
 type HandshakeMsg struct {
-	ID string
+	ProtocolVersion string `json:"version"`
+	Address         string `json:"address"`
 }

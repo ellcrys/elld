@@ -7,3 +7,4 @@ import:
 - package: github.com/libp2p/go-libp2p-protocol
 - package: go.uber.org/zap
 - package: github.com/multiformats/go-multiaddr
+- package: github.com/multiformats/go-multicodec
