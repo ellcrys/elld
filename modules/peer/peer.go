@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ellcrys/gcoin/modules/types"
+	"github.com/thoas/go-funk"
 
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -16,6 +16,7 @@ import (
 	"github.com/ellcrys/gcoin/modules"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
+	inet "github.com/libp2p/go-libp2p-net"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
@@ -29,13 +30,11 @@ func init() {
 
 // Peer represents a network node
 type Peer struct {
-	address            ma.Multiaddr
-	handlers           map[string]types.Protocol
-	host               host.Host
-	wg                 sync.WaitGroup
-	peers              []*Peer
-	localPeer          *Peer
-	curProtocolVersion protocol.ID
+	address     ma.Multiaddr
+	host        host.Host
+	wg          sync.WaitGroup
+	localPeer   *Peer
+	peerManager *Manager
 }
 
 // NewPeer creates a peer instance at the specified port
@@ -68,17 +67,20 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 		return nil, fmt.Errorf("failed to create host > %s", err)
 	}
 
-	return &Peer{
-		address:  host.Addrs()[0],
-		handlers: make(map[string]types.Protocol),
-		host:     host,
-		wg:       sync.WaitGroup{},
-	}, nil
+	peer := &Peer{
+		address: host.Addrs()[0],
+		host:    host,
+		wg:      sync.WaitGroup{},
+	}
+
+	peer.localPeer = peer
+	peer.peerManager = NewManager(peer)
+	return peer, nil
 }
 
-// SetCurrentProtocol sets the protocol version to use in future communications
-func (p *Peer) SetCurrentProtocol(value string) {
-	p.curProtocolVersion = protocol.ID(value)
+// PM returns the peer manager
+func (p *Peer) PM() *Manager {
+	return p.peerManager
 }
 
 // GetHost returns the peer's host
@@ -110,10 +112,19 @@ func (p *Peer) ID() peer.ID {
 	return id
 }
 
+// IDPretty is like ID() but returns string
+func (p *Peer) IDPretty() string {
+	if p.address == nil {
+		return ""
+	}
+
+	pid, _ := p.address.ValueForProtocol(ma.P_IPFS)
+	return pid
+}
+
 // SetProtocolHandler sets the protocol handler for a specific protocol
-func (p *Peer) SetProtocolHandler(protoc types.Protocol) {
-	p.handlers[protoc.GetVersion()] = protoc
-	p.host.SetStreamHandler(protocol.ID(protoc.GetVersion()), protoc.Handle)
+func (p *Peer) SetProtocolHandler(version string, handler inet.StreamHandler) {
+	p.host.SetStreamHandler(protocol.ID(version), handler)
 }
 
 // GetMultiAddr returns the full multi address of the peer
@@ -139,30 +150,36 @@ func (p *Peer) GetBindAddress() string {
 	return p.address.String()
 }
 
-// PostMessage sends a message to the peer
-func (p *Peer) PostMessage(msg []byte) error {
-	return nil
-}
-
 // SetBootstrapNodes sets the initial nodes to communicate to
-// TODO: Log error when peerAddress is invalid. Do not return error
 func (p *Peer) SetBootstrapNodes(peerAddresses []string) error {
 	for _, addr := range peerAddresses {
 		pAddr, err := ma.NewMultiaddr(addr)
 		if err != nil {
-			return fmt.Errorf("invalid bootstrap node address. Expected a valid multi address")
+			peerLog.Errorf("invalid bootstrap node address -> %s", err)
+			continue
 		}
-		go func() {
-			err := SendHandshake(&Peer{
-				address:   pAddr,
-				localPeer: p,
-			})
-			if err != nil {
-				peerLog.Infof(err.Error())
-			}
-		}()
+		p.peerManager.AddBootstrapPeer(&Peer{
+			address:   pAddr,
+			localPeer: p,
+		})
 	}
+
+	p.peerManager.Manage()
+
 	return nil
+}
+
+// GetPeersPublicAddrs gets all the peers' public address.
+// It will ignore any peer whose ID is specified in peerIDsToIgnore
+func (p *Peer) GetPeersPublicAddrs(peerIDsToIgnore []string) (peerAddrs []ma.Multiaddr) {
+	for _, _p := range p.host.Peerstore().Peers() {
+		if !funk.Contains(peerIDsToIgnore, _p.Pretty()) {
+			if _pAddrs := p.host.Peerstore().Addrs(_p); len(_pAddrs) > 0 {
+				peerAddrs = append(peerAddrs, _pAddrs[0])
+			}
+		}
+	}
+	return
 }
 
 // Wait forces the current thread to wait for the peer

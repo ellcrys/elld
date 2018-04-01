@@ -6,8 +6,5 @@ import (
 
 // Protocol represents a protocol
 type Protocol interface {
-	GetVersion() string
-	GetCodeName() string
-	Handle(net.Stream)
-	HandleHandshake(*Message, net.Stream)
+	HandleHandshake(net.Stream)
 }
