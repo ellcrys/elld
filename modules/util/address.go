@@ -1,8 +1,12 @@
 package util
 
 import (
+	"fmt"
 	"net"
 
+	"github.com/libp2p/go-libp2p-host"
+
+	inet "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -26,4 +30,27 @@ func IsValidAddress(addr string) bool {
 	}
 
 	return true
+}
+
+// FullRemoteAddressFromStream returns the full peer multi address containing ip4, tcp and ipfs protocols
+func FullRemoteAddressFromStream(s inet.Stream) ma.Multiaddr {
+	if s == nil {
+		return nil
+	}
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", s.Conn().RemotePeer().Pretty()))
+	fullAddr := s.Conn().RemoteMultiaddr().Encapsulate(ipfsAddr)
+	return fullAddr
+}
+
+// FullAddressFromHost returns the full peer multi address containing ip4, tcp and ipfs protocols
+func FullAddressFromHost(host host.Host) ma.Multiaddr {
+	if host == nil {
+		return nil
+	}
+	if len(host.Addrs()) == 0 {
+		return nil
+	}
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
+	fullAddr := host.Addrs()[0].Encapsulate(ipfsAddr)
+	return fullAddr
 }

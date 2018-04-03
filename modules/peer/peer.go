@@ -10,10 +10,12 @@ import (
 
 	"github.com/thoas/go-funk"
 
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
 	"github.com/ellcrys/gcoin/modules"
+	"github.com/ellcrys/gcoin/modules/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
@@ -22,10 +24,14 @@ import (
 	"go.uber.org/zap"
 )
 
-var peerLog *zap.SugaredLogger
+var (
+	peerLog   *zap.SugaredLogger
+	protocLog *zap.SugaredLogger
+)
 
 func init() {
 	peerLog = modules.NewLogger("/peer")
+	protocLog = peerLog.Named("protocol.inception")
 }
 
 // Peer represents a network node
@@ -68,7 +74,7 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 	}
 
 	peer := &Peer{
-		address: host.Addrs()[0],
+		address: util.FullAddressFromHost(host),
 		host:    host,
 		wg:      sync.WaitGroup{},
 	}
@@ -122,6 +128,10 @@ func (p *Peer) IDPretty() string {
 	return pid
 }
 
+func (p *Peer) getPrivKey() crypto.PrivKey {
+	return p.host.Peerstore().PrivKey(p.host.ID())
+}
+
 // SetProtocolHandler sets the protocol handler for a specific protocol
 func (p *Peer) SetProtocolHandler(version string, handler inet.StreamHandler) {
 	p.host.SetStreamHandler(protocol.ID(version), handler)
@@ -129,6 +139,9 @@ func (p *Peer) SetProtocolHandler(version string, handler inet.StreamHandler) {
 
 // GetMultiAddr returns the full multi address of the peer
 func (p *Peer) GetMultiAddr() string {
+	if p.host == nil {
+		return ""
+	}
 	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", p.host.ID().Pretty()))
 	return p.host.Addrs()[0].Encapsulate(hostAddr).String()
 }

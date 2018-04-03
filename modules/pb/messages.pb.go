@@ -2,19 +2,22 @@
 // source: modules/pb/messages.proto
 
 /*
-Package protocol_message is a generated protocol buffer package.
+	Package pb is a generated protocol buffer package.
 
-It is generated from these files:
-	modules/pb/messages.proto
+	It is generated from these files:
+		modules/pb/messages.proto
 
-It has these top-level messages:
-	Handshake
+	It has these top-level messages:
+		Handshake
+		HandshakeResponse
 */
-package protocol_message
+package pb
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+
+import bytes "bytes"
 
 import strings "strings"
 import reflect "reflect"
@@ -35,6 +38,7 @@ const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 // Handshake represents the first message between peers
 type Handshake struct {
 	Address string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	Sig     []byte `protobuf:"bytes,2,opt,name=sig,proto3" json:"sig,omitempty"`
 }
 
 func (m *Handshake) Reset()                    { *m = Handshake{} }
@@ -48,8 +52,40 @@ func (m *Handshake) GetAddress() string {
 	return ""
 }
 
+func (m *Handshake) GetSig() []byte {
+	if m != nil {
+		return m.Sig
+	}
+	return nil
+}
+
+// HandshakeResponse is a response to Handshake message
+type HandshakeResponse struct {
+	Addresses []string `protobuf:"bytes,1,rep,name=addresses" json:"addresses,omitempty"`
+	Sig       []byte   `protobuf:"bytes,2,opt,name=sig,proto3" json:"sig,omitempty"`
+}
+
+func (m *HandshakeResponse) Reset()                    { *m = HandshakeResponse{} }
+func (*HandshakeResponse) ProtoMessage()               {}
+func (*HandshakeResponse) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{1} }
+
+func (m *HandshakeResponse) GetAddresses() []string {
+	if m != nil {
+		return m.Addresses
+	}
+	return nil
+}
+
+func (m *HandshakeResponse) GetSig() []byte {
+	if m != nil {
+		return m.Sig
+	}
+	return nil
+}
+
 func init() {
-	proto.RegisterType((*Handshake)(nil), "protocol.message.Handshake")
+	proto.RegisterType((*Handshake)(nil), "pb.Handshake")
+	proto.RegisterType((*HandshakeResponse)(nil), "pb.HandshakeResponse")
 }
 func (this *Handshake) Equal(that interface{}) bool {
 	if that == nil {
@@ -73,15 +109,62 @@ func (this *Handshake) Equal(that interface{}) bool {
 	if this.Address != that1.Address {
 		return false
 	}
+	if !bytes.Equal(this.Sig, that1.Sig) {
+		return false
+	}
+	return true
+}
+func (this *HandshakeResponse) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*HandshakeResponse)
+	if !ok {
+		that2, ok := that.(HandshakeResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if len(this.Addresses) != len(that1.Addresses) {
+		return false
+	}
+	for i := range this.Addresses {
+		if this.Addresses[i] != that1.Addresses[i] {
+			return false
+		}
+	}
+	if !bytes.Equal(this.Sig, that1.Sig) {
+		return false
+	}
 	return true
 }
 func (this *Handshake) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 5)
-	s = append(s, "&protocol_message.Handshake{")
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.Handshake{")
 	s = append(s, "Address: "+fmt.Sprintf("%#v", this.Address)+",\n")
+	s = append(s, "Sig: "+fmt.Sprintf("%#v", this.Sig)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *HandshakeResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&pb.HandshakeResponse{")
+	s = append(s, "Addresses: "+fmt.Sprintf("%#v", this.Addresses)+",\n")
+	s = append(s, "Sig: "+fmt.Sprintf("%#v", this.Sig)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -114,6 +197,51 @@ func (m *Handshake) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintMessages(dAtA, i, uint64(len(m.Address)))
 		i += copy(dAtA[i:], m.Address)
 	}
+	if len(m.Sig) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Sig)))
+		i += copy(dAtA[i:], m.Sig)
+	}
+	return i, nil
+}
+
+func (m *HandshakeResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *HandshakeResponse) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Addresses) > 0 {
+		for _, s := range m.Addresses {
+			dAtA[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	if len(m.Sig) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Sig)))
+		i += copy(dAtA[i:], m.Sig)
+	}
 	return i, nil
 }
 
@@ -130,6 +258,26 @@ func (m *Handshake) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Address)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	l = len(m.Sig)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
+func (m *HandshakeResponse) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Addresses) > 0 {
+		for _, s := range m.Addresses {
+			l = len(s)
+			n += 1 + l + sovMessages(uint64(l))
+		}
+	}
+	l = len(m.Sig)
 	if l > 0 {
 		n += 1 + l + sovMessages(uint64(l))
 	}
@@ -155,6 +303,18 @@ func (this *Handshake) String() string {
 	}
 	s := strings.Join([]string{`&Handshake{`,
 		`Address:` + fmt.Sprintf("%v", this.Address) + `,`,
+		`Sig:` + fmt.Sprintf("%v", this.Sig) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *HandshakeResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&HandshakeResponse{`,
+		`Addresses:` + fmt.Sprintf("%v", this.Addresses) + `,`,
+		`Sig:` + fmt.Sprintf("%v", this.Sig) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -224,6 +384,147 @@ func (m *Handshake) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Address = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sig", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sig = append(m.Sig[:0], dAtA[iNdEx:postIndex]...)
+			if m.Sig == nil {
+				m.Sig = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *HandshakeResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: HandshakeResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: HandshakeResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Addresses", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Addresses = append(m.Addresses, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sig", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sig = append(m.Sig[:0], dAtA[iNdEx:postIndex]...)
+			if m.Sig == nil {
+				m.Sig = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -354,15 +655,17 @@ var (
 func init() { proto.RegisterFile("modules/pb/messages.proto", fileDescriptorMessages) }
 
 var fileDescriptorMessages = []byte{
-	// 147 bytes of a gzipped FileDescriptorProto
+	// 189 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0xcc, 0xcd, 0x4f, 0x29,
 	0xcd, 0x49, 0x2d, 0xd6, 0x2f, 0x48, 0xd2, 0xcf, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0x2d, 0xd6,
-	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x00, 0x53, 0xc9, 0xf9, 0x39, 0x7a, 0x50, 0x09, 0x25,
-	0x55, 0x2e, 0x4e, 0x8f, 0xc4, 0xbc, 0x94, 0xe2, 0x8c, 0xc4, 0xec, 0x54, 0x21, 0x09, 0x2e, 0xf6,
-	0xc4, 0x94, 0x94, 0xa2, 0xd4, 0xe2, 0x62, 0x09, 0x46, 0x05, 0x46, 0x0d, 0xce, 0x20, 0x18, 0xd7,
-	0x49, 0xe7, 0xc2, 0x43, 0x39, 0x86, 0x1b, 0x0f, 0xe5, 0x18, 0x3e, 0x3c, 0x94, 0x63, 0x6c, 0x78,
-	0x24, 0xc7, 0xb8, 0xe2, 0x91, 0x1c, 0xe3, 0x89, 0x47, 0x72, 0x8c, 0x17, 0x1e, 0xc9, 0x31, 0x3e,
-	0x78, 0x24, 0xc7, 0xf8, 0xe2, 0x91, 0x1c, 0xc3, 0x87, 0x47, 0x72, 0x8c, 0x13, 0x1e, 0xcb, 0x31,
-	0x24, 0xb1, 0x81, 0xad, 0x31, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x93, 0xd2, 0x94, 0xce, 0x8a,
-	0x00, 0x00, 0x00,
+	0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x2a, 0x48, 0x52, 0x32, 0xe7, 0xe2, 0xf4, 0x48, 0xcc,
+	0x4b, 0x29, 0xce, 0x48, 0xcc, 0x4e, 0x15, 0x92, 0xe0, 0x62, 0x4f, 0x4c, 0x49, 0x29, 0x4a, 0x2d,
+	0x2e, 0x96, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x0c, 0x82, 0x71, 0x85, 0x04, 0xb8, 0x98, 0x8b, 0x33,
+	0xd3, 0x25, 0x98, 0x14, 0x18, 0x35, 0x78, 0x82, 0x40, 0x4c, 0x25, 0x67, 0x2e, 0x41, 0xb8, 0xc6,
+	0xa0, 0xd4, 0xe2, 0x82, 0xfc, 0xbc, 0xe2, 0x54, 0x21, 0x19, 0x2e, 0x4e, 0xa8, 0x8e, 0x54, 0x90,
+	0x11, 0xcc, 0x1a, 0x9c, 0x41, 0x08, 0x01, 0x4c, 0x43, 0x9c, 0x74, 0x2e, 0x3c, 0x94, 0x63, 0xb8,
+	0xf1, 0x50, 0x8e, 0xe1, 0xc3, 0x43, 0x39, 0xc6, 0x86, 0x47, 0x72, 0x8c, 0x2b, 0x1e, 0xc9, 0x31,
+	0x9e, 0x78, 0x24, 0xc7, 0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72, 0x8c, 0x2f, 0x1e, 0xc9,
+	0x31, 0x7c, 0x78, 0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c, 0x43, 0x12, 0x1b, 0xd8, 0xd9, 0xc6, 0x80,
+	0x00, 0x00, 0x00, 0xff, 0xff, 0x14, 0x37, 0x21, 0xb9, 0xd3, 0x00, 0x00, 0x00,
 }

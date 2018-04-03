@@ -44,7 +44,7 @@ var startCmd = &cobra.Command{
 
 		log.Infof("Node is listening at %s", p.GetMultiAddr())
 
-		protocol := peer.NewInception(p)
+		protocol := peer.NewProtocol(p)
 
 		// set protocol handlers
 		p.SetProtocolHandler(peer.HandshakeVersion, protocol.HandleHandshake)
