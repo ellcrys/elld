@@ -2,22 +2,18 @@ package peer
 
 import (
 	"fmt"
-	"time"
+	"sync"
 
 	"github.com/ellcrys/gcoin/modules/util"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
 )
 
-var (
-	// ManageBootstrapInterval is the time between each bootstrap manage operation
-	ManageBootstrapInterval = 10 * time.Second
-)
-
 // Manager manages known peers connected to the local peer.
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
+	*sync.Mutex
 	localPeer      *Peer
 	bootstrapPeers []*Peer
 	peers          map[string]*Peer
@@ -26,11 +22,17 @@ type Manager struct {
 
 // NewManager creates an instance of the peer manager
 func NewManager(localPeer *Peer) *Manager {
-	return &Manager{
+	m := &Manager{
+		Mutex:     new(sync.Mutex),
 		localPeer: localPeer,
 		log:       peerLog.Named("manager"),
 		peers:     make(map[string]*Peer),
 	}
+
+	notif := &Notification{}
+	m.localPeer.host.Network().Notify(notif)
+
+	return m
 }
 
 // AddBootstrapPeer adds a peer to the manager
@@ -52,6 +54,8 @@ func (m *Manager) Manage() {
 }
 
 func (m *Manager) addPeer(p *Peer) {
+	m.Lock()
+	defer m.Unlock()
 	m.peers[p.IDPretty()] = p
 }
 
@@ -61,6 +65,8 @@ func (m *Manager) isLocalPeer(p *Peer) bool {
 
 // getActivePeers returns some of the recently active peers
 func (m *Manager) getActivePeers() []*Peer {
+	m.Lock()
+	defer m.Unlock()
 	var peers []*Peer
 	for _, p := range m.peers {
 		if !m.isLocalPeer(p) {
