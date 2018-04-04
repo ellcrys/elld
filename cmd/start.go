@@ -37,7 +37,7 @@ var startCmd = &cobra.Command{
 
 		// add bootstrap nodes
 		if len(nodeToJoin) > 0 {
-			if err := p.SetBootstrapNodes(nodeToJoin); err != nil {
+			if err := p.AddBootstrapPeers(nodeToJoin); err != nil {
 				log.Fatalf("%s", err)
 			}
 		}
@@ -48,6 +48,9 @@ var startCmd = &cobra.Command{
 
 		// set protocol handlers
 		p.SetProtocolHandler(peer.HandshakeVersion, protocol.HandleHandshake)
+
+		// start peer manager
+		p.PM().Manage()
 
 		// cause main thread to wait for peer
 		p.Wait()
