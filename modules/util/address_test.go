@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/ellcrys/gcoin/modules/testutil"
 	. "github.com/ellcrys/gcoin/modules/util"
-	"github.com/ellcrys/gcoin/modules/util/testutil"
 )
 
 // NoOpStreamHandler accepts a stream and does nothing with it
