@@ -19,7 +19,7 @@ var HandshakeVersion = "/inception/handshake/0.0.1"
 // SendHandshake sends an introduction message to a peer
 func SendHandshake(remotePeer *Peer) {
 
-	remotePeer.localPeer.Peerstore().AddAddr(remotePeer.ID(), remotePeer.GetIP4Addr(), pstore.PermanentAddrTTL)
+	remotePeer.localPeer.Peerstore().AddAddr(remotePeer.ID(), remotePeer.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
 	s, err := remotePeer.localPeer.host.NewStream(context.Background(), remotePeer.ID(), protocol.ID(HandshakeVersion))
 	if err != nil {
 		protocLog.Infow("handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.IDPretty())
@@ -58,12 +58,12 @@ func (protoc *Protocol) HandleHandshake(s net.Stream) {
 	}
 
 	var addresses []string
-	peers := protoc.PM().getActivePeers()
+	peers := protoc.PM().ActivePeers()
 	for _, p := range peers {
 		addresses = append(addresses, p.GetMultiAddr())
 	}
 
-	protoc.PM().addPeer(&Peer{
+	protoc.PM().AddPeer(&Peer{
 		address:   util.FullRemoteAddressFromStream(s),
 		localPeer: protoc.LocalPeer(),
 	})

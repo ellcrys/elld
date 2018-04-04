@@ -38,7 +38,7 @@ func (protoc *Protocol) PM() *Manager {
 // sign takes an object, marshals it to JSON and signs it
 func (protoc *Protocol) sign(msg interface{}) []byte {
 	bs, _ := json.Marshal(msg)
-	key := protoc.LocalPeer().getPrivKey()
+	key := protoc.LocalPeer().PrivKey()
 	sig, _ := key.Sign(bs)
 	return sig
 }

@@ -34,6 +34,12 @@ func init() {
 	protocLog = peerLog.Named("protocol.inception")
 }
 
+// SilenceLoggers changes the loggers in this package to NopLoggers. Called in test environment.
+func SilenceLoggers() {
+	peerLog = modules.NewNopLogger()
+	protocLog = modules.NewNopLogger()
+}
+
 // Peer represents a network node
 type Peer struct {
 	address     ma.Multiaddr
@@ -54,7 +60,7 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 
 	h, port, err := net.SplitHostPort(address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse address")
+		return nil, fmt.Errorf("failed to parse address. Expects 'ip:port' format")
 	}
 
 	if h == "" {
@@ -128,7 +134,8 @@ func (p *Peer) IDPretty() string {
 	return pid
 }
 
-func (p *Peer) getPrivKey() crypto.PrivKey {
+// PrivKey returns the peer's private key
+func (p *Peer) PrivKey() crypto.PrivKey {
 	return p.host.Peerstore().PrivKey(p.host.ID())
 }
 
@@ -152,8 +159,8 @@ func (p *Peer) GetAddr() string {
 	return fmt.Sprintf("%s:%s", parts[1], parts[3])
 }
 
-// GetIP4Addr returns ip4 part of the host's multi address
-func (p *Peer) GetIP4Addr() ma.Multiaddr {
+// GetIP4TCPAddr returns ip4 and tcp parts of the host's multi address
+func (p *Peer) GetIP4TCPAddr() ma.Multiaddr {
 	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", p.ID().Pretty()))
 	return p.address.Decapsulate(ipfsAddr)
 }
@@ -163,22 +170,19 @@ func (p *Peer) GetBindAddress() string {
 	return p.address.String()
 }
 
-// SetBootstrapNodes sets the initial nodes to communicate to
-func (p *Peer) SetBootstrapNodes(peerAddresses []string) error {
+// AddBootstrapPeers sets the initial nodes to communicate to
+func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 	for _, addr := range peerAddresses {
-		pAddr, err := ma.NewMultiaddr(addr)
-		if err != nil {
-			peerLog.Errorf("invalid bootstrap node address -> %s", err)
+		if !util.IsValidAddress(addr) {
+			peerLog.Errorw("invalid bootstrap peer address", "Address", addr)
 			continue
 		}
+		pAddr, _ := ma.NewMultiaddr(addr)
 		p.peerManager.AddBootstrapPeer(&Peer{
 			address:   pAddr,
 			localPeer: p,
 		})
 	}
-
-	p.peerManager.Manage()
-
 	return nil
 }
 

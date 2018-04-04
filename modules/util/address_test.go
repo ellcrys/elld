@@ -3,7 +3,6 @@ package util_test
 import (
 	"context"
 
-	net "github.com/libp2p/go-libp2p-net"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 
@@ -14,9 +13,6 @@ import (
 	"github.com/ellcrys/gcoin/modules/testutil"
 	. "github.com/ellcrys/gcoin/modules/util"
 )
-
-// NoOpStreamHandler accepts a stream and does nothing with it
-var NoOpStreamHandler = func(s net.Stream) {}
 
 var _ = Describe("Address", func() {
 
@@ -61,7 +57,7 @@ var _ = Describe("Address", func() {
 		It("should return /ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73", func() {
 			remoteHost, err := testutil.RandomHost(1234, 40101)
 			Expect(err).To(BeNil())
-			remoteHost.SetStreamHandler("/protocol/0.0.1", NoOpStreamHandler)
+			remoteHost.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
 
 			host.Peerstore().AddAddr(remoteHost.ID(), remoteHost.Addrs()[0], pstore.PermanentAddrTTL)
 			s, err := host.NewStream(context.Background(), remoteHost.ID(), protocol.ID("/protocol/0.0.1"))
