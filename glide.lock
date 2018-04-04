@@ -1,5 +1,5 @@
-hash: eaa2d5c3bc4d48544130d6590de380ccf018e0841ef362aef8883380fea1316e
-updated: 2018-04-01T14:05:09.730363+01:00
+hash: b36a2564efb57161f4c9bee9a1807f8465aecbad0b271726e68e67796f27b3a3
+updated: 2018-04-03T17:41:39.120869+01:00
 imports:
 - name: github.com/agl/ed25519
   version: 5312a61534124124185d41f09206b9fef1d88403
@@ -164,10 +164,20 @@ imports:
   version: 97d80565f68c5df715e6ba59c2f6a03d1fc33aaf
 - name: github.com/multiformats/go-multicodec
   version: 1ae531d4677a68bd114737a4e1f39fa12a384fb0
+  subpackages:
+  - protobuf
 - name: github.com/multiformats/go-multihash
   version: 265e72146e710ff649c6982e3699d01d4e9a18bb
 - name: github.com/multiformats/go-multistream
   version: 612ce31c03aebe1d5adbd3c850ee89e05a82b16d
+- name: github.com/onsi/ginkgo
+  version: 03ffd3f46debf00c49ed76d5dbb564ef4839adfe
+  subpackages:
+  - ginkgo
+- name: github.com/onsi/gomega
+  version: 649b44d988ce182cabcda7dba01fcf3b6179ad19
+  subpackages:
+  - '...'
 - name: github.com/opentracing/opentracing-go
   version: 328fceb7548c744337cd010914152b74eaf4c4ab
   subpackages:
@@ -180,7 +190,7 @@ imports:
 - name: github.com/spf13/cobra
   version: 4dab30cb33e6633c33c787106bafbfbfdde7842d
 - name: github.com/spf13/pflag
-  version: 1cd4a0c365d95803411bec89fb7b76bade17053b
+  version: 1ce0cc6db4029d97571db82f85092fccedb572ce
 - name: github.com/thoas/go-funk
   version: 54489e5ff3900f4618607d32d680f8cf112bcb18
 - name: github.com/whyrusleeping/go-logging
@@ -216,7 +226,7 @@ imports:
   - internal/exit
   - zapcore
 - name: golang.org/x/crypto
-  version: 12892e8c234f4fe6f6803f052061de9057903bb2
+  version: b2aa35443fbc700ab74c586ae79b81c171851023
   subpackages:
   - blake2s
   - blowfish
