@@ -6,7 +6,7 @@ import (
 	"fmt"
 	mrand "math/rand"
 
-	"github.com/ellcrys/gcoin/modules"
+	"github.com/ellcrys/gcoin/peer"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
@@ -18,9 +18,9 @@ var NoOpStreamHandler = func(s net.Stream) {}
 // RandomHost creates a host with random identity
 func RandomHost(seed int64, port int) (host.Host, error) {
 
-	priv, _, err := modules.GenerateKeyPair(mrand.New(mrand.NewSource(seed)))
+	priv, _, err := peer.GenerateKeyPair(mrand.New(mrand.NewSource(seed)))
 	if seed == 0 {
-		priv, _, _ = modules.GenerateKeyPair(rand.Reader)
+		priv, _, _ = peer.GenerateKeyPair(rand.Reader)
 	}
 
 	opts := []libp2p.Option{

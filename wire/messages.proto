@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package pb;
+package wire;
 
 // Handshake represents the first message between peers
 message Handshake {

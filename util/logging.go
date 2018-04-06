@@ -1,4 +1,4 @@
-package modules
+package util
 
 import (
 	"go.uber.org/zap"
