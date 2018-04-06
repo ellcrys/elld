@@ -11,7 +11,7 @@
 		Handshake
 		HandshakeResponse
 */
-package pb
+package wire
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"

@@ -3,6 +3,7 @@ package peer
 import (
 	"context"
 	"fmt"
+	"io"
 	mrand "math/rand"
 	"net"
 	"strings"
@@ -14,8 +15,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
-	"github.com/ellcrys/gcoin/modules"
-	"github.com/ellcrys/gcoin/modules/util"
+	"github.com/ellcrys/gcoin/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
@@ -30,14 +30,14 @@ var (
 )
 
 func init() {
-	peerLog = modules.NewLogger("/peer")
+	peerLog = util.NewLogger("/peer")
 	protocLog = peerLog.Named("protocol.inception")
 }
 
 // SilenceLoggers changes the loggers in this package to NopLoggers. Called in test environment.
 func SilenceLoggers() {
-	peerLog = modules.NewNopLogger()
-	protocLog = modules.NewNopLogger()
+	peerLog = util.NewNopLogger()
+	protocLog = util.NewNopLogger()
 }
 
 // Peer represents a network node
@@ -53,7 +53,7 @@ type Peer struct {
 func NewPeer(address string, idSeed int64) (*Peer, error) {
 
 	// generate peer identity
-	priv, _, err := modules.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
+	priv, _, err := GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keypair")
 	}
@@ -88,6 +88,11 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 	peer.localPeer = peer
 	peer.peerManager = NewManager(peer)
 	return peer, nil
+}
+
+// GenerateKeyPair generates private and public keys
+func GenerateKeyPair(r io.Reader) (crypto.PrivKey, crypto.PubKey, error) {
+	return crypto.GenerateEd25519Key(r)
 }
 
 // PM returns the peer manager

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ellcrys/gcoin/modules/util"
+	"github.com/ellcrys/gcoin/util"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
 )

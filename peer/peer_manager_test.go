@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/ellcrys/gcoin/modules/peer"
+	. "github.com/ellcrys/gcoin/peer"
 )
 
 var _ = Describe("PeerManager", func() {

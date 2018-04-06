@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"github.com/ellcrys/gcoin/modules"
-	"github.com/ellcrys/gcoin/modules/peer"
-	"github.com/ellcrys/gcoin/modules/util"
+	"github.com/ellcrys/gcoin/peer"
+	"github.com/ellcrys/gcoin/util"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
