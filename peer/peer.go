@@ -179,7 +179,7 @@ func (p *Peer) GetBindAddress() string {
 func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 	for _, addr := range peerAddresses {
 		if !util.IsValidAddress(addr) {
-			peerLog.Errorw("invalid bootstrap peer address", "Address", addr)
+			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
 		pAddr, _ := ma.NewMultiaddr(addr)
