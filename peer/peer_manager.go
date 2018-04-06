@@ -121,7 +121,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	}
 
 	m.AddPeer(remotePeer)
-	m.log.Infof("added a peer (%s)", mAddr.String())
+	m.log.Infow("added a peer", "PeerAddr", mAddr.String())
 
 	return nil
 }
