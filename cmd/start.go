@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/ellcrys/gcoin/modules"
 	"github.com/ellcrys/gcoin/peer"
 	"github.com/ellcrys/gcoin/util"
 	"github.com/spf13/cobra"
@@ -11,7 +10,7 @@ import (
 var log *zap.SugaredLogger
 
 func init() {
-	log = modules.NewLogger("/peer")
+	log = util.NewLogger("/peer")
 }
 
 // startCmd represents the start command
