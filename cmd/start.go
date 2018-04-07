@@ -56,15 +56,6 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// startCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
