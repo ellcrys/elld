@@ -17,7 +17,7 @@ import (
 func (protoc *Inception) DoSendHandshake(remotePeer *Peer) {
 
 	remotePeer.localPeer.Peerstore().AddAddr(remotePeer.ID(), remotePeer.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
-	s, err := remotePeer.localPeer.host.NewStream(context.Background(), remotePeer.ID(), protocol.ID(HandshakeVersion))
+	s, err := remotePeer.localPeer.host.NewStream(context.Background(), remotePeer.ID(), protocol.ID(util.HandshakeVersion))
 	if err != nil {
 		protocLog.Debugw("handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.IDPretty())
 		return
@@ -26,7 +26,7 @@ func (protoc *Inception) DoSendHandshake(remotePeer *Peer) {
 
 	// send handshake
 	w := bufio.NewWriter(s)
-	msg := &pb.Handshake{Address: remotePeer.localPeer.GetMultiAddr()}
+	msg := &pb.Handshake{Address: remotePeer.localPeer.GetMultiAddr(), SubVersion: util.ClientVersion}
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		protocLog.Debugw("handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeer.IDPretty())
 		return
