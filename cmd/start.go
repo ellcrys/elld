@@ -19,6 +19,7 @@ var startCmd = &cobra.Command{
 	Short: "Start the peer",
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Infof("gcoin node started")
 
 		nodeToJoin, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")

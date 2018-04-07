@@ -13,9 +13,6 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-// HandshakeVersion is the current handshake protocol supported
-var HandshakeVersion = "/inception/handshake/0.0.1"
-
 // DoSendHandshake sends an introduction message to a peer
 func (protoc *Inception) DoSendHandshake(remotePeer *Peer) {
 
