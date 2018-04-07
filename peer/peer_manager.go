@@ -51,17 +51,9 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 	return m.bootstrapPeers[id]
 }
 
-// startHandshakeWithBootstrapPeers sends a handshake to bootstrap peers
-func (m Manager) startHandshakeWithBootstrapPeers() {
-	for _, p := range m.bootstrapPeers {
-		go SendHandshake(p)
-	}
-}
-
-// Manage starts the periodic routine of managing peer connection.
-// - Sends "op_handshake" to bootstrap nodes and receiving addr message as reply
+// Manage starts managing peer connections.
 func (m *Manager) Manage() {
-	m.startHandshakeWithBootstrapPeers()
+
 }
 
 // AddPeer adds a peer to the list of known peers

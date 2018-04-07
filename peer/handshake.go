@@ -16,8 +16,8 @@ import (
 // HandshakeVersion is the current handshake protocol supported
 var HandshakeVersion = "/inception/handshake/0.0.1"
 
-// SendHandshake sends an introduction message to a peer
-func SendHandshake(remotePeer *Peer) {
+// DoSendHandshake sends an introduction message to a peer
+func (protoc *Inception) DoSendHandshake(remotePeer *Peer) {
 
 	remotePeer.localPeer.Peerstore().AddAddr(remotePeer.ID(), remotePeer.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
 	s, err := remotePeer.localPeer.host.NewStream(context.Background(), remotePeer.ID(), protocol.ID(HandshakeVersion))
@@ -47,8 +47,8 @@ func SendHandshake(remotePeer *Peer) {
 	pretty.Println("Resp:", resp)
 }
 
-// HandleHandshake handles incoming handshake request
-func (protoc *Protocol) HandleHandshake(s net.Stream) {
+// OnHandshake handles incoming handshake request
+func (protoc *Inception) OnHandshake(s net.Stream) {
 	defer s.Close()
 
 	msg := &pb.Handshake{}

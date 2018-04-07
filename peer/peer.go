@@ -47,6 +47,7 @@ type Peer struct {
 	wg          sync.WaitGroup
 	localPeer   *Peer
 	peerManager *Manager
+	protoc      Protocol
 }
 
 // NewPeer creates a peer instance at the specified port
@@ -98,6 +99,11 @@ func GenerateKeyPair(r io.Reader) (crypto.PrivKey, crypto.PubKey, error) {
 // PM returns the peer manager
 func (p *Peer) PM() *Manager {
 	return p.peerManager
+}
+
+// SetProtocol sets the protocol implementation
+func (p *Peer) SetProtocol(protoc Protocol) {
+	p.protoc = protoc
 }
 
 // GetHost returns the peer's host
@@ -202,6 +208,12 @@ func (p *Peer) GetPeersPublicAddrs(peerIDsToIgnore []string) (peerAddrs []ma.Mul
 		}
 	}
 	return
+}
+
+// Start starts the peer
+func (p *Peer) Start() {
+	p.PM().Manage()
+	p.protoc.DoSendHandshake(p)
 }
 
 // Wait forces the current thread to wait for the peer
