@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"context"
 
-	"github.com/ellcrys/gcoin/util"
-	pb "github.com/ellcrys/gcoin/wire"
+	"github.com/ellcrys/druid/util"
+	pb "github.com/ellcrys/druid/wire"
 	net "github.com/libp2p/go-libp2p-net"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	protocol "github.com/libp2p/go-libp2p-protocol"

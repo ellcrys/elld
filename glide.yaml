@@ -1,4 +1,4 @@
-package: github.com/ellcrys/gcoin
+package: github.com/ellcrys/druid
 import:
 - package: github.com/libp2p/go-libp2p
 - package: github.com/libp2p/go-libp2p-crypto
