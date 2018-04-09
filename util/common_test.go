@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/ellcrys/gcoin/util"
+	. "github.com/ellcrys/druid/util"
 )
 
 var _ = Describe("Common", func() {

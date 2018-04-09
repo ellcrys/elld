@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/gcoin/util"
+	"github.com/ellcrys/druid/util"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
 )

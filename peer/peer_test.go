@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	. "github.com/ellcrys/gcoin/peer"
-	"github.com/ellcrys/gcoin/testutil"
+	. "github.com/ellcrys/druid/peer"
+	"github.com/ellcrys/druid/testutil"
 )
 
 func init() {

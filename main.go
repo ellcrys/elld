@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ellcrys/gcoin/cmd"
+	"github.com/ellcrys/druid/cmd"
 )
 
 func main() {

@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/ellcrys/gcoin/testutil"
-	. "github.com/ellcrys/gcoin/util"
+	"github.com/ellcrys/druid/testutil"
+	. "github.com/ellcrys/druid/util"
 )
 
 var _ = Describe("Address", func() {

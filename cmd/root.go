@@ -25,9 +25,9 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "gcoin",
-	Short: "gcoin is a cryptocurrency based on the original bitcoin protocol",
-	Long:  `gcoin is a cryptocurrency based on the original bitcoin protocol`,
+	Use:   "druid",
+	Short: "druid is a cryptocurrency based on the original bitcoin protocol",
+	Long:  `druid is a cryptocurrency based on the original bitcoin protocol`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
