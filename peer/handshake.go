@@ -53,7 +53,7 @@ func (protoc *Inception) DoSendHandshake(remotePeer *Peer) {
 			continue
 		}
 		p, _ := protoc.LocalPeer().PeerFromAddr(addr, true)
-		protoc.PM().AddPeer(p)
+		protoc.PM().AddOrUpdatePeer(p)
 	}
 
 	protoc.log.Infow("Received handshake response from peer", "PeerID", remotePeer.IDPretty(), "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
@@ -73,14 +73,12 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 		return
 	}
 
-	protoc.PM().AddPeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
+	protoc.PM().AddOrUpdatePeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
 
 	// get active peers
 	var addresses []string
 	peers := protoc.PM().GetActivePeers(1000)
 	for _, p := range peers {
-
-		// ensure the remote peer is not included
 		if p.IDPretty() != remotePeerID {
 			addresses = append(addresses, p.GetMultiAddr())
 		}
