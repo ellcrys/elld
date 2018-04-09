@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package wire;
+
+// Handshake represents the first message between peers
+message Handshake {
+    string address = 1;     // senders address
+    bytes sig = 2;          // message signature
+}
+
+// HandshakeResponse is a response to Handshake message
+message HandshakeResponse {
+    repeated string addresses = 1;      // list of addresses
+    bytes sig = 2;                      // message signature
+}
