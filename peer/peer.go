@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/thoas/go-funk"
 
@@ -48,6 +49,8 @@ type Peer struct {
 	localPeer   *Peer
 	peerManager *Manager
 	protoc      Protocol
+	remote      bool
+	Timestamp   time.Time
 }
 
 // NewPeer creates a peer instance at the specified port
@@ -88,7 +91,27 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 
 	peer.localPeer = peer
 	peer.peerManager = NewManager(peer)
+
+	go func() {
+		tm := time.NewTicker(10 * time.Second)
+		for {
+			select {
+			case <-tm.C:
+				fmt.Println("Num Address", len(peer.PM().ActivePeers()))
+			}
+		}
+	}()
+
 	return peer, nil
+}
+
+// NewRemotePeer creates a Peer that represents a remote peer
+func NewRemotePeer(address ma.Multiaddr, localPeer *Peer) *Peer {
+	return &Peer{
+		address:   address,
+		localPeer: localPeer,
+		remote:    true,
+	}
 }
 
 // GenerateKeyPair generates private and public keys
@@ -157,8 +180,10 @@ func (p *Peer) SetProtocolHandler(version string, handler inet.StreamHandler) {
 
 // GetMultiAddr returns the full multi address of the peer
 func (p *Peer) GetMultiAddr() string {
-	if p.host == nil {
+	if p.host == nil && !p.remote {
 		return ""
+	} else if p.remote {
+		return p.address.String()
 	}
 	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", p.host.ID().Pretty()))
 	return p.host.Addrs()[0].Encapsulate(hostAddr).String()
@@ -189,10 +214,9 @@ func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 			continue
 		}
 		pAddr, _ := ma.NewMultiaddr(addr)
-		p.peerManager.AddBootstrapPeer(&Peer{
-			address:   pAddr,
-			localPeer: p,
-		})
+		rp := NewRemotePeer(pAddr, p)
+		rp.protoc = p.protoc
+		p.peerManager.AddBootstrapPeer(rp)
 	}
 	return nil
 }
@@ -213,7 +237,11 @@ func (p *Peer) GetPeersPublicAddrs(peerIDsToIgnore []string) (peerAddrs []ma.Mul
 // Start starts the peer
 func (p *Peer) Start() {
 	p.PM().Manage()
-	p.protoc.DoSendHandshake(p)
+
+	// send handshake to bootstrap peers
+	for _, b := range p.PM().bootstrapPeers {
+		go p.protoc.DoSendHandshake(b)
+	}
 }
 
 // Wait forces the current thread to wait for the peer
@@ -225,4 +253,18 @@ func (p *Peer) Wait() {
 // Stop stops the peer and release any held resources.
 func (p *Peer) Stop() {
 	p.wg.Done()
+}
+
+// PeerFromAddr creates a Peer object from a multiaddr
+func (p *Peer) PeerFromAddr(addr string, remote bool) (*Peer, error) {
+	pAddr, err := ma.NewMultiaddr(addr)
+	if err != nil {
+		return nil, err
+	}
+	return &Peer{
+		address:   pAddr,
+		localPeer: p,
+		protoc:    p.protoc,
+		remote:    remote,
+	}, nil
 }

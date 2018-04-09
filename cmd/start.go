@@ -50,7 +50,8 @@ var startCmd = &cobra.Command{
 		p.SetProtocol(protocol)
 		p.SetProtocolHandler(util.HandshakeVersion, protocol.OnHandshake)
 
-		// cause main thread to wait for peer
+		// start the peer and cause main thread to wait
+		p.Start()
 		p.Wait()
 	},
 }

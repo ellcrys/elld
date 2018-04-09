@@ -1,10 +1,11 @@
-package peer_test
+package peer
 
 import (
+	"reflect"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	. "github.com/ellcrys/gcoin/peer"
 )
 
 var _ = Describe("PeerManager", func() {
@@ -29,7 +30,7 @@ var _ = Describe("PeerManager", func() {
 			defer p.Host().Close()
 			err = mgr.AddPeer(p)
 			Expect(err).To(BeNil())
-			Expect(mgr.Peers()).To(HaveLen(1))
+			Expect(mgr.KnownPeers()).To(HaveLen(1))
 		})
 	})
 
@@ -72,14 +73,88 @@ var _ = Describe("PeerManager", func() {
 			It("peer with address '/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd' must be added", func() {
 				err := mgr.CreatePeerFromAddress(address)
 				Expect(err).To(BeNil())
-				Expect(mgr.Peers()["12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"]).NotTo(BeNil())
+				Expect(mgr.KnownPeers()["12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"]).NotTo(BeNil())
 			})
 
 			It("duplicate peer should be not be recreated", func() {
-				Expect(len(mgr.Peers())).To(Equal(2))
+				Expect(len(mgr.KnownPeers())).To(Equal(2))
 				mgr.CreatePeerFromAddress(address)
-				Expect(len(mgr.Peers())).To(Equal(2))
+				Expect(len(mgr.KnownPeers())).To(Equal(2))
 			})
+		})
+	})
+
+	Describe(".isActive", func() {
+		It("should return false when Timestamp is zero", func() {
+			peer := &Peer{}
+			Expect(mgr.isActive(peer)).To(BeFalse())
+		})
+
+		It("should return false when Timestamp is 3 hours 10 seconds ago", func() {
+			peer := &Peer{
+				Timestamp: time.Now().UTC().Add((-3 * (60 * 60) * time.Second) + 10),
+			}
+			Expect(mgr.isActive(peer)).To(BeFalse())
+		})
+
+		It("should return false when Timestamp is 3 hours ago", func() {
+			peer := &Peer{
+				Timestamp: time.Now().UTC().Add(-3 * (60 * 60) * time.Second),
+			}
+			Expect(mgr.isActive(peer)).To(BeFalse())
+		})
+
+		It("should return true when Timestamp is 2 hours, 59 minute ago", func() {
+			peer := &Peer{
+				Timestamp: time.Now().UTC().Add((-2 * (60 * 60) * time.Second) + 59*time.Minute),
+			}
+			Expect(mgr.isActive(peer)).To(BeTrue())
+		})
+	})
+
+	Describe(".getActivePeers", func() {
+		var mgr = new(Manager)
+		mgr.knownPeers = make(map[string]*Peer)
+		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+		peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+		peer3 := &Peer{Timestamp: time.Now().UTC().Add(-3 * (60 * 60) * time.Second)}
+		mgr.knownPeers = map[string]*Peer{
+			"peer1": peer1,
+			"peer2": peer2,
+			"peer3": peer3,
+		}
+
+		It("should return a map with 2 elements with id peer1 and peer2", func() {
+			actual := mgr.getActivePeers()
+			Expect(actual).To(HaveLen(2))
+			Expect(actual).To(ContainElement(peer1))
+			Expect(actual).To(ContainElement(peer2))
+		})
+	})
+
+	Describe(".GetRandomActivePeers", func() {
+
+		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
+			var mgr = new(Manager)
+			mgr.knownPeers = make(map[string]*Peer)
+			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+			peer3 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Peer{
+				"peer1": peer1,
+				"peer2": peer2,
+				"peer3": peer3,
+			}
+
+			result, err := mgr.GetRandomActivePeers(3)
+			Expect(err).To(BeNil())
+			result2, err := mgr.GetRandomActivePeers(3)
+			result3, err := mgr.GetRandomActivePeers(3)
+
+			// test position randomness
+			if reflect.DeepEqual(result[0], result2[0]) && reflect.DeepEqual(result[0], result3[0]) {
+				Fail("failed to shuffle")
+			}
 		})
 	})
 })
