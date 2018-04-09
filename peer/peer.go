@@ -97,7 +97,7 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 		for {
 			select {
 			case <-tm.C:
-				fmt.Println("Num Address", len(peer.PM().ActivePeers()))
+				fmt.Println("Num Address", len(peer.PM().GetActivePeers(-1)))
 			}
 		}
 	}()

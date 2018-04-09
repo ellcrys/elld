@@ -85,11 +85,15 @@ func (m *Manager) isActive(p *Peer) bool {
 	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp.UTC())
 }
 
-// getActivePeers returns all active remote peers
-func (m *Manager) getActivePeers() (peers []*Peer) {
+// GetActivePeers returns active peers. Passing a zero or negative value
+// as limit means no limit is applied.
+func (m *Manager) GetActivePeers(limit int) (peers []*Peer) {
 	m.Lock()
 	defer m.Unlock()
 	for _, p := range m.knownPeers {
+		if limit > 0 && len(peers) >= limit {
+			return
+		}
 		if m.isActive(p) {
 			peers = append(peers, p)
 		}
@@ -102,7 +106,9 @@ func (m *Manager) getActivePeers() (peers []*Peer) {
 // Returns error if number of known and active peers is less than limit
 func (m *Manager) GetRandomActivePeers(limit int) ([]*Peer, error) {
 
-	knownActivePeers := m.getActivePeers()
+	knownActivePeers := m.GetActivePeers(-1)
+	m.Lock()
+	defer m.Unlock()
 
 	// shuffle known peer slice
 	for i := range knownActivePeers {
@@ -115,19 +121,6 @@ func (m *Manager) GetRandomActivePeers(limit int) ([]*Peer, error) {
 	}
 
 	return knownActivePeers[:limit], nil
-}
-
-// ActivePeers returns some of the recently active peers
-func (m *Manager) ActivePeers(limit int) []*Peer {
-	m.Lock()
-	defer m.Unlock()
-	var peers []*Peer
-	for _, p := range m.knownPeers {
-		if !m.IsLocalPeer(p) {
-			peers = append(peers, p)
-		}
-	}
-	return peers
 }
 
 // PeerExist checks if a peer exists
