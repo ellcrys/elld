@@ -2,11 +2,18 @@ package peer
 
 import (
 	"reflect"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+func NewMgr() *Manager {
+	var mgr = new(Manager)
+	mgr.Mutex = &sync.Mutex{}
+	return mgr
+}
 
 var _ = Describe("PeerManager", func() {
 	var mgr *Manager
@@ -112,8 +119,8 @@ var _ = Describe("PeerManager", func() {
 		})
 	})
 
-	Describe(".getActivePeers", func() {
-		var mgr = new(Manager)
+	Describe(".GetActivePeers", func() {
+		var mgr = NewMgr()
 		mgr.knownPeers = make(map[string]*Peer)
 		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 		peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
@@ -124,18 +131,31 @@ var _ = Describe("PeerManager", func() {
 			"peer3": peer3,
 		}
 
-		It("should return a map with 2 elements with id peer1 and peer2", func() {
-			actual := mgr.getActivePeers()
+		It("should return a map with 2 elements with id peer1 and peer2 when limit is set to 0", func() {
+			actual := mgr.GetActivePeers(0)
 			Expect(actual).To(HaveLen(2))
 			Expect(actual).To(ContainElement(peer1))
 			Expect(actual).To(ContainElement(peer2))
+		})
+
+		It("should return a map with 2 elements with id peer1 and peer2 when limit is set to a negative number", func() {
+			actual := mgr.GetActivePeers(-1)
+			Expect(actual).To(HaveLen(2))
+			Expect(actual).To(ContainElement(peer1))
+			Expect(actual).To(ContainElement(peer2))
+		})
+
+		It("should return a map with 1 elements with id peer1 when limit is set to 1", func() {
+			actual := mgr.GetActivePeers(1)
+			Expect(actual).To(HaveLen(1))
+			Expect(actual).To(ContainElement(peer1))
 		})
 	})
 
 	Describe(".GetRandomActivePeers", func() {
 
 		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
-			var mgr = new(Manager)
+			var mgr = NewMgr()
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
@@ -151,7 +171,7 @@ var _ = Describe("PeerManager", func() {
 			result2, err := mgr.GetRandomActivePeers(3)
 			result3, err := mgr.GetRandomActivePeers(3)
 
-			// test position randomness
+			// // test position randomness
 			if reflect.DeepEqual(result[0], result2[0]) && reflect.DeepEqual(result[0], result3[0]) {
 				Fail("failed to shuffle")
 			}

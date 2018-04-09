@@ -77,7 +77,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 
 	// get active peers
 	var addresses []string
-	peers := protoc.PM().ActivePeers()
+	peers := protoc.PM().GetActivePeers(1000)
 	for _, p := range peers {
 
 		// ensure the remote peer is not included
