@@ -58,14 +58,24 @@ func (m *Manager) Manage() {
 
 }
 
-// AddPeer adds a peer to the list of known peers
-func (m *Manager) AddPeer(p *Peer) error {
+// AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
+// exist already. The new peer's timestamp is updated.
+// TODO: clear old and inactive peers
+func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	if p == nil {
 		return fmt.Errorf("nil received as *Peer")
 	}
 	m.Lock()
 	defer m.Unlock()
-	m.knownPeers[p.IDPretty()] = p
+
+	// update timestamp
+	p.Timestamp = time.Now().UTC()
+
+	// add peer if it does not exist
+	if _, ok := m.knownPeers[p.IDPretty()]; !ok {
+		m.knownPeers[p.IDPretty()] = p
+	}
+
 	return nil
 }
 
@@ -145,7 +155,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 		return nil
 	}
 
-	m.AddPeer(remotePeer)
+	m.AddOrUpdatePeer(remotePeer)
 	m.log.Infow("added a peer", "PeerAddr", mAddr.String())
 
 	return nil

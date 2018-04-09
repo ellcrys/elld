@@ -27,7 +27,7 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".AddPeer", func() {
 		It("return error.Error(nil received as *Peer) if nil is passed as param", func() {
-			err := mgr.AddPeer(nil)
+			err := mgr.AddOrUpdatePeer(nil)
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("nil received as *Peer"))
 		})
@@ -35,7 +35,7 @@ var _ = Describe("PeerManager", func() {
 		It("return nil when peer is successfully added and peers list increases to 1", func() {
 			p, err := NewPeer("127.0.0.1:40001", 1)
 			defer p.Host().Close()
-			err = mgr.AddPeer(p)
+			err = mgr.AddOrUpdatePeer(p)
 			Expect(err).To(BeNil())
 			Expect(mgr.KnownPeers()).To(HaveLen(1))
 		})
