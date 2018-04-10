@@ -11,7 +11,7 @@ import (
 
 // Protocol represents a protocol
 type Protocol interface {
-	DoSendHandshake(*Peer)
+	DoSendHandshake(*Peer) error
 	OnHandshake(net.Stream)
 	DoGetAddr()
 }
