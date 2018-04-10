@@ -11,7 +11,7 @@ import (
 
 func NewMgr() *Manager {
 	var mgr = new(Manager)
-	mgr.Mutex = &sync.Mutex{}
+	mgr.kpm = &sync.Mutex{}
 	mgr.config = &ManagerConfig{}
 	return mgr
 }
@@ -146,10 +146,10 @@ var _ = Describe("PeerManager", func() {
 			Expect(actual).To(ContainElement(peer2))
 		})
 
-		It("should return a map with 1 elements with id peer1 when limit is set to 1", func() {
+		It("should return a map with 1 elements with either peer1 or peer2 when limit is set to 1", func() {
 			actual := mgr.GetActivePeers(1)
 			Expect(actual).To(HaveLen(1))
-			Expect(actual).To(ContainElement(peer1))
+			Expect([]*Peer{peer1, peer2}).To(ContainElement(actual[0]))
 		})
 	})
 
@@ -167,15 +167,62 @@ var _ = Describe("PeerManager", func() {
 				"peer3": peer3,
 			}
 
+			var result []*Peer
+			var sameIndexCount = 0
 			result, err := mgr.GetRandomActivePeers(3)
 			Expect(err).To(BeNil())
-			result2, err := mgr.GetRandomActivePeers(3)
-			result3, err := mgr.GetRandomActivePeers(3)
 
-			// // test position randomness
-			if reflect.DeepEqual(result[0], result2[0]) && reflect.DeepEqual(result[0], result3[0]) {
-				Fail("failed to shuffle")
+			// test for randomness
+			for i := 0; i < 10; i++ {
+				result2, err := mgr.GetRandomActivePeers(3)
+				Expect(err).To(BeNil())
+				if reflect.DeepEqual(result[0], result2[0]) {
+					sameIndexCount++
+				}
 			}
+
+			Expect(sameIndexCount).NotTo(Equal(10))
+		})
+
+		It("Should return the limit requested if known active peers are more than limit", func() {
+			var mgr = NewMgr()
+			mgr.knownPeers = make(map[string]*Peer)
+			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+			peer3 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Peer{
+				"peer1": peer1,
+				"peer2": peer2,
+				"peer3": peer3,
+			}
+
+			var result []*Peer
+			var sameIndexCount = 0
+			result, err := mgr.GetRandomActivePeers(2)
+			Expect(err).To(BeNil())
+
+			// test for randomness
+			for i := 0; i < 10; i++ {
+				result2, err := mgr.GetRandomActivePeers(3)
+				Expect(err).To(BeNil())
+				if reflect.DeepEqual(result[0], result2[0]) {
+					sameIndexCount++
+				}
+			}
+
+			Expect(sameIndexCount).NotTo(Equal(10))
+		})
+	})
+
+	Describe(".NeedMorePeers", func() {
+		It("should return true if peer manager does not have upto 1000 peers", func() {
+			var mgr = NewMgr()
+			mgr.knownPeers = make(map[string]*Peer)
+			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Peer{
+				"peer1": peer1,
+			}
+			Expect(mgr.NeedMorePeers()).To(BeTrue())
 		})
 	})
 })

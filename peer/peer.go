@@ -92,15 +92,15 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 	peer.localPeer = peer
 	peer.peerManager = NewManager(peer)
 
-	go func() {
-		tm := time.NewTicker(10 * time.Second)
-		for {
-			select {
-			case <-tm.C:
-				fmt.Println("Num Address", len(peer.PM().GetActivePeers(-1)))
-			}
-		}
-	}()
+	// go func() {
+	// 	tm := time.NewTicker(10 * time.Second)
+	// 	for {
+	// 		select {
+	// 		case <-tm.C:
+	// 			fmt.Println("Num Address", len(peer.PM().GetActivePeers(-1)))
+	// 		}
+	// 	}
+	// }()
 
 	return peer, nil
 }
@@ -171,6 +171,11 @@ func (p *Peer) IDPretty() string {
 // PrivKey returns the peer's private key
 func (p *Peer) PrivKey() crypto.PrivKey {
 	return p.host.Peerstore().PrivKey(p.host.ID())
+}
+
+// PubKey returns the peer's private key
+func (p *Peer) PubKey() crypto.PubKey {
+	return p.host.Peerstore().PubKey(p.host.ID())
 }
 
 // SetProtocolHandler sets the protocol handler for a specific protocol
