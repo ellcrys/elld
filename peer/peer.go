@@ -252,6 +252,7 @@ func (p *Peer) Wait() {
 
 // Stop stops the peer and release any held resources.
 func (p *Peer) Stop() {
+	p.PM().Stop()
 	p.wg.Done()
 }
 

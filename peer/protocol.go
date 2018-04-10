@@ -13,6 +13,7 @@ import (
 type Protocol interface {
 	DoSendHandshake(*Peer)
 	OnHandshake(net.Stream)
+	DoGetAddr()
 }
 
 // Inception represents the peer protocol
