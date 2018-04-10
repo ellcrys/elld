@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/ellcrys/gcoin/peer"
-	"github.com/ellcrys/gcoin/util"
+	"github.com/ellcrys/druid/peer"
+	"github.com/ellcrys/druid/util"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -19,6 +19,7 @@ var startCmd = &cobra.Command{
 	Short: "Start the peer",
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Infof("druid node started")
 
 		nodeToJoin, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
@@ -47,24 +48,16 @@ var startCmd = &cobra.Command{
 
 		// set protocol and handlers
 		p.SetProtocol(protocol)
-		p.SetProtocolHandler(peer.HandshakeVersion, protocol.OnHandshake)
+		p.SetProtocolHandler(util.HandshakeVersion, protocol.OnHandshake)
 
-		// cause main thread to wait for peer
+		// start the peer and cause main thread to wait
+		p.Start()
 		p.Wait()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// startCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")

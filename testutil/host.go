@@ -6,7 +6,7 @@ import (
 	"fmt"
 	mrand "math/rand"
 
-	"github.com/ellcrys/gcoin/peer"
+	"github.com/ellcrys/druid/peer"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
