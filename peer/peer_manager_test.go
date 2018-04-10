@@ -12,6 +12,7 @@ import (
 func NewMgr() *Manager {
 	var mgr = new(Manager)
 	mgr.Mutex = &sync.Mutex{}
+	mgr.config = &ManagerConfig{}
 	return mgr
 }
 
