@@ -2,15 +2,18 @@ package peer
 
 import (
 	"encoding/json"
+	"fmt"
 
+	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
 	"go.uber.org/zap"
 )
 
 // Protocol represents a protocol
 type Protocol interface {
-	DoSendHandshake(*Peer)
+	DoSendHandshake(*Peer) error
 	OnHandshake(net.Stream)
+	DoGetAddr()
 }
 
 // Inception represents the peer protocol
@@ -47,4 +50,17 @@ func (protoc *Inception) sign(msg interface{}) []byte {
 	key := protoc.LocalPeer().PrivKey()
 	sig, _ := key.Sign(bs)
 	return sig
+}
+
+// verify verifies a signature
+func (protoc *Inception) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
+	bs, _ := json.Marshal(msg)
+	result, err := pKey.Verify(bs, sig)
+	if err != nil {
+		return fmt.Errorf("failed to verify -> %s", err)
+	}
+	if !result {
+		return fmt.Errorf("invalid signature")
+	}
+	return nil
 }
