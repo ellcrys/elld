@@ -124,6 +124,17 @@ func (p *Peer) PM() *Manager {
 	return p.peerManager
 }
 
+// addToPeerStore adds a remote peer to the host's peerstore
+func (p *Peer) addToPeerStore(remote *Peer) *Peer {
+	p.localPeer.Peerstore().AddAddr(remote.ID(), remote.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
+	return p
+}
+
+// newStream creates a stream to a remote peer
+func (p *Peer) newStream(ctx context.Context, peerID peer.ID, protocolID string) (inet.Stream, error) {
+	return p.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
+}
+
 // SetProtocol sets the protocol implementation
 func (p *Peer) SetProtocol(protoc Protocol) {
 	p.protoc = protoc
