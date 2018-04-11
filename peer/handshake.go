@@ -8,8 +8,6 @@ import (
 	"github.com/ellcrys/druid/util"
 	pb "github.com/ellcrys/druid/wire"
 	net "github.com/libp2p/go-libp2p-net"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
-	protocol "github.com/libp2p/go-libp2p-protocol"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
@@ -20,8 +18,7 @@ func (protoc *Inception) DoSendHandshake(remotePeer *Peer) error {
 
 	protoc.log.Infow("Sending handshake to peer", "PeerID", remotePeerID)
 
-	protoc.LocalPeer().Peerstore().AddAddr(remotePeer.ID(), remotePeer.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
-	s, err := protoc.LocalPeer().host.NewStream(context.Background(), remotePeer.ID(), protocol.ID(util.HandshakeVersion))
+	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
 	if err != nil {
 		protocLog.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
 		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err)
