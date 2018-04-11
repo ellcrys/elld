@@ -1,0 +1,16 @@
+package: github.com/ellcrys/druid
+import:
+- package: github.com/libp2p/go-libp2p
+- package: github.com/libp2p/go-libp2p-crypto
+- package: github.com/libp2p/go-libp2p-host
+- package: github.com/libp2p/go-libp2p-net
+- package: github.com/libp2p/go-libp2p-protocol
+- package: go.uber.org/zap
+- package: github.com/multiformats/go-multiaddr
+- package: github.com/multiformats/go-multicodec
+- package: github.com/onsi/ginkgo
+  subpackages:
+  - ginkgo
+- package: github.com/onsi/gomega
+  subpackages:
+  - '...'
