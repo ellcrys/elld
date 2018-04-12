@@ -29,10 +29,11 @@ func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
 	cfgDir = new(ConfigDir)
 	cfgDir.path = dirPath
 
-	// set default config directory if not provided
+	// set default config directory if not provided and attempt to create it
 	if len(cfgDir.path) == 0 {
 		hd, _ := homedir.Dir()
 		cfgDir.path = fmt.Sprintf("%s/.ellcrys", hd)
+		os.Mkdir(cfgDir.path, 0700)
 	}
 
 	return
@@ -51,7 +52,7 @@ func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 
 	cfg, err := os.Create(cfgFile)
 	if err != nil {
-		return false, fmt.Errorf("failed to create config file at config director")
+		return false, fmt.Errorf("failed to create config file at config directory")
 	}
 	defer cfg.Close()
 
@@ -64,8 +65,12 @@ func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 
 // Init creates the ~./ellcrys directory if it does not exists.
 // It will include necessary config files, database if they are missing.
-func (cd *ConfigDir) Init() {
-	cd.createConfigFileInNotExist()
+func (cd *ConfigDir) Init() error {
+	var err error
+	if _, err = cd.createConfigFileInNotExist(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Load reads the content of the ellcrys.json file into Config struct
