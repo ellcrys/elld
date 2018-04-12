@@ -21,7 +21,7 @@ func (protoc *Inception) DoSendHandshake(remotePeer *Peer) error {
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
 	if err != nil {
 		protocLog.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
-		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err)
+		return fmt.Errorf("handshake failed. failed to connect to peer")
 	}
 	defer s.Close()
 
