@@ -101,7 +101,9 @@ func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, err
 	// 	for {
 	// 		select {
 	// 		case <-tm.C:
-	// 			fmt.Println("Num Address", len(peer.PM().GetActivePeers(-1)))
+	// 			for _, p := range peer.peerManager.knownPeers {
+	// 				fmt.Println("-> ", p.IDPretty(), ">>>", p.Connected())
+	// 			}
 	// 		}
 	// 	}
 	// }()
@@ -126,6 +128,11 @@ func GenerateKeyPair(r io.Reader) (crypto.PrivKey, crypto.PubKey, error) {
 // PM returns the peer manager
 func (p *Peer) PM() *Manager {
 	return p.peerManager
+}
+
+// SetLocalPeer sets the local peer
+func (p *Peer) SetLocalPeer(peer *Peer) {
+	p.localPeer = peer
 }
 
 // addToPeerStore adds a remote peer to the host's peerstore
@@ -181,6 +188,15 @@ func (p *Peer) IDPretty() string {
 
 	pid, _ := p.address.ValueForProtocol(ma.P_IPFS)
 	return pid
+}
+
+// Connected checks whether the peer is connected to the local peer.
+// Returns false if peer is the local peer.
+func (p *Peer) Connected() bool {
+	if p.localPeer == nil {
+		return false
+	}
+	return len(p.localPeer.host.Network().ConnsToPeer(p.ID())) > 0
 }
 
 // PrivKey returns the peer's private key
