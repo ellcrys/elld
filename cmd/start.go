@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/peer"
 	"github.com/ellcrys/druid/util"
 	"github.com/spf13/cobra"
@@ -13,6 +14,26 @@ func init() {
 	log = util.NewLogger("/peer")
 }
 
+// loadCfg loads the config file
+func loadCfg(cfgDirPath string) (*configdir.Config, error) {
+
+	cfgDir, err := configdir.NewConfigDir(cfgDirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cfgDir.Init(); err != nil {
+		return nil, err
+	}
+
+	cfg, err := cfgDir.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
@@ -21,23 +42,29 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("druid node started")
 
-		nodeToJoin, _ := cmd.Flags().GetStringSlice("addnode")
+		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
 		seed, _ := cmd.Flags().GetInt64("seed")
+		cfgDirPath, _ := cmd.Root().PersistentFlags().GetString("cfgdir")
+
+		cfg, err := loadCfg(cfgDirPath)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")
 		}
 
 		// create the peer
-		p, err := peer.NewPeer(addressToListenOn, seed)
+		p, err := peer.NewPeer(cfg, addressToListenOn, seed)
 		if err != nil {
 			log.Fatalf("failed to create peer")
 		}
 
 		// add bootstrap nodes
-		if len(nodeToJoin) > 0 {
-			if err := p.AddBootstrapPeers(nodeToJoin); err != nil {
+		if len(bootstrapAddresses) > 0 {
+			if err := p.AddBootstrapPeers(bootstrapAddresses); err != nil {
 				log.Fatalf("%s", err)
 			}
 		}
@@ -58,6 +85,7 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
+	rootCmd.PersistentFlags().String("cfgdir", "", "Configuration directory")
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
