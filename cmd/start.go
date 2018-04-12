@@ -8,7 +8,10 @@ import (
 	"go.uber.org/zap"
 )
 
-var log *zap.SugaredLogger
+var (
+	log            *zap.SugaredLogger // logger
+	bootstrapNodes = []string{}       // hardcoded bootstrap node address
+)
 
 func init() {
 	log = util.NewLogger("/peer")
@@ -52,6 +55,9 @@ var startCmd = &cobra.Command{
 			log.Fatal(err.Error())
 		}
 
+		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapAddresses...)
+		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapNodes...)
+
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")
 		}
@@ -63,8 +69,8 @@ var startCmd = &cobra.Command{
 		}
 
 		// add bootstrap nodes
-		if len(bootstrapAddresses) > 0 {
-			if err := p.AddBootstrapPeers(bootstrapAddresses); err != nil {
+		if len(cfg.Peer.BootstrapNodes) > 0 {
+			if err := p.AddBootstrapPeers(cfg.Peer.BootstrapNodes); err != nil {
 				log.Fatalf("%s", err)
 			}
 		}
