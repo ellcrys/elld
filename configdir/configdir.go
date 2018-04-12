@@ -1,8 +1,13 @@
 package configdir
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path"
+	"strings"
+
+	"github.com/jinzhu/configor"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -17,7 +22,7 @@ type ConfigDir struct {
 func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
 
 	// check if dirPath exists
-	if !dirOk(dirPath) {
+	if len(strings.TrimSpace(dirPath)) > 0 && !isPathOk(dirPath) {
 		return nil, fmt.Errorf("config directory is not ok; may not exist or we don't have enough permission")
 	}
 
@@ -33,15 +38,48 @@ func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
 	return
 }
 
-// Init creates the ~./ellcrys directory if it does not exists.
-// It will include necessary config files, database if they are missing.
-func (h *ConfigDir) Init() {
+// creates the config (ellcrys.json) file if it does not exist.
+// Returns true and nil if config file already exists, false and nil
+// if config file did not exist and was created. Otherwise, returns false and error
+func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 
+	cfgFile := path.Join(cd.path, "ellcrys.json")
+
+	if isPathOk(cfgFile) {
+		return true, nil
+	}
+
+	cfg, err := os.Create(cfgFile)
+	if err != nil {
+		return false, fmt.Errorf("failed to create config file at config director")
+	}
+	defer cfg.Close()
+
+	if err := json.NewEncoder(cfg).Encode(defaultConfig); err != nil {
+		return false, fmt.Errorf("failed to encode default config -> %s", err)
+	}
+
+	return false, nil
 }
 
-// dirOk checks if a directory exist and whether
+// Init creates the ~./ellcrys directory if it does not exists.
+// It will include necessary config files, database if they are missing.
+func (cd *ConfigDir) Init() {
+	cd.createConfigFileInNotExist()
+}
+
+// Load reads the content of the ellcrys.json file into Config struct
+func (cd *ConfigDir) Load() (*Config, error) {
+	var cfg Config
+	if err := configor.Load(&cfg, path.Join(cd.path, "ellcrys.json")); err != nil {
+		return nil, fmt.Errorf("failed to parse config file -> %s", err)
+	}
+	return &cfg, nil
+}
+
+// isPathOk checks if a directory exist and whether
 // there are no permission errors
-func dirOk(path string) bool {
+func isPathOk(path string) bool {
 	_, err := os.Stat(path)
 	if err != nil && os.IsNotExist(err) {
 		return false

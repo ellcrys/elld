@@ -226,6 +226,7 @@ import:
   subpackages:
   - compute/v1
 - package: gopkg.in/yaml.v2
+- package: github.com/jinzhu/configor
 testImport:
 - package: github.com/apex/log
   subpackages:
