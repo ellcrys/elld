@@ -42,6 +42,16 @@ func FullRemoteAddressFromStream(s inet.Stream) ma.Multiaddr {
 	return fullAddr
 }
 
+// FullRemoteAddressFromConn returns the full peer multi address containing ip4, tcp and ipfs protocols
+func FullRemoteAddressFromConn(c inet.Conn) ma.Multiaddr {
+	if c == nil {
+		return nil
+	}
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", c.RemotePeer().Pretty()))
+	fullAddr := c.RemoteMultiaddr().Encapsulate(ipfsAddr)
+	return fullAddr
+}
+
 // FullAddressFromHost returns the full peer multi address containing ip4, tcp and ipfs protocols
 func FullAddressFromHost(host host.Host) ma.Multiaddr {
 	if host == nil {
