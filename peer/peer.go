@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/configdir"
+
 	"github.com/thoas/go-funk"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -43,6 +45,7 @@ func SilenceLoggers() {
 
 // Peer represents a network node
 type Peer struct {
+	cfg         *configdir.Config
 	address     ma.Multiaddr
 	host        host.Host
 	wg          sync.WaitGroup
@@ -54,7 +57,7 @@ type Peer struct {
 }
 
 // NewPeer creates a peer instance at the specified port
-func NewPeer(address string, idSeed int64) (*Peer, error) {
+func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, error) {
 
 	// generate peer identity
 	priv, _, err := GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
@@ -84,6 +87,7 @@ func NewPeer(address string, idSeed int64) (*Peer, error) {
 	}
 
 	peer := &Peer{
+		cfg:     config,
 		address: util.FullAddressFromHost(host),
 		host:    host,
 		wg:      sync.WaitGroup{},

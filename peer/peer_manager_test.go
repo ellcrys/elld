@@ -20,7 +20,7 @@ var _ = Describe("PeerManager", func() {
 	var mgr *Manager
 
 	BeforeSuite(func() {
-		p, err := NewPeer("127.0.0.1:40000", 0)
+		p, err := NewPeer(nil, "127.0.0.1:40000", 0)
 		defer p.Host().Close()
 		mgr = p.PM()
 		Expect(err).To(BeNil())
@@ -34,7 +34,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("return nil when peer is successfully added and peers list increases to 1", func() {
-			p, err := NewPeer("127.0.0.1:40001", 1)
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
 			defer p.Host().Close()
 			err = mgr.AddOrUpdatePeer(p)
 			Expect(err).To(BeNil())
@@ -44,14 +44,14 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".PeerExist", func() {
 		It("peer does not exist, must return false", func() {
-			p, err := NewPeer("127.0.0.1:40002", 2)
+			p, err := NewPeer(nil, "127.0.0.1:40002", 2)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p)).To(BeFalse())
 		})
 
 		It("peer exists, must return true", func() {
-			p, err := NewPeer("127.0.0.1:40001", 1)
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p)).To(BeTrue())
