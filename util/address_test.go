@@ -70,6 +70,36 @@ var _ = Describe("Address", func() {
 		})
 	})
 
+	Describe(".FullRemoteAddressFromConn", func() {
+		var host host.Host
+
+		BeforeEach(func() {
+			var err error
+			host, err = testutil.RandomHost(0, 40102)
+			Expect(err).To(BeNil())
+		})
+
+		It("should return nil if nil is passed", func() {
+			addr := FullRemoteAddressFromConn(nil)
+			Expect(addr).To(BeNil())
+		})
+
+		It("should return /ip4/127.0.0.1/tcp/40103/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73", func() {
+			remoteHost, err := testutil.RandomHost(1234, 40103)
+			Expect(err).To(BeNil())
+			remoteHost.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
+
+			host.Peerstore().AddAddr(remoteHost.ID(), remoteHost.Addrs()[0], pstore.PermanentAddrTTL)
+			s, err := host.NewStream(context.Background(), remoteHost.ID(), protocol.ID("/protocol/0.0.1"))
+			Expect(err).To(BeNil())
+			defer host.Close()
+			defer remoteHost.Close()
+
+			addr := FullRemoteAddressFromConn(s.Conn())
+			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40103/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"))
+		})
+	})
+
 	Describe(".FullAddressFromHost", func() {
 		var host host.Host
 
@@ -78,12 +108,13 @@ var _ = Describe("Address", func() {
 			Expect(addr).To(BeNil())
 		})
 
-		It("should return /ip4/127.0.0.1/tcp/40102/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42", func() {
+		It("should return /ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42", func() {
 			var err error
-			host, err = testutil.RandomHost(12345, 40102)
+			host, err = testutil.RandomHost(12345, 40104)
 			Expect(err).To(BeNil())
 			addr := FullAddressFromHost(host)
-			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40102/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))
+			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))
+			host.Close()
 		})
 	})
 })
