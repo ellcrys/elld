@@ -20,13 +20,15 @@ type ManagerConfig struct {
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
-	kpm            *sync.Mutex        // known peer mutex
-	localPeer      *Peer              // local peer
-	bootstrapPeers map[string]*Peer   // bootstrap peers
-	knownPeers     map[string]*Peer   // peers known to the peer manager
-	log            *zap.SugaredLogger // manager's logger
-	config         *ManagerConfig     // manager's configuration
-	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
+	kpm               *sync.Mutex        // known peer mutex
+	gm                *sync.Mutex        // general mutex
+	localPeer         *Peer              // local peer
+	bootstrapPeers    map[string]*Peer   // bootstrap peers
+	knownPeers        map[string]*Peer   // peers known to the peer manager
+	log               *zap.SugaredLogger // manager's logger
+	config            *ManagerConfig     // manager's configuration
+	getAddrTicker     *time.Ticker       // ticker that sends "getaddr" messages
+	activeConnections int                // number of active connections
 }
 
 // NewManager creates an instance of the peer manager
@@ -38,6 +40,7 @@ func NewManager(localPeer *Peer) *Manager {
 
 	m := &Manager{
 		kpm:            new(sync.Mutex),
+		gm:             new(sync.Mutex),
 		localPeer:      localPeer,
 		log:            peerLog.Named("manager"),
 		bootstrapPeers: make(map[string]*Peer),
@@ -45,10 +48,37 @@ func NewManager(localPeer *Peer) *Manager {
 		config:         defaultConfig,
 	}
 
-	notif := &Notification{}
-	m.localPeer.host.Network().Notify(notif)
+	m.localPeer.host.Network().Notify(&Notification{
+		pm: m,
+	})
 
 	return m
+}
+
+// onPeerConnect is called when peer connects to the local peer
+func (m *Manager) onPeerConnect(peerAddr ma.Multiaddr) {
+	m.gm.Lock()
+	defer m.gm.Unlock()
+	m.activeConnections++
+}
+
+// onPeerDisconnect is called when peer disconnects.
+// Decrement active peer count but do not remove from the known peer list
+// because the peer might come back in a short time. Subtract 2 hours from
+// its current timestamp. Eventually, it will be removed if it does not reconnect.
+func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
+
+	m.kpm.Lock()
+	peerID := util.IDFromAddr(peerAddr).Pretty()
+	if peer, exist := m.knownPeers[peerID]; exist {
+		peer.Timestamp = peer.Timestamp.Add(-2 * time.Hour)
+		m.log.Infow("Peer has disconnected", "PeerID", peerID)
+	}
+	m.kpm.Unlock()
+
+	m.gm.Lock()
+	m.activeConnections--
+	m.gm.Unlock()
 }
 
 // AddBootstrapPeer adds a peer to the manager

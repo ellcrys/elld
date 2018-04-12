@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net"
 
+	peer "github.com/libp2p/go-libp2p-peer"
+
 	"github.com/libp2p/go-libp2p-host"
 
 	inet "github.com/libp2p/go-libp2p-net"
@@ -63,4 +65,11 @@ func FullAddressFromHost(host host.Host) ma.Multiaddr {
 	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
 	fullAddr := host.Addrs()[0].Encapsulate(ipfsAddr)
 	return fullAddr
+}
+
+// IDFromAddr extracts and returns the peer ID
+func IDFromAddr(addr ma.Multiaddr) peer.ID {
+	pid, _ := addr.ValueForProtocol(ma.P_IPFS)
+	id, _ := peer.IDB58Decode(pid)
+	return id
 }
