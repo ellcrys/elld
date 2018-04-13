@@ -19,7 +19,7 @@ var _ = Describe("Handshake", func() {
 				Expect(err).To(BeNil())
 				rpProtoc := NewInception(rp)
 				rp.Host().Close()
-				err = rpProtoc.DoSendHandshake(rp)
+				err = rpProtoc.SendHandshake(rp)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
 			})
@@ -34,7 +34,7 @@ var _ = Describe("Handshake", func() {
 				rpProtoc := NewInception(lp) // lp should be rp, as such, will cause the protocol to use lp's private key
 				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)
 
-				err = lpProtoc.DoSendHandshake(rp)
+				err = lpProtoc.SendHandshake(rp)
 				Expect(err).NotTo(BeNil())
 			})
 
@@ -48,7 +48,7 @@ var _ = Describe("Handshake", func() {
 				rpProtoc := NewInception(rp)
 				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)
 
-				err = lpProtoc.DoSendHandshake(rp)
+				err = lpProtoc.SendHandshake(rp)
 				Expect(err).To(BeNil())
 
 				activePeerRp := rp.PM().GetActivePeers(0)
@@ -75,7 +75,7 @@ var _ = Describe("Handshake", func() {
 				err = rp.PM().AddOrUpdatePeer(p1)
 				Expect(err).To(BeNil())
 
-				err = lpProtoc.DoSendHandshake(rp)
+				err = lpProtoc.SendHandshake(rp)
 				Expect(err).To(BeNil())
 
 				activePeerRp := rp.PM().GetActivePeers(0)
@@ -103,7 +103,7 @@ var _ = Describe("Handshake", func() {
 				Expect(err).To(BeNil())
 				p1.Timestamp = p1.Timestamp.Add(-5 * time.Hour)
 
-				err = lpProtoc.DoSendHandshake(rp)
+				err = lpProtoc.SendHandshake(rp)
 				Expect(err).To(BeNil())
 
 				activePeerRp := rp.PM().GetActivePeers(0)
@@ -135,7 +135,7 @@ var _ = Describe("Handshake", func() {
 				p1.Timestamp = p1.Timestamp.Add(-5 * time.Hour)
 				p2.Timestamp = p1.Timestamp.Add(-5 * time.Hour)
 
-				err = lpProtoc.DoSendHandshake(rp)
+				err = lpProtoc.SendHandshake(rp)
 				Expect(err).To(BeNil())
 
 				activePeerRp := rp.PM().GetActivePeers(0)

@@ -14,6 +14,7 @@ import (
 // ManagerConfig represents the configuration for the manager
 type ManagerConfig struct {
 	GetAddrInterval int
+	PingInterval    int
 }
 
 // Manager manages known peers connected to the local peer.
@@ -28,6 +29,7 @@ type Manager struct {
 	log               *zap.SugaredLogger // manager's logger
 	config            *ManagerConfig     // manager's configuration
 	getAddrTicker     *time.Ticker       // ticker that sends "getaddr" messages
+	pingTicker        *time.Ticker       // ticker that sends "ping" messages
 	activeConnections int                // number of active connections
 }
 
@@ -36,6 +38,7 @@ func NewManager(localPeer *Peer) *Manager {
 
 	defaultConfig := &ManagerConfig{
 		GetAddrInterval: 10,
+		PingInterval:    10,
 	}
 
 	m := &Manager{
@@ -62,19 +65,38 @@ func (m *Manager) onPeerConnect(peerAddr ma.Multiaddr) {
 	m.activeConnections++
 }
 
+// PeerExist checks whether a peer is a known peer
+func (m *Manager) PeerExist(peerID string) bool {
+	m.kpm.Lock()
+	defer m.kpm.Unlock()
+	_, exist := m.knownPeers[peerID]
+	return exist
+}
+
+// GetKnownPeer returns a known peer
+func (m *Manager) GetKnownPeer(peerID string) *Peer {
+	if !m.PeerExist(peerID) {
+		return nil
+	}
+
+	m.kpm.Lock()
+	defer m.kpm.Unlock()
+	peer, _ := m.knownPeers[peerID]
+	return peer
+}
+
 // onPeerDisconnect is called when peer disconnects.
 // Decrement active peer count but do not remove from the known peer list
 // because the peer might come back in a short time. Subtract 2 hours from
 // its current timestamp. Eventually, it will be removed if it does not reconnect.
 func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 
-	m.kpm.Lock()
 	peerID := util.IDFromAddr(peerAddr).Pretty()
-	if peer, exist := m.knownPeers[peerID]; exist {
+	if m.PeerExist(peerID) {
+		peer := m.GetKnownPeer(peerID)
 		peer.Timestamp = peer.Timestamp.Add(-2 * time.Hour)
 		m.log.Infow("Peer has disconnected", "PeerID", peerID)
 	}
-	m.kpm.Unlock()
 
 	m.gm.Lock()
 	m.activeConnections--
@@ -99,6 +121,7 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
 	go m.sendPeriodicGetAddrMsg()
+	go m.sendPeriodicPingMsgs()
 }
 
 // sendPeriodicGetAddrMsg sends "getaddr" message to all known active
@@ -113,9 +136,21 @@ func (m *Manager) sendPeriodicGetAddrMsg() {
 	}
 }
 
+// sendPeriodicPingMsgs sends "ping" messages to all peers
+// as a basic health check routine.
+func (m *Manager) sendPeriodicPingMsgs() {
+	m.pingTicker = time.NewTicker(time.Duration(m.config.PingInterval) * time.Second)
+	for {
+		select {
+		case <-m.pingTicker.C:
+			m.localPeer.protoc.SendPing(m.GetKnownPeers())
+		}
+	}
+}
+
 // AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
-// exist already. The new peer's timestamp is updated.
-// TODO: clear old and inactive peers
+// exist. If the peer already exists, its timestamp is updated, otherwise,
+// the new peer is added with its timestamp updated.
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	if p == nil {
 		return fmt.Errorf("nil received as *Peer")
@@ -123,13 +158,14 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
-	// update timestamp
-	p.Timestamp = time.Now().UTC()
-
-	// add peer if it does not exist
-	if _, ok := m.knownPeers[p.IDPretty()]; !ok {
+	existingPeer, exist := m.knownPeers[p.IDPretty()]
+	if !exist {
+		p.Timestamp = time.Now().UTC()
 		m.knownPeers[p.IDPretty()] = p
+		return nil
 	}
+
+	existingPeer.Timestamp = time.Now().UTC()
 
 	return nil
 }
@@ -153,6 +189,14 @@ func (m *Manager) IsLocalPeer(p *Peer) bool {
 // First rule, its timestamp must be within the last 3 hours
 func (m *Manager) isActive(p *Peer) bool {
 	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp.UTC())
+}
+
+// GetKnownPeers gets all the known peers (active or inactive)
+func (m *Manager) GetKnownPeers() (peers []*Peer) {
+	for _, p := range m.knownPeers {
+		peers = append(peers, p)
+	}
+	return peers
 }
 
 // GetActivePeers returns active peers. Passing a zero or negative value
@@ -193,14 +237,6 @@ func (m *Manager) GetRandomActivePeers(limit int) ([]*Peer, error) {
 	return knownActivePeers[:limit], nil
 }
 
-// PeerExist checks if a peer exists
-func (m *Manager) PeerExist(peer *Peer) bool {
-	if _, ok := m.knownPeers[peer.IDPretty()]; ok {
-		return true
-	}
-	return false
-}
-
 // CreatePeerFromAddress creates a new peer and assign the multiaddr to it.
 func (m *Manager) CreatePeerFromAddress(addr string) error {
 
@@ -210,7 +246,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 	mAddr, _ := ma.NewMultiaddr(addr)
 	remotePeer := &Peer{address: mAddr}
-	if m.PeerExist(remotePeer) {
+	if m.PeerExist(remotePeer.IDPretty()) {
 		m.log.Infof("peer (%s) already exists", remotePeer.IDPretty())
 		return nil
 	}
@@ -224,4 +260,5 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 // Stop gracefully stops running routines managed by the manager
 func (m *Manager) Stop() {
 	m.getAddrTicker.Stop()
+	m.pingTicker.Stop()
 }

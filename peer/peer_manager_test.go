@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/util"
+	ma "github.com/multiformats/go-multiaddr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -12,7 +14,10 @@ import (
 func NewMgr() *Manager {
 	var mgr = new(Manager)
 	mgr.kpm = &sync.Mutex{}
+	mgr.gm = &sync.Mutex{}
 	mgr.config = &ManagerConfig{}
+	mgr.knownPeers = make(map[string]*Peer)
+	mgr.log = util.NewNopLogger()
 	return mgr
 }
 
@@ -42,19 +47,96 @@ var _ = Describe("PeerManager", func() {
 		})
 	})
 
+	Describe(".GetKnownPeer", func() {
+		It("should return nil when peer is not in known peer list", func() {
+			mgr := NewMgr()
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			Expect(err).To(BeNil())
+			Expect(mgr.GetKnownPeer(p.IDPretty())).To(BeNil())
+		})
+
+		It("should return peer when peer is in known peer list", func() {
+			mgr := NewMgr()
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			defer p.host.Close()
+			mgr.AddOrUpdatePeer(p)
+			Expect(err).To(BeNil())
+			actual := mgr.GetKnownPeer(p.IDPretty())
+			Expect(actual).NotTo(BeNil())
+			Expect(actual).To(Equal(p))
+		})
+	})
+
 	Describe(".PeerExist", func() {
 		It("peer does not exist, must return false", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40002", 2)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
-			Expect(mgr.PeerExist(p)).To(BeFalse())
+			Expect(mgr.PeerExist(p.IDPretty())).To(BeFalse())
 		})
 
 		It("peer exists, must return true", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
-			Expect(mgr.PeerExist(p)).To(BeTrue())
+			Expect(mgr.PeerExist(p.IDPretty())).To(BeTrue())
+		})
+	})
+
+	Describe(".onPeerConnect", func() {
+		It("should increment active connection count", func() {
+			mgr := NewMgr()
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			Expect(err).To(BeNil())
+			defer p.host.Close()
+			addr, _ := ma.NewMultiaddr(p.GetMultiAddr())
+			mgr.onPeerConnect(addr)
+			Expect(mgr.activeConnections).To(Equal(1))
+		})
+	})
+
+	Describe(".onPeerDisconnet", func() {
+
+		It("should set the disconnected peer's timestamp to at least 2 hour ago", func() {
+			mgr := NewMgr()
+			mgr.activeConnections = 1
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			Expect(err).To(BeNil())
+			defer p.host.Close()
+			mgr.AddOrUpdatePeer(p)
+			currentTimestamp := p.Timestamp.Unix()
+
+			addr, _ := ma.NewMultiaddr(p.GetMultiAddr())
+			mgr.onPeerDisconnect(addr)
+			newTimestamp := p.Timestamp.Unix()
+			Expect(newTimestamp).ToNot(Equal(currentTimestamp))
+			if newTimestamp >= currentTimestamp {
+				Fail("newTimestamp must be lesser")
+			}
+			Expect(currentTimestamp - newTimestamp).To(Equal(int64(7200)))
+		})
+
+		It("should increment decrement connection count", func() {
+			mgr := NewMgr()
+			mgr.activeConnections = 3
+			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			Expect(err).To(BeNil())
+			defer p.host.Close()
+			addr, _ := ma.NewMultiaddr(p.GetMultiAddr())
+			mgr.onPeerDisconnect(addr)
+			Expect(mgr.activeConnections).To(Equal(2))
+		})
+	})
+
+	Describe(".GetKnownPeers", func() {
+		It("should return peer1 as the only known peer", func() {
+			mgr := NewMgr()
+			peer1, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			Expect(err).To(BeNil())
+			mgr.AddOrUpdatePeer(peer1)
+			actual := mgr.GetKnownPeers()
+			Expect(actual).To(HaveLen(1))
+			Expect(actual).To(ContainElement(peer1))
 		})
 	})
 

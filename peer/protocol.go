@@ -11,9 +11,11 @@ import (
 
 // Protocol represents a protocol
 type Protocol interface {
-	DoSendHandshake(*Peer) error
+	SendHandshake(*Peer) error
 	OnHandshake(net.Stream)
-	DoGetAddr()
+	SendPing([]*Peer)
+	OnPing(net.Stream)
+	DoGetAddr() error
 }
 
 // Inception represents the peer protocol

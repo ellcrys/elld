@@ -14,3 +14,13 @@ message HandshakeResponse {
     repeated string addresses = 1;      // list of addresses
     bytes sig = 2;                      // message signature
 }
+
+// Ping represents a ping message
+message Ping {
+    bytes Sig = 1;
+}
+
+// Pong represents a pong message
+message Pong {
+    bytes Sig = 1;
+}
