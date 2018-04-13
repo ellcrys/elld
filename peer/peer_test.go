@@ -1,11 +1,9 @@
-package peer_test
+package peer
 
 import (
 	"context"
-	"fmt"
 
-	. "github.com/ellcrys/druid/peer"
-	"github.com/ellcrys/druid/testutil"
+	"github.com/ellcrys/druid/util"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -165,12 +163,12 @@ var _ = Describe("Peer", func() {
 			Expect(err).To(BeNil())
 			host = p.Host()
 			Expect(err).To(BeNil())
-			host2, err = testutil.RandomHost(6, 40106)
+			host2, err = RandomHost(6, 40106)
 			Expect(err).To(BeNil())
-			host3, err = testutil.RandomHost(7, 40107)
+			host3, err = RandomHost(7, 40107)
 			Expect(err).To(BeNil())
 
-			host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
+			host.SetStreamHandler("/protocol/0.0.1", NoOpStreamHandler)
 			host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
 			host.Peerstore().AddAddr(host3.ID(), host3.Addrs()[0], pstore.PermanentAddrTTL)
 
@@ -222,18 +220,35 @@ var _ = Describe("Peer", func() {
 			host2 = p2.Host()
 			Expect(err).To(BeNil())
 
-			host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
+			host.SetStreamHandler("/protocol/0.0.1", NoOpStreamHandler)
 			host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
 			host.Connect(context.Background(), host.Peerstore().PeerInfo(host2.ID()))
-			fmt.Println(p.Host().Network().Conns())
 		})
 
 		It("should return false when localPeer is nil", func() {
+			p.localPeer = nil
 			Expect(p.Connected()).To(BeFalse())
 		})
 
 		It("should return true when peer is connected", func() {
-			// Expect(p2.Connected()).To(BeTrue())
+
+			lp, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			Expect(err).To(BeNil())
+			defer lp.host.Close()
+			lpProtoc := NewInception(lp)
+
+			rp, err := NewPeer(nil, "127.0.0.1:40002", 2)
+			Expect(err).To(BeNil())
+			defer rp.host.Close()
+
+			rpProtoc := NewInception(rp)
+			rp.SetProtocolHandler(util.PingVersion, rpProtoc.OnPing)
+
+			err = lpProtoc.sendPing(rp)
+			Expect(err).To(BeNil())
+
+			Expect(lp.PM().GetKnownPeer(rp.IDPretty()).Connected()).To(BeTrue())
+			Expect(rp.PM().GetKnownPeer(lp.IDPretty()).Connected()).To(BeTrue())
 		})
 
 		AfterEach(func() {
