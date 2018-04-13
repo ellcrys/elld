@@ -10,6 +10,8 @@
 	It has these top-level messages:
 		Handshake
 		HandshakeResponse
+		Ping
+		Pong
 */
 package wire
 
@@ -91,9 +93,43 @@ func (m *HandshakeResponse) GetSig() []byte {
 	return nil
 }
 
+// Ping represents a ping message
+type Ping struct {
+	Sig []byte `protobuf:"bytes,1,opt,name=Sig,proto3" json:"Sig,omitempty"`
+}
+
+func (m *Ping) Reset()                    { *m = Ping{} }
+func (*Ping) ProtoMessage()               {}
+func (*Ping) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{2} }
+
+func (m *Ping) GetSig() []byte {
+	if m != nil {
+		return m.Sig
+	}
+	return nil
+}
+
+// Pong represents a pong message
+type Pong struct {
+	Sig []byte `protobuf:"bytes,1,opt,name=Sig,proto3" json:"Sig,omitempty"`
+}
+
+func (m *Pong) Reset()                    { *m = Pong{} }
+func (*Pong) ProtoMessage()               {}
+func (*Pong) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{3} }
+
+func (m *Pong) GetSig() []byte {
+	if m != nil {
+		return m.Sig
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Handshake)(nil), "wire.Handshake")
 	proto.RegisterType((*HandshakeResponse)(nil), "wire.HandshakeResponse")
+	proto.RegisterType((*Ping)(nil), "wire.Ping")
+	proto.RegisterType((*Pong)(nil), "wire.Pong")
 }
 func (this *Handshake) Equal(that interface{}) bool {
 	if that == nil {
@@ -157,6 +193,54 @@ func (this *HandshakeResponse) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *Ping) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Ping)
+	if !ok {
+		that2, ok := that.(Ping)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Sig, that1.Sig) {
+		return false
+	}
+	return true
+}
+func (this *Pong) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Pong)
+	if !ok {
+		that2, ok := that.(Pong)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Sig, that1.Sig) {
+		return false
+	}
+	return true
+}
 func (this *Handshake) GoString() string {
 	if this == nil {
 		return "nil"
@@ -176,6 +260,26 @@ func (this *HandshakeResponse) GoString() string {
 	s := make([]string, 0, 6)
 	s = append(s, "&wire.HandshakeResponse{")
 	s = append(s, "Addresses: "+fmt.Sprintf("%#v", this.Addresses)+",\n")
+	s = append(s, "Sig: "+fmt.Sprintf("%#v", this.Sig)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Ping) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&wire.Ping{")
+	s = append(s, "Sig: "+fmt.Sprintf("%#v", this.Sig)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Pong) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&wire.Pong{")
 	s = append(s, "Sig: "+fmt.Sprintf("%#v", this.Sig)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -263,6 +367,54 @@ func (m *HandshakeResponse) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *Ping) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Ping) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Sig) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Sig)))
+		i += copy(dAtA[i:], m.Sig)
+	}
+	return i, nil
+}
+
+func (m *Pong) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Pong) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Sig) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Sig)))
+		i += copy(dAtA[i:], m.Sig)
+	}
+	return i, nil
+}
+
 func encodeVarintMessages(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
@@ -306,6 +458,26 @@ func (m *HandshakeResponse) Size() (n int) {
 	return n
 }
 
+func (m *Ping) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Sig)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
+func (m *Pong) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Sig)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
 func sovMessages(x uint64) (n int) {
 	for {
 		n++
@@ -337,6 +509,26 @@ func (this *HandshakeResponse) String() string {
 	}
 	s := strings.Join([]string{`&HandshakeResponse{`,
 		`Addresses:` + fmt.Sprintf("%v", this.Addresses) + `,`,
+		`Sig:` + fmt.Sprintf("%v", this.Sig) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Ping) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Ping{`,
+		`Sig:` + fmt.Sprintf("%v", this.Sig) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Pong) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Pong{`,
 		`Sig:` + fmt.Sprintf("%v", this.Sig) + `,`,
 		`}`,
 	}, "")
@@ -599,6 +791,168 @@ func (m *HandshakeResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *Ping) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Ping: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Ping: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sig", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sig = append(m.Sig[:0], dAtA[iNdEx:postIndex]...)
+			if m.Sig == nil {
+				m.Sig = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Pong) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Pong: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Pong: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sig", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sig = append(m.Sig[:0], dAtA[iNdEx:postIndex]...)
+			if m.Sig == nil {
+				m.Sig = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipMessages(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
@@ -707,7 +1061,7 @@ var (
 func init() { proto.RegisterFile("wire/messages.proto", fileDescriptorMessages) }
 
 var fileDescriptorMessages = []byte{
-	// 206 bytes of a gzipped FileDescriptorProto
+	// 229 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x2e, 0xcf, 0x2c, 0x4a,
 	0xd5, 0xcf, 0x4d, 0x2d, 0x2e, 0x4e, 0x4c, 0x4f, 0x2d, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17,
 	0x62, 0x01, 0x09, 0x2a, 0x85, 0x73, 0x71, 0x7a, 0x24, 0xe6, 0xa5, 0x14, 0x67, 0x24, 0x66, 0xa7,
@@ -716,9 +1070,11 @@ var fileDescriptorMessages = []byte{
 	0xf9, 0x79, 0x12, 0x4c, 0x60, 0x49, 0x24, 0x11, 0x21, 0x01, 0x2e, 0xe6, 0xe2, 0xcc, 0x74, 0x09,
 	0x66, 0x05, 0x46, 0x0d, 0x9e, 0x20, 0x10, 0x53, 0xc9, 0x99, 0x4b, 0x10, 0x6e, 0x70, 0x50, 0x6a,
 	0x71, 0x41, 0x7e, 0x5e, 0x71, 0xaa, 0x90, 0x0c, 0x17, 0x27, 0xd4, 0xc4, 0x54, 0x90, 0x15, 0xcc,
-	0x1a, 0x9c, 0x41, 0x08, 0x01, 0x98, 0x21, 0x4c, 0x70, 0x43, 0x9c, 0x74, 0x2e, 0x3c, 0x94, 0x63,
-	0xb8, 0xf1, 0x50, 0x8e, 0xe1, 0xc3, 0x43, 0x39, 0xc6, 0x86, 0x47, 0x72, 0x8c, 0x2b, 0x1e, 0xc9,
-	0x31, 0x9e, 0x78, 0x24, 0xc7, 0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72, 0x8c, 0x2f, 0x1e,
-	0xc9, 0x31, 0x7c, 0x78, 0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c, 0x43, 0x12, 0x1b, 0xd8, 0x63, 0xc6,
-	0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x80, 0x24, 0x1e, 0xcf, 0xef, 0x00, 0x00, 0x00,
+	0x1a, 0x9c, 0x41, 0x08, 0x01, 0x98, 0x21, 0x4c, 0x08, 0x43, 0x24, 0xb8, 0x58, 0x02, 0x32, 0xf3,
+	0xd2, 0x41, 0x32, 0xc1, 0x99, 0xe9, 0x60, 0x47, 0xf1, 0x04, 0x81, 0x98, 0x60, 0x99, 0x7c, 0x6c,
+	0x32, 0x4e, 0x3a, 0x17, 0x1e, 0xca, 0x31, 0xdc, 0x78, 0x28, 0xc7, 0xf0, 0xe1, 0xa1, 0x1c, 0x63,
+	0xc3, 0x23, 0x39, 0xc6, 0x15, 0x8f, 0xe4, 0x18, 0x4f, 0x3c, 0x92, 0x63, 0xbc, 0xf0, 0x48, 0x8e,
+	0xf1, 0xc1, 0x23, 0x39, 0xc6, 0x17, 0x8f, 0xe4, 0x18, 0x3e, 0x3c, 0x92, 0x63, 0x9c, 0xf0, 0x58,
+	0x8e, 0x21, 0x89, 0x0d, 0x1c, 0x18, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x43, 0x8e, 0x6c,
+	0xc6, 0x23, 0x01, 0x00, 0x00,
 }

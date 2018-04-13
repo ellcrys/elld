@@ -2,15 +2,15 @@ package peer_test
 
 import (
 	"context"
+	"fmt"
 
+	. "github.com/ellcrys/druid/peer"
+	"github.com/ellcrys/druid/testutil"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	. "github.com/ellcrys/druid/peer"
-	"github.com/ellcrys/druid/testutil"
 )
 
 func init() {
@@ -202,6 +202,43 @@ var _ = Describe("Peer", func() {
 
 		Context("without ignore list", func() {
 
+		})
+	})
+
+	Describe(".Connected", func() {
+
+		var host, host2 host.Host
+		var p, p2 *Peer
+		var err error
+
+		BeforeEach(func() {
+			p, err = NewPeer(nil, "127.0.0.1:40106", 0)
+			Expect(err).To(BeNil())
+			p2, err = NewPeer(nil, "127.0.0.1:40106", 0)
+			Expect(err).To(BeNil())
+			p2.SetLocalPeer(p)
+			host = p.Host()
+			Expect(err).To(BeNil())
+			host2 = p2.Host()
+			Expect(err).To(BeNil())
+
+			host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
+			host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
+			host.Connect(context.Background(), host.Peerstore().PeerInfo(host2.ID()))
+			fmt.Println(p.Host().Network().Conns())
+		})
+
+		It("should return false when localPeer is nil", func() {
+			Expect(p.Connected()).To(BeFalse())
+		})
+
+		It("should return true when peer is connected", func() {
+			// Expect(p2.Connected()).To(BeTrue())
+		})
+
+		AfterEach(func() {
+			host.Close()
+			host2.Close()
 		})
 	})
 })

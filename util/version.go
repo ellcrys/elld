@@ -10,4 +10,7 @@ var (
 
 	// HandshakeVersion is the current handshake algorithm
 	HandshakeVersion = ProtocolVersion + "/handshake/1"
+
+	// PingVersion is the current ping algorithm
+	PingVersion = ProtocolVersion + "/ping/1"
 )

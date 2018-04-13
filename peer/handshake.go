@@ -6,16 +6,15 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/druid/util"
-	pb "github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/druid/wire"
 	net "github.com/libp2p/go-libp2p-net"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-// DoSendHandshake sends an introduction message to a peer
-func (protoc *Inception) DoSendHandshake(remotePeer *Peer) error {
+// SendHandshake sends an introduction message to a peer
+func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 
 	remotePeerID := remotePeer.IDPretty()
-
 	protoc.log.Infow("Sending handshake to peer", "PeerID", remotePeerID)
 
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
@@ -27,7 +26,7 @@ func (protoc *Inception) DoSendHandshake(remotePeer *Peer) error {
 
 	// send handshake
 	w := bufio.NewWriter(s)
-	msg := &pb.Handshake{Address: protoc.LocalPeer().GetMultiAddr(), SubVersion: util.ClientVersion}
+	msg := &wire.Handshake{Address: protoc.LocalPeer().GetMultiAddr(), SubVersion: util.ClientVersion}
 	msg.Sig = protoc.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		protocLog.Debugw("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerID)
@@ -38,7 +37,7 @@ func (protoc *Inception) DoSendHandshake(remotePeer *Peer) error {
 	protoc.log.Debugw("Sent handshake to peer", "PeerID", remotePeerID)
 
 	// receive response
-	resp := &pb.HandshakeResponse{}
+	resp := &wire.HandshakeResponse{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
 		protocLog.Debugw("Failed to read handshake response", "Err", err, "PeerID", remotePeerID)
@@ -79,9 +78,9 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 
 	protoc.log.Infow("Received handshake message", "PeerID", remotePeerID)
 
-	msg := &pb.Handshake{}
+	msg := &wire.Handshake{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
-		protoc.log.Errorw("failed to read message", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Errorw("failed to read handshake message", "Err", err, "PeerID", remotePeerID)
 		return
 	}
 
@@ -89,7 +88,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 	sig := msg.Sig
 	msg.Sig = nil
 	if err := protoc.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify handshake message signature", "Err", err, "PeerID", remotePeerID)
 		return
 	}
 
@@ -105,7 +104,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 	}
 
 	// create response message, sign it and add the signature to the message
-	addrMsg := &pb.HandshakeResponse{Addresses: addresses}
+	addrMsg := &wire.HandshakeResponse{Addresses: addresses}
 	addrMsg.Sig = protoc.sign(addrMsg)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)

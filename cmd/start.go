@@ -82,6 +82,7 @@ var startCmd = &cobra.Command{
 		// set protocol and handlers
 		p.SetProtocol(protocol)
 		p.SetProtocolHandler(util.HandshakeVersion, protocol.OnHandshake)
+		p.SetProtocolHandler(util.PingVersion, protocol.OnPing)
 
 		// start the peer and cause main thread to wait
 		p.Start()

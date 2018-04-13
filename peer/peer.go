@@ -276,7 +276,7 @@ func (p *Peer) Start() {
 
 	// send handshake to bootstrap peers
 	for _, b := range p.PM().bootstrapPeers {
-		go p.protoc.DoSendHandshake(b)
+		go p.protoc.SendHandshake(b)
 	}
 }
 
