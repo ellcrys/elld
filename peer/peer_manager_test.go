@@ -251,13 +251,11 @@ var _ = Describe("PeerManager", func() {
 
 			var result []*Peer
 			var sameIndexCount = 0
-			result, err := mgr.GetRandomActivePeers(3)
-			Expect(err).To(BeNil())
+			result = mgr.GetRandomActivePeers(3)
 
 			// test for randomness
 			for i := 0; i < 10; i++ {
-				result2, err := mgr.GetRandomActivePeers(3)
-				Expect(err).To(BeNil())
+				result2 := mgr.GetRandomActivePeers(3)
 				if reflect.DeepEqual(result[0], result2[0]) {
 					sameIndexCount++
 				}
@@ -280,13 +278,11 @@ var _ = Describe("PeerManager", func() {
 
 			var result []*Peer
 			var sameIndexCount = 0
-			result, err := mgr.GetRandomActivePeers(2)
-			Expect(err).To(BeNil())
+			result = mgr.GetRandomActivePeers(2)
 
 			// test for randomness
 			for i := 0; i < 10; i++ {
-				result2, err := mgr.GetRandomActivePeers(3)
-				Expect(err).To(BeNil())
+				result2 := mgr.GetRandomActivePeers(3)
 				if reflect.DeepEqual(result[0], result2[0]) {
 					sameIndexCount++
 				}
@@ -305,6 +301,65 @@ var _ = Describe("PeerManager", func() {
 				"peer1": peer1,
 			}
 			Expect(mgr.NeedMorePeers()).To(BeTrue())
+		})
+	})
+
+	Describe(".TimestampPunishment", func() {
+		It("return err.Error('nil passed') when nil is passed as peer", func() {
+			var mgr = NewMgr()
+			err := mgr.TimestampPunishment(nil)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("nil passed"))
+		})
+
+		It("reduce timestamp by an 3600 seconds", func() {
+			var mgr = NewMgr()
+			mgr.knownPeers = make(map[string]*Peer)
+			peer1 := &Peer{Timestamp: time.Now().UTC()}
+			mgr.knownPeers = map[string]*Peer{
+				"peer1": peer1,
+			}
+			currentTime := peer1.Timestamp.Unix()
+			err := mgr.TimestampPunishment(peer1)
+			Expect(err).To(BeNil())
+			actual := peer1.Timestamp.Unix()
+			Expect(currentTime > actual).To(BeTrue())
+			Expect(currentTime - actual).To(Equal(int64(3600)))
+		})
+	})
+
+	Describe(".IsLocalPeer", func() {
+		It("should return false if nil is passed", func() {
+			var mgr = NewMgr()
+			Expect(mgr.IsLocalPeer(nil)).To(BeFalse())
+		})
+
+		It("should return false if local peer is nil", func() {
+			var mgr = NewMgr()
+			mgr.localPeer = nil
+			peer1 := &Peer{Timestamp: time.Now().UTC()}
+			Expect(mgr.IsLocalPeer(peer1)).To(BeFalse())
+		})
+
+		It("should return false if not local peer", func() {
+			var mgr = NewMgr()
+			peer1, err := NewPeer(nil, "127.0.0.1:40010", 1)
+			Expect(err).To(BeNil())
+			defer peer1.host.Close()
+			mgr.localPeer = peer1
+			peer2, err := NewPeer(nil, "127.0.0.1:40011", 2)
+			defer peer2.host.Close()
+			Expect(err).To(BeNil())
+			Expect(mgr.IsLocalPeer(peer2)).To(BeFalse())
+		})
+
+		It("should return true if peer is the local peer", func() {
+			var mgr = NewMgr()
+			peer1, err := NewPeer(nil, "127.0.0.1:40010", 1)
+			Expect(err).To(BeNil())
+			defer peer1.host.Close()
+			mgr.localPeer = peer1
+			Expect(mgr.IsLocalPeer(peer1)).To(BeTrue())
 		})
 	})
 })

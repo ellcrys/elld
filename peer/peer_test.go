@@ -210,9 +210,9 @@ var _ = Describe("Peer", func() {
 		var err error
 
 		BeforeEach(func() {
-			p, err = NewPeer(nil, "127.0.0.1:40106", 0)
+			p, err = NewPeer(nil, "127.0.0.1:40106", 6)
 			Expect(err).To(BeNil())
-			p2, err = NewPeer(nil, "127.0.0.1:40106", 0)
+			p2, err = NewPeer(nil, "127.0.0.1:40107", 7)
 			Expect(err).To(BeNil())
 			p2.SetLocalPeer(p)
 			host = p.Host()
@@ -231,13 +231,12 @@ var _ = Describe("Peer", func() {
 		})
 
 		It("should return true when peer is connected", func() {
-
-			lp, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			lp, err := NewPeer(nil, "127.0.0.1:40108", 8)
 			Expect(err).To(BeNil())
 			defer lp.host.Close()
 			lpProtoc := NewInception(lp)
 
-			rp, err := NewPeer(nil, "127.0.0.1:40002", 2)
+			rp, err := NewPeer(nil, "127.0.0.1:40109", 9)
 			Expect(err).To(BeNil())
 			defer rp.host.Close()
 

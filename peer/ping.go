@@ -59,13 +59,18 @@ func (protoc *Inception) sendPing(remotePeer *Peer) error {
 func (protoc *Inception) SendPing(remotePeers []*Peer) {
 	protoc.log.Infow("Sending ping to peer(s)", "NumPeers", len(remotePeers))
 	for _, remotePeer := range remotePeers {
-		go protoc.sendPing(remotePeer)
+		_remotePeer := remotePeer
+		go func() {
+			if err := protoc.sendPing(_remotePeer); err != nil {
+				protoc.PM().TimestampPunishment(_remotePeer)
+			}
+		}()
 	}
 }
 
 // OnPing handles incoming ping message
 func (protoc *Inception) OnPing(s net.Stream) {
-
+	
 	remotePeerID := s.Conn().RemotePeer().Pretty()
 	defer s.Close()
 
@@ -81,7 +86,7 @@ func (protoc *Inception) OnPing(s net.Stream) {
 	sig := msg.Sig
 	msg.Sig = nil
 	if err := protoc.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify ping message signature", "Err", err, "PeerID", remotePeerID)
 		return
 	}
 

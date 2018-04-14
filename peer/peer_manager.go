@@ -31,6 +31,7 @@ type Manager struct {
 	getAddrTicker     *time.Ticker       // ticker that sends "getaddr" messages
 	pingTicker        *time.Ticker       // ticker that sends "ping" messages
 	activeConnections int                // number of active connections
+	stop              bool               // signifies the start of the manager
 }
 
 // NewManager creates an instance of the peer manager
@@ -38,7 +39,7 @@ func NewManager(localPeer *Peer) *Manager {
 
 	defaultConfig := &ManagerConfig{
 		GetAddrInterval: 10,
-		PingInterval:    10,
+		PingInterval:    60,
 	}
 
 	m := &Manager{
@@ -98,6 +99,8 @@ func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 		m.log.Infow("Peer has disconnected", "PeerID", peerID)
 	}
 
+	m.CleanKnownPeers()
+
 	m.gm.Lock()
 	m.activeConnections--
 	m.gm.Unlock()
@@ -129,9 +132,12 @@ func (m *Manager) Manage() {
 func (m *Manager) sendPeriodicGetAddrMsg() {
 	m.getAddrTicker = time.NewTicker(time.Duration(m.config.GetAddrInterval) * time.Second)
 	for {
+		if m.stop {
+			break
+		}
 		select {
 		case <-m.getAddrTicker.C:
-			m.localPeer.protoc.DoGetAddr()
+			m.localPeer.protoc.SendGetAddr(m.GetActivePeers(0))
 		}
 	}
 }
@@ -141,6 +147,9 @@ func (m *Manager) sendPeriodicGetAddrMsg() {
 func (m *Manager) sendPeriodicPingMsgs() {
 	m.pingTicker = time.NewTicker(time.Duration(m.config.PingInterval) * time.Second)
 	for {
+		if m.stop {
+			break
+		}
 		select {
 		case <-m.pingTicker.C:
 			m.localPeer.protoc.SendPing(m.GetKnownPeers())
@@ -182,13 +191,41 @@ func (m *Manager) NeedMorePeers() bool {
 
 // IsLocalPeer checks if a peer is the local peer
 func (m *Manager) IsLocalPeer(p *Peer) bool {
-	return p.IDPretty() == m.localPeer.IDPretty()
+	return p != nil && m.localPeer != nil && p.IDPretty() == m.localPeer.IDPretty()
 }
 
 // isActive returns true of a peer is considered active.
 // First rule, its timestamp must be within the last 3 hours
 func (m *Manager) isActive(p *Peer) bool {
 	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp.UTC())
+}
+
+// TimestampPunishment sets a new timestamp on a peer by deducting a fixed
+// amount of time from the current timestamp and resigning the new value.
+// It will also call CleanKnowPeer. The purpose is to gradually, remove
+// old, disconnected peers.
+func (m *Manager) TimestampPunishment(remotePeer *Peer) error {
+	if remotePeer == nil {
+		return fmt.Errorf("nil passed")
+	}
+	remotePeer.Timestamp = remotePeer.Timestamp.Add(-1 * time.Hour)
+	m.CleanKnownPeers()
+	return nil
+}
+
+// CleanKnownPeers removes old peers from the known peers
+func (m *Manager) CleanKnownPeers() {
+	activePeers := m.GetActivePeers(0)
+
+	m.kpm.Lock()
+	defer m.kpm.Unlock()
+
+	newKnownPeers := make(map[string]*Peer)
+	for _, p := range activePeers {
+		newKnownPeers[p.IDPretty()] = p
+	}
+
+	m.knownPeers = newKnownPeers
 }
 
 // GetKnownPeers gets all the known peers (active or inactive)
@@ -217,8 +254,7 @@ func (m *Manager) GetActivePeers(limit int) (peers []*Peer) {
 
 // GetRandomActivePeers returns a slice of randomly selected peers
 // whose timestamp is within 3 hours ago.
-// Returns error if number of known and active peers is less than limit
-func (m *Manager) GetRandomActivePeers(limit int) ([]*Peer, error) {
+func (m *Manager) GetRandomActivePeers(limit int) []*Peer {
 
 	knownActivePeers := m.GetActivePeers(-1)
 	m.kpm.Lock()
@@ -231,10 +267,10 @@ func (m *Manager) GetRandomActivePeers(limit int) ([]*Peer, error) {
 	}
 
 	if len(knownActivePeers) <= limit {
-		return knownActivePeers, nil
+		return knownActivePeers
 	}
 
-	return knownActivePeers[:limit], nil
+	return knownActivePeers[:limit]
 }
 
 // CreatePeerFromAddress creates a new peer and assign the multiaddr to it.
@@ -259,6 +295,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 // Stop gracefully stops running routines managed by the manager
 func (m *Manager) Stop() {
+	m.stop = true
 	m.getAddrTicker.Stop()
 	m.pingTicker.Stop()
 }

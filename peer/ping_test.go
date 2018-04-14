@@ -12,7 +12,7 @@ var _ = Describe("Ping", func() {
 
 	Describe(".sendPing", func() {
 		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
-			rp, err := NewPeer(nil, "127.0.0.1:40000", 0)
+			rp, err := NewPeer(nil, "127.0.0.1:30000", 0)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp)
 			rp.Host().Close()
@@ -22,25 +22,26 @@ var _ = Describe("Ping", func() {
 		})
 
 		It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
-			lp, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			lp, err := NewPeer(nil, "127.0.0.1:30001", 1)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp)
 
-			rp, err := NewPeer(nil, "127.0.0.1:40002", 2)
+			rp, err := NewPeer(nil, "127.0.0.1:30002", 2)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(lp) // lp should be rp, as such, will cause the protocol to use lp's private key
 			rp.SetProtocolHandler(util.PingVersion, rpProtoc.OnPing)
 
 			err = lpProtoc.sendPing(rp)
 			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(Equal("failed to verify message signature"))
 		})
 
 		It("should return nil and update remote peer timestamp locally", func() {
-			lp, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			lp, err := NewPeer(nil, "127.0.0.1:30001", 1)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp)
 
-			rp, err := NewPeer(nil, "127.0.0.1:40002", 2)
+			rp, err := NewPeer(nil, "127.0.0.1:30002", 2)
 			Expect(err).To(BeNil())
 
 			lp.PM().AddOrUpdatePeer(rp)

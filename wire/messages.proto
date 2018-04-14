@@ -15,6 +15,17 @@ message HandshakeResponse {
     bytes sig = 2;                      // message signature
 }
 
+// GetAddr is used to request for addresses from other peers
+message GetAddr {
+    bytes sig = 1;
+}
+
+// GetAddrResponse is used to send addresses in response to a GetAddr
+message GetAddrResponse {
+    repeated string addresses = 1;  // list of addresses
+    bytes sig = 2;
+}
+
 // Ping represents a ping message
 message Ping {
     bytes Sig = 1;
