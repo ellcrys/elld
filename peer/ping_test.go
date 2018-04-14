@@ -11,14 +11,14 @@ import (
 var _ = Describe("Ping", func() {
 
 	Describe(".sendPing", func() {
-		It("should return error.Error('handshake failed. failed to connect to peer. dial to self attempted')", func() {
+		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
 			rp, err := NewPeer(nil, "127.0.0.1:40000", 0)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp)
 			rp.Host().Close()
 			err = rpProtoc.sendPing(rp)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
+			Expect(err.Error()).To(Equal("ping failed. failed to connect to peer. dial to self attempted"))
 		})
 
 		It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
