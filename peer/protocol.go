@@ -15,7 +15,8 @@ type Protocol interface {
 	OnHandshake(net.Stream)
 	SendPing([]*Peer)
 	OnPing(net.Stream)
-	DoGetAddr() error
+	SendGetAddr([]*Peer) error
+	OnGetAddr(net.Stream)
 }
 
 // Inception represents the peer protocol

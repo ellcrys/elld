@@ -130,6 +130,11 @@ func (p *Peer) PM() *Manager {
 	return p.peerManager
 }
 
+// IsSame checks if p is the same as peer
+func (p *Peer) IsSame(peer *Peer) bool {
+	return peer != nil && p.IDPretty() == peer.IDPretty()
+}
+
 // SetLocalPeer sets the local peer
 func (p *Peer) SetLocalPeer(peer *Peer) {
 	p.localPeer = peer

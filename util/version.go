@@ -13,4 +13,7 @@ var (
 
 	// PingVersion is the current ping algorithm
 	PingVersion = ProtocolVersion + "/ping/1"
+
+	// GetAddrVersion is the current getaddr algorithm
+	GetAddrVersion = ProtocolVersion + "/getaddr/1"
 )
