@@ -17,8 +17,8 @@ func (protoc *Inception) sendPing(remotePeer *Peer) error {
 	remotePeerID := remotePeer.IDPretty()
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
 	if err != nil {
-		protocLog.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
-		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err)
+		protocLog.Debugw("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
+		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
 
