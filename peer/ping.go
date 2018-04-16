@@ -14,7 +14,7 @@ import (
 
 func (protoc *Inception) sendPing(remotePeer *Peer) error {
 
-	remotePeerIDShort := remotePeer.IDShort()
+	remotePeerIDShort := remotePeer.ShortID()
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
 	if err != nil {
 		protocLog.Debugw("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
@@ -71,7 +71,7 @@ func (protoc *Inception) SendPing(remotePeers []*Peer) {
 // OnPing handles incoming ping message
 func (protoc *Inception) OnPing(s net.Stream) {
 
-	remotePeerIDShort := util.IDShort(s.Conn().RemotePeer())
+	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
 	defer s.Close()
 
 	protoc.log.Infow("Received ping message", "PeerID", remotePeerIDShort)
