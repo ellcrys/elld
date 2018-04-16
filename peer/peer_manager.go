@@ -96,7 +96,7 @@ func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 	if m.PeerExist(peerID) {
 		peer := m.GetKnownPeer(peerID)
 		peer.Timestamp = peer.Timestamp.Add(-2 * time.Hour)
-		m.log.Infow("Peer has disconnected", "PeerID", peerID)
+		m.log.Infow("Peer has disconnected", "PeerID", peer.ShortID())
 	}
 
 	m.CleanKnownPeers()
