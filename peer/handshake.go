@@ -96,7 +96,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 
 	// get active peers
 	var addresses []string
-	peers := protoc.PM().GetActivePeers(1000)
+	peers := protoc.PM().CopyActivePeers(1000)
 	for _, p := range peers {
 		if p.IDPretty() != remotePeerID {
 			addresses = append(addresses, p.GetMultiAddr())

@@ -70,7 +70,7 @@ func (protoc *Inception) SendPing(remotePeers []*Peer) {
 
 // OnPing handles incoming ping message
 func (protoc *Inception) OnPing(s net.Stream) {
-	
+
 	remotePeerID := s.Conn().RemotePeer().Pretty()
 	defer s.Close()
 

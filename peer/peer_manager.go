@@ -252,11 +252,19 @@ func (m *Manager) GetActivePeers(limit int) (peers []*Peer) {
 	return
 }
 
+// CopyActivePeers is like GetActivePeers but a different slice is returned
+func (m *Manager) CopyActivePeers(limit int) (peers []*Peer) {
+	activePeers := m.GetActivePeers(limit)
+	copiedActivePeers := make([]*Peer, len(activePeers))
+	copy(copiedActivePeers, activePeers)
+	return copiedActivePeers
+}
+
 // GetRandomActivePeers returns a slice of randomly selected peers
 // whose timestamp is within 3 hours ago.
 func (m *Manager) GetRandomActivePeers(limit int) []*Peer {
 
-	knownActivePeers := m.GetActivePeers(-1)
+	knownActivePeers := m.CopyActivePeers(0)
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
