@@ -235,6 +235,21 @@ var _ = Describe("PeerManager", func() {
 		})
 	})
 
+	Describe(".CopyActivePeers", func() {
+		var mgr = NewMgr()
+		mgr.knownPeers = make(map[string]*Peer)
+		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+		mgr.knownPeers = map[string]*Peer{
+			"peer1": peer1,
+		}
+
+		It("should return a different slice from the original knownPeer slice", func() {
+			actual := mgr.CopyActivePeers(1)
+			Expect(actual).To(HaveLen(1))
+			Expect(actual).NotTo(Equal(mgr.knownPeers))
+		})
+	})
+
 	Describe(".GetRandomActivePeers", func() {
 
 		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
