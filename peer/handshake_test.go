@@ -53,8 +53,8 @@ var _ = Describe("Handshake", func() {
 
 				activePeerRp := rp.PM().GetActivePeers(0)
 				activePeerLp := lp.PM().GetActivePeers(0)
-				Expect(len(activePeerLp)).To(Equal(1))
 				Expect(len(activePeerRp)).To(Equal(1))
+				Expect(len(activePeerLp)).To(Equal(1))
 			})
 		})
 
@@ -88,7 +88,7 @@ var _ = Describe("Handshake", func() {
 		Context("With 1 inactive/old address in remote peer", func() {
 
 			It("local and remote peer must contain 1 active address", func() {
-				lp, err := NewPeer(nil, "127.0.0.1:40000", 0)
+				lp, err := NewPeer(nil, "127.0.0.1:4000", 0)
 				Expect(err).To(BeNil())
 				lpProtoc := NewInception(lp)
 
@@ -129,9 +129,13 @@ var _ = Describe("Handshake", func() {
 				p1, _ := NewPeer(nil, "127.0.0.1:40002", 2)
 				err = rp.PM().AddOrUpdatePeer(p1)
 				Expect(err).To(BeNil())
+				defer p1.host.Close()
+
 				p2, _ := NewPeer(nil, "127.0.0.1:40003", 3)
 				err = rp.PM().AddOrUpdatePeer(p1)
 				Expect(err).To(BeNil())
+				defer p2.host.Close()
+
 				p1.Timestamp = p1.Timestamp.Add(-5 * time.Hour)
 				p2.Timestamp = p1.Timestamp.Add(-5 * time.Hour)
 

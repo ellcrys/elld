@@ -3,7 +3,6 @@ package peer
 import (
 	"context"
 	"fmt"
-	"io"
 	mrand "math/rand"
 	"net"
 	"strings"
@@ -60,7 +59,7 @@ type Peer struct {
 func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, error) {
 
 	// generate peer identity
-	priv, _, err := GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
+	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keypair")
 	}
@@ -118,11 +117,6 @@ func NewRemotePeer(address ma.Multiaddr, localPeer *Peer) *Peer {
 		localPeer: localPeer,
 		remote:    true,
 	}
-}
-
-// GenerateKeyPair generates private and public keys
-func GenerateKeyPair(r io.Reader) (crypto.PrivKey, crypto.PubKey, error) {
-	return crypto.GenerateEd25519Key(r)
 }
 
 // PM returns the peer manager
@@ -193,6 +187,15 @@ func (p *Peer) IDPretty() string {
 
 	pid, _ := p.address.ValueForProtocol(ma.P_IPFS)
 	return pid
+}
+
+// IDShort is like IDPretty but shorter
+func (p *Peer) IDShort() string {
+	id := p.IDPretty()
+	if len(id) == 0 {
+		return ""
+	}
+	return id[0:12] + ".." + id[40:52]
 }
 
 // Connected checks whether the peer is connected to the local peer.

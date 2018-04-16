@@ -3,6 +3,7 @@ package peer
 import (
 	"context"
 
+	"github.com/ellcrys/druid/testutil"
 	"github.com/ellcrys/druid/util"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -73,6 +74,20 @@ var _ = Describe("Peer", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40000", 0)
 			Expect(err).To(BeNil())
 			Expect(p.IDPretty()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
+			p.Host().Close()
+		})
+	})
+
+	Describe(".IDShort", func() {
+		It("should return empty string when peer has no address", func() {
+			p := Peer{}
+			Expect(p.IDShort()).To(Equal(""))
+		})
+
+		It("should return '12D3KooWL3XJ..JiXkSj7333Jw'", func() {
+			p, err := NewPeer(nil, "127.0.0.1:40000", 0)
+			Expect(err).To(BeNil())
+			Expect(p.IDShort()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
 			p.Host().Close()
 		})
 	})
@@ -163,12 +178,12 @@ var _ = Describe("Peer", func() {
 			Expect(err).To(BeNil())
 			host = p.Host()
 			Expect(err).To(BeNil())
-			host2, err = RandomHost(6, 40106)
+			host2, err = testutil.RandomHost(6, 40106)
 			Expect(err).To(BeNil())
-			host3, err = RandomHost(7, 40107)
+			host3, err = testutil.RandomHost(7, 40107)
 			Expect(err).To(BeNil())
 
-			host.SetStreamHandler("/protocol/0.0.1", NoOpStreamHandler)
+			host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
 			host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
 			host.Peerstore().AddAddr(host3.ID(), host3.Addrs()[0], pstore.PermanentAddrTTL)
 
@@ -220,7 +235,7 @@ var _ = Describe("Peer", func() {
 			host2 = p2.Host()
 			Expect(err).To(BeNil())
 
-			host.SetStreamHandler("/protocol/0.0.1", NoOpStreamHandler)
+			host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
 			host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
 			host.Connect(context.Background(), host.Peerstore().PeerInfo(host2.ID()))
 		})

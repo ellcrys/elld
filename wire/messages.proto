@@ -21,9 +21,14 @@ message GetAddr {
 }
 
 // GetAddrResponse is used to send addresses in response to a GetAddr
-message GetAddrResponse {
-    repeated string addresses = 1;  // list of addresses
+message Addr {
+    repeated Address addresses = 1;  // list of addresses
     bytes sig = 2;
+}
+
+message Address {
+    string address = 1;
+    int64 timestamp = 2;
 }
 
 // Ping represents a ping message

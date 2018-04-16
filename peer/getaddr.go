@@ -14,7 +14,7 @@ import (
 // sendGetAddr sends a wire.GetAddr message to a remote peer
 func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 
-	remotePeerID := remotePeer.IDPretty()
+	remotePeerID := remotePeer.IDShort()
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.GetAddrVersion)
 	if err != nil {
 		protocLog.Debugw("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
@@ -34,7 +34,7 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	protoc.log.Infow("GetAddr message sent to peer", "PeerID", remotePeerID)
 
 	// receive response
-	resp := &wire.GetAddrResponse{}
+	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
 		protocLog.Debugw("Failed to read GetAddr response response", "Err", err, "PeerID", remotePeerID)
@@ -54,12 +54,12 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	// validate address before adding
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
-		if !util.IsValidAddress(addr) {
+		if !util.IsValidAddress(addr.Address) {
 			invalidAddrs++
 			protoc.log.Debugw("Found invalid address in GetAddr response", "Addr", addr, "RemotePeerID", remotePeerID)
 			continue
 		}
-		p, _ := protoc.LocalPeer().PeerFromAddr(addr, true)
+		p, _ := protoc.LocalPeer().PeerFromAddr(addr.Address, true)
 		protoc.PM().AddOrUpdatePeer(p)
 	}
 
@@ -86,16 +86,16 @@ func (protoc *Inception) SendGetAddr(remotePeers []*Peer) error {
 // Sends a list of active addresses to the sender
 func (protoc *Inception) OnGetAddr(s net.Stream) {
 
-	remotePeerID := s.Conn().RemotePeer().Pretty()
+	remotePeerIDShort := util.IDShort(s.Conn().RemotePeer())
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemotePeer(remoteAddr, protoc.LocalPeer())
 	defer s.Close()
 
-	protoc.log.Infow("Received GetAddr message", "PeerID", remotePeerID)
+	protoc.log.Infow("Received GetAddr message", "PeerID", remotePeerIDShort)
 
 	msg := &wire.GetAddr{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
-		protoc.log.Errorw("failed to read getaddr message", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Errorw("failed to read getaddr message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -103,7 +103,7 @@ func (protoc *Inception) OnGetAddr(s net.Stream) {
 	sig := msg.Sig
 	msg.Sig = nil
 	if err := protoc.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify getaddr message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify getaddr message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -115,10 +115,13 @@ func (protoc *Inception) OnGetAddr(s net.Stream) {
 	}
 
 	// send getaddr response message
-	getAddrResp := &wire.GetAddrResponse{}
+	getAddrResp := &wire.Addr{}
 	for _, peer := range activePeers {
 		if !protoc.PM().IsLocalPeer(peer) && !peer.IsSame(remotePeer) {
-			getAddrResp.Addresses = append(getAddrResp.Addresses, peer.GetMultiAddr())
+			getAddrResp.Addresses = append(getAddrResp.Addresses, &wire.Address{
+				Address:   peer.GetMultiAddr(),
+				Timestamp: peer.Timestamp.Unix(),
+			})
 		}
 	}
 
@@ -130,7 +133,7 @@ func (protoc *Inception) OnGetAddr(s net.Stream) {
 		return
 	}
 
-	protoc.log.Infow("Sent GetAddr response to peer", "PeerID", s.Conn().RemotePeer().Pretty())
+	protoc.log.Infow("Sent GetAddr response to peer", "PeerID", remotePeerIDShort)
 
 	w.Flush()
 }

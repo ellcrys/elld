@@ -1,10 +1,8 @@
-package util_test
+package util
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	. "github.com/ellcrys/druid/util"
 )
 
 var _ = Describe("Common", func() {
