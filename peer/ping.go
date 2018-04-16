@@ -14,10 +14,10 @@ import (
 
 func (protoc *Inception) sendPing(remotePeer *Peer) error {
 
-	remotePeerID := remotePeer.IDPretty()
+	remotePeerIDShort := remotePeer.IDShort()
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
 	if err != nil {
-		protocLog.Debugw("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
+		protocLog.Debugw("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
@@ -26,31 +26,31 @@ func (protoc *Inception) sendPing(remotePeer *Peer) error {
 	msg := &wire.Ping{}
 	msg.Sig = protoc.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-		protocLog.Debugw("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerID)
+		protocLog.Debugw("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to write to stream")
 	}
 	w.Flush()
 
-	protoc.log.Infow("Sent ping to peer", "PeerID", remotePeerID)
+	protoc.log.Infow("Sent ping to peer", "PeerID", remotePeerIDShort)
 
 	// receive pong response
 	pongMsg := &wire.Pong{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(pongMsg); err != nil {
-		protocLog.Debugw("Failed to read pong response", "Err", err, "PeerID", remotePeerID)
+		protocLog.Debugw("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read pong response")
 	}
 
 	sig := pongMsg.Sig
 	pongMsg.Sig = nil
 	if err := protoc.verify(pongMsg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to verify message signature")
 	}
 
 	protoc.PM().AddOrUpdatePeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
 
-	protoc.log.Infow("Received pong response from peer", "PeerID", s.Conn().RemotePeer().Pretty())
+	protoc.log.Infow("Received pong response from peer", "PeerID", remotePeerIDShort)
 
 	return nil
 }
@@ -71,14 +71,14 @@ func (protoc *Inception) SendPing(remotePeers []*Peer) {
 // OnPing handles incoming ping message
 func (protoc *Inception) OnPing(s net.Stream) {
 
-	remotePeerID := s.Conn().RemotePeer().Pretty()
+	remotePeerIDShort := util.IDShort(s.Conn().RemotePeer())
 	defer s.Close()
 
-	protoc.log.Infow("Received ping message", "PeerID", remotePeerID)
+	protoc.log.Infow("Received ping message", "PeerID", remotePeerIDShort)
 
 	msg := &wire.Ping{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
-		protoc.log.Errorw("failed to read ping message", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Errorw("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (protoc *Inception) OnPing(s net.Stream) {
 	sig := msg.Sig
 	msg.Sig = nil
 	if err := protoc.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify ping message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify ping message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (protoc *Inception) OnPing(s net.Stream) {
 		return
 	}
 
-	protoc.log.Infow("Sent pong response to peer", "PeerID", s.Conn().RemotePeer().Pretty())
+	protoc.log.Infow("Sent pong response to peer", "PeerID", remotePeerIDShort)
 
 	w.Flush()
 }

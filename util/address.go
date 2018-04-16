@@ -73,3 +73,14 @@ func IDFromAddr(addr ma.Multiaddr) peer.ID {
 	id, _ := peer.IDB58Decode(pid)
 	return id
 }
+
+// IDShort returns the short version an ID
+func IDShort(id peer.ID) string {
+	address := id.Pretty()
+
+	if address == "" {
+		return ""
+	}
+
+	return address[0:12] + ".." + address[40:52]
+}

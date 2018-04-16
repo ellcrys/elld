@@ -3,6 +3,7 @@ package util_test
 import (
 	"context"
 
+	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
@@ -123,6 +124,16 @@ var _ = Describe("Address", func() {
 		It("should return 12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42", func() {
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
 			Expect(IDFromAddr(addr).Pretty()).To(Equal("12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))
+		})
+	})
+
+	Describe(".IDShort", func() {
+		It("should return empty string", func() {
+			Expect(IDShort(peer.ID(""))).To(Equal(""))
+		})
+
+		It("should return 'CovLVG4fQcqR..oMt32Q6LgZDK'", func() {
+			Expect(IDShort(peer.ID("12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))).To(Equal("CovLVG4fQcqR..oMt32Q6LgZDK"))
 		})
 	})
 })

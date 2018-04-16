@@ -14,12 +14,12 @@ import (
 // SendHandshake sends an introduction message to a peer
 func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 
-	remotePeerID := remotePeer.IDPretty()
-	protoc.log.Infow("Sending handshake to peer", "PeerID", remotePeerID)
+	remotePeerIDShort := remotePeer.IDShort()
+	protoc.log.Infow("Sending handshake to peer", "PeerID", remotePeerIDShort)
 
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
 	if err != nil {
-		protocLog.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
+		protocLog.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
@@ -29,18 +29,18 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	msg := &wire.Handshake{Address: protoc.LocalPeer().GetMultiAddr(), SubVersion: util.ClientVersion}
 	msg.Sig = protoc.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-		protocLog.Debugw("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerID)
+		protocLog.Debugw("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to write to stream")
 	}
 	w.Flush()
 
-	protoc.log.Debugw("Sent handshake to peer", "PeerID", remotePeerID)
+	protoc.log.Debugw("Sent handshake to peer", "PeerID", remotePeerIDShort)
 
 	// receive response
 	resp := &wire.HandshakeResponse{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
-		protocLog.Debugw("Failed to read handshake response", "Err", err, "PeerID", remotePeerID)
+		protocLog.Debugw("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
 	}
 
@@ -48,7 +48,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	sig := resp.Sig
 	resp.Sig = nil
 	if err := protoc.verify(resp, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to verify message signature")
 	}
 
@@ -66,21 +66,22 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 		protoc.PM().AddOrUpdatePeer(p)
 	}
 
-	protoc.log.Infow("Received handshake response from peer", "PeerID", remotePeerID, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
+	protoc.log.Infow("Received handshake response from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
 	return nil
 }
 
 // OnHandshake handles incoming handshake request
 func (protoc *Inception) OnHandshake(s net.Stream) {
 
+	remotePeerIDShort := util.IDShort(s.Conn().RemotePeer())
 	remotePeerID := s.Conn().RemotePeer().Pretty()
 	defer s.Close()
 
-	protoc.log.Infow("Received handshake message", "PeerID", remotePeerID)
+	protoc.log.Infow("Received handshake message", "PeerID", remotePeerIDShort)
 
 	msg := &wire.Handshake{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
-		protoc.log.Errorw("failed to read handshake message", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Errorw("failed to read handshake message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -88,7 +89,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 	sig := msg.Sig
 	msg.Sig = nil
 	if err := protoc.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify handshake message signature", "Err", err, "PeerID", remotePeerID)
+		protoc.log.Debugw("failed to verify handshake message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -113,7 +114,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 		return
 	}
 
-	protoc.log.Infow("Sent handshake response to peer", "PeerID", s.Conn().RemotePeer().Pretty(), "NumAddr", len(addresses))
+	protoc.log.Infow("Sent handshake response to peer", "PeerID", remotePeerIDShort, "NumAddr", len(addresses))
 
 	w.Flush()
 }

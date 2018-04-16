@@ -1,4 +1,4 @@
-package peer
+package testutil
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	mrand "math/rand"
 
+	"github.com/ellcrys/druid/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
@@ -17,9 +18,9 @@ var NoOpStreamHandler = func(s net.Stream) {}
 // RandomHost creates a host with random identity
 func RandomHost(seed int64, port int) (host.Host, error) {
 
-	priv, _, err := GenerateKeyPair(mrand.New(mrand.NewSource(seed)))
+	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(seed)))
 	if seed == 0 {
-		priv, _, _ = GenerateKeyPair(rand.Reader)
+		priv, _, _ = util.GenerateKeyPair(rand.Reader)
 	}
 
 	opts := []libp2p.Option{
