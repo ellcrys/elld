@@ -108,7 +108,7 @@ func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 
 // AddBootstrapPeer adds a peer to the manager
 func (m *Manager) AddBootstrapPeer(peer *Peer) {
-	m.bootstrapPeers[peer.IDPretty()] = peer
+	m.bootstrapPeers[peer.StringID()] = peer
 }
 
 // GetBootstrapPeers returns the bootstrap peers
@@ -167,10 +167,10 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
-	existingPeer, exist := m.knownPeers[p.IDPretty()]
+	existingPeer, exist := m.knownPeers[p.StringID()]
 	if !exist {
 		p.Timestamp = time.Now().UTC()
-		m.knownPeers[p.IDPretty()] = p
+		m.knownPeers[p.StringID()] = p
 		return nil
 	}
 
@@ -191,7 +191,7 @@ func (m *Manager) NeedMorePeers() bool {
 
 // IsLocalPeer checks if a peer is the local peer
 func (m *Manager) IsLocalPeer(p *Peer) bool {
-	return p != nil && m.localPeer != nil && p.IDPretty() == m.localPeer.IDPretty()
+	return p != nil && m.localPeer != nil && p.StringID() == m.localPeer.StringID()
 }
 
 // isActive returns true of a peer is considered active.
@@ -222,7 +222,7 @@ func (m *Manager) CleanKnownPeers() {
 
 	newKnownPeers := make(map[string]*Peer)
 	for _, p := range activePeers {
-		newKnownPeers[p.IDPretty()] = p
+		newKnownPeers[p.StringID()] = p
 	}
 
 	m.knownPeers = newKnownPeers
@@ -290,8 +290,8 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 	mAddr, _ := ma.NewMultiaddr(addr)
 	remotePeer := &Peer{address: mAddr}
-	if m.PeerExist(remotePeer.IDPretty()) {
-		m.log.Infof("peer (%s) already exists", remotePeer.IDPretty())
+	if m.PeerExist(remotePeer.StringID()) {
+		m.log.Infof("peer (%s) already exists", remotePeer.StringID())
 		return nil
 	}
 

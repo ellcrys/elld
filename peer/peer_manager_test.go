@@ -52,7 +52,7 @@ var _ = Describe("PeerManager", func() {
 			mgr := NewMgr()
 			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
 			Expect(err).To(BeNil())
-			Expect(mgr.GetKnownPeer(p.IDPretty())).To(BeNil())
+			Expect(mgr.GetKnownPeer(p.StringID())).To(BeNil())
 		})
 
 		It("should return peer when peer is in known peer list", func() {
@@ -61,7 +61,7 @@ var _ = Describe("PeerManager", func() {
 			defer p.host.Close()
 			mgr.AddOrUpdatePeer(p)
 			Expect(err).To(BeNil())
-			actual := mgr.GetKnownPeer(p.IDPretty())
+			actual := mgr.GetKnownPeer(p.StringID())
 			Expect(actual).NotTo(BeNil())
 			Expect(actual).To(Equal(p))
 		})
@@ -72,14 +72,14 @@ var _ = Describe("PeerManager", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40002", 2)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
-			Expect(mgr.PeerExist(p.IDPretty())).To(BeFalse())
+			Expect(mgr.PeerExist(p.StringID())).To(BeFalse())
 		})
 
 		It("peer exists, must return true", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
-			Expect(mgr.PeerExist(p.IDPretty())).To(BeTrue())
+			Expect(mgr.PeerExist(p.StringID())).To(BeTrue())
 		})
 	})
 

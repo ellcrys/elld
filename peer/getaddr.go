@@ -14,7 +14,7 @@ import (
 // sendGetAddr sends a wire.GetAddr message to a remote peer
 func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 
-	remotePeerID := remotePeer.IDShort()
+	remotePeerID := remotePeer.ShortID()
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.GetAddrVersion)
 	if err != nil {
 		protocLog.Debugw("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerID)
@@ -86,7 +86,7 @@ func (protoc *Inception) SendGetAddr(remotePeers []*Peer) error {
 // Sends a list of active addresses to the sender
 func (protoc *Inception) OnGetAddr(s net.Stream) {
 
-	remotePeerIDShort := util.IDShort(s.Conn().RemotePeer())
+	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemotePeer(remoteAddr, protoc.LocalPeer())
 	defer s.Close()

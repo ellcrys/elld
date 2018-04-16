@@ -126,7 +126,7 @@ func (p *Peer) PM() *Manager {
 
 // IsSame checks if p is the same as peer
 func (p *Peer) IsSame(peer *Peer) bool {
-	return peer != nil && p.IDPretty() == peer.IDPretty()
+	return peer != nil && p.StringID() == peer.StringID()
 }
 
 // SetLocalPeer sets the local peer
@@ -179,8 +179,8 @@ func (p *Peer) ID() peer.ID {
 	return id
 }
 
-// IDPretty is like ID() but returns string
-func (p *Peer) IDPretty() string {
+// StringID is like ID() but returns string
+func (p *Peer) StringID() string {
 	if p.address == nil {
 		return ""
 	}
@@ -189,9 +189,9 @@ func (p *Peer) IDPretty() string {
 	return pid
 }
 
-// IDShort is like IDPretty but shorter
-func (p *Peer) IDShort() string {
-	id := p.IDPretty()
+// ShortID is like IDPretty but shorter
+func (p *Peer) ShortID() string {
+	id := p.StringID()
 	if len(id) == 0 {
 		return ""
 	}

@@ -14,7 +14,7 @@ import (
 // SendHandshake sends an introduction message to a peer
 func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 
-	remotePeerIDShort := remotePeer.IDShort()
+	remotePeerIDShort := remotePeer.ShortID()
 	protoc.log.Infow("Sending handshake to peer", "PeerID", remotePeerIDShort)
 
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
@@ -73,7 +73,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 // OnHandshake handles incoming handshake request
 func (protoc *Inception) OnHandshake(s net.Stream) {
 
-	remotePeerIDShort := util.IDShort(s.Conn().RemotePeer())
+	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
 	remotePeerID := s.Conn().RemotePeer().Pretty()
 	defer s.Close()
 
@@ -99,7 +99,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 	var addresses []string
 	peers := protoc.PM().CopyActivePeers(1000)
 	for _, p := range peers {
-		if p.IDPretty() != remotePeerID {
+		if p.StringID() != remotePeerID {
 			addresses = append(addresses, p.GetMultiAddr())
 		}
 	}

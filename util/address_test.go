@@ -129,11 +129,11 @@ var _ = Describe("Address", func() {
 
 	Describe(".IDShort", func() {
 		It("should return empty string", func() {
-			Expect(IDShort(peer.ID(""))).To(Equal(""))
+			Expect(ShortID(peer.ID(""))).To(Equal(""))
 		})
 
 		It("should return 'CovLVG4fQcqR..oMt32Q6LgZDK'", func() {
-			Expect(IDShort(peer.ID("12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))).To(Equal("CovLVG4fQcqR..oMt32Q6LgZDK"))
+			Expect(ShortID(peer.ID("12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))).To(Equal("CovLVG4fQcqR..oMt32Q6LgZDK"))
 		})
 	})
 })

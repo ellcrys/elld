@@ -67,13 +67,13 @@ var _ = Describe("Peer", func() {
 	Describe(".IDPretty", func() {
 		It("should return empty string when peer has no address", func() {
 			p := Peer{}
-			Expect(p.IDPretty()).To(Equal(""))
+			Expect(p.StringID()).To(Equal(""))
 		})
 
 		It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40000", 0)
 			Expect(err).To(BeNil())
-			Expect(p.IDPretty()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
+			Expect(p.StringID()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			p.Host().Close()
 		})
 	})
@@ -81,13 +81,13 @@ var _ = Describe("Peer", func() {
 	Describe(".IDShort", func() {
 		It("should return empty string when peer has no address", func() {
 			p := Peer{}
-			Expect(p.IDShort()).To(Equal(""))
+			Expect(p.ShortID()).To(Equal(""))
 		})
 
 		It("should return '12D3KooWL3XJ..JiXkSj7333Jw'", func() {
 			p, err := NewPeer(nil, "127.0.0.1:40000", 0)
 			Expect(err).To(BeNil())
-			Expect(p.IDShort()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
+			Expect(p.ShortID()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
 			p.Host().Close()
 		})
 	})
@@ -261,8 +261,8 @@ var _ = Describe("Peer", func() {
 			err = lpProtoc.sendPing(rp)
 			Expect(err).To(BeNil())
 
-			Expect(lp.PM().GetKnownPeer(rp.IDPretty()).Connected()).To(BeTrue())
-			Expect(rp.PM().GetKnownPeer(lp.IDPretty()).Connected()).To(BeTrue())
+			Expect(lp.PM().GetKnownPeer(rp.StringID()).Connected()).To(BeTrue())
+			Expect(rp.PM().GetKnownPeer(lp.StringID()).Connected()).To(BeTrue())
 		})
 
 		AfterEach(func() {
