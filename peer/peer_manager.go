@@ -165,7 +165,11 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return fmt.Errorf("nil received as *Peer")
 	}
 
-	if !m.config.Peer.Dev && !util.IsRoutableAddr(p.GetAddr()) {
+	if !util.IsValidAddr(p.GetMultiAddr()) {
+		return fmt.Errorf("peer address is not valid")
+	}
+
+	if !m.config.Peer.Dev && !util.IsRoutableAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not routable")
 	}
 
