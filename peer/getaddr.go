@@ -54,7 +54,9 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
 		p, _ := protoc.LocalPeer().PeerFromAddr(addr.Address, true)
-		protoc.PM().AddOrUpdatePeer(p)
+		if protoc.PM().AddOrUpdatePeer(p) != nil {
+			invalidAddrs++
+		}
 	}
 
 	protoc.log.Infow("Received GetAddr response from peer", "PeerID", remotePeerID, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
