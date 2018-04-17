@@ -333,3 +333,20 @@ func (p *Peer) ip() net.IP {
 	}
 	return net.ParseIP(ip)
 }
+
+// IsBadTimestamp checks whether the timestamp of the peer is bad.
+// It is bad when:
+// - It has no timestamp
+// - The timestamp is 10 minutes in the future or over 3 hours ago
+func (p *Peer) IsBadTimestamp() bool {
+	if p.Timestamp.IsZero() {
+		return true
+	}
+
+	now := time.Now()
+	if p.Timestamp.After(now.Add(time.Minute*10)) || p.Timestamp.Before(now.Add(-3*time.Hour)) {
+		return true
+	}
+
+	return false
+}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
@@ -52,12 +53,20 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 		return fmt.Errorf("failed to verify message signature")
 	}
 
-	protoc.PM().AddOrUpdatePeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
+	remotePeer.Timestamp = time.Now()
+	protoc.PM().AddOrUpdatePeer(remotePeer)
 
 	// validate address before adding
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
-		p, _ := protoc.LocalPeer().PeerFromAddr(addr, true)
+
+		p, _ := protoc.LocalPeer().PeerFromAddr(addr.Address, true)
+		p.Timestamp = time.Unix(addr.Timestamp, 0)
+
+		if p.IsBadTimestamp() {
+			p.Timestamp = time.Now().Add(-1 * time.Hour * 24 * 5)
+		}
+
 		if protoc.PM().AddOrUpdatePeer(p) != nil {
 			invalidAddrs++
 		}
@@ -70,8 +79,9 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 // OnHandshake handles incoming handshake request
 func (protoc *Inception) OnHandshake(s net.Stream) {
 
-	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
-	remotePeerID := s.Conn().RemotePeer().Pretty()
+	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer())
+	remotePeerIDShort := remotePeer.ShortID()
+	remotePeerID := remotePeer.StringID()
 	defer s.Close()
 
 	protoc.log.Infow("Received handshake message", "PeerID", remotePeerIDShort)
@@ -90,14 +100,18 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 		return
 	}
 
-	protoc.PM().AddOrUpdatePeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
+	remotePeer.Timestamp = time.Now()
+	protoc.PM().AddOrUpdatePeer(remotePeer)
 
 	// get active peers
-	var addresses []string
+	var addresses []*wire.Address
 	peers := protoc.PM().CopyActivePeers(1000)
 	for _, p := range peers {
 		if p.StringID() != remotePeerID {
-			addresses = append(addresses, p.GetMultiAddr())
+			addresses = append(addresses, &wire.Address{
+				Address:   p.GetMultiAddr(),
+				Timestamp: p.Timestamp.Unix(),
+			})
 		}
 	}
 

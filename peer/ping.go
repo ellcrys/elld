@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/druid/wire"
 
@@ -48,7 +49,8 @@ func (protoc *Inception) sendPing(remotePeer *Peer) error {
 		return fmt.Errorf("failed to verify message signature")
 	}
 
-	protoc.PM().AddOrUpdatePeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
+	remotePeer.Timestamp = time.Now()
+	protoc.PM().AddOrUpdatePeer(remotePeer)
 
 	protoc.log.Infow("Received pong response from peer", "PeerID", remotePeerIDShort)
 
@@ -71,7 +73,8 @@ func (protoc *Inception) SendPing(remotePeers []*Peer) {
 // OnPing handles incoming ping message
 func (protoc *Inception) OnPing(s net.Stream) {
 
-	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
+	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer())
+	remotePeerIDShort := remotePeer.ShortID()
 	defer s.Close()
 
 	protoc.log.Infow("Received ping message", "PeerID", remotePeerIDShort)
@@ -90,8 +93,6 @@ func (protoc *Inception) OnPing(s net.Stream) {
 		return
 	}
 
-	protoc.PM().AddOrUpdatePeer(NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer()))
-
 	// send pong message
 	pongMsg := &wire.Pong{}
 	pongMsg.Sig = protoc.sign(pongMsg)
@@ -102,6 +103,8 @@ func (protoc *Inception) OnPing(s net.Stream) {
 		return
 	}
 
+	remotePeer.Timestamp = time.Now()
+	protoc.PM().AddOrUpdatePeer(remotePeer)
 	protoc.log.Infow("Sent pong response to peer", "PeerID", remotePeerIDShort)
 
 	w.Flush()
