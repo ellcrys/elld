@@ -12,7 +12,8 @@ import (
 var _ = Describe("Getaddr", func() {
 	var config = &configdir.Config{
 		Peer: &configdir.PeerConfig{
-			Dev: true,
+			Dev:              true,
+			MaxAddrsExpected: 5,
 		},
 	}
 
@@ -96,6 +97,41 @@ var _ = Describe("Getaddr", func() {
 			knownPeers := lpProtoc.PM().KnownPeers()
 			Expect(knownPeers).To(HaveLen(1))
 			Expect(knownPeers[rp2.StringID()]).To(BeNil())
+		})
+
+		It("when address returned is more than MaxAddrsExpected", func() {
+
+			config := &configdir.Config{
+				Peer: &configdir.PeerConfig{
+					Dev:              true,
+					MaxAddrsExpected: 1,
+				},
+			}
+
+			lp, err := NewPeer(config, "127.0.0.1:30011", 4)
+			Expect(err).To(BeNil())
+			lpProtoc := NewInception(lp)
+			defer lp.Host().Close()
+
+			rp, err := NewPeer(config, "127.0.0.1:30012", 5)
+			Expect(err).To(BeNil())
+			rpProtoc := NewInception(rp)
+			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
+			defer rp.Host().Close()
+
+			rp2, err := NewPeer(config, "127.0.0.1:30013", 6)
+			Expect(err).To(BeNil())
+			err = rp.PM().AddOrUpdatePeer(rp2)
+			Expect(err).To(BeNil())
+			defer rp2.Host().Close()
+
+			rp3, err := NewPeer(config, "127.0.0.1:30014", 7)
+			Expect(err).To(BeNil())
+			rp.PM().AddOrUpdatePeer(rp3)
+
+			err = lpProtoc.sendGetAddr(rp)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("too many addresses received. Ignoring addresses"))
 		})
 	})
 })
