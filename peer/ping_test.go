@@ -3,6 +3,7 @@ package peer
 import (
 	"time"
 
+	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,9 +11,15 @@ import (
 
 var _ = Describe("Ping", func() {
 
+	var config = &configdir.Config{
+		Peer: &configdir.PeerConfig{
+			Dev: true,
+		},
+	}
+
 	Describe(".sendPing", func() {
 		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
-			rp, err := NewPeer(nil, "127.0.0.1:30000", 0)
+			rp, err := NewPeer(config, "127.0.0.1:30000", 0)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp)
 			rp.Host().Close()
@@ -22,11 +29,11 @@ var _ = Describe("Ping", func() {
 		})
 
 		It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
-			lp, err := NewPeer(nil, "127.0.0.1:30001", 1)
+			lp, err := NewPeer(config, "127.0.0.1:30001", 1)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp)
 
-			rp, err := NewPeer(nil, "127.0.0.1:30002", 2)
+			rp, err := NewPeer(config, "127.0.0.1:30002", 2)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(lp) // lp should be rp, as such, will cause the protocol to use lp's private key
 			rp.SetProtocolHandler(util.PingVersion, rpProtoc.OnPing)
@@ -37,11 +44,11 @@ var _ = Describe("Ping", func() {
 		})
 
 		It("should return nil and update remote peer timestamp locally", func() {
-			lp, err := NewPeer(nil, "127.0.0.1:30001", 1)
+			lp, err := NewPeer(config, "127.0.0.1:30001", 1)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp)
 
-			rp, err := NewPeer(nil, "127.0.0.1:30002", 2)
+			rp, err := NewPeer(config, "127.0.0.1:30002", 2)
 			Expect(err).To(BeNil())
 
 			lp.PM().AddOrUpdatePeer(rp)

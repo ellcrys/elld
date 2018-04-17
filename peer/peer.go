@@ -255,7 +255,11 @@ func (p *Peer) GetBindAddress() string {
 // AddBootstrapPeers sets the initial nodes to communicate to
 func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 	for _, addr := range peerAddresses {
-		if !util.IsValidAndRoutableAddr(addr) && !p.cfg.Peer.Dev {
+		if !util.IsValidAddr(addr) {
+			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+			continue
+		}
+		if !p.cfg.Peer.Dev && !util.IsRoutableAddr(addr) {
 			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
@@ -263,6 +267,7 @@ func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 		rp := NewRemotePeer(pAddr, p)
 		rp.protoc = p.protoc
 		p.peerManager.AddBootstrapPeer(rp)
+		fmt.Println(len(p.peerManager.bootstrapPeers))
 	}
 	return nil
 }

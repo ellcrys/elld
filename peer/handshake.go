@@ -57,7 +57,12 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	// validate address before adding
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
-		if !util.IsValidAndRoutableAddr(addr) && !protoc.PM().config.Peer.Dev {
+		if !util.IsValidAddr(addr) {
+			invalidAddrs++
+			protoc.log.Debugw("Found invalid address in handshake", "Addr", addr)
+			continue
+		}
+		if !protoc.PM().config.Peer.Dev && !util.IsRoutableAddr(addr) {
 			invalidAddrs++
 			protoc.log.Debugw("Found invalid address in handshake", "Addr", addr)
 			continue
