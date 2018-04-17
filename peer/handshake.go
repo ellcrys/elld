@@ -56,6 +56,11 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	remotePeer.Timestamp = time.Now()
 	protoc.PM().AddOrUpdatePeer(remotePeer)
 
+	if len(resp.Addresses) > protoc.LocalPeer().cfg.Peer.MaxAddrsExpected {
+		protoc.log.Debugw("Too many addresses received. Ignoring addresses", "Err", err, "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
+		return fmt.Errorf("too many addresses received. Ignoring addresses")
+	}
+
 	// validate address before adding
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {

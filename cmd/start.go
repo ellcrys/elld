@@ -43,7 +43,7 @@ var startCmd = &cobra.Command{
 	Short: "Start the peer",
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("druid node started")
+		log.Infof("Druid started")
 
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
@@ -59,6 +59,7 @@ var startCmd = &cobra.Command{
 		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapAddresses...)
 		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapNodes...)
 		cfg.Peer.Dev = dev
+		cfg.Peer.MaxAddrsExpected = 1000
 
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")
