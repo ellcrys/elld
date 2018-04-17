@@ -34,18 +34,17 @@ func IsValidAddr(addr string) bool {
 	return true
 }
 
-// IsValidAndRoutableAddr checks if an addr is valid and routable
-func IsValidAndRoutableAddr(addr string) bool {
-	valid := IsValidAddr(addr)
-	if valid {
-		maddr, _ := ma.NewMultiaddr(addr)
-		ip, _ := maddr.ValueForProtocol(ma.P_IP6)
-		if ip == "" {
-			ip, _ = maddr.ValueForProtocol(ma.P_IP4)
-		}
-		valid = IsRoutable(net.ParseIP(ip))
+// IsRoutableAddr checks if an addr is valid and routable
+func IsRoutableAddr(addr string) bool {
+	maddr, err := ma.NewMultiaddr(addr)
+	if err != nil {
+		return false
 	}
-	return valid
+	ip, _ := maddr.ValueForProtocol(ma.P_IP6)
+	if ip == "" {
+		ip, _ = maddr.ValueForProtocol(ma.P_IP4)
+	}
+	return IsRoutable(net.ParseIP(ip))
 }
 
 // FullRemoteAddressFromStream returns the full peer multi address containing ip4, tcp and ipfs protocols

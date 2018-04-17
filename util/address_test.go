@@ -137,27 +137,27 @@ var _ = Describe("Address", func() {
 		})
 	})
 
-	Describe(".IsValidAndRoutableAddr", func() {
+	Describe(".IsRoutableAddr", func() {
 		It("should return false when addr is not a valid multiaddr", func() {
-			valid := IsValidAndRoutableAddr("invalid_addr")
+			valid := IsRoutableAddr("invalid_addr")
 			Expect(valid).To(BeFalse())
 		})
 
 		It("should return false when addr is '/ip4/0.0.0.0/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42'", func() {
 			addr := "/ip4/0.0.0.0/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
-			valid := IsValidAndRoutableAddr(addr)
+			valid := IsRoutableAddr(addr)
 			Expect(valid).To(BeFalse())
 		})
 
 		It("should return false when addr is '/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42'", func() {
 			addr := "/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
-			valid := IsValidAndRoutableAddr(addr)
+			valid := IsRoutableAddr(addr)
 			Expect(valid).To(BeFalse())
 		})
 
 		It("should return false when addr is '/ip6/::ffff:abcd:ef12:1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42'", func() {
 			addr := "/ip6/::1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
-			valid := IsValidAndRoutableAddr(addr)
+			valid := IsRoutableAddr(addr)
 			Expect(valid).To(BeFalse())
 		})
 	})

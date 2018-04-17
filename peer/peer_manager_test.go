@@ -5,17 +5,19 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/configdir"
+
 	"github.com/ellcrys/druid/util"
 	ma "github.com/multiformats/go-multiaddr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func NewMgr() *Manager {
+func NewMgr(config *configdir.Config) *Manager {
 	var mgr = new(Manager)
 	mgr.kpm = &sync.Mutex{}
 	mgr.gm = &sync.Mutex{}
-	mgr.config = &ManagerConfig{}
+	mgr.config = config
 	mgr.knownPeers = make(map[string]*Peer)
 	mgr.log = util.NewNopLogger()
 	return mgr
@@ -24,8 +26,14 @@ func NewMgr() *Manager {
 var _ = Describe("PeerManager", func() {
 	var mgr *Manager
 
+	var config = &configdir.Config{
+		Peer: &configdir.PeerConfig{
+			Dev: true,
+		},
+	}
+
 	BeforeSuite(func() {
-		p, err := NewPeer(nil, "127.0.0.1:40000", 0)
+		p, err := NewPeer(config, "127.0.0.1:40000", 0)
 		defer p.Host().Close()
 		mgr = p.PM()
 		Expect(err).To(BeNil())
@@ -39,7 +47,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("return nil when peer is successfully added and peers list increases to 1", func() {
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			defer p.Host().Close()
 			err = mgr.AddOrUpdatePeer(p)
 			Expect(err).To(BeNil())
@@ -49,15 +57,15 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".GetKnownPeer", func() {
 		It("should return nil when peer is not in known peer list", func() {
-			mgr := NewMgr()
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			mgr := NewMgr(config)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			Expect(err).To(BeNil())
 			Expect(mgr.GetKnownPeer(p.StringID())).To(BeNil())
 		})
 
 		It("should return peer when peer is in known peer list", func() {
-			mgr := NewMgr()
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			mgr := NewMgr(config)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			defer p.host.Close()
 			mgr.AddOrUpdatePeer(p)
 			Expect(err).To(BeNil())
@@ -69,14 +77,14 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".PeerExist", func() {
 		It("peer does not exist, must return false", func() {
-			p, err := NewPeer(nil, "127.0.0.1:40002", 2)
+			p, err := NewPeer(config, "127.0.0.1:40002", 2)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p.StringID())).To(BeFalse())
 		})
 
 		It("peer exists, must return true", func() {
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			defer p.Host().Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p.StringID())).To(BeTrue())
@@ -85,8 +93,8 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".onPeerConnect", func() {
 		It("should increment active connection count", func() {
-			mgr := NewMgr()
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			mgr := NewMgr(config)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			Expect(err).To(BeNil())
 			defer p.host.Close()
 			addr, _ := ma.NewMultiaddr(p.GetMultiAddr())
@@ -98,9 +106,9 @@ var _ = Describe("PeerManager", func() {
 	Describe(".onPeerDisconnet", func() {
 
 		It("should set the disconnected peer's timestamp to at least 2 hour ago", func() {
-			mgr := NewMgr()
+			mgr := NewMgr(config)
 			mgr.activeConnections = 1
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			Expect(err).To(BeNil())
 			defer p.host.Close()
 			mgr.AddOrUpdatePeer(p)
@@ -117,9 +125,9 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("should increment decrement connection count", func() {
-			mgr := NewMgr()
+			mgr := NewMgr(config)
 			mgr.activeConnections = 3
-			p, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			p, err := NewPeer(config, "127.0.0.1:40001", 1)
 			Expect(err).To(BeNil())
 			defer p.host.Close()
 			addr, _ := ma.NewMultiaddr(p.GetMultiAddr())
@@ -130,8 +138,8 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".GetKnownPeers", func() {
 		It("should return peer1 as the only known peer", func() {
-			mgr := NewMgr()
-			peer1, err := NewPeer(nil, "127.0.0.1:40001", 1)
+			mgr := NewMgr(config)
+			peer1, err := NewPeer(config, "127.0.0.1:40001", 1)
 			Expect(err).To(BeNil())
 			mgr.AddOrUpdatePeer(peer1)
 			actual := mgr.GetKnownPeers()
@@ -203,7 +211,7 @@ var _ = Describe("PeerManager", func() {
 	})
 
 	Describe(".GetActivePeers", func() {
-		var mgr = NewMgr()
+		var mgr = NewMgr(config)
 		mgr.knownPeers = make(map[string]*Peer)
 		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 		peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
@@ -236,7 +244,7 @@ var _ = Describe("PeerManager", func() {
 	})
 
 	Describe(".CopyActivePeers", func() {
-		var mgr = NewMgr()
+		var mgr = NewMgr(config)
 		mgr.knownPeers = make(map[string]*Peer)
 		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 		mgr.knownPeers = map[string]*Peer{
@@ -253,7 +261,7 @@ var _ = Describe("PeerManager", func() {
 	Describe(".GetRandomActivePeers", func() {
 
 		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
@@ -280,7 +288,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("Should return the limit requested if known active peers are more than limit", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
@@ -309,7 +317,7 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".NeedMorePeers", func() {
 		It("should return true if peer manager does not have upto 1000 peers", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
 			mgr.knownPeers = map[string]*Peer{
@@ -321,14 +329,14 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".TimestampPunishment", func() {
 		It("return err.Error('nil passed') when nil is passed as peer", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			err := mgr.TimestampPunishment(nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("nil passed"))
 		})
 
 		It("reduce timestamp by an 3600 seconds", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().UTC()}
 			mgr.knownPeers = map[string]*Peer{
@@ -345,32 +353,32 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".IsLocalPeer", func() {
 		It("should return false if nil is passed", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			Expect(mgr.IsLocalPeer(nil)).To(BeFalse())
 		})
 
 		It("should return false if local peer is nil", func() {
-			var mgr = NewMgr()
+			var mgr = NewMgr(config)
 			mgr.localPeer = nil
 			peer1 := &Peer{Timestamp: time.Now().UTC()}
 			Expect(mgr.IsLocalPeer(peer1)).To(BeFalse())
 		})
 
 		It("should return false if not local peer", func() {
-			var mgr = NewMgr()
-			peer1, err := NewPeer(nil, "127.0.0.1:40010", 1)
+			var mgr = NewMgr(config)
+			peer1, err := NewPeer(config, "127.0.0.1:40010", 1)
 			Expect(err).To(BeNil())
 			defer peer1.host.Close()
 			mgr.localPeer = peer1
-			peer2, err := NewPeer(nil, "127.0.0.1:40011", 2)
+			peer2, err := NewPeer(config, "127.0.0.1:40011", 2)
 			defer peer2.host.Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.IsLocalPeer(peer2)).To(BeFalse())
 		})
 
 		It("should return true if peer is the local peer", func() {
-			var mgr = NewMgr()
-			peer1, err := NewPeer(nil, "127.0.0.1:40010", 1)
+			var mgr = NewMgr(config)
+			peer1, err := NewPeer(config, "127.0.0.1:40010", 1)
 			Expect(err).To(BeNil())
 			defer peer1.host.Close()
 			mgr.localPeer = peer1

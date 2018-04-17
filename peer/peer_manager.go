@@ -33,6 +33,11 @@ type Manager struct {
 // NewManager creates an instance of the peer manager
 func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
 
+	if cfg == nil {
+		cfg = &configdir.Config{}
+		cfg.Peer = &configdir.PeerConfig{}
+	}
+
 	cfg.Peer.GetAddrInterval = 10
 	cfg.Peer.PingInterval = 60
 
@@ -155,9 +160,15 @@ func (m *Manager) sendPeriodicPingMsgs() {
 // exist. If the peer already exists, its timestamp is updated, otherwise,
 // the new peer is added with its timestamp updated.
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
+
 	if p == nil {
 		return fmt.Errorf("nil received as *Peer")
 	}
+
+	if !m.config.Peer.Dev && !util.IsRoutableAddr(p.GetAddr()) {
+		return fmt.Errorf("peer address is not routable")
+	}
+
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
@@ -278,7 +289,11 @@ func (m *Manager) GetRandomActivePeers(limit int) []*Peer {
 // CreatePeerFromAddress creates a new peer and assign the multiaddr to it.
 func (m *Manager) CreatePeerFromAddress(addr string) error {
 
-	if !util.IsValidAndRoutableAddr(addr) && !m.config.Peer.Dev {
+	if !util.IsValidAddr(addr) {
+		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	}
+
+	if !m.config.Peer.Dev && !util.IsRoutableAddr(addr) {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 
