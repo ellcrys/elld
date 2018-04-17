@@ -11,7 +11,7 @@ message Handshake {
 
 // HandshakeResponse is a response to Handshake message
 message HandshakeResponse {
-    repeated string addresses = 1;      // list of addresses
+    repeated Address addresses = 1;      // list of addresses
     bytes sig = 2;                      // message signature
 }
 

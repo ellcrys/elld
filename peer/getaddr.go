@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
@@ -49,11 +50,19 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 		return fmt.Errorf("failed to verify message signature")
 	}
 
+	remotePeer.Timestamp = time.Now()
 	protoc.PM().AddOrUpdatePeer(remotePeer)
 
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
+
 		p, _ := protoc.LocalPeer().PeerFromAddr(addr.Address, true)
+		p.Timestamp = time.Unix(addr.Timestamp, 0)
+
+		if p.IsBadTimestamp() {
+			p.Timestamp = time.Now().Add(-1 * time.Hour * 24 * 5)
+		}
+
 		if protoc.PM().AddOrUpdatePeer(p) != nil {
 			invalidAddrs++
 		}
@@ -103,6 +112,7 @@ func (protoc *Inception) OnGetAddr(s net.Stream) {
 		return
 	}
 
+	remotePeer.Timestamp = time.Now()
 	protoc.PM().AddOrUpdatePeer(remotePeer)
 
 	activePeers := protoc.PM().GetActivePeers(0)

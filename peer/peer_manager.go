@@ -157,8 +157,7 @@ func (m *Manager) sendPeriodicPingMsgs() {
 }
 
 // AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
-// exist. If the peer already exists, its timestamp is updated, otherwise,
-// the new peer is added with its timestamp updated.
+// exist. If the peer already exists, only its timestamp is updated
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 
 	if p == nil {
@@ -176,15 +175,19 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
+	// set timestamp only if not set by caller or elsewhere
+	if p.Timestamp.IsZero() {
+		p.Timestamp = time.Now()
+	}
+
 	existingPeer, exist := m.knownPeers[p.StringID()]
 	if !exist {
-		p.Timestamp = time.Now().UTC()
 		m.knownPeers[p.StringID()] = p
 		return nil
 	}
 
-	existingPeer.Timestamp = time.Now().UTC()
-
+	existingPeer.Timestamp = p.Timestamp
+	existingPeer.address = p.address
 	return nil
 }
 
@@ -206,7 +209,7 @@ func (m *Manager) IsLocalPeer(p *Peer) bool {
 // isActive returns true of a peer is considered active.
 // First rule, its timestamp must be within the last 3 hours
 func (m *Manager) isActive(p *Peer) bool {
-	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp.UTC())
+	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp)
 }
 
 // TimestampPunishment sets a new timestamp on a peer by deducting a fixed
@@ -293,6 +296,8 @@ func (m *Manager) GetRandomActivePeers(limit int) []*Peer {
 // CreatePeerFromAddress creates a new peer and assign the multiaddr to it.
 func (m *Manager) CreatePeerFromAddress(addr string) error {
 
+	var err error
+
 	if !util.IsValidAddr(addr) {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
@@ -302,16 +307,17 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	}
 
 	mAddr, _ := ma.NewMultiaddr(addr)
-	remotePeer := &Peer{address: mAddr}
+	remotePeer := NewRemotePeer(mAddr, m.localPeer)
 	if m.PeerExist(remotePeer.StringID()) {
 		m.log.Infof("peer (%s) already exists", remotePeer.StringID())
 		return nil
 	}
 
-	m.AddOrUpdatePeer(remotePeer)
+	remotePeer.Timestamp = time.Now()
+	err = m.AddOrUpdatePeer(remotePeer)
 	m.log.Infow("added a peer", "PeerAddr", mAddr.String())
 
-	return nil
+	return err
 }
 
 // Stop gracefully stops running routines managed by the manager

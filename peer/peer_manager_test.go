@@ -165,19 +165,20 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		Context("with valid address", func() {
-
+			mgr := NewMgr(config)
 			address := "/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"
 
 			It("peer with address '/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd' must be added", func() {
 				err := mgr.CreatePeerFromAddress(address)
 				Expect(err).To(BeNil())
-				Expect(mgr.KnownPeers()["12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"]).NotTo(BeNil())
+				p := mgr.KnownPeers()["12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"]
+				Expect(p).NotTo(BeNil())
 			})
 
 			It("duplicate peer should be not be recreated", func() {
-				Expect(len(mgr.KnownPeers())).To(Equal(2))
+				Expect(len(mgr.KnownPeers())).To(Equal(1))
 				mgr.CreatePeerFromAddress(address)
-				Expect(len(mgr.KnownPeers())).To(Equal(2))
+				Expect(len(mgr.KnownPeers())).To(Equal(1))
 			})
 		})
 	})
@@ -190,21 +191,21 @@ var _ = Describe("PeerManager", func() {
 
 		It("should return false when Timestamp is 3 hours 10 seconds ago", func() {
 			peer := &Peer{
-				Timestamp: time.Now().UTC().Add((-3 * (60 * 60) * time.Second) + 10),
+				Timestamp: time.Now().Add((-3 * (60 * 60) * time.Second) + 10),
 			}
 			Expect(mgr.isActive(peer)).To(BeFalse())
 		})
 
 		It("should return false when Timestamp is 3 hours ago", func() {
 			peer := &Peer{
-				Timestamp: time.Now().UTC().Add(-3 * (60 * 60) * time.Second),
+				Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second),
 			}
 			Expect(mgr.isActive(peer)).To(BeFalse())
 		})
 
 		It("should return true when Timestamp is 2 hours, 59 minute ago", func() {
 			peer := &Peer{
-				Timestamp: time.Now().UTC().Add((-2 * (60 * 60) * time.Second) + 59*time.Minute),
+				Timestamp: time.Now().Add((-2 * (60 * 60) * time.Second) + 59*time.Minute),
 			}
 			Expect(mgr.isActive(peer)).To(BeTrue())
 		})
@@ -213,9 +214,9 @@ var _ = Describe("PeerManager", func() {
 	Describe(".GetActivePeers", func() {
 		var mgr = NewMgr(config)
 		mgr.knownPeers = make(map[string]*Peer)
-		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
-		peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
-		peer3 := &Peer{Timestamp: time.Now().UTC().Add(-3 * (60 * 60) * time.Second)}
+		peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+		peer2 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+		peer3 := &Peer{Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second)}
 		mgr.knownPeers = map[string]*Peer{
 			"peer1": peer1,
 			"peer2": peer2,
@@ -246,7 +247,7 @@ var _ = Describe("PeerManager", func() {
 	Describe(".CopyActivePeers", func() {
 		var mgr = NewMgr(config)
 		mgr.knownPeers = make(map[string]*Peer)
-		peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+		peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 		mgr.knownPeers = map[string]*Peer{
 			"peer1": peer1,
 		}
@@ -263,9 +264,9 @@ var _ = Describe("PeerManager", func() {
 		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
 			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
-			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
-			peer3 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			peer2 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			peer3 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
 			mgr.knownPeers = map[string]*Peer{
 				"peer1": peer1,
 				"peer2": peer2,
@@ -290,9 +291,9 @@ var _ = Describe("PeerManager", func() {
 		It("Should return the limit requested if known active peers are more than limit", func() {
 			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
-			peer2 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
-			peer3 := &Peer{Timestamp: time.Now().UTC().Add(-2 * (60 * 60) * time.Second)}
+			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			peer2 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			peer3 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
 			mgr.knownPeers = map[string]*Peer{
 				"peer1": peer1,
 				"peer2": peer2,
@@ -319,7 +320,7 @@ var _ = Describe("PeerManager", func() {
 		It("should return true if peer manager does not have upto 1000 peers", func() {
 			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().UTC().Add(-1 * (60 * 60) * time.Second)}
+			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 			mgr.knownPeers = map[string]*Peer{
 				"peer1": peer1,
 			}
@@ -338,7 +339,7 @@ var _ = Describe("PeerManager", func() {
 		It("reduce timestamp by an 3600 seconds", func() {
 			var mgr = NewMgr(config)
 			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().UTC()}
+			peer1 := &Peer{Timestamp: time.Now()}
 			mgr.knownPeers = map[string]*Peer{
 				"peer1": peer1,
 			}
@@ -360,7 +361,7 @@ var _ = Describe("PeerManager", func() {
 		It("should return false if local peer is nil", func() {
 			var mgr = NewMgr(config)
 			mgr.localPeer = nil
-			peer1 := &Peer{Timestamp: time.Now().UTC()}
+			peer1 := &Peer{Timestamp: time.Now()}
 			Expect(mgr.IsLocalPeer(peer1)).To(BeFalse())
 		})
 
