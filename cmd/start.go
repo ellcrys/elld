@@ -48,6 +48,7 @@ var startCmd = &cobra.Command{
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
 		seed, _ := cmd.Flags().GetInt64("seed")
+		dev, _ := cmd.Flags().GetBool("dev")
 		cfgDirPath, _ := cmd.Root().PersistentFlags().GetString("cfgdir")
 
 		cfg, err := loadCfg(cfgDirPath)
@@ -57,6 +58,7 @@ var startCmd = &cobra.Command{
 
 		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapAddresses...)
 		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapNodes...)
+		cfg.Peer.Dev = dev
 
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")
@@ -97,4 +99,5 @@ func init() {
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
+	startCmd.Flags().Bool("dev", false, "Run client in development mode")
 }

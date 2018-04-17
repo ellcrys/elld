@@ -28,17 +28,17 @@ var _ = Describe("Address", func() {
 		})
 	})
 
-	Describe(".IsValidAddress", func() {
+	Describe(".IsValidFullMultiaddr", func() {
 
 		It("Should return false for all cases ", func() {
 			falseCases := []string{"ip4/1.1.1.1", "/ip4/1.1.1.1", "/ip4/1.1.1.1/tcp/1234", "/ip4/1.1.1.1/tcp/1234/ipfs"}
 			for _, c := range falseCases {
-				Expect(IsValidAddress(c)).To(BeFalse())
+				Expect(IsValidAddr(c)).To(BeFalse())
 			}
 		})
 
 		It("Should return true if address is /ip4/1.1.1.1/tcp/1234/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA", func() {
-			Expect(IsValidAddress("/ip4/1.1.1.1/tcp/1234/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA")).To(BeTrue())
+			Expect(IsValidAddr("/ip4/1.1.1.1/tcp/1234/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA")).To(BeTrue())
 		})
 	})
 
@@ -59,13 +59,13 @@ var _ = Describe("Address", func() {
 		It("should return /ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73", func() {
 			remoteHost, err := testutil.RandomHost(1234, 40101)
 			Expect(err).To(BeNil())
+			defer remoteHost.Close()
 			remoteHost.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
 
 			host.Peerstore().AddAddr(remoteHost.ID(), remoteHost.Addrs()[0], pstore.PermanentAddrTTL)
 			s, err := host.NewStream(context.Background(), remoteHost.ID(), protocol.ID("/protocol/0.0.1"))
 			Expect(err).To(BeNil())
 			defer host.Close()
-			defer remoteHost.Close()
 
 			addr := FullRemoteAddressFromStream(s)
 			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"))
@@ -90,12 +90,12 @@ var _ = Describe("Address", func() {
 			remoteHost, err := testutil.RandomHost(1234, 40103)
 			Expect(err).To(BeNil())
 			remoteHost.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
+			defer remoteHost.Close()
 
 			host.Peerstore().AddAddr(remoteHost.ID(), remoteHost.Addrs()[0], pstore.PermanentAddrTTL)
 			s, err := host.NewStream(context.Background(), remoteHost.ID(), protocol.ID("/protocol/0.0.1"))
 			Expect(err).To(BeNil())
 			defer host.Close()
-			defer remoteHost.Close()
 
 			addr := FullRemoteAddressFromConn(s.Conn())
 			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40103/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"))
@@ -127,13 +127,38 @@ var _ = Describe("Address", func() {
 		})
 	})
 
-	Describe(".IDShort", func() {
+	Describe(".ShortID", func() {
 		It("should return empty string", func() {
 			Expect(ShortID(peer.ID(""))).To(Equal(""))
 		})
 
 		It("should return 'CovLVG4fQcqR..oMt32Q6LgZDK'", func() {
 			Expect(ShortID(peer.ID("12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))).To(Equal("CovLVG4fQcqR..oMt32Q6LgZDK"))
+		})
+	})
+
+	Describe(".IsValidAndRoutableAddr", func() {
+		It("should return false when addr is not a valid multiaddr", func() {
+			valid := IsValidAndRoutableAddr("invalid_addr")
+			Expect(valid).To(BeFalse())
+		})
+
+		It("should return false when addr is '/ip4/0.0.0.0/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42'", func() {
+			addr := "/ip4/0.0.0.0/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
+			valid := IsValidAndRoutableAddr(addr)
+			Expect(valid).To(BeFalse())
+		})
+
+		It("should return false when addr is '/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42'", func() {
+			addr := "/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
+			valid := IsValidAndRoutableAddr(addr)
+			Expect(valid).To(BeFalse())
+		})
+
+		It("should return false when addr is '/ip6/::ffff:abcd:ef12:1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42'", func() {
+			addr := "/ip6/::1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
+			valid := IsValidAndRoutableAddr(addr)
+			Expect(valid).To(BeFalse())
 		})
 	})
 })

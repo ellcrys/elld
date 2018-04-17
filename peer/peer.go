@@ -46,6 +46,7 @@ func SilenceLoggers() {
 type Peer struct {
 	cfg         *configdir.Config
 	address     ma.Multiaddr
+	IP          net.IP
 	host        host.Host
 	wg          sync.WaitGroup
 	localPeer   *Peer
@@ -93,7 +94,8 @@ func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, err
 	}
 
 	peer.localPeer = peer
-	peer.peerManager = NewManager(peer)
+	peer.peerManager = NewManager(config, peer)
+	peer.IP = peer.ip()
 
 	// go func() {
 	// 	tm := time.NewTicker(10 * time.Second)
@@ -253,7 +255,7 @@ func (p *Peer) GetBindAddress() string {
 // AddBootstrapPeers sets the initial nodes to communicate to
 func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 	for _, addr := range peerAddresses {
-		if !util.IsValidAddress(addr) {
+		if !util.IsValidAndRoutableAddr(addr) && !p.cfg.Peer.Dev {
 			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
@@ -312,4 +314,17 @@ func (p *Peer) PeerFromAddr(addr string, remote bool) (*Peer, error) {
 		protoc:    p.protoc,
 		remote:    remote,
 	}, nil
+}
+
+// ip returns the IP of the peer
+func (p *Peer) ip() net.IP {
+	addr := p.GetIP4TCPAddr()
+	if addr == nil {
+		return nil
+	}
+	ip, _ := addr.ValueForProtocol(ma.P_IP6)
+	if ip == "" {
+		ip, _ = addr.ValueForProtocol(ma.P_IP4)
+	}
+	return net.ParseIP(ip)
 }
