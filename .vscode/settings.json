@@ -13,6 +13,7 @@
         "gologging",
         "ipfs",
         "libp",
+        "maddr",
         "mrand",
         "notif",
         "protoc"

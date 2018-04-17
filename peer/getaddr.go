@@ -54,7 +54,7 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	// validate address before adding
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
-		if !util.IsValidAddress(addr.Address) {
+		if !util.IsValidAndRoutableAddr(addr.Address) && !protoc.PM().config.Peer.Dev {
 			invalidAddrs++
 			protoc.log.Debugw("Found invalid address in GetAddr response", "Addr", addr, "RemotePeerID", remotePeerID)
 			continue

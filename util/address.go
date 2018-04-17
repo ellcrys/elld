@@ -19,19 +19,33 @@ func IsValidHostPortAddress(address string) bool {
 	return err == nil
 }
 
-// IsValidAddress checks if a value is a valid multi address with ip4 and ipfs protocols
-func IsValidAddress(addr string) bool {
+// IsValidAddr checks if an address is a valid multi address with ip4, tcp, and ipfs protocols
+func IsValidAddr(addr string) bool {
 	mAddr, err := ma.NewMultiaddr(addr)
 	if err != nil {
 		return false
 	}
 
 	protocols := mAddr.Protocols()
-	if len(protocols) != 3 || protocols[0].Name != "ip4" || protocols[1].Name != "tcp" || protocols[2].Name != "ipfs" {
+	if len(protocols) != 3 || (protocols[0].Name != "ip4" && protocols[0].Name != "ip6") || protocols[1].Name != "tcp" || protocols[2].Name != "ipfs" {
 		return false
 	}
 
 	return true
+}
+
+// IsValidAndRoutableAddr checks if an addr is valid and routable
+func IsValidAndRoutableAddr(addr string) bool {
+	valid := IsValidAddr(addr)
+	if valid {
+		maddr, _ := ma.NewMultiaddr(addr)
+		ip, _ := maddr.ValueForProtocol(ma.P_IP6)
+		if ip == "" {
+			ip, _ = maddr.ValueForProtocol(ma.P_IP4)
+		}
+		valid = IsRoutable(net.ParseIP(ip))
+	}
+	return valid
 }
 
 // FullRemoteAddressFromStream returns the full peer multi address containing ip4, tcp and ipfs protocols

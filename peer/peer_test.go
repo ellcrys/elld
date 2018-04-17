@@ -270,4 +270,14 @@ var _ = Describe("Peer", func() {
 			host2.Close()
 		})
 	})
+
+	Describe(".ip", func() {
+		It("should", func() {
+			p, err := NewPeer(nil, "127.0.0.1:40106", 6)
+			Expect(err).To(BeNil())
+			ip := p.ip()
+			Expect(ip).ToNot(BeNil())
+			Expect(ip.String()).To(Equal("127.0.0.1"))
+		})
+	})
 })

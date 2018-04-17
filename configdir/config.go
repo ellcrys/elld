@@ -2,7 +2,10 @@ package configdir
 
 // PeerConfig represents peer configuration
 type PeerConfig struct {
-	BootstrapNodes []string `json:"boostrapNodes"`
+	BootstrapNodes  []string `json:"boostrapNodes"`
+	Dev             bool     `json:"dev"`
+	GetAddrInterval int64    `json:"getAddrInt"`
+	PingInterval    int64    `json:"pingInt"`
 }
 
 // Config represents the client's configuration

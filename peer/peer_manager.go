@@ -6,16 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/configdir"
+
 	"github.com/ellcrys/druid/util"
 	ma "github.com/multiformats/go-multiaddr"
 	"go.uber.org/zap"
 )
-
-// ManagerConfig represents the configuration for the manager
-type ManagerConfig struct {
-	GetAddrInterval int
-	PingInterval    int
-}
 
 // Manager manages known peers connected to the local peer.
 // It is responsible for initiating the peer discovery process
@@ -27,7 +23,7 @@ type Manager struct {
 	bootstrapPeers    map[string]*Peer   // bootstrap peers
 	knownPeers        map[string]*Peer   // peers known to the peer manager
 	log               *zap.SugaredLogger // manager's logger
-	config            *ManagerConfig     // manager's configuration
+	config            *configdir.Config  // manager's configuration
 	getAddrTicker     *time.Ticker       // ticker that sends "getaddr" messages
 	pingTicker        *time.Ticker       // ticker that sends "ping" messages
 	activeConnections int                // number of active connections
@@ -35,12 +31,10 @@ type Manager struct {
 }
 
 // NewManager creates an instance of the peer manager
-func NewManager(localPeer *Peer) *Manager {
+func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
 
-	defaultConfig := &ManagerConfig{
-		GetAddrInterval: 10,
-		PingInterval:    60,
-	}
+	cfg.Peer.GetAddrInterval = 10
+	cfg.Peer.PingInterval = 60
 
 	m := &Manager{
 		kpm:            new(sync.Mutex),
@@ -49,7 +43,7 @@ func NewManager(localPeer *Peer) *Manager {
 		log:            peerLog.Named("manager"),
 		bootstrapPeers: make(map[string]*Peer),
 		knownPeers:     make(map[string]*Peer),
-		config:         defaultConfig,
+		config:         cfg,
 	}
 
 	m.localPeer.host.Network().Notify(&Notification{
@@ -130,7 +124,7 @@ func (m *Manager) Manage() {
 // sendPeriodicGetAddrMsg sends "getaddr" message to all known active
 // peers as long as the number of known peers is less than 1000
 func (m *Manager) sendPeriodicGetAddrMsg() {
-	m.getAddrTicker = time.NewTicker(time.Duration(m.config.GetAddrInterval) * time.Second)
+	m.getAddrTicker = time.NewTicker(time.Duration(m.config.Peer.GetAddrInterval) * time.Second)
 	for {
 		if m.stop {
 			break
@@ -145,7 +139,7 @@ func (m *Manager) sendPeriodicGetAddrMsg() {
 // sendPeriodicPingMsgs sends "ping" messages to all peers
 // as a basic health check routine.
 func (m *Manager) sendPeriodicPingMsgs() {
-	m.pingTicker = time.NewTicker(time.Duration(m.config.PingInterval) * time.Second)
+	m.pingTicker = time.NewTicker(time.Duration(m.config.Peer.PingInterval) * time.Second)
 	for {
 		if m.stop {
 			break
@@ -284,7 +278,7 @@ func (m *Manager) GetRandomActivePeers(limit int) []*Peer {
 // CreatePeerFromAddress creates a new peer and assign the multiaddr to it.
 func (m *Manager) CreatePeerFromAddress(addr string) error {
 
-	if !util.IsValidAddress(addr) {
+	if !util.IsValidAndRoutableAddr(addr) && !m.config.Peer.Dev {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 
