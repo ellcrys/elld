@@ -58,7 +58,9 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
 		p, _ := protoc.LocalPeer().PeerFromAddr(addr, true)
-		protoc.PM().AddOrUpdatePeer(p)
+		if protoc.PM().AddOrUpdatePeer(p) != nil {
+			invalidAddrs++
+		}
 	}
 
 	protoc.log.Infow("Received handshake response from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
