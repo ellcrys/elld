@@ -267,7 +267,6 @@ func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 		rp := NewRemotePeer(pAddr, p)
 		rp.protoc = p.protoc
 		p.peerManager.AddBootstrapPeer(rp)
-		fmt.Println(len(p.peerManager.bootstrapPeers))
 	}
 	return nil
 }
