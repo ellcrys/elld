@@ -99,6 +99,31 @@ var _ = Describe("Getaddr", func() {
 			Expect(knownPeers[rp2.StringID()]).To(BeNil())
 		})
 
+		It("hardcoded seed peer should not be returned", func() {
+			lp, err := NewPeer(config, "127.0.0.1:30011", 4)
+			Expect(err).To(BeNil())
+			lpProtoc := NewInception(lp)
+			defer lp.Host().Close()
+
+			rp, err := NewPeer(config, "127.0.0.1:30012", 5)
+			Expect(err).To(BeNil())
+			rpProtoc := NewInception(rp)
+			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
+			defer rp.Host().Close()
+
+			rp2, err := NewPeer(config, "127.0.0.1:30013", 6)
+			Expect(err).To(BeNil())
+			rp2.isHardcodedSeed = true
+			err = rp.PM().AddOrUpdatePeer(rp2)
+			Expect(err).To(BeNil())
+			defer rp2.Host().Close()
+			err = lpProtoc.sendGetAddr(rp)
+			Expect(err).To(BeNil())
+
+			knownPeers := lpProtoc.PM().KnownPeers()
+			Expect(knownPeers).To(HaveLen(1))
+		})
+
 		It("when address returned is more than MaxAddrsExpected", func() {
 
 			config := &configdir.Config{
