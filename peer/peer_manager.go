@@ -120,6 +120,15 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 	return m.bootstrapPeers[id]
 }
 
+// onHandshakeSuccess sends a GetAddr message to the peer
+func (m *Manager) onHandshakeSuccess(peerID string) error {
+	peer := m.GetKnownPeer(peerID)
+	if peer == nil {
+		return fmt.Errorf("peer not found")
+	}
+	return m.localPeer.protoc.SendGetAddr([]*Peer{peer})
+}
+
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
 	// go m.sendPeriodicGetAddrMsg()

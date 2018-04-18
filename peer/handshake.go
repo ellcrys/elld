@@ -55,6 +55,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 
 	remotePeer.Timestamp = time.Now()
 	protoc.PM().AddOrUpdatePeer(remotePeer)
+	go protoc.PM().onHandshakeSuccess(remotePeer.StringID())
 
 	protoc.log.Infow("Handshake was successful", "PeerID", remotePeerIDShort, "SubVersion", resp.SubVersion)
 	return nil
