@@ -50,9 +50,6 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 		return fmt.Errorf("failed to verify message signature")
 	}
 
-	remotePeer.Timestamp = time.Now()
-	protoc.PM().AddOrUpdatePeer(remotePeer)
-
 	if len(resp.Addresses) > protoc.LocalPeer().cfg.Peer.MaxAddrsExpected {
 		protoc.log.Debugw("Too many addresses received. Ignoring addresses", "Err", err, "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
 		return fmt.Errorf("too many addresses received. Ignoring addresses")
@@ -116,9 +113,6 @@ func (protoc *Inception) OnGetAddr(s net.Stream) {
 		protoc.log.Debugw("failed to verify getaddr message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
-
-	remotePeer.Timestamp = time.Now()
-	protoc.PM().AddOrUpdatePeer(remotePeer)
 
 	activePeers := protoc.PM().GetActivePeers(0)
 	if len(activePeers) > 2500 {
