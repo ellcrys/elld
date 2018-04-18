@@ -122,8 +122,8 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
-	go m.sendPeriodicGetAddrMsg()
-	go m.sendPeriodicPingMsgs()
+	// go m.sendPeriodicGetAddrMsg()
+	// go m.sendPeriodicPingMsgs()
 }
 
 // sendPeriodicGetAddrMsg sends "getaddr" message to all known active

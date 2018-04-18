@@ -27,7 +27,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 
 	// send handshake
 	w := bufio.NewWriter(s)
-	msg := &wire.Handshake{Address: protoc.LocalPeer().GetMultiAddr(), SubVersion: util.ClientVersion}
+	msg := &wire.Handshake{SubVersion: util.ClientVersion}
 	msg.Sig = protoc.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		protocLog.Debugw("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
@@ -38,7 +38,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	protoc.log.Debugw("Sent handshake to peer", "PeerID", remotePeerIDShort)
 
 	// receive response
-	resp := &wire.HandshakeResponse{}
+	resp := &wire.HandshakeAck{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
 		protocLog.Debugw("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
@@ -56,28 +56,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	remotePeer.Timestamp = time.Now()
 	protoc.PM().AddOrUpdatePeer(remotePeer)
 
-	if len(resp.Addresses) > protoc.LocalPeer().cfg.Peer.MaxAddrsExpected {
-		protoc.log.Debugw("Too many addresses received. Ignoring addresses", "Err", err, "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
-		return fmt.Errorf("too many addresses received. Ignoring addresses")
-	}
-
-	// validate address before adding
-	invalidAddrs := 0
-	for _, addr := range resp.Addresses {
-
-		p, _ := protoc.LocalPeer().PeerFromAddr(addr.Address, true)
-		p.Timestamp = time.Unix(addr.Timestamp, 0)
-
-		if p.IsBadTimestamp() {
-			p.Timestamp = time.Now().Add(-1 * time.Hour * 24 * 5)
-		}
-
-		if protoc.PM().AddOrUpdatePeer(p) != nil {
-			invalidAddrs++
-		}
-	}
-
-	protoc.log.Infow("Received handshake response from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
+	protoc.log.Infow("Handshake was successful", "PeerID", remotePeerIDShort, "SubVersion", resp.SubVersion)
 	return nil
 }
 
@@ -86,7 +65,6 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 
 	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
-	remotePeerID := remotePeer.StringID()
 	defer s.Close()
 
 	protoc.log.Infow("Received handshake message", "PeerID", remotePeerIDShort)
@@ -105,32 +83,20 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 		return
 	}
 
-	remotePeer.Timestamp = time.Now()
-	protoc.PM().AddOrUpdatePeer(remotePeer)
-
-	// get active peers
-	var addresses []*wire.Address
-	peers := protoc.PM().CopyActivePeers(1000)
-	for _, p := range peers {
-		if p.StringID() != remotePeerID && !p.isHardcodedSeed {
-			addresses = append(addresses, &wire.Address{
-				Address:   p.GetMultiAddr(),
-				Timestamp: p.Timestamp.Unix(),
-			})
-		}
-	}
-
 	// create response message, sign it and add the signature to the message
-	addrMsg := &wire.HandshakeResponse{Addresses: addresses}
-	addrMsg.Sig = protoc.sign(addrMsg)
+	ack := &wire.HandshakeAck{SubVersion: util.ClientVersion}
+	ack.Sig = protoc.sign(ack)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
-	if err := enc.Encode(addrMsg); err != nil {
+	if err := enc.Encode(ack); err != nil {
 		protoc.log.Errorw("failed to send handshake response", "Err", err)
 		return
 	}
 
-	protoc.log.Infow("Sent handshake response to peer", "PeerID", remotePeerIDShort, "NumAddr", len(addresses))
+	// add the remote peer
+	remotePeer.Timestamp = time.Now()
+	protoc.PM().AddOrUpdatePeer(remotePeer)
+	protoc.log.Infow("Handshake has been acknowledged", "PeerID", remotePeerIDShort, "SubVersion", msg.SubVersion)
 
 	w.Flush()
 }
