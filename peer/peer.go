@@ -44,16 +44,17 @@ func SilenceLoggers() {
 
 // Peer represents a network node
 type Peer struct {
-	cfg         *configdir.Config
-	address     ma.Multiaddr
-	IP          net.IP
-	host        host.Host
-	wg          sync.WaitGroup
-	localPeer   *Peer
-	peerManager *Manager
-	protoc      Protocol
-	remote      bool
-	Timestamp   time.Time
+	cfg             *configdir.Config // peer config
+	address         ma.Multiaddr      // peer multiaddr
+	IP              net.IP            // peer ip
+	host            host.Host         // peer libp2p host
+	wg              sync.WaitGroup    // wait group for preventing the main thread from exiting
+	localPeer       *Peer             // local peer
+	peerManager     *Manager          // peer manager for managing connections to other remote peers
+	protoc          Protocol          // protocol instance
+	remote          bool              // remote indicates the peer represents a remote peer
+	Timestamp       time.Time         // the last time this peer was seen/active
+	isHardcodedSeed bool              // whether the peer was hardcoded as a seed
 }
 
 // NewPeer creates a peer instance at the specified port
@@ -253,7 +254,7 @@ func (p *Peer) GetBindAddress() string {
 }
 
 // AddBootstrapPeers sets the initial nodes to communicate to
-func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
+func (p *Peer) AddBootstrapPeers(peerAddresses []string, hardcoded bool) error {
 	for _, addr := range peerAddresses {
 		if !util.IsValidAddr(addr) {
 			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
@@ -265,6 +266,7 @@ func (p *Peer) AddBootstrapPeers(peerAddresses []string) error {
 		}
 		pAddr, _ := ma.NewMultiaddr(addr)
 		rp := NewRemotePeer(pAddr, p)
+		rp.isHardcodedSeed = hardcoded
 		rp.protoc = p.protoc
 		p.peerManager.AddBootstrapPeer(rp)
 	}

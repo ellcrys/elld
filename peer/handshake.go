@@ -112,7 +112,7 @@ func (protoc *Inception) OnHandshake(s net.Stream) {
 	var addresses []*wire.Address
 	peers := protoc.PM().CopyActivePeers(1000)
 	for _, p := range peers {
-		if p.StringID() != remotePeerID {
+		if p.StringID() != remotePeerID && !p.isHardcodedSeed {
 			addresses = append(addresses, &wire.Address{
 				Address:   p.GetMultiAddr(),
 				Timestamp: p.Timestamp.Unix(),
