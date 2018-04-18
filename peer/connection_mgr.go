@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/ellcrys/druid/util"
 	net "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
@@ -20,6 +22,7 @@ type ConnectionManager struct {
 	gmx        *sync.Mutex
 	pm         *Manager
 	activeConn int
+	log        *zap.SugaredLogger
 	connEstInt *time.Ticker
 }
 
@@ -28,6 +31,7 @@ func NewConnMrg(m *Manager) *ConnectionManager {
 	return &ConnectionManager{
 		pm:  m,
 		gmx: &sync.Mutex{},
+		log: peerLog.Named("conn_manager"),
 	}
 }
 
@@ -41,6 +45,11 @@ func (m *ConnectionManager) connectionCount() int {
 	m.gmx.Lock()
 	defer m.gmx.Unlock()
 	return m.activeConn
+}
+
+// needMoreConnections checks whether the local peer needs new connections
+func (m *ConnectionManager) needMoreConnections() bool {
+	return m.connectionCount() < m.pm.config.Peer.MaxConnections
 }
 
 // establishConnections will attempt to send a handshake to
@@ -72,6 +81,13 @@ func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {
 
 // Connected is called when a connection is opened
 func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
+
+	if !m.needMoreConnections() {
+		m.log.Debugf("Connection limit reached. Closing new connection", "NumConn", m.activeConn)
+		conn.Close()
+		return
+	}
+
 	m.gmx.Lock()
 	defer m.gmx.Unlock()
 	m.activeConn++

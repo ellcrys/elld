@@ -98,18 +98,6 @@ func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, err
 	peer.peerManager = NewManager(config, peer)
 	peer.IP = peer.ip()
 
-	// go func() {
-	// 	tm := time.NewTicker(10 * time.Second)
-	// 	for {
-	// 		select {
-	// 		case <-tm.C:
-	// 			for _, p := range peer.peerManager.knownPeers {
-	// 				fmt.Println("-> ", p.IDPretty(), ">>>", p.Connected())
-	// 			}
-	// 		}
-	// 	}
-	// }()
-
 	return peer, nil
 }
 

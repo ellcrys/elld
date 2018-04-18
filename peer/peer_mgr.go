@@ -196,7 +196,6 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	}
 
 	existingPeer.Timestamp = p.Timestamp
-	existingPeer.address = p.address
 	return nil
 }
 
@@ -207,7 +206,7 @@ func (m *Manager) KnownPeers() map[string]*Peer {
 
 // NeedMorePeers checks whether we need more peers
 func (m *Manager) NeedMorePeers() bool {
-	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.connectionCount() < m.config.Peer.MaxConnections
+	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
 }
 
 // IsLocalPeer checks if a peer is the local peer
