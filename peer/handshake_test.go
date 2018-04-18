@@ -62,5 +62,5 @@ var _ = Describe("Handshake", func() {
 				Expect(len(activePeerLp)).To(Equal(1))
 			})
 		})
-˝	})
+	})
 })
