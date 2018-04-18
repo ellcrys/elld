@@ -178,7 +178,7 @@ var _ = Describe("Peer", func() {
 			It("peer manager's bootstrap list should be empty", func() {
 				p, err := NewPeer(config, "127.0.0.1:40000", 0)
 				Expect(err).To(BeNil())
-				p.AddBootstrapPeers(nil)
+				p.AddBootstrapPeers(nil, false)
 				Expect(p.PM().GetBootstrapPeers()).To(HaveLen(0))
 				p.Host().Close()
 			})
@@ -188,7 +188,7 @@ var _ = Describe("Peer", func() {
 			It("peer manager's bootstrap list should not contain invalid address", func() {
 				p, err := NewPeer(config, "127.0.0.1:40000", 0)
 				Expect(err).To(BeNil())
-				p.AddBootstrapPeers([]string{"/ip4/127.0.0.1/tcp/40000"})
+				p.AddBootstrapPeers([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
 				Expect(p.PM().GetBootstrapPeers()).To(HaveLen(0))
 				p.Host().Close()
 			})
@@ -199,7 +199,7 @@ var _ = Describe("Peer", func() {
 				p.AddBootstrapPeers([]string{
 					"/ip4/127.0.0.1/tcp/40000",
 					"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
-				})
+				}, false)
 				Expect(p.PM().GetBootstrapPeers()).To(HaveLen(1))
 				Expect(p.PM().GetBootstrapPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).To(BeAssignableToTypeOf(&Peer{}))
 				p.Host().Close()

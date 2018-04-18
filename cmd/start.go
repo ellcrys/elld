@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	log            *zap.SugaredLogger // logger
-	bootstrapNodes = []string{}       // hardcoded bootstrap node address
+	log                     *zap.SugaredLogger // logger
+	hardcodedBootstrapNodes = []string{}       // hardcoded bootstrap node address
 )
 
 func init() {
@@ -57,7 +57,6 @@ var startCmd = &cobra.Command{
 		}
 
 		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapAddresses...)
-		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapNodes...)
 		cfg.Peer.Dev = dev
 		cfg.Peer.MaxAddrsExpected = 1000
 
@@ -71,9 +70,16 @@ var startCmd = &cobra.Command{
 			log.Fatalf("failed to create peer")
 		}
 
+		// add hardcoded nodes
+		if len(hardcodedBootstrapNodes) > 0 {
+			if err := p.AddBootstrapPeers(hardcodedBootstrapNodes, true); err != nil {
+				log.Fatalf("%s", err)
+			}
+		}
+
 		// add bootstrap nodes
 		if len(cfg.Peer.BootstrapNodes) > 0 {
-			if err := p.AddBootstrapPeers(cfg.Peer.BootstrapNodes); err != nil {
+			if err := p.AddBootstrapPeers(cfg.Peer.BootstrapNodes, false); err != nil {
 				log.Fatalf("%s", err)
 			}
 		}
