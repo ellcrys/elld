@@ -7,6 +7,7 @@ type PeerConfig struct {
 	GetAddrInterval  int64    `json:"getAddrInt"`
 	PingInterval     int64    `json:"pingInt"`
 	MaxAddrsExpected int      `json:"maxAddrsExpected"`
+	MaxConnections   int      `json:"maxConnections"`
 }
 
 // Config represents the client's configuration

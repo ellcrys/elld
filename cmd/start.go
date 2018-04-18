@@ -60,6 +60,10 @@ var startCmd = &cobra.Command{
 		cfg.Peer.Dev = dev
 		cfg.Peer.MaxAddrsExpected = 1000
 
+		if cfg.Peer.MaxConnections == 0 {
+			cfg.Peer.MaxConnections = 60
+		}
+
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")
 		}
