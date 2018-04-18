@@ -156,6 +156,34 @@ var _ = Describe("Handshake", func() {
 			})
 		})
 
+		Context("With 2 active address in remote peer", func() {
+
+			It("bootstrap seed nodes should not be returned", func() {
+				lp, err := NewPeer(config, "127.0.0.1:40000", 0)
+				Expect(err).To(BeNil())
+				lpProtoc := NewInception(lp)
+
+				rp, err := NewPeer(config, "127.0.0.1:40001", 1)
+				Expect(err).To(BeNil())
+				rpProtoc := NewInception(rp)
+				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)
+
+				p1, _ := NewPeer(config, "127.0.0.1:40002", 2)
+				p1.isHardcodedSeed = true // mark peer as hardcoded seed
+				err = rp.PM().AddOrUpdatePeer(p1)
+				Expect(err).To(BeNil())
+				defer p1.host.Close()
+
+				err = lpProtoc.SendHandshake(rp)
+				Expect(err).To(BeNil())
+
+				activePeerRp := rp.PM().GetActivePeers(0)
+				activePeerLp := lp.PM().GetActivePeers(0)
+				Expect(len(activePeerLp)).To(Equal(1))
+				Expect(len(activePeerRp)).To(Equal(2))
+			})
+		})
+
 		Context("With 2 active address in remote peer when MaxAddrsExpected is 1", func() {
 
 			config := &configdir.Config{
