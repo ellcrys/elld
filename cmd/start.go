@@ -43,7 +43,8 @@ var startCmd = &cobra.Command{
 	Short: "Start the peer",
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Druid started")
+
+		log.Infow("Druid has started", "Version", util.ClientVersion)
 
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
@@ -88,7 +89,7 @@ var startCmd = &cobra.Command{
 			}
 		}
 
-		log.Infow("Node is listening", "Addr", p.GetMultiAddr(), "DevMode", dev)
+		log.Infow("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "DevMode", dev)
 
 		protocol := peer.NewInception(p)
 
