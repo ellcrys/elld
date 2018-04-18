@@ -308,10 +308,10 @@ func (p *Peer) Stop() {
 
 // PeerFromAddr creates a Peer object from a multiaddr
 func (p *Peer) PeerFromAddr(addr string, remote bool) (*Peer, error) {
-	pAddr, err := ma.NewMultiaddr(addr)
-	if err != nil {
-		return nil, err
+	if !util.IsValidAddr(addr) {
+		return nil, fmt.Errorf("addr is not valid")
 	}
+	pAddr, _ := ma.NewMultiaddr(addr)
 	return &Peer{
 		address:   pAddr,
 		localPeer: p,

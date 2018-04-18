@@ -2,6 +2,7 @@ package peer
 
 import (
 	"context"
+	"time"
 
 	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/testutil"
@@ -127,6 +128,39 @@ var _ = Describe("Peer", func() {
 			Expect(err).To(BeNil())
 			Expect(p.GetAddr()).To(Equal("127.0.0.1:40000"))
 			p.Host().Close()
+		})
+	})
+
+	Describe(".PeerFromAddr", func() {
+		It("should return error if address is not valid", func() {
+			p, err := NewPeer(config, "127.0.0.1:40000", 0)
+			Expect(err).To(BeNil())
+			_, err = p.PeerFromAddr("/invalid", false)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("addr is not valid"))
+		})
+	})
+
+	Describe(".IsBadTimestamp", func() {
+		It("should return false when time is zero", func() {
+			p, err := NewPeer(config, "127.0.0.1:40000", 0)
+			p.Timestamp = time.Time{}
+			Expect(err).To(BeNil())
+			Expect(p.IsBadTimestamp()).To(BeTrue())
+		})
+
+		It("should return false when time 10 minutes, 1 second in the future", func() {
+			p, err := NewPeer(config, "127.0.0.1:40000", 0)
+			p.Timestamp = time.Now().Add(10*time.Minute + 1*time.Second)
+			Expect(err).To(BeNil())
+			Expect(p.IsBadTimestamp()).To(BeTrue())
+		})
+
+		It("should return false when time 3 hours, 1 second in the past", func() {
+			p, err := NewPeer(config, "127.0.0.1:40000", 0)
+			p.Timestamp = time.Now().Add(-3 * time.Hour)
+			Expect(err).To(BeNil())
+			Expect(p.IsBadTimestamp()).To(BeTrue())
 		})
 	})
 
