@@ -166,7 +166,9 @@ func (m *Manager) sendPeriodicPingMsgs() {
 }
 
 // AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
-// exist. If the peer already exists, only its timestamp is updated
+// exist. If the peer already exists and its address has not changed, update
+// its timestamp as long as the new timestamp is not in the past. A peer with
+// not timestamp is assigned the current time.
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 
 	if p == nil {
@@ -195,7 +197,15 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return nil
 	}
 
-	existingPeer.Timestamp = p.Timestamp
+	if existingPeer.GetMultiAddr() != p.GetMultiAddr() {
+		return nil
+	}
+
+	if p.Timestamp.After(existingPeer.Timestamp) {
+		fmt.Println("Updated it")
+		existingPeer.Timestamp = p.Timestamp
+	}
+
 	return nil
 }
 
