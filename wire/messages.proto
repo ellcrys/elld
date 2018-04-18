@@ -11,8 +11,9 @@ message Handshake {
 
 // HandshakeResponse is a response to Handshake message
 message HandshakeResponse {
-    repeated Address addresses = 1;      // list of addresses
-    bytes sig = 2;                      // message signature
+    repeated Address addresses = 1;         // list of addresses
+    string subVersion = 2;                  //version of the client
+    bytes sig = 3;                          // message signature
 }
 
 // GetAddr is used to request for addresses from other peers
