@@ -17,17 +17,17 @@ import (
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
-	kpm               *sync.Mutex        // known peer mutex
-	gm                *sync.Mutex        // general mutex
-	localPeer         *Peer              // local peer
-	bootstrapPeers    map[string]*Peer   // bootstrap peers
-	knownPeers        map[string]*Peer   // peers known to the peer manager
-	log               *zap.SugaredLogger // manager's logger
-	config            *configdir.Config  // manager's configuration
-	getAddrTicker     *time.Ticker       // ticker that sends "getaddr" messages
-	pingTicker        *time.Ticker       // ticker that sends "ping" messages
-	activeConnections int                // number of active connections
-	stop              bool               // signifies the start of the manager
+	kpm            *sync.Mutex        // known peer mutex
+	gm             *sync.Mutex        // general mutex
+	localPeer      *Peer              // local peer
+	bootstrapPeers map[string]*Peer   // bootstrap peers
+	knownPeers     map[string]*Peer   // peers known to the peer manager
+	log            *zap.SugaredLogger // manager's logger
+	config         *configdir.Config  // manager's configuration
+	connMgr        *ConnectionManager // connection manager
+	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
+	pingTicker     *time.Ticker       // ticker that sends "ping" messages
+	stop           bool               // signifies the start of the manager
 }
 
 // NewManager creates an instance of the peer manager
@@ -51,18 +51,10 @@ func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
 		config:         cfg,
 	}
 
-	m.localPeer.host.Network().Notify(&Notification{
-		pm: m,
-	})
+	m.connMgr = NewConnMrg(m)
+	m.localPeer.host.Network().Notify(m.connMgr)
 
 	return m
-}
-
-// onPeerConnect is called when peer connects to the local peer
-func (m *Manager) onPeerConnect(peerAddr ma.Multiaddr) {
-	m.gm.Lock()
-	defer m.gm.Unlock()
-	m.activeConnections++
 }
 
 // PeerExist checks whether a peer is a known peer
@@ -99,10 +91,6 @@ func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 	}
 
 	m.CleanKnownPeers()
-
-	m.gm.Lock()
-	m.activeConnections--
-	m.gm.Unlock()
 }
 
 // AddBootstrapPeer adds a peer to the manager
@@ -120,8 +108,8 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 	return m.bootstrapPeers[id]
 }
 
-// onHandshakeSuccess sends a GetAddr message to the peer
-func (m *Manager) onHandshakeSuccess(peerID string) error {
+// establishConnection sends a GetAddr message to the peer
+func (m *Manager) establishConnection(peerID string) error {
 	peer := m.GetKnownPeer(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -129,8 +117,20 @@ func (m *Manager) onHandshakeSuccess(peerID string) error {
 	return m.localPeer.protoc.SendGetAddr([]*Peer{peer})
 }
 
+// getUnconnectedPeers returns the peers that are not connected
+// to the local peer. Hardcoded bootstrap peers are not included.
+func (m *Manager) getUnconnectedPeers() (peers []*Peer) {
+	for _, p := range m.GetActivePeers(0) {
+		if !p.isHardcodedSeed && !p.Connected() {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
+	m.connMgr.Manage()
 	// go m.sendPeriodicGetAddrMsg()
 	// go m.sendPeriodicPingMsgs()
 }
@@ -207,7 +207,7 @@ func (m *Manager) KnownPeers() map[string]*Peer {
 
 // NeedMorePeers checks whether we need more peers
 func (m *Manager) NeedMorePeers() bool {
-	return len(m.GetActivePeers(0)) < 1000
+	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.connectionCount() < m.config.Peer.MaxConnections
 }
 
 // IsLocalPeer checks if a peer is the local peer
