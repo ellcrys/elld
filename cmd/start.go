@@ -84,7 +84,7 @@ var startCmd = &cobra.Command{
 			}
 		}
 
-		log.Infof("Node is listening at %s", p.GetMultiAddr())
+		log.Infow("Node is listening", "Addr", p.GetMultiAddr(), "DevMode", dev)
 
 		protocol := peer.NewInception(p)
 

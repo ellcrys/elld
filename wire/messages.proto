@@ -4,16 +4,14 @@ package wire;
 
 // Handshake represents the first message between peers
 message Handshake {
-    string address = 1;     // senders address
-    string subVersion = 2;  // version of the client
-    bytes sig = 3;          // message signature
+    string subVersion = 1;  // version of the client
+    bytes sig = 2;          // message signature
 }
 
-// HandshakeResponse is a response to Handshake message
-message HandshakeResponse {
-    repeated Address addresses = 1;         // list of addresses
-    string subVersion = 2;                  //version of the client
-    bytes sig = 3;                          // message signature
+// HandshakeAck is a response to Handshake message
+message HandshakeAck {
+    string subVersion = 1;                  // version of the client
+    bytes sig = 2;                          // message signature
 }
 
 // GetAddr is used to request for addresses from other peers
