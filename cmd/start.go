@@ -70,7 +70,7 @@ var startCmd = &cobra.Command{
 		}
 
 		// create the peer
-		log := util.NewLogger("/peer")
+		log := util.NewLogger("peer")
 		p, err := peer.NewPeer(cfg, addressToListenOn, seed, log)
 		if err != nil {
 			log.Fatalf("failed to create peer")
