@@ -27,11 +27,11 @@ type ConnectionManager struct {
 }
 
 // NewConnMrg creates a new connection manager
-func NewConnMrg(m *Manager) *ConnectionManager {
+func NewConnMrg(m *Manager, log *zap.SugaredLogger) *ConnectionManager {
 	return &ConnectionManager{
 		pm:  m,
 		gmx: &sync.Mutex{},
-		log: peerLog.Named("conn_manager"),
+		log: log,
 	}
 }
 
@@ -81,13 +81,6 @@ func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {
 
 // Connected is called when a connection is opened
 func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
-
-	if !m.needMoreConnections() {
-		m.log.Debugf("Connection limit reached. Closing new connection", "NumConn", m.activeConn)
-		conn.Close()
-		return
-	}
-
 	m.gmx.Lock()
 	defer m.gmx.Unlock()
 	m.activeConn++
