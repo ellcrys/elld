@@ -51,7 +51,7 @@ func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
 		config:         cfg,
 	}
 
-	m.connMgr = NewConnMrg(m)
+	m.connMgr = NewConnMrg(m, peerLog.Named("conn_manager"))
 	m.localPeer.host.Network().Notify(m.connMgr)
 
 	return m
@@ -198,11 +198,10 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 	}
 
 	if existingPeer.GetMultiAddr() != p.GetMultiAddr() {
-		return nil
+		return fmt.Errorf("existing peer address do not match")
 	}
 
 	if p.Timestamp.After(existingPeer.Timestamp) {
-		fmt.Println("Updated it")
 		existingPeer.Timestamp = p.Timestamp
 	}
 

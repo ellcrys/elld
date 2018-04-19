@@ -214,7 +214,7 @@ var _ = Describe("Peer", func() {
 		var err error
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40105", 0)
+			p, err = NewPeer(config, "127.0.0.1:40105", 5)
 			Expect(err).To(BeNil())
 			host = p.Host()
 			Expect(err).To(BeNil())
