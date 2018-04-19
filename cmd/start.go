@@ -70,7 +70,8 @@ var startCmd = &cobra.Command{
 		}
 
 		// create the peer
-		p, err := peer.NewPeer(cfg, addressToListenOn, seed)
+		log := util.NewLogger("/peer")
+		p, err := peer.NewPeer(cfg, addressToListenOn, seed, log)
 		if err != nil {
 			log.Fatalf("failed to create peer")
 		}
@@ -91,7 +92,7 @@ var startCmd = &cobra.Command{
 
 		log.Infow("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "DevMode", dev)
 
-		protocol := peer.NewInception(p)
+		protocol := peer.NewInception(p, log.Named("protocol"))
 
 		// set protocol and handlers
 		p.SetProtocol(protocol)

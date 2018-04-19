@@ -27,10 +27,10 @@ type Inception struct {
 }
 
 // NewInception creates a new instance of the protocol codenamed "Inception"
-func NewInception(p *Peer) *Inception {
+func NewInception(p *Peer, log *zap.SugaredLogger) *Inception {
 	return &Inception{
 		peer: p,
-		log:  protocLog,
+		log:  log,
 	}
 }
 

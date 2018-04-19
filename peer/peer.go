@@ -26,39 +26,24 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	peerLog   *zap.SugaredLogger
-	protocLog *zap.SugaredLogger
-)
-
-func init() {
-	peerLog = util.NewLogger("/peer")
-	protocLog = peerLog.Named("protocol.inception")
-}
-
-// SilenceLoggers changes the loggers in this package to NopLoggers. Called in test environment.
-func SilenceLoggers() {
-	peerLog = util.NewNopLogger()
-	protocLog = util.NewNopLogger()
-}
-
 // Peer represents a network node
 type Peer struct {
-	cfg             *configdir.Config // peer config
-	address         ma.Multiaddr      // peer multiaddr
-	IP              net.IP            // peer ip
-	host            host.Host         // peer libp2p host
-	wg              sync.WaitGroup    // wait group for preventing the main thread from exiting
-	localPeer       *Peer             // local peer
-	peerManager     *Manager          // peer manager for managing connections to other remote peers
-	protoc          Protocol          // protocol instance
-	remote          bool              // remote indicates the peer represents a remote peer
-	Timestamp       time.Time         // the last time this peer was seen/active
-	isHardcodedSeed bool              // whether the peer was hardcoded as a seed
+	cfg             *configdir.Config  // peer config
+	address         ma.Multiaddr       // peer multiaddr
+	IP              net.IP             // peer ip
+	host            host.Host          // peer libp2p host
+	wg              sync.WaitGroup     // wait group for preventing the main thread from exiting
+	localPeer       *Peer              // local peer
+	peerManager     *Manager           // peer manager for managing connections to other remote peers
+	protoc          Protocol           // protocol instance
+	remote          bool               // remote indicates the peer represents a remote peer
+	Timestamp       time.Time          // the last time this peer was seen/active
+	isHardcodedSeed bool               // whether the peer was hardcoded as a seed
+	log             *zap.SugaredLogger // peer logger
 }
 
 // NewPeer creates a peer instance at the specified port
-func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, error) {
+func NewPeer(config *configdir.Config, address string, idSeed int64, log *zap.SugaredLogger) (*Peer, error) {
 
 	// generate peer identity
 	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
@@ -92,10 +77,11 @@ func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, err
 		address: util.FullAddressFromHost(host),
 		host:    host,
 		wg:      sync.WaitGroup{},
+		log:     log,
 	}
 
 	peer.localPeer = peer
-	peer.peerManager = NewManager(config, peer)
+	peer.peerManager = NewManager(config, peer, log.Named("manager"))
 	peer.IP = peer.ip()
 
 	return peer, nil
@@ -245,11 +231,11 @@ func (p *Peer) GetBindAddress() string {
 func (p *Peer) AddBootstrapPeers(peerAddresses []string, hardcoded bool) error {
 	for _, addr := range peerAddresses {
 		if !util.IsValidAddr(addr) {
-			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
 		if !p.cfg.Peer.Dev && !util.IsRoutableAddr(addr) {
-			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
 		pAddr, _ := ma.NewMultiaddr(addr)
