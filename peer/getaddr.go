@@ -18,7 +18,7 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	remotePeerIDShort := remotePeer.ShortID()
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.GetAddrVersion)
 	if err != nil {
-		protocLog.Debugw("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
+		protoc.log.Debugw("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
@@ -27,7 +27,7 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	msg := &wire.GetAddr{}
 	msg.Sig = protoc.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-		protocLog.Debugw("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		protoc.log.Debugw("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("getaddr failed. failed to write to stream")
 	}
 	w.Flush()
@@ -38,7 +38,7 @@ func (protoc *Inception) sendGetAddr(remotePeer *Peer) error {
 	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
-		protocLog.Debugw("Failed to read GetAddr response response", "Err", err, "PeerID", remotePeerIDShort)
+		protoc.log.Debugw("Failed to read GetAddr response response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read GetAddr response")
 	}
 

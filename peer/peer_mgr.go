@@ -31,7 +31,7 @@ type Manager struct {
 }
 
 // NewManager creates an instance of the peer manager
-func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
+func NewManager(cfg *configdir.Config, localPeer *Peer, log *zap.SugaredLogger) *Manager {
 
 	if cfg == nil {
 		cfg = &configdir.Config{}
@@ -45,13 +45,13 @@ func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
 		kpm:            new(sync.Mutex),
 		gm:             new(sync.Mutex),
 		localPeer:      localPeer,
-		log:            peerLog.Named("manager"),
+		log:            log,
 		bootstrapPeers: make(map[string]*Peer),
 		knownPeers:     make(map[string]*Peer),
 		config:         cfg,
 	}
 
-	m.connMgr = NewConnMrg(m, peerLog.Named("conn_manager"))
+	m.connMgr = NewConnMrg(m, log.Named("conn_manager"))
 	m.localPeer.host.Network().Notify(m.connMgr)
 
 	return m
@@ -166,9 +166,12 @@ func (m *Manager) sendPeriodicPingMsgs() {
 }
 
 // AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
-// exist. If the peer already exists and its address has not changed, update
-// its timestamp as long as the new timestamp is not in the past. A peer with
-// not timestamp is assigned the current time.
+// exist. If the peer already exists:
+// - if the peer has been seen in the last 24 hours and its current
+// 	 timestamp is over 60 minutes old, then update the timestamp to 60 minutes ago.
+// - else if the peer has not been seen in the last 24 hours and its current timestamp is
+//	 over 24 hours, then update the timestamp to 24 hours ago.
+// - else use whatever timestamp is returned
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 
 	if p == nil {
@@ -201,10 +204,18 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return fmt.Errorf("existing peer address do not match")
 	}
 
-	if p.Timestamp.After(existingPeer.Timestamp) {
-		existingPeer.Timestamp = p.Timestamp
+	now := time.Now()
+	if now.Add(-24*time.Hour).Before(p.Timestamp) && now.Add(-60*time.Minute).Before(existingPeer.Timestamp) {
+		existingPeer.Timestamp = now.Add(-60 * time.Minute)
+		return nil
 	}
 
+	if !now.Add(-24*time.Hour).Before(p.Timestamp) && !now.Add(-24*time.Hour).Before(existingPeer.Timestamp) {
+		existingPeer.Timestamp = now.Add(-24 * time.Hour)
+		return nil
+	}
+
+	existingPeer.Timestamp = p.Timestamp
 	return nil
 }
 

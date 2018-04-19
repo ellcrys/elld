@@ -20,7 +20,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 
 	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
 	if err != nil {
-		protocLog.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
+		protoc.log.Debugw("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
@@ -30,7 +30,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	msg := &wire.Handshake{SubVersion: util.ClientVersion}
 	msg.Sig = protoc.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-		protocLog.Debugw("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		protoc.log.Debugw("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to write to stream")
 	}
 	w.Flush()
@@ -41,7 +41,7 @@ func (protoc *Inception) SendHandshake(remotePeer *Peer) error {
 	resp := &wire.HandshakeAck{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
-		protocLog.Debugw("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
+		protoc.log.Debugw("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
 	}
 

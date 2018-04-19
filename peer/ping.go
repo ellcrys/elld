@@ -13,46 +13,46 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-func (protoc *Inception) sendPing(remotePeer *Peer) error {
+func (pt *Inception) sendPing(remotePeer *Peer) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
-	s, err := protoc.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
+	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
 	if err != nil {
-		protocLog.Debugw("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
+		pt.log.Debugw("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
 
 	w := bufio.NewWriter(s)
 	msg := &wire.Ping{}
-	msg.Sig = protoc.sign(msg)
+	msg.Sig = pt.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-		protocLog.Debugw("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		pt.log.Debugw("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to write to stream")
 	}
 	w.Flush()
 
-	protoc.log.Infow("Sent ping to peer", "PeerID", remotePeerIDShort)
+	pt.log.Infow("Sent ping to peer", "PeerID", remotePeerIDShort)
 
 	// receive pong response
 	pongMsg := &wire.Pong{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(pongMsg); err != nil {
-		protocLog.Debugw("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
+		pt.log.Debugw("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read pong response")
 	}
 
 	sig := pongMsg.Sig
 	pongMsg.Sig = nil
-	if err := protoc.verify(pongMsg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
+	if err := pt.verify(pongMsg, sig, s.Conn().RemotePublicKey()); err != nil {
+		pt.log.Debugw("failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to verify message signature")
 	}
 
 	remotePeer.Timestamp = time.Now()
-	protoc.PM().AddOrUpdatePeer(remotePeer)
+	pt.PM().AddOrUpdatePeer(remotePeer)
 
-	protoc.log.Infow("Received pong response from peer", "PeerID", remotePeerIDShort)
+	pt.log.Infow("Received pong response from peer", "PeerID", remotePeerIDShort)
 
 	return nil
 }
