@@ -184,6 +184,18 @@ func (p *Peer) Connected() bool {
 	return len(p.localPeer.host.Network().ConnsToPeer(p.ID())) > 0
 }
 
+func (p *Peer) isDevMode() bool {
+	return p.cfg.Peer.Dev
+}
+
+// IsKnown checks whether a peer is known to the local peer
+func (p *Peer) IsKnown() bool {
+	if p.localPeer == nil {
+		return false
+	}
+	return p.localPeer.PM().GetKnownPeer(p.StringID()) != nil
+}
+
 // PrivKey returns the peer's private key
 func (p *Peer) PrivKey() crypto.PrivKey {
 	return p.host.Peerstore().PrivKey(p.host.ID())
