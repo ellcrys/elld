@@ -47,6 +47,7 @@ var _ = Describe("Handshake", func() {
 				lp, err := NewPeer(config, "127.0.0.1:40000", 0)
 				Expect(err).To(BeNil())
 				lpProtoc := NewInception(lp)
+				lp.SetProtocol(lpProtoc)
 
 				rp, err := NewPeer(config, "127.0.0.1:40001", 1)
 				Expect(err).To(BeNil())
