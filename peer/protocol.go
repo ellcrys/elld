@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ellcrys/druid/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
 	"go.uber.org/zap"
@@ -17,6 +18,8 @@ type Protocol interface {
 	OnPing(net.Stream)
 	SendGetAddr([]*Peer) error
 	OnGetAddr(net.Stream)
+	OnAddr(net.Stream)
+	RelayAddr([]*wire.Address)
 }
 
 // Inception represents the peer protocol
