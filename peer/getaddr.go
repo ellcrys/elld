@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
@@ -34,45 +33,7 @@ func (pt *Inception) sendGetAddr(remotePeer *Peer) error {
 
 	pt.log.Infow("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
 
-	// receive response
-	resp := &wire.Addr{}
-	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
-	if err := decoder.Decode(resp); err != nil {
-		pt.log.Debugw("Failed to read GetAddr response response", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("failed to read GetAddr response")
-	}
-
-	// verify message signature
-	sig := resp.Sig
-	resp.Sig = nil
-	if err := pt.verify(resp, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debugw("Failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("failed to verify message signature")
-	}
-
-	if len(resp.Addresses) > pt.LocalPeer().cfg.Peer.MaxAddrsExpected {
-		pt.log.Debugw("Too many addresses received. Ignoring addresses", "Err", err, "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
-		return fmt.Errorf("too many addresses received. Ignoring addresses")
-	}
-
-	invalidAddrs := 0
-	for _, addr := range resp.Addresses {
-
-		p, _ := pt.LocalPeer().PeerFromAddr(addr.Address, true)
-		p.Timestamp = time.Unix(addr.Timestamp, 0)
-
-		if p.IsBadTimestamp() {
-			p.Timestamp = time.Now().Add(-1 * time.Hour * 24 * 5)
-		}
-
-		if pt.PM().AddOrUpdatePeer(p) != nil {
-			invalidAddrs++
-		}
-	}
-
-	pt.log.Infow("Received GetAddr response from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
-
-	return nil
+	return pt.onAddr(s)
 }
 
 // SendGetAddr sends GetAddr message to peers.

@@ -90,7 +90,7 @@ var startCmd = &cobra.Command{
 			}
 		}
 
-		log.Infow("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "DevMode", dev)
+		log.Infow("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", dev)
 
 		protocol := peer.NewInception(p, log.Named("protocol"))
 
