@@ -108,13 +108,13 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 	return m.bootstrapPeers[id]
 }
 
-// establishConnection sends a GetAddr message to the peer
-func (m *Manager) establishConnection(peerID string) error {
+// connectToPeer attempts to connect to a peer
+func (m *Manager) connectToPeer(peerID string) error {
 	peer := m.GetKnownPeer(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	return m.localPeer.protoc.SendGetAddr([]*Peer{peer})
+	return m.localPeer.connectToPeer(peer)
 }
 
 // getUnconnectedPeers returns the peers that are not connected
