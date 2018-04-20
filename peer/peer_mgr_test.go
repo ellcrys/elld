@@ -430,7 +430,7 @@ var _ = Describe("PeerManager", func() {
 	Describe(".establishConnection", func() {
 		It("should return nil when peer does not exist", func() {
 			var mgr = NewMgr(config)
-			err := mgr.establishConnection("invalid")
+			err := mgr.connectToPeer("invalid")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("peer not found"))
 		})

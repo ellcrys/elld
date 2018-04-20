@@ -62,7 +62,7 @@ func (m *ConnectionManager) establishConnections() {
 		case <-m.connEstInt.C:
 			if m.pm.NeedMorePeers() {
 				for _, p := range m.pm.getUnconnectedPeers() {
-					go m.pm.establishConnection(p.StringID())
+					m.pm.connectToPeer(p.StringID())
 				}
 			}
 		}

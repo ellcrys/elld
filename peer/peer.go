@@ -272,13 +272,25 @@ func (p *Peer) GetPeersPublicAddrs(peerIDsToIgnore []string) (peerAddrs []ma.Mul
 	return
 }
 
-// Start starts the peer
+// connectToPeer handshake to each bootstrap peer.
+// Then send GetAddr message if handshake is successful
+func (p *Peer) connectToPeer(remotePeer *Peer) error {
+	if p.protoc.SendHandshake(remotePeer) == nil {
+		return p.protoc.SendGetAddr([]*Peer{remotePeer})
+	}
+	return nil
+}
+
+// Start starts the peer.
+// Send handshake to each bootstrap peer.
+// Then send GetAddr message if handshake is successful
 func (p *Peer) Start() {
 	p.PM().Manage()
 
-	// send handshake to bootstrap peers
-	for _, b := range p.PM().bootstrapPeers {
-		go p.protoc.SendHandshake(b)
+	// send handshake to bootstrap peers.
+	// after s
+	for _, peer := range p.PM().bootstrapPeers {
+		go p.connectToPeer(peer)
 	}
 }
 

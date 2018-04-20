@@ -1,0 +1,16 @@
+version: '3'
+services:
+  n1:
+    build: 
+      context: .
+      args: 
+        seed: 1
+    ports:
+      - "9001:9000"
+  # n2:
+  #   build: 
+  #     context: .
+  #     args: 
+  #       seed: 2
+  #   ports:
+  #     - "9001:9000"
