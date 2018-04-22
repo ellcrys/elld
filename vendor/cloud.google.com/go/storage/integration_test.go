@@ -30,6 +30,8 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -120,31 +122,24 @@ func TestIntegration_BucketMethods(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	projectID := testutil.ProjID()
 	newBucketName := uidSpace.New()
 	b := client.Bucket(newBucketName)
 	// Test Create and Delete.
-	if err := b.Create(ctx, projectID, nil); err != nil {
-		t.Fatalf("Bucket(%v).Create(%v, %v) failed: %v", newBucketName, projectID, nil, err)
+	h.mustCreate(b, projectID, nil)
+	attrs := h.mustBucketAttrs(b)
+	if got, want := attrs.MetaGeneration, int64(1); got != want {
+		t.Errorf("got metagen %d, want %d", got, want)
 	}
-	attrs, err := b.Attrs(ctx)
-	if err != nil {
-		t.Error(err)
-	} else {
-		if got, want := attrs.MetaGeneration, int64(1); got != want {
-			t.Errorf("got metagen %d, want %d", got, want)
-		}
-		if got, want := attrs.StorageClass, "STANDARD"; got != want {
-			t.Errorf("got storage class %q, want %q", got, want)
-		}
-		if attrs.VersioningEnabled {
-			t.Error("got versioning enabled, wanted it disabled")
-		}
+	if got, want := attrs.StorageClass, "STANDARD"; got != want {
+		t.Errorf("got storage class %q, want %q", got, want)
 	}
-	if err := client.Bucket(newBucketName).Delete(ctx); err != nil {
-		t.Errorf("Bucket(%v).Delete failed: %v", newBucketName, err)
+	if attrs.VersioningEnabled {
+		t.Error("got versioning enabled, wanted it disabled")
 	}
+	h.mustDeleteBucket(b)
 
 	// Test Create and Delete with attributes.
 	labels := map[string]string{
@@ -182,41 +177,31 @@ func TestIntegration_BucketMethods(t *testing.T) {
 			}},
 		},
 	}
-	if err := client.Bucket(newBucketName).Create(ctx, projectID, attrs); err != nil {
-		t.Fatalf("Bucket(%v).Create(%v, %+v) failed: %v", newBucketName, projectID, attrs, err)
+	h.mustCreate(b, projectID, attrs)
+	attrs = h.mustBucketAttrs(b)
+	if got, want := attrs.MetaGeneration, int64(1); got != want {
+		t.Errorf("got metagen %d, want %d", got, want)
 	}
-	attrs, err = b.Attrs(ctx)
-	if err != nil {
-		t.Error(err)
-	} else {
-		if got, want := attrs.MetaGeneration, int64(1); got != want {
-			t.Errorf("got metagen %d, want %d", got, want)
-		}
-		if got, want := attrs.StorageClass, "NEARLINE"; got != want {
-			t.Errorf("got storage class %q, want %q", got, want)
-		}
-		if !attrs.VersioningEnabled {
-			t.Error("got versioning disabled, wanted it enabled")
-		}
-		if got, want := attrs.Labels, labels; !testutil.Equal(got, want) {
-			t.Errorf("labels: got %v, want %v", got, want)
-		}
+	if got, want := attrs.StorageClass, "NEARLINE"; got != want {
+		t.Errorf("got storage class %q, want %q", got, want)
 	}
-	if err := client.Bucket(newBucketName).Delete(ctx); err != nil {
-		t.Errorf("Bucket(%v).Delete failed: %v", newBucketName, err)
+	if !attrs.VersioningEnabled {
+		t.Error("got versioning disabled, wanted it enabled")
 	}
+	if got, want := attrs.Labels, labels; !testutil.Equal(got, want) {
+		t.Errorf("labels: got %v, want %v", got, want)
+	}
+	h.mustDeleteBucket(b)
 }
 
 func TestIntegration_BucketUpdate(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	b := client.Bucket(bucketName)
-	attrs, err := b.Attrs(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	attrs := h.mustBucketAttrs(b)
 	if attrs.VersioningEnabled {
 		t.Fatal("bucket should not have versioning by default")
 	}
@@ -225,10 +210,7 @@ func TestIntegration_BucketUpdate(t *testing.T) {
 	}
 
 	// Using empty BucketAttrsToUpdate should be a no-nop.
-	attrs, err = b.Update(ctx, BucketAttrsToUpdate{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	attrs = h.mustUpdateBucket(b, BucketAttrsToUpdate{})
 	if attrs.VersioningEnabled {
 		t.Fatal("should not have versioning")
 	}
@@ -240,10 +222,7 @@ func TestIntegration_BucketUpdate(t *testing.T) {
 	ua := BucketAttrsToUpdate{VersioningEnabled: true}
 	ua.SetLabel("l1", "v1")
 	ua.SetLabel("empty", "")
-	attrs, err = b.Update(ctx, ua)
-	if err != nil {
-		t.Fatal(err)
-	}
+	attrs = h.mustUpdateBucket(b, ua)
 	if !attrs.VersioningEnabled {
 		t.Fatal("should have versioning now")
 	}
@@ -261,10 +240,7 @@ func TestIntegration_BucketUpdate(t *testing.T) {
 	ua.SetLabel("new", "new") // create
 	ua.DeleteLabel("empty")   // delete
 	ua.DeleteLabel("absent")  // delete non-existent
-	attrs, err = b.Update(ctx, ua)
-	if err != nil {
-		t.Fatal(err)
-	}
+	attrs = h.mustUpdateBucket(b, ua)
 	if attrs.VersioningEnabled {
 		t.Fatal("should have versioning off")
 	}
@@ -315,6 +291,7 @@ func TestIntegration_Objects(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	bkt := client.Bucket(bucketName)
 
@@ -490,10 +467,7 @@ func TestIntegration_Objects(t *testing.T) {
 	}
 	created := o.Created
 	// Check that the object is newer than its containing bucket.
-	bAttrs, err := bkt.Attrs(ctx)
-	if err != nil {
-		t.Error(err)
-	}
+	bAttrs := h.mustBucketAttrs(bkt)
 	if o.Created.Before(bAttrs.Created) {
 		t.Errorf("Object %v is older than its containing bucket, %v", o, bAttrs)
 	}
@@ -1197,14 +1171,12 @@ func TestIntegration_PerObjectStorageClass(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	bkt := client.Bucket(bucketName)
 
 	// The bucket should have the default storage class.
-	battrs, err := bkt.Attrs(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	battrs := h.mustBucketAttrs(bkt)
 	if battrs.StorageClass != defaultStorageClass {
 		t.Fatalf("bucket storage class: got %q, want %q",
 			battrs.StorageClass, defaultStorageClass)
@@ -1442,6 +1414,8 @@ func TestIntegration_RequesterPays(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
+
 	bucketName2 := uidSpace.New()
 	b := client.Bucket(bucketName2)
 	projID := testutil.ProjID()
@@ -1470,9 +1444,7 @@ func TestIntegration_RequesterPays(t *testing.T) {
 	}
 
 	// Create a requester-pays bucket. The bucket is contained in the project projID.
-	if err := b.Create(ctx, projID, &BucketAttrs{RequesterPays: true}); err != nil {
-		t.Fatal(err)
-	}
+	h.mustCreate(b, projID, &BucketAttrs{RequesterPays: true})
 	if err := b.ACL().Set(ctx, ACLEntity("user-"+otherUser), RoleOwner); err != nil {
 		t.Fatal(err)
 	}
@@ -1513,7 +1485,7 @@ func TestIntegration_RequesterPays(t *testing.T) {
 		// result: failure, by the standard requester-pays rule
 		err := f(ob)
 		if got, want := errCode(err), wantErrorCode; got != want {
-			t.Errorf("%s: got error %s, want code %d\n"+
+			t.Errorf("%s: got error %v, want code %d\n"+
 				"confirm that %s is NOT an Owner on %s",
 				msg, err, want, otherUser, projID)
 		}
@@ -1530,7 +1502,7 @@ func TestIntegration_RequesterPays(t *testing.T) {
 		// result: failure
 		err = f(ob.UserProject("veener-jba"))
 		if got, want := errCode(err), 403; got != want {
-			t.Errorf("%s: got error %s, want code %d\n"+
+			t.Errorf("%s: got error %v, want code %d\n"+
 				"confirm that %s is NOT an Editor on %s",
 				msg, err, want, otherUser, "veener-jba")
 		}
@@ -1625,21 +1597,23 @@ func TestIntegration_RequesterPays(t *testing.T) {
 	})
 
 	// Deletion.
-	call("delete object", func(b *BucketHandle) error {
-		err := b.Object("foo").Delete(ctx)
-		if err == ErrObjectNotExist {
-			return nil
-		}
-		return err
-	})
+	// TODO(jba): uncomment when internal bug 78341001 is resolved.
+	// call("delete object", func(b *BucketHandle) error {
+	// 	err := b.Object("foo").Delete(ctx)
+	// 	fmt.Printf("#### deleting foo returns %v\n", err)
+	// 	if err == ErrObjectNotExist {
+	// 		return nil
+	// 	}
+	// 	return err
+	// })
+	b.Object("foo").Delete(ctx) // remove when above is uncommented
 	for _, obj := range []string{"copy", "compose"} {
 		if err := b.UserProject(projID).Object(obj).Delete(ctx); err != nil {
 			t.Fatalf("could not delete %q: %v", obj, err)
 		}
 	}
-	if err := b.Delete(ctx); err != nil {
-		t.Fatalf("deleting bucket: %v", err)
-	}
+
+	h.mustDeleteBucket(b)
 }
 
 // TODO(jba): move to testutil, factor out from firestore/integration_test.go.
@@ -1948,6 +1922,7 @@ func TestIntegration_UpdateCORS(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	initialSettings := []CORS{
 		{
@@ -1997,27 +1972,10 @@ func TestIntegration_UpdateCORS(t *testing.T) {
 		},
 	} {
 		bkt := client.Bucket(uidSpace.New())
-		defer func(b *BucketHandle) {
-			err := b.Delete(ctx)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}(bkt)
-		err := bkt.Create(ctx, testutil.ProjID(), &BucketAttrs{CORS: initialSettings})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		_, err = bkt.Update(ctx, BucketAttrsToUpdate{CORS: test.input})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		attrs, err := bkt.Attrs(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		h.mustCreate(bkt, testutil.ProjID(), &BucketAttrs{CORS: initialSettings})
+		defer h.mustDeleteBucket(bkt)
+		h.mustUpdateBucket(bkt, BucketAttrsToUpdate{CORS: test.input})
+		attrs := h.mustBucketAttrs(bkt)
 		if diff := testutil.Diff(attrs.CORS, test.want); diff != "" {
 			t.Errorf("input: %v\ngot=-, want=+:\n%s", test.input, diff)
 		}
@@ -2032,6 +1990,7 @@ func TestIntegration_UpdateRetentionPolicy(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	initial := &RetentionPolicy{RetentionPeriod: time.Minute}
 
@@ -2061,27 +2020,10 @@ func TestIntegration_UpdateRetentionPolicy(t *testing.T) {
 		},
 	} {
 		bkt := client.Bucket(uidSpace.New())
-		err := bkt.Create(ctx, testutil.ProjID(), &BucketAttrs{RetentionPolicy: initial})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		defer func() {
-			if err := bkt.Delete(ctx); err != nil {
-				t.Fatal(err)
-			}
-		}()
-
-		_, err = bkt.Update(ctx, BucketAttrsToUpdate{RetentionPolicy: test.input})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		attrs, err := bkt.Attrs(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		h.mustCreate(bkt, testutil.ProjID(), &BucketAttrs{RetentionPolicy: initial})
+		defer h.mustDeleteBucket(bkt)
+		h.mustUpdateBucket(bkt, BucketAttrsToUpdate{RetentionPolicy: test.input})
+		attrs := h.mustBucketAttrs(bkt)
 		if attrs.RetentionPolicy != nil && attrs.RetentionPolicy.EffectiveTime.Unix() == 0 {
 			// Should be set by the server and parsed by the client
 			t.Fatal("EffectiveTime should be set, but it was not")
@@ -2100,37 +2042,28 @@ func TestIntegration_DeleteObjectInBucketWithRetentionPolicy(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	bkt := client.Bucket(uidSpace.New())
-	err := bkt.Create(ctx, testutil.ProjID(), &BucketAttrs{RetentionPolicy: &RetentionPolicy{RetentionPeriod: 25 * time.Hour}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	h.mustCreate(bkt, testutil.ProjID(), &BucketAttrs{RetentionPolicy: &RetentionPolicy{RetentionPeriod: 25 * time.Hour}})
 
 	oh := bkt.Object("some-object")
-	if err = writeObject(ctx, oh, "text/plain", []byte("hello world")); err != nil {
+	if err := writeObject(ctx, oh, "text/plain", []byte("hello world")); err != nil {
 		t.Fatal(err)
 	}
 
-	err = oh.Delete(ctx)
-	if err == nil {
+	if err := oh.Delete(ctx); err == nil {
 		t.Fatal("expected to err deleting an object in a bucket with retention period, but got nil")
 	}
 
 	// Remove the retention period
-	_, err = bkt.Update(ctx, BucketAttrsToUpdate{RetentionPolicy: &RetentionPolicy{RetentionPeriod: 0}})
-	if err != nil {
+	h.mustUpdateBucket(bkt, BucketAttrsToUpdate{RetentionPolicy: &RetentionPolicy{RetentionPeriod: 0}})
+
+	if err := oh.Delete(ctx); err != nil {
 		t.Fatal(err)
 	}
 
-	err = oh.Delete(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := bkt.Delete(ctx); err != nil {
-		t.Fatal(err)
-	}
+	h.mustDeleteBucket(bkt)
 }
 
 func TestIntegration_LockBucket(t *testing.T) {
@@ -2141,19 +2074,12 @@ func TestIntegration_LockBucket(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	bkt := client.Bucket(uidSpace.New())
-	err := bkt.Create(ctx, testutil.ProjID(), &BucketAttrs{RetentionPolicy: &RetentionPolicy{RetentionPeriod: time.Hour * 25}})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	attrs, err := bkt.Attrs(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = bkt.If(BucketConditions{MetagenerationMatch: attrs.MetaGeneration}).LockRetentionPolicy(ctx)
+	h.mustCreate(bkt, testutil.ProjID(), &BucketAttrs{RetentionPolicy: &RetentionPolicy{RetentionPeriod: time.Hour * 25}})
+	attrs := h.mustBucketAttrs(bkt)
+	err := bkt.If(BucketConditions{MetagenerationMatch: attrs.MetaGeneration}).LockRetentionPolicy(ctx)
 	if err != nil {
 		t.Fatal("could not lock", err)
 	}
@@ -2172,17 +2098,158 @@ func TestIntegration_LockBucket_MetagenerationRequired(t *testing.T) {
 	ctx := context.Background()
 	client := testConfig(ctx, t)
 	defer client.Close()
+	h := testHelper{t}
 
 	bkt := client.Bucket(uidSpace.New())
-	err := bkt.Create(ctx, testutil.ProjID(), &BucketAttrs{RetentionPolicy: &RetentionPolicy{RetentionPeriod: time.Hour * 25}})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = bkt.LockRetentionPolicy(ctx)
+	h.mustCreate(bkt, testutil.ProjID(), &BucketAttrs{
+		RetentionPolicy: &RetentionPolicy{RetentionPeriod: time.Hour * 25},
+	})
+	err := bkt.LockRetentionPolicy(ctx)
 	if err == nil {
 		t.Fatal("expected error locking bucket without metageneration condition, got nil")
 	}
+}
+
+func TestIntegration_KMS(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Integration tests skipped in short mode")
+	}
+	ctx := context.Background()
+	client := testConfig(ctx, t)
+	defer client.Close()
+	h := testHelper{t}
+
+	// TODO(jba): make the key configurable? Or just require this name?
+	keyNameRoot := "projects/" + testutil.ProjID() + "/locations/global/keyRings/go-integration-test/cryptoKeys/key"
+	keyName := keyNameRoot + "1"
+	contents := []byte("my secret")
+
+	write := func(obj *ObjectHandle, setKey bool) {
+		w := obj.NewWriter(ctx)
+		if setKey {
+			w.KMSKeyName = keyName
+		}
+		_, err := w.Write(contents)
+		if err2 := w.Close(); err2 != nil {
+			err = err2
+		}
+		if err != nil {
+			t.Fatalf("writing with key %q: %v", keyName, err)
+		}
+	}
+
+	checkRead := func(obj *ObjectHandle) {
+		got, err := readObject(ctx, obj)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, contents) {
+			t.Errorf("got %v, want %v", got, contents)
+		}
+		attrs, err := obj.Attrs(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(attrs.KMSKeyName) < len(keyName) || attrs.KMSKeyName[:len(keyName)] != keyName {
+			t.Errorf("got %q, want %q", attrs.KMSKeyName, keyName)
+		}
+	}
+
+	// Write an object with a key, then read it to verify its contents and the presence of the key name.
+	bkt := client.Bucket(bucketName)
+	obj := bkt.Object("kms")
+	write(obj, true)
+	checkRead(obj)
+	obj.Delete(ctx)
+
+	// Encrypt an object with a CSEK, then copy it using a CMEK.
+	src := bkt.Object("csek").Key([]byte("my-secret-AES-256-encryption-key"))
+	if err := writeObject(ctx, src, "text/plain", contents); err != nil {
+		t.Fatal(err)
+	}
+	dest := bkt.Object("cmek")
+	c := dest.CopierFrom(src)
+	c.DestinationKMSKeyName = keyName
+	if _, err := c.Run(ctx); err != nil {
+		t.Fatal(err)
+	}
+	checkRead(dest)
+	src.Delete(ctx)
+	dest.Delete(ctx)
+
+	// Create a bucket with a default key, then write and read an object.
+	bkt = client.Bucket(uidSpace.New())
+	h.mustCreate(bkt, testutil.ProjID(), &BucketAttrs{
+		Encryption: &BucketEncryption{DefaultKMSKeyName: keyName},
+	})
+	defer h.mustDeleteBucket(bkt)
+
+	attrs := h.mustBucketAttrs(bkt)
+	if got, want := attrs.Encryption.DefaultKMSKeyName, keyName; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	obj = bkt.Object("kms")
+	write(obj, false)
+	checkRead(obj)
+	obj.Delete(ctx)
+
+	// Update the bucket's default key to a different name.
+	// (This key doesn't have to exist.)
+	keyName2 := keyNameRoot + "2"
+	attrs = h.mustUpdateBucket(bkt, BucketAttrsToUpdate{Encryption: &BucketEncryption{DefaultKMSKeyName: keyName2}})
+	if got, want := attrs.Encryption.DefaultKMSKeyName, keyName2; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	attrs = h.mustBucketAttrs(bkt)
+	if got, want := attrs.Encryption.DefaultKMSKeyName, keyName2; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+
+	// Remove the default KMS key.
+	attrs = h.mustUpdateBucket(bkt, BucketAttrsToUpdate{Encryption: &BucketEncryption{DefaultKMSKeyName: ""}})
+	if attrs.Encryption != nil {
+		t.Fatalf("got %#v, want nil", attrs.Encryption)
+	}
+}
+
+type testHelper struct {
+	t *testing.T
+}
+
+func (h testHelper) mustCreate(b *BucketHandle, projID string, attrs *BucketAttrs) {
+	if err := b.Create(context.Background(), projID, attrs); err != nil {
+		h.t.Fatalf("%s: bucket create: %v", loc(), err)
+	}
+}
+
+func (h testHelper) mustDeleteBucket(b *BucketHandle) {
+	if err := b.Delete(context.Background()); err != nil {
+		h.t.Fatalf("%s: bucket delete: %v", loc(), err)
+	}
+}
+
+func (h testHelper) mustBucketAttrs(b *BucketHandle) *BucketAttrs {
+	attrs, err := b.Attrs(context.Background())
+	if err != nil {
+		h.t.Fatalf("%s: bucket attrs: %v", loc(), err)
+	}
+	return attrs
+}
+
+func (h testHelper) mustUpdateBucket(b *BucketHandle, ua BucketAttrsToUpdate) *BucketAttrs {
+	attrs, err := b.Update(context.Background(), ua)
+	if err != nil {
+		h.t.Fatalf("%s: update: %v", loc(), err)
+	}
+	return attrs
+}
+
+func (h testHelper) mustObjectAttrs(o *ObjectHandle) *ObjectAttrs {
+	attrs, err := o.Attrs(context.Background())
+	if err != nil {
+		h.t.Fatalf("%s: object attrs: %v", loc(), err)
+	}
+	return attrs
 }
 
 func writeObject(ctx context.Context, obj *ObjectHandle, contentType string, contents []byte) error {
@@ -2196,6 +2263,18 @@ func writeObject(ctx context.Context, obj *ObjectHandle, contentType string, con
 		}
 	}
 	return w.Close()
+}
+
+// loc returns a string describing the file and line of its caller's call site. In
+// other words, if a test function calls a helper, and the helper calls loc, then the
+// string will refer to the line on which the test function called the helper.
+// TODO(jba): use t.Helper once we drop go 1.6.
+func loc() string {
+	_, file, line, ok := runtime.Caller(2)
+	if !ok {
+		return "???"
+	}
+	return fmt.Sprintf("%s:%d", filepath.Base(file), line)
 }
 
 func readObject(ctx context.Context, obj *ObjectHandle) ([]byte, error) {
