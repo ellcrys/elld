@@ -7,10 +7,31 @@ services:
         seed: 1
     ports:
       - "9001:9000"
-  # n2:
-  #   build: 
-  #     context: .
-  #     args: 
-  #       seed: 2
-  #   ports:
-  #     - "9001:9000"
+    networks:
+      local_net:
+        ipv4_address: 172.16.238.10
+        ipv6_address: 2001:3984:3989::10
+        
+  n2:
+    build: 
+      context: .
+      args: 
+        seed: 2
+        addnode: "-j /ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"
+    ports:
+      - "9002:9000"
+    networks:
+      local_net:
+        ipv4_address: 172.16.238.11
+        ipv6_address: 2001:3984:3989::11
+  
+networks:
+  local_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      -
+        subnet: 172.16.238.0/24
+      -
+        subnet: 2001:3984:3989::/64
