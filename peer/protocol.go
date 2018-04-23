@@ -3,6 +3,8 @@ package peer
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/ellcrys/druid/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
@@ -19,14 +21,17 @@ type Protocol interface {
 	SendGetAddr([]*Peer) error
 	OnGetAddr(net.Stream)
 	OnAddr(net.Stream)
-	RelayAddr([]*wire.Address)
+	RelayAddr([]*wire.Address) error
 }
 
 // Inception represents the peer protocol
 type Inception struct {
-	version string
-	peer    *Peer
-	log     *zap.SugaredLogger
+	arm                         *sync.Mutex        // addr relay mutex
+	version                     string             // the protocol version
+	peer                        *Peer              // the local peer
+	log                         *zap.SugaredLogger // the logger
+	lastRelayPeersSelectionTime time.Time          // the time the last addr msg relay peers where selected
+	addrRelayPeers              [2]*Peer           // peers to relay addr msgs to
 }
 
 // NewInception creates a new instance of the protocol codenamed "Inception"
@@ -34,6 +39,7 @@ func NewInception(p *Peer, log *zap.SugaredLogger) *Inception {
 	return &Inception{
 		peer: p,
 		log:  log,
+		arm:  &sync.Mutex{},
 	}
 }
 

@@ -62,9 +62,11 @@ func (m *ConnectionManager) establishConnections() {
 		case <-m.connEstInt.C:
 			if m.pm.NeedMorePeers() {
 				unconnectedPeers := m.pm.getUnconnectedPeers()
-				m.log.Debugw("Connecting to more peers", "UnconnectedPeers", len(unconnectedPeers))
-				for _, p := range unconnectedPeers {
-					m.pm.connectToPeer(p.StringID())
+				if len(unconnectedPeers) > 0 {
+					m.log.Debugw("Connecting to more peers", "UnconnectedPeers", len(unconnectedPeers))
+					for _, p := range unconnectedPeers {
+						m.pm.connectToPeer(p.StringID())
+					}
 				}
 			}
 		}

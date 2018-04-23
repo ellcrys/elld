@@ -40,6 +40,7 @@ type Peer struct {
 	Timestamp       time.Time          // the last time this peer was seen/active
 	isHardcodedSeed bool               // whether the peer was hardcoded as a seed
 	log             *zap.SugaredLogger // peer logger
+	rSeed           []byte             // random 256 bit seed to be used for seed random operations
 }
 
 // NewPeer creates a peer instance at the specified port
@@ -78,6 +79,7 @@ func NewPeer(config *configdir.Config, address string, idSeed int64, log *zap.Su
 		host:    host,
 		wg:      sync.WaitGroup{},
 		log:     log,
+		rSeed:   util.RandBytes(64),
 	}
 
 	peer.localPeer = peer
@@ -103,7 +105,12 @@ func (p *Peer) PM() *Manager {
 
 // IsSame checks if p is the same as peer
 func (p *Peer) IsSame(peer *Peer) bool {
-	return peer != nil && p.StringID() == peer.StringID()
+	return p.StringID() == peer.StringID()
+}
+
+// IsSameID is like IsSame except it accepts string
+func (p *Peer) IsSameID(id string) bool {
+	return p.StringID() == id
 }
 
 // SetLocalPeer sets the local peer
@@ -286,9 +293,6 @@ func (p *Peer) connectToPeer(remotePeer *Peer) error {
 // Then send GetAddr message if handshake is successful
 func (p *Peer) Start() {
 	p.PM().Manage()
-
-	// send handshake to bootstrap peers.
-	// after s
 	for _, peer := range p.PM().bootstrapPeers {
 		go p.connectToPeer(peer)
 	}

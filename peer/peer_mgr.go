@@ -178,6 +178,10 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return fmt.Errorf("nil received as *Peer")
 	}
 
+	if p.IsSame(m.localPeer) {
+		return fmt.Errorf("peer is local peer")
+	}
+
 	if !util.IsValidAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not valid")
 	}

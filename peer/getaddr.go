@@ -11,14 +11,16 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-// sendGetAddr sends a wire.GetAddr message to a remote peer
-func (pt *Inception) sendGetAddr(remotePeer *Peer) error {
+// sendGetAddr sends a wire.GetAddr message to a remote peer.
+// The remote peer will respond with a wire.Addr message which the function
+// must process and 
+func (pt *Inception) sendGetAddr(remotePeer *Peer) ([]*wire.Address, error) {
 
 	remotePeerIDShort := remotePeer.ShortID()
 	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.GetAddrVersion)
 	if err != nil {
 		pt.log.Debugw("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)
+		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
 
@@ -27,7 +29,7 @@ func (pt *Inception) sendGetAddr(remotePeer *Peer) error {
 	msg.Sig = pt.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		pt.log.Debugw("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("getaddr failed. failed to write to stream")
+		return nil, fmt.Errorf("getaddr failed. failed to write to stream")
 	}
 	w.Flush()
 
@@ -36,7 +38,8 @@ func (pt *Inception) sendGetAddr(remotePeer *Peer) error {
 	return pt.onAddr(s)
 }
 
-// SendGetAddr sends GetAddr message to peers.
+// SendGetAddr sends GetAddr message to peers in separate goroutines.
+// GetAddr returns with a list of addr that should be relayed to other peers.
 func (pt *Inception) SendGetAddr(remotePeers []*Peer) error {
 
 	if !pt.PM().NeedMorePeers() {
@@ -44,7 +47,16 @@ func (pt *Inception) SendGetAddr(remotePeers []*Peer) error {
 	}
 
 	for _, remotePeer := range remotePeers {
-		go pt.sendGetAddr(remotePeer)
+		rp := remotePeer
+		go func() {
+			addressToRelay, err := pt.sendGetAddr(rp)
+			if err != nil {
+				return
+			}
+			if len(addressToRelay) > 0 {
+				pt.RelayAddr(addressToRelay)
+			}
+		}()
 	}
 
 	return nil
