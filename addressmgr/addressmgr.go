@@ -6,6 +6,9 @@ import (
 	mrand "math/rand"
 	"time"
 
+	"golang.org/x/crypto/ripemd160"
+
+	"github.com/btcsuite/btcutil/base58"
 	mh "github.com/multiformats/go-multihash"
 
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -14,8 +17,14 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// HexPrefix is used to identify an ellcry hex value
-var HexPrefix = "el"
+// AddressVersion is the base58 encode version adopted
+var AddressVersion byte = 92
+
+// PublicKeyVersion is the base58 encode version adopted for public keys
+var PublicKeyVersion byte = 93
+
+// PrivateKeyVersion is the base58 encode version adopted for private keys
+var PrivateKeyVersion byte = 94
 
 // Address represents an address
 type Address struct {
@@ -75,13 +84,13 @@ func (a *Address) PeerID() string {
 }
 
 // Addr returns the address corresponding to the public key
-// The address is prefixed with 'el'
 func (a *Address) Addr() string {
 	pkHex := a.PubKey().Hex()
 	pubSha256 := sha3.Sum256([]byte(pkHex))
-	pubShaHex := hex.EncodeToString(pubSha256[:])
-	addr := pubShaHex[24:]
-	return "el" + addr
+	r := ripemd160.New()
+	r.Write(pubSha256[:])
+	addr := r.Sum(nil)
+	return base58.CheckEncode(addr, AddressVersion)
 }
 
 // PubKey returns the public key
@@ -105,10 +114,16 @@ func (p *PubKey) Bytes() ([]byte, error) {
 	return bs[:], nil
 }
 
-// Hex returns the uncompressed public key in hex encoding
+// Hex returns the public key in hex encoding
 func (p *PubKey) Hex() string {
 	bs, _ := p.Bytes()
 	return hex.EncodeToString(bs[:])
+}
+
+// Base58 returns the public key in base58 encoding
+func (p *PubKey) Base58() string {
+	bs, _ := p.Bytes()
+	return base58.CheckEncode(bs[:], PublicKeyVersion)
 }
 
 // Bytes returns the byte equivalent of the public key
@@ -120,8 +135,26 @@ func (p *PrivKey) Bytes() ([]byte, error) {
 	return bs[:], nil
 }
 
-// Hex returns the uncompressed public key in hex encoding
-func (p *PrivKey) Hex() string {
+// Base58 returns the public key in base58 encoding
+func (p *PrivKey) Base58() string {
 	bs, _ := p.Bytes()
-	return hex.EncodeToString(bs)
+	return base58.CheckEncode(bs, PrivateKeyVersion)
+}
+
+// IsValidAddr checks whether an address is valid
+func IsValidAddr(addr string) error {
+	if addr == "" {
+		return fmt.Errorf("empty address")
+	}
+
+	_, v, err := base58.CheckDecode(addr)
+	if err != nil {
+		return err
+	}
+
+	if v != AddressVersion {
+		return fmt.Errorf("invalid version")
+	}
+
+	return nil
 }

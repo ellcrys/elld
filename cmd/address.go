@@ -38,8 +38,6 @@ var addressNewCmd = &cobra.Command{
 	Long:  `Create a new address`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		noPrefix, _ := cmd.Flags().GetBool("no-prefix")
-
 		var seed *int64 = nil
 		_seed, _ := cmd.Flags().GetInt64("seed")
 		if _seed != -1 {
@@ -49,13 +47,12 @@ var addressNewCmd = &cobra.Command{
 		addr, _ := addressmgr.NewAddress(seed)
 		newAddr := addr.Addr()
 
-		if noPrefix {
-			newAddr = newAddr[2:]
-		}
-
 		fmt.Println(fmt.Sprintf("Address:     %s", newAddr))
-		fmt.Println(fmt.Sprintf("Private Key: %s", addr.PrivKey().Hex()))
+		fmt.Println(fmt.Sprintf("Public Key:  %s", addr.PubKey().Base58()))
+		fmt.Println(fmt.Sprintf("Private Key: %s", addr.PrivKey().Base58()))
 		fmt.Println(fmt.Sprintf("Peer ID:     %s", addr.PeerID()))
+
+		addressmgr.IsValidAddr(newAddr)
 	},
 }
 
@@ -63,5 +60,4 @@ func init() {
 	addressCmd.AddCommand(addressNewCmd)
 	rootCmd.AddCommand(addressCmd)
 	addressNewCmd.Flags().Int64P("seed", "s", -1, "Set a random seed")
-	addressNewCmd.Flags().Bool("no-prefix", false, "Set a random seed")
 }

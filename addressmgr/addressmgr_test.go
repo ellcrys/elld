@@ -40,12 +40,12 @@ var _ = Describe("Addressmgr", func() {
 	})
 
 	Describe(".Addr", func() {
-		It("should return 'elf781f1e102d4a31a810e715ccc3da0de8bb773d9'", func() {
+		It("should return 'eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad'", func() {
 			seed := int64(1)
 			a, err := NewAddress(&seed)
 			Expect(err).To(BeNil())
 			addr := a.Addr()
-			Expect(addr).To(Equal("elf781f1e102d4a31a810e715ccc3da0de8bb773d9"))
+			Expect(addr).To(Equal("eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad"))
 		})
 	})
 
@@ -67,6 +67,16 @@ var _ = Describe("Addressmgr", func() {
 		})
 	})
 
+	Describe("PubKey.Base58", func() {
+		It("should return 48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", func() {
+			seed := int64(1)
+			a, err := NewAddress(&seed)
+			Expect(err).To(BeNil())
+			hx := a.PubKey().Base58()
+			Expect(hx).To(Equal("48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC"))
+		})
+	})
+
 	Describe("Priv.Bytes", func() {
 		It("should return err.Error('private key is nil')", func() {
 			a := PrivKey{}
@@ -85,13 +95,38 @@ var _ = Describe("Addressmgr", func() {
 		})
 	})
 
-	Describe("Priv.Hex", func() {
-		It("should return ", func() {
+	Describe("Priv.Base58", func() {
+		It("should return wU7ckbRBWevtkoT9QoET1adGCsABPRtyDx5T9EHZ4paP78EQ1w5sFM2sZg87fm1N2Np586c98GkYwywvtgy9d2gEpWbsbU", func() {
 			seed := int64(1)
 			a, err := NewAddress(&seed)
 			Expect(err).To(BeNil())
-			hx := a.PrivKey().Hex()
-			Expect(hx).To(Equal("52fdfc072182654f163f5f0f9a621d729566c74d10037c4d7bbb0407d1e2c6496f1581709bb7b1ef030d210db18e3b0ba1c776fba65d8cdaad05415142d189f8"))
+			hx := a.PrivKey().Base58()
+			Expect(hx).To(Equal("wU7ckbRBWevtkoT9QoET1adGCsABPRtyDx5T9EHZ4paP78EQ1w5sFM2sZg87fm1N2Np586c98GkYwywvtgy9d2gEpWbsbU"))
+		})
+	})
+
+	Describe(".IsValidAddr", func() {
+		It("should return error.Error(empty address)", func() {
+			err := IsValidAddr("")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("empty address"))
+		})
+
+		It("should return err.Error(checksum error)", func() {
+			err := IsValidAddr("hh23887dhhw88su")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("checksum error"))
+		})
+
+		It("should return err.Error(checksum error)", func() {
+			err := IsValidAddr("E1juuqo9XEfKhGHSwExMxGry54h4JzoRkr")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("invalid version"))
+		})
+
+		It("should return nil", func() {
+			err := IsValidAddr("eDFPdimzRqfFKetEMSmsSLTLHCLSniZQwD")
+			Expect(err).To(BeNil())
 		})
 	})
 })
