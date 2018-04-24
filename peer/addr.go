@@ -185,8 +185,15 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 
 	// get the peers to relay address to
 	relayPeers := pt.getAddrRelayPeers(relayable)
+	numRelayPeers := len(relayPeers)
+	if relayPeers[0] == nil {
+		numRelayPeers--
+	}
+	if relayPeers[1] == nil {
+		numRelayPeers--
+	}
 
-	pt.log.Debugw("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", len(relayPeers))
+	pt.log.Debugw("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", numRelayPeers)
 
 	successfullyRelayed := 0
 	addrMsg := &wire.Addr{Addresses: relayable}
