@@ -87,6 +87,56 @@ func IDFromAddr(addr ma.Multiaddr) peer.ID {
 	return id
 }
 
+// IDFromAddrString is like IDFromAddr but accepts a string.
+// Returns empty string if addr is not a valid multiaddr.
+// Expects the caller to have validated addr before calling the function.
+func IDFromAddrString(addr string) peer.ID {
+	mAddr, err := ma.NewMultiaddr(addr)
+	if err != nil {
+		return ""
+	}
+	pid, _ := mAddr.ValueForProtocol(ma.P_IPFS)
+	id, _ := peer.IDB58Decode(pid)
+	return id
+}
+
+// ParseAddr returns the protocol and value present in a multiaddr.
+// Expects the caller to have validate the address before calling the function.
+func ParseAddr(addr string) map[string]string {
+	mAddr, err := ma.NewMultiaddr(addr)
+	if err != nil {
+		return nil
+	}
+
+	tcp, _ := mAddr.ValueForProtocol(ma.P_TCP)
+	ip4, _ := mAddr.ValueForProtocol(ma.P_IP4)
+	ip6, _ := mAddr.ValueForProtocol(ma.P_IP6)
+	ipfs, _ := mAddr.ValueForProtocol(ma.P_IPFS)
+
+	return map[string]string{
+		"tcp":  tcp,
+		"ip4":  ip4,
+		"ip6":  ip6,
+		"ipfs": ipfs,
+	}
+}
+
+// GetIPFromAddr get the IP4/6 ip of the address.
+// Expects the caller to have validate the addr
+func GetIPFromAddr(addr string) net.IP {
+	addrParsed := ParseAddr(addr)
+	if addrParsed == nil {
+		return nil
+	}
+
+	ip := addrParsed["ip6"]
+	if ip == "" {
+		ip = addrParsed["ip4"]
+	}
+
+	return net.ParseIP(ip)
+}
+
 // ShortID returns the short version an ID
 func ShortID(id peer.ID) string {
 	address := id.Pretty()

@@ -199,6 +199,9 @@ func (gp *GerritProject) ForeachOpenCL(fn func(*GerritCL) error) error {
 // that error.
 func (gp *GerritProject) ForeachCLUnsorted(fn func(*GerritCL) error) error {
 	for _, cl := range gp.cls {
+		if !cl.complete() {
+			continue
+		}
 		if err := fn(cl); err != nil {
 			return err
 		}
@@ -211,7 +214,10 @@ func (gp *GerritProject) ForeachCLUnsorted(fn func(*GerritCL) error) error {
 // CL numbers are shared across all projects on a Gerrit server, so you can get
 // nil unless you have the GerritProject containing that CL.
 func (gp *GerritProject) CL(number int32) *GerritCL {
-	return gp.cls[number]
+	if cl := gp.cls[number]; cl.complete() {
+		return cl
+	}
+	return nil
 }
 
 // GitCommit returns the provided git commit, or nil if it's unknown.
@@ -260,6 +266,7 @@ type GerritCL struct {
 
 	// Commit is the git commit of the latest version of this CL.
 	// Previous versions are available via CommitAtVersion.
+	// Commit is always non-nil.
 	Commit *GitCommit
 
 	// branch is a cache of the latest "Branch: " value seen from
@@ -270,8 +277,14 @@ type GerritCL struct {
 	// Meta is the head of the most recent Gerrit "meta" commit
 	// for this CL. This is guaranteed to be a linear history
 	// back to a CL-specific root commit for this meta branch.
-	Meta        *GitCommit
-	MetaCommits []*GitCommit // in order, from root to Meta
+	// Meta will always be non-nil.
+	Meta *GerritMeta
+
+	// Metas contains the history of Meta commits, from the oldest (root)
+	// to the most recent. The last item in the slice is the same
+	// value as the GerritCL.Meta field.
+	// The Metas slice will always contain at least 1 element.
+	Metas []*GerritMeta
 
 	// Status will be "merged", "abandoned", "new", or "draft".
 	Status string
@@ -290,9 +303,8 @@ type GerritCL struct {
 	Messages []*GerritMessage
 }
 
-// GerritMetaCommit represents a GitCommit in the Gerrit "NoteDb" format.
-type GerritMetaCommit struct {
-	*GitCommit
+func (cl *GerritCL) complete() bool {
+	return cl != nil && cl.Meta != nil && cl.Commit != nil
 }
 
 // GerritMessage is a Gerrit reply that is attached to the CL as a whole, and
@@ -343,9 +355,9 @@ func (cl *GerritCL) References(ref GitHubIssueRef) bool {
 func (cl *GerritCL) Branch() string { return cl.branch }
 
 func (cl *GerritCL) updateBranch() {
-	for i := len(cl.MetaCommits) - 1; i >= 0; i-- {
-		mc := cl.MetaCommits[i]
-		branch, _ := lineValue(mc.Msg, "Branch:")
+	for i := len(cl.Metas) - 1; i >= 0; i-- {
+		mc := cl.Metas[i]
+		branch, _ := lineValue(mc.Commit.Msg, "Branch:")
 		if branch != "" {
 			cl.branch = strings.TrimPrefix(branch, "refs/heads/")
 			return
@@ -478,10 +490,14 @@ func (cl *GerritCL) CommitAtVersion(version int32) *GitCommit {
 
 func (cl *GerritCL) firstMetaCommit() *GitCommit {
 	m := cl.Meta
-	for m != nil && len(m.Parents) > 0 {
-		m = m.Parents[0] // Meta commits don’t have more than one parent.
+	if m == nil { // TODO: Can this actually happen, besides in one of the contrived tests? Remove?
+		return nil
 	}
-	return m
+	c := m.Commit
+	for c != nil && len(c.Parents) > 0 {
+		c = c.Parents[0] // Meta commits don’t have more than one parent.
+	}
+	return c
 }
 
 func (cl *GerritCL) updateGithubIssueRefs() {
@@ -760,7 +776,7 @@ func (gp *GerritProject) processMutation(gm *maintpb.GerritMutation) {
 
 		if clv.Version == 0 { // is a meta commit
 			gp.noteDirtyCL(cl) // needs processing at end of sync
-			cl.Meta = gc
+			cl.Meta = newGerritMeta(gc, cl)
 		} else {
 			cl.Commit = gc
 			cl.Version = clv.Version
@@ -801,16 +817,16 @@ func (gp *GerritProject) finishProcessingCL(cl *GerritCL) {
 	// in reverse order and then flip the array before setting on the
 	// GerritCL object.
 	var backwardMessages []*GerritMessage
-	var backwardMeta []*GitCommit
+	var backwardMeta []*GerritMeta
 
-	gc, ok := c.gitCommit[cl.Meta.Hash]
+	gc, ok := c.gitCommit[cl.Meta.Commit.Hash]
 	if !ok {
 		log.Printf("WARNING: GerritProject(%q).finishProcessingCL failed to find CL %v hash %s",
-			gp.ServerSlashProject(), cl.Number, cl.Meta.Hash)
+			gp.ServerSlashProject(), cl.Number, cl.Meta.Commit.Hash)
 		return
 	}
 
-	gp.foreachCommitParent(cl.Meta.Hash, func(gc *GitCommit) error {
+	gp.foreachCommitParent(cl.Meta.Commit.Hash, func(gc *GitCommit) error {
 		if strings.Contains(gc.Msg, "\nLabel: ") {
 			gp.numLabelChanges++
 		}
@@ -818,15 +834,12 @@ func (gp *GerritProject) finishProcessingCL(cl *GerritCL) {
 			cl.Private = true
 		}
 		if gc.GerritMeta == nil {
-			gc.GerritMeta = &GerritMeta{
-				Commit: gc,
-				CL:     cl,
-			}
+			gc.GerritMeta = newGerritMeta(gc, cl)
 		}
 		if foundStatus == "" {
 			foundStatus = getGerritStatus(gc)
 		}
-		backwardMeta = append(backwardMeta, gc)
+		backwardMeta = append(backwardMeta, gc.GerritMeta)
 		if message := gp.getGerritMessage(gc); message != nil {
 			backwardMessages = append(backwardMessages, message)
 		}
@@ -845,9 +858,9 @@ func (gp *GerritProject) finishProcessingCL(cl *GerritCL) {
 	reverseGerritMessages(backwardMessages)
 	cl.Messages = backwardMessages
 
-	cl.MetaCommits = cl.MetaCommits[:0]
+	cl.Metas = cl.Metas[:0]
 	for i := len(backwardMeta) - 1; i >= 0; i-- {
-		cl.MetaCommits = append(cl.MetaCommits, backwardMeta[i])
+		cl.Metas = append(cl.Metas, backwardMeta[i])
 	}
 	cl.updateBranch()
 }
@@ -1261,6 +1274,24 @@ type GerritMeta struct {
 
 	// CL is the Gerrit CL this metadata is for.
 	CL *GerritCL
+
+	flags gerritMetaFlags
+}
+
+type gerritMetaFlags uint8
+
+const (
+	// metaFlagHashtagEdit indicates that the meta commit edits the hashtags on the commit.
+	metaFlagHashtagEdit gerritMetaFlags = 1 << iota
+)
+
+func newGerritMeta(gc *GitCommit, cl *GerritCL) *GerritMeta {
+	m := &GerritMeta{Commit: gc, CL: cl}
+
+	if msg := m.Commit.Msg; strings.Contains(msg, "autogenerated:gerrit:setHashtag") && m.ActionTag() == "autogenerated:gerrit:setHashtag" {
+		m.flags |= metaFlagHashtagEdit
+	}
+	return m
 }
 
 // Footer returns the "key: value" lines at the base of the commit.
@@ -1270,6 +1301,66 @@ func (m *GerritMeta) Footer() string {
 		return ""
 	}
 	return m.Commit.Msg[i+2:]
+}
+
+// Hashtags returns the current set of hashtags.
+func (m *GerritMeta) Hashtags() GerritHashtags {
+	tags, _ := lineValue(m.Footer(), "Hashtags: ")
+	return GerritHashtags(tags)
+}
+
+// ActionTag returns the Gerrit "Tag" value from the meta commit.
+// These are of the form "autogenerated:gerrit:setHashtag".
+func (m *GerritMeta) ActionTag() string {
+	v, _ := lineValue(m.Footer(), "Tag: ")
+	return v
+}
+
+// HashtagEdits returns the hashtags added and removed by this meta commit,
+// and whether this meta commit actually modified hashtags.
+func (m *GerritMeta) HashtagEdits() (added, removed GerritHashtags, ok bool) {
+	// Return early for the majority of meta commits that don't edit hashtags.
+	if m.flags&metaFlagHashtagEdit == 0 {
+		return
+	}
+
+	msg := m.Commit.Msg
+
+	// Parse lines of form:
+	//
+	// Hashtag removed: bar
+	// Hashtags removed: foo, bar
+	// Hashtag added: bar
+	// Hashtags added: foo, bar
+	for len(msg) > 0 {
+		value, rest := lineValue(msg, "Hash")
+		msg = rest
+		colon := strings.IndexByte(value, ':')
+		if colon != -1 {
+			action := value[:colon]
+			value := GerritHashtags(strings.TrimSpace(value[colon+1:]))
+			switch action {
+			case "tag added", "tags added":
+				added = value
+			case "tag removed", "tags removed":
+				removed = value
+			}
+		}
+	}
+	ok = added != "" || removed != ""
+	return
+}
+
+// HashtagsAdded returns the hashtags added by this meta commit, if any.
+func (m *GerritMeta) HashtagsAdded() GerritHashtags {
+	added, _, _ := m.HashtagEdits()
+	return added
+}
+
+// HashtagsRemoved returns the hashtags removed by this meta commit, if any.
+func (m *GerritMeta) HashtagsRemoved() GerritHashtags {
+	_, removed, _ := m.HashtagEdits()
+	return removed
 }
 
 // LabelVotes returns a map from label name to voter email to their vote.
@@ -1288,24 +1379,24 @@ func (m *GerritMeta) LabelVotes() map[string]map[string]int8 {
 	// Let's see which number in the (linear) meta history
 	// we are.
 	ourIndex := -1
-	for i, mc := range m.CL.MetaCommits {
-		if mc.GerritMeta == m {
+	for i, mc := range m.CL.Metas {
+		if mc == m {
 			ourIndex = i
 			break
 		}
 	}
 	if ourIndex == -1 {
-		panic("LabelVotes called on GerritMeta not in its m.CL.MetaCommits slice")
+		panic("LabelVotes called on GerritMeta not in its m.CL.Metas slice")
 	}
 	labels := map[string]map[string]int8{}
 
-	history := m.CL.MetaCommits[:ourIndex+1]
+	history := m.CL.Metas[:ourIndex+1]
 	var lastCommit string
 	for _, mc := range history {
-		log.Printf("For CL %v, mc %v", m.CL.Number, mc.GerritMeta)
-		footer := mc.GerritMeta.Footer()
+		log.Printf("For CL %v, mc %v", m.CL.Number, mc)
+		footer := mc.Footer()
 		isNew := strings.Contains(footer, "\nTag: autogenerated:gerrit:newPatchSet\n")
-		email := mc.Author.Email()
+		email := mc.Commit.Author.Email()
 		if isNew {
 			commit, _ := lineValue(footer, "Commit: ")
 			if commit != "" {
@@ -1399,4 +1490,64 @@ func parseGerritLabelValue(v string) (label string, value int8, whose string) {
 		}
 	}
 	return
+}
+
+// GerritHashtags represents a set of "hashtags" on a Gerrit CL.
+//
+// The representation is a comma-separated string, to match Gerrit's
+// internal representation in the meta commits. To support both
+// forms of Gerrit's internal representation, whitespace is optional
+// around the commas.
+type GerritHashtags string
+
+// Contains reports whether the hashtag t is in the set of tags s.
+func (s GerritHashtags) Contains(t string) bool {
+	for len(s) > 0 {
+		comma := strings.IndexByte(string(s), ',')
+		if comma == -1 {
+			return strings.TrimSpace(string(s)) == t
+		}
+		if strings.TrimSpace(string(s[:comma])) == t {
+			return true
+		}
+		s = s[comma+1:]
+	}
+	return false
+}
+
+// Foreach calls fn for each tag in the set s.
+func (s GerritHashtags) Foreach(fn func(string)) {
+	for len(s) > 0 {
+		comma := strings.IndexByte(string(s), ',')
+		if comma == -1 {
+			fn(strings.TrimSpace(string(s)))
+			return
+		}
+		fn(strings.TrimSpace(string(s[:comma])))
+		s = s[comma+1:]
+	}
+}
+
+// Match reports whether fn returns true for any tag in the set s.
+// If fn returns true, iteration stops and Match returns true.
+func (s GerritHashtags) Match(fn func(string) bool) bool {
+	for len(s) > 0 {
+		comma := strings.IndexByte(string(s), ',')
+		if comma == -1 {
+			return fn(strings.TrimSpace(string(s)))
+		}
+		if fn(strings.TrimSpace(string(s[:comma]))) {
+			return true
+		}
+		s = s[comma+1:]
+	}
+	return false
+}
+
+// Len returns the number of tags in the set s.
+func (s GerritHashtags) Len() int {
+	if s == "" {
+		return 0
+	}
+	return strings.Count(string(s), ",") + 1
 }

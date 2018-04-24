@@ -26,39 +26,25 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	peerLog   *zap.SugaredLogger
-	protocLog *zap.SugaredLogger
-)
-
-func init() {
-	peerLog = util.NewLogger("/peer")
-	protocLog = peerLog.Named("protocol.inception")
-}
-
-// SilenceLoggers changes the loggers in this package to NopLoggers. Called in test environment.
-func SilenceLoggers() {
-	peerLog = util.NewNopLogger()
-	protocLog = util.NewNopLogger()
-}
-
 // Peer represents a network node
 type Peer struct {
-	cfg             *configdir.Config // peer config
-	address         ma.Multiaddr      // peer multiaddr
-	IP              net.IP            // peer ip
-	host            host.Host         // peer libp2p host
-	wg              sync.WaitGroup    // wait group for preventing the main thread from exiting
-	localPeer       *Peer             // local peer
-	peerManager     *Manager          // peer manager for managing connections to other remote peers
-	protoc          Protocol          // protocol instance
-	remote          bool              // remote indicates the peer represents a remote peer
-	Timestamp       time.Time         // the last time this peer was seen/active
-	isHardcodedSeed bool              // whether the peer was hardcoded as a seed
+	cfg             *configdir.Config  // peer config
+	address         ma.Multiaddr       // peer multiaddr
+	IP              net.IP             // peer ip
+	host            host.Host          // peer libp2p host
+	wg              sync.WaitGroup     // wait group for preventing the main thread from exiting
+	localPeer       *Peer              // local peer
+	peerManager     *Manager           // peer manager for managing connections to other remote peers
+	protoc          Protocol           // protocol instance
+	remote          bool               // remote indicates the peer represents a remote peer
+	Timestamp       time.Time          // the last time this peer was seen/active
+	isHardcodedSeed bool               // whether the peer was hardcoded as a seed
+	log             *zap.SugaredLogger // peer logger
+	rSeed           []byte             // random 256 bit seed to be used for seed random operations
 }
 
 // NewPeer creates a peer instance at the specified port
-func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, error) {
+func NewPeer(config *configdir.Config, address string, idSeed int64, log *zap.SugaredLogger) (*Peer, error) {
 
 	// generate peer identity
 	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
@@ -92,34 +78,26 @@ func NewPeer(config *configdir.Config, address string, idSeed int64) (*Peer, err
 		address: util.FullAddressFromHost(host),
 		host:    host,
 		wg:      sync.WaitGroup{},
+		log:     log,
+		rSeed:   util.RandBytes(64),
 	}
 
 	peer.localPeer = peer
-	peer.peerManager = NewManager(config, peer)
+	peer.peerManager = NewManager(config, peer, log.Named("manager"))
 	peer.IP = peer.ip()
-
-	// go func() {
-	// 	tm := time.NewTicker(10 * time.Second)
-	// 	for {
-	// 		select {
-	// 		case <-tm.C:
-	// 			for _, p := range peer.peerManager.knownPeers {
-	// 				fmt.Println("-> ", p.IDPretty(), ">>>", p.Connected())
-	// 			}
-	// 		}
-	// 	}
-	// }()
 
 	return peer, nil
 }
 
 // NewRemotePeer creates a Peer that represents a remote peer
 func NewRemotePeer(address ma.Multiaddr, localPeer *Peer) *Peer {
-	return &Peer{
+	peer := &Peer{
 		address:   address,
 		localPeer: localPeer,
 		remote:    true,
 	}
+	peer.IP = peer.ip()
+	return peer
 }
 
 // PM returns the peer manager
@@ -129,7 +107,17 @@ func (p *Peer) PM() *Manager {
 
 // IsSame checks if p is the same as peer
 func (p *Peer) IsSame(peer *Peer) bool {
-	return peer != nil && p.StringID() == peer.StringID()
+	return p.StringID() == peer.StringID()
+}
+
+// DevMode returns whether the peer is in dev mode
+func (p *Peer) DevMode() bool {
+	return p.cfg.Peer.Dev
+}
+
+// IsSameID is like IsSame except it accepts string
+func (p *Peer) IsSameID(id string) bool {
+	return p.StringID() == id
 }
 
 // SetLocalPeer sets the local peer
@@ -210,6 +198,18 @@ func (p *Peer) Connected() bool {
 	return len(p.localPeer.host.Network().ConnsToPeer(p.ID())) > 0
 }
 
+func (p *Peer) isDevMode() bool {
+	return p.cfg.Peer.Dev
+}
+
+// IsKnown checks whether a peer is known to the local peer
+func (p *Peer) IsKnown() bool {
+	if p.localPeer == nil {
+		return false
+	}
+	return p.localPeer.PM().GetKnownPeer(p.StringID()) != nil
+}
+
 // PrivKey returns the peer's private key
 func (p *Peer) PrivKey() crypto.PrivKey {
 	return p.host.Peerstore().PrivKey(p.host.ID())
@@ -255,15 +255,24 @@ func (p *Peer) GetBindAddress() string {
 
 // AddBootstrapPeers sets the initial nodes to communicate to
 func (p *Peer) AddBootstrapPeers(peerAddresses []string, hardcoded bool) error {
+
 	for _, addr := range peerAddresses {
+
 		if !util.IsValidAddr(addr) {
-			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debugw("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
-		if !p.cfg.Peer.Dev && !util.IsRoutableAddr(addr) {
-			peerLog.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+
+		if p.isDevMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
+			p.log.Debugw("Only local or private address are allowed in dev mode", "Addr", addr)
 			continue
 		}
+
+		if !p.DevMode() && !util.IsRoutableAddr(addr) {
+			p.log.Debugw("Invalid bootstrap peer address", "PeerAddr", addr)
+			continue
+		}
+
 		pAddr, _ := ma.NewMultiaddr(addr)
 		rp := NewRemotePeer(pAddr, p)
 		rp.isHardcodedSeed = hardcoded
@@ -286,13 +295,22 @@ func (p *Peer) GetPeersPublicAddrs(peerIDsToIgnore []string) (peerAddrs []ma.Mul
 	return
 }
 
-// Start starts the peer
+// connectToPeer handshake to each bootstrap peer.
+// Then send GetAddr message if handshake is successful
+func (p *Peer) connectToPeer(remotePeer *Peer) error {
+	if p.protoc.SendHandshake(remotePeer) == nil {
+		return p.protoc.SendGetAddr([]*Peer{remotePeer})
+	}
+	return nil
+}
+
+// Start starts the peer.
+// Send handshake to each bootstrap peer.
+// Then send GetAddr message if handshake is successful
 func (p *Peer) Start() {
 	p.PM().Manage()
-
-	// send handshake to bootstrap peers
-	for _, b := range p.PM().bootstrapPeers {
-		go p.protoc.SendHandshake(b)
+	for _, peer := range p.PM().bootstrapPeers {
+		go p.connectToPeer(peer)
 	}
 }
 

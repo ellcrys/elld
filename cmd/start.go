@@ -43,7 +43,8 @@ var startCmd = &cobra.Command{
 	Short: "Start the peer",
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Druid started")
+
+		log.Infow("Druid has started", "Version", util.ClientVersion)
 
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
@@ -60,12 +61,17 @@ var startCmd = &cobra.Command{
 		cfg.Peer.Dev = dev
 		cfg.Peer.MaxAddrsExpected = 1000
 
+		if cfg.Peer.MaxConnections == 0 {
+			cfg.Peer.MaxConnections = 60
+		}
+
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")
 		}
 
 		// create the peer
-		p, err := peer.NewPeer(cfg, addressToListenOn, seed)
+		log := util.NewLogger("peer")
+		p, err := peer.NewPeer(cfg, addressToListenOn, seed, log)
 		if err != nil {
 			log.Fatalf("failed to create peer")
 		}
@@ -84,15 +90,16 @@ var startCmd = &cobra.Command{
 			}
 		}
 
-		log.Infof("Node is listening at %s", p.GetMultiAddr())
+		log.Infow("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", dev)
 
-		protocol := peer.NewInception(p)
+		protocol := peer.NewInception(p, log.Named("protocol"))
 
 		// set protocol and handlers
 		p.SetProtocol(protocol)
 		p.SetProtocolHandler(util.HandshakeVersion, protocol.OnHandshake)
 		p.SetProtocolHandler(util.PingVersion, protocol.OnPing)
 		p.SetProtocolHandler(util.GetAddrVersion, protocol.OnGetAddr)
+		p.SetProtocolHandler(util.AddrVersion, protocol.OnAddr)
 
 		// start the peer and cause main thread to wait
 		p.Start()
