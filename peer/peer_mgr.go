@@ -186,7 +186,7 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return fmt.Errorf("peer address is not valid")
 	}
 
-	if !m.config.Peer.Dev && !util.IsRoutableAddr(p.GetMultiAddr()) {
+	if !m.localPeer.DevMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not routable")
 	}
 
@@ -334,7 +334,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 
-	if !m.config.Peer.Dev && !util.IsRoutableAddr(addr) {
+	if !m.localPeer.DevMode() && !util.IsRoutableAddr(addr) {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 

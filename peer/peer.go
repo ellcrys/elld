@@ -108,6 +108,11 @@ func (p *Peer) IsSame(peer *Peer) bool {
 	return p.StringID() == peer.StringID()
 }
 
+// DevMode returns whether the peer is in dev mode
+func (p *Peer) DevMode() bool {
+	return p.cfg.Peer.Dev
+}
+
 // IsSameID is like IsSame except it accepts string
 func (p *Peer) IsSameID(id string) bool {
 	return p.StringID() == id
@@ -253,7 +258,7 @@ func (p *Peer) AddBootstrapPeers(peerAddresses []string, hardcoded bool) error {
 			p.log.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
-		if !p.cfg.Peer.Dev && !util.IsRoutableAddr(addr) {
+		if !p.DevMode() && !util.IsRoutableAddr(addr) {
 			p.log.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
