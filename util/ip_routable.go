@@ -226,3 +226,9 @@ func IsRoutable(ip net.IP) bool {
 		isRFC4843(ip) || isRFC5737(ip) || isRFC6598(ip) ||
 		isLocal(ip) || (isRFC4193(ip) && !isOnionCatTor(ip)))
 }
+
+// IsDevAddr returns whether or not the passed address is a local
+// or private address.
+func IsDevAddr(ip net.IP) bool {
+	return isValid(ip) && (isLocal(ip) || isRFC1918(ip))
+}

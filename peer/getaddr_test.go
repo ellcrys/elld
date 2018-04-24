@@ -23,7 +23,7 @@ var _ = Describe("Getaddr", func() {
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, util.NewNopLogger())
 			rp.Host().Close()
-			err = rpProtoc.sendGetAddr(rp)
+			_, err = rpProtoc.sendGetAddr(rp)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("getaddr failed. failed to connect to peer. dial to self attempted"))
 		})
@@ -38,7 +38,7 @@ var _ = Describe("Getaddr", func() {
 			rpProtoc := NewInception(lp, util.NewNopLogger()) // lp should be rp, as such, will cause the protocol to use lp's private key
 			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
 
-			err = lpProtoc.sendGetAddr(rp)
+			_, err = lpProtoc.sendGetAddr(rp)
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("failed to verify message signature"))
 			lp.Host().Close()
@@ -63,12 +63,9 @@ var _ = Describe("Getaddr", func() {
 			rp.PM().AddOrUpdatePeer(rp2)
 			defer rp2.Host().Close()
 
-			err = lpProtoc.sendGetAddr(rp)
+			addrs, err := lpProtoc.sendGetAddr(rp)
 			Expect(err).To(BeNil())
-
-			knownPeers := lpProtoc.PM().KnownPeers()
-			Expect(knownPeers).To(HaveLen(0))
-			Expect(knownPeers[rp2.StringID()]).To(BeNil())
+			Expect(addrs).To(HaveLen(0))
 		})
 
 		It("hardcoded seed peer should not be returned", func() {
@@ -88,11 +85,9 @@ var _ = Describe("Getaddr", func() {
 			err = rp.PM().AddOrUpdatePeer(rp2)
 			Expect(err).To(BeNil())
 			defer rp2.Host().Close()
-			err = lpProtoc.sendGetAddr(rp)
+			addrs, err := lpProtoc.sendGetAddr(rp)
 			Expect(err).To(BeNil())
-
-			knownPeers := lpProtoc.PM().KnownPeers()
-			Expect(knownPeers).To(HaveLen(0))
+			Expect(addrs).To(HaveLen(0))
 		})
 
 		It("when address returned is more than MaxAddrsExpected, error must be returned and none of the addresses are added", func() {
@@ -125,12 +120,10 @@ var _ = Describe("Getaddr", func() {
 			Expect(err).To(BeNil())
 			rp.PM().AddOrUpdatePeer(rp3)
 
-			err = lpProtoc.sendGetAddr(rp)
+			addrs, err := lpProtoc.sendGetAddr(rp)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("too many addresses received. Ignoring addresses"))
-
-			peers := lp.PM().GetActivePeers(0)
-			Expect(len(peers)).To(BeZero())
+			Expect(addrs).To(HaveLen(0))
 		})
 	})
 })

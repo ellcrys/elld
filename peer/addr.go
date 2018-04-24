@@ -65,12 +65,23 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	return resp.Addresses, nil
 }
 
-// OnAddr handles incoming addr messages
+// OnAddr handles incoming addr messages.
+// Received addresses are relayed.
 func (pt *Inception) OnAddr(s net.Stream) {
+
+	remoteAddr := util.FullRemoteAddressFromStream(s)
+	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
+
+	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+		pt.log.Debugw("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Addr")
+		return
+	}
+
 	addresses, err := pt.onAddr(s)
 	if err != nil {
 		return
 	}
+
 	if len(addresses) > 0 {
 		go pt.RelayAddr(addresses)
 	}

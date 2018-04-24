@@ -13,7 +13,7 @@ import (
 
 // sendGetAddr sends a wire.GetAddr message to a remote peer.
 // The remote peer will respond with a wire.Addr message which the function
-// must process and 
+// must process using the OnAddr handler and return the response.
 func (pt *Inception) sendGetAddr(remotePeer *Peer) ([]*wire.Address, error) {
 
 	remotePeerIDShort := remotePeer.ShortID()
@@ -70,6 +70,11 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
 	defer s.Close()
+
+	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+		pt.log.Debugw("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
+		return
+	}
 
 	if !remotePeer.IsKnown() && !pt.LocalPeer().isDevMode() {
 		s.Conn().Close()
