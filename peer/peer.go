@@ -91,11 +91,13 @@ func NewPeer(config *configdir.Config, address string, idSeed int64, log *zap.Su
 
 // NewRemotePeer creates a Peer that represents a remote peer
 func NewRemotePeer(address ma.Multiaddr, localPeer *Peer) *Peer {
-	return &Peer{
+	peer := &Peer{
 		address:   address,
 		localPeer: localPeer,
 		remote:    true,
 	}
+	peer.IP = peer.ip()
+	return peer
 }
 
 // PM returns the peer manager
@@ -253,15 +255,24 @@ func (p *Peer) GetBindAddress() string {
 
 // AddBootstrapPeers sets the initial nodes to communicate to
 func (p *Peer) AddBootstrapPeers(peerAddresses []string, hardcoded bool) error {
+
 	for _, addr := range peerAddresses {
+
 		if !util.IsValidAddr(addr) {
-			p.log.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debugw("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
+
+		if p.isDevMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
+			p.log.Debugw("Only local or private address are allowed in dev mode", "Addr", addr)
+			continue
+		}
+
 		if !p.DevMode() && !util.IsRoutableAddr(addr) {
-			p.log.Debugw("invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debugw("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
+
 		pAddr, _ := ma.NewMultiaddr(addr)
 		rp := NewRemotePeer(pAddr, p)
 		rp.isHardcodedSeed = hardcoded

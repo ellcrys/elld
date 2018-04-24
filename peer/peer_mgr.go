@@ -175,11 +175,11 @@ func (m *Manager) sendPeriodicPingMsgs() {
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 
 	if p == nil {
-		return fmt.Errorf("nil received as *Peer")
+		return fmt.Errorf("nil received")
 	}
 
 	if p.IsSame(m.localPeer) {
-		return fmt.Errorf("peer is local peer")
+		return fmt.Errorf("peer is the local peer")
 	}
 
 	if !util.IsValidAddr(p.GetMultiAddr()) {
