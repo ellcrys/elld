@@ -58,54 +58,54 @@ func (pt *Inception) sendPing(remotePeer *Peer) error {
 }
 
 // SendPing sends a ping message
-func (protoc *Inception) SendPing(remotePeers []*Peer) {
-	protoc.log.Infow("Sending ping to peer(s)", "NumPeers", len(remotePeers))
+func (pt *Inception) SendPing(remotePeers []*Peer) {
+	pt.log.Infow("Sending ping to peer(s)", "NumPeers", len(remotePeers))
 	for _, remotePeer := range remotePeers {
 		_remotePeer := remotePeer
 		go func() {
-			if err := protoc.sendPing(_remotePeer); err != nil {
-				protoc.PM().TimestampPunishment(_remotePeer)
+			if err := pt.sendPing(_remotePeer); err != nil {
+				pt.PM().TimestampPunishment(_remotePeer)
 			}
 		}()
 	}
 }
 
 // OnPing handles incoming ping message
-func (protoc *Inception) OnPing(s net.Stream) {
+func (pt *Inception) OnPing(s net.Stream) {
 
-	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), protoc.LocalPeer())
+	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
 	defer s.Close()
 
-	protoc.log.Infow("Received ping message", "PeerID", remotePeerIDShort)
+	pt.log.Infow("Received ping message", "PeerID", remotePeerIDShort)
 
 	msg := &wire.Ping{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
-		protoc.log.Errorw("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
+		pt.log.Errorw("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
 	// verify signature
 	sig := msg.Sig
 	msg.Sig = nil
-	if err := protoc.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		protoc.log.Debugw("failed to verify ping message signature", "Err", err, "PeerID", remotePeerIDShort)
+	if err := pt.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
+		pt.log.Debugw("failed to verify ping message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
 	// send pong message
 	pongMsg := &wire.Pong{}
-	pongMsg.Sig = protoc.sign(pongMsg)
+	pongMsg.Sig = pt.sign(pongMsg)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
 	if err := enc.Encode(pongMsg); err != nil {
-		protoc.log.Errorw("failed to send pong response", "Err", err)
+		pt.log.Errorw("failed to send pong response", "Err", err)
 		return
 	}
 
 	remotePeer.Timestamp = time.Now()
-	protoc.PM().AddOrUpdatePeer(remotePeer)
-	protoc.log.Infow("Sent pong response to peer", "PeerID", remotePeerIDShort)
+	pt.PM().AddOrUpdatePeer(remotePeer)
+	pt.log.Infow("Sent pong response to peer", "PeerID", remotePeerIDShort)
 
 	w.Flush()
 }
