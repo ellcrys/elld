@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/util/logger"
+
 	"github.com/ellcrys/druid/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
-	"go.uber.org/zap"
 )
 
 // Protocol represents a protocol
@@ -26,16 +27,16 @@ type Protocol interface {
 
 // Inception represents the peer protocol
 type Inception struct {
-	arm                         *sync.Mutex        // addr relay mutex
-	version                     string             // the protocol version
-	peer                        *Peer              // the local peer
-	log                         *zap.SugaredLogger // the logger
-	lastRelayPeersSelectionTime time.Time          // the time the last addr msg relay peers where selected
-	addrRelayPeers              [2]*Peer           // peers to relay addr msgs to
+	arm                         *sync.Mutex   // addr relay mutex
+	version                     string        // the protocol version
+	peer                        *Peer         // the local peer
+	log                         logger.Logger // the logger
+	lastRelayPeersSelectionTime time.Time     // the time the last addr msg relay peers where selected
+	addrRelayPeers              [2]*Peer      // peers to relay addr msgs to
 }
 
 // NewInception creates a new instance of the protocol codenamed "Inception"
-func NewInception(p *Peer, log *zap.SugaredLogger) *Inception {
+func NewInception(p *Peer, log logger.Logger) *Inception {
 	return &Inception{
 		peer: p,
 		log:  log,

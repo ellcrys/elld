@@ -27,20 +27,20 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
-		pt.log.Debugw("Failed to read Addr response response", "Err", err, "PeerID", remotePeerIDShort)
+		pt.log.Debug("Failed to read Addr response response", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("failed to read Addr response")
 	}
 
 	sig := resp.Sig
 	resp.Sig = nil
 	if err := pt.verify(resp, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debugw("Failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
+		pt.log.Debug("Failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("failed to verify message signature")
 	}
 
 	// we need to ensure the amount of addresses does not exceed the max. address expected
 	if len(resp.Addresses) > pt.LocalPeer().cfg.Peer.MaxAddrsExpected {
-		pt.log.Debugw("Too many addresses received. Ignoring addresses", "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
+		pt.log.Debug("Too many addresses received. Ignoring addresses", "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
 		return nil, fmt.Errorf("too many addresses received. Ignoring addresses")
 	}
 
@@ -60,7 +60,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 		}
 	}
 
-	pt.log.Infow("Received Addr message from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
+	pt.log.Info("Received Addr message from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
 
 	return resp.Addresses, nil
 }
@@ -73,7 +73,7 @@ func (pt *Inception) OnAddr(s net.Stream) {
 	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
 
 	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
-		pt.log.Debugw("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Addr")
+		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Addr")
 		return
 	}
 
@@ -193,7 +193,7 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 		numRelayPeers--
 	}
 
-	pt.log.Debugw("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", numRelayPeers)
+	pt.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", numRelayPeers)
 
 	successfullyRelayed := 0
 	addrMsg := &wire.Addr{Addresses: relayable}
@@ -206,13 +206,13 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 
 		s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.AddrVersion)
 		if err != nil {
-			pt.log.Debugw("Addr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.ShortID())
+			pt.log.Debug("Addr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.ShortID())
 			continue
 		}
 
 		w := bufio.NewWriter(s)
 		if err := pc.Multicodec(nil).Encoder(w).Encode(addrMsg); err != nil {
-			pt.log.Debugw("Addr failed. failed to write to stream", "Err", err, "PeerID", remotePeer.ShortID())
+			pt.log.Debug("Addr failed. failed to write to stream", "Err", err, "PeerID", remotePeer.ShortID())
 			continue
 		}
 
@@ -221,7 +221,7 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 		successfullyRelayed++
 	}
 
-	pt.log.Infow("Relay completed", "NumAddrsToRelay", len(relayable), "NumRelayed", successfullyRelayed)
+	pt.log.Info("Relay completed", "NumAddrsToRelay", len(relayable), "NumRelayed", successfullyRelayed)
 
 	return nil
 }

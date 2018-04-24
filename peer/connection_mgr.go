@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/ellcrys/druid/util/logger"
 
 	"github.com/ellcrys/druid/util"
 	net "github.com/libp2p/go-libp2p-net"
@@ -22,12 +22,12 @@ type ConnectionManager struct {
 	gmx        *sync.Mutex
 	pm         *Manager
 	activeConn int
-	log        *zap.SugaredLogger
+	log        logger.Logger
 	connEstInt *time.Ticker
 }
 
 // NewConnMrg creates a new connection manager
-func NewConnMrg(m *Manager, log *zap.SugaredLogger) *ConnectionManager {
+func NewConnMrg(m *Manager, log logger.Logger) *ConnectionManager {
 	return &ConnectionManager{
 		pm:  m,
 		gmx: &sync.Mutex{},
@@ -63,7 +63,7 @@ func (m *ConnectionManager) establishConnections() {
 			if m.pm.NeedMorePeers() {
 				unconnectedPeers := m.pm.getUnconnectedPeers()
 				if len(unconnectedPeers) > 0 {
-					m.log.Debugw("Connecting to more peers", "UnconnectedPeers", len(unconnectedPeers))
+					m.log.Debug("Connecting to more peers", "UnconnectedPeers", len(unconnectedPeers))
 					for _, p := range unconnectedPeers {
 						m.pm.connectToPeer(p.StringID())
 					}

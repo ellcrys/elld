@@ -6,11 +6,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/util/logger"
+
 	"github.com/ellcrys/druid/configdir"
 
 	"github.com/ellcrys/druid/util"
 	ma "github.com/multiformats/go-multiaddr"
-	"go.uber.org/zap"
 )
 
 // Manager manages known peers connected to the local peer.
@@ -22,7 +23,7 @@ type Manager struct {
 	localPeer      *Peer              // local peer
 	bootstrapPeers map[string]*Peer   // bootstrap peers
 	knownPeers     map[string]*Peer   // peers known to the peer manager
-	log            *zap.SugaredLogger // manager's logger
+	log            logger.Logger      // manager's logger
 	config         *configdir.Config  // manager's configuration
 	connMgr        *ConnectionManager // connection manager
 	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
@@ -31,7 +32,7 @@ type Manager struct {
 }
 
 // NewManager creates an instance of the peer manager
-func NewManager(cfg *configdir.Config, localPeer *Peer, log *zap.SugaredLogger) *Manager {
+func NewManager(cfg *configdir.Config, localPeer *Peer, log logger.Logger) *Manager {
 
 	if cfg == nil {
 		cfg = &configdir.Config{}
@@ -51,7 +52,7 @@ func NewManager(cfg *configdir.Config, localPeer *Peer, log *zap.SugaredLogger) 
 		config:         cfg,
 	}
 
-	m.connMgr = NewConnMrg(m, log.Named("conn_manager"))
+	m.connMgr = NewConnMrg(m, log)
 	m.localPeer.host.Network().Notify(m.connMgr)
 
 	return m
@@ -87,7 +88,7 @@ func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 	if m.PeerExist(peerID) {
 		peer := m.GetKnownPeer(peerID)
 		peer.Timestamp = peer.Timestamp.Add(-2 * time.Hour)
-		m.log.Infow("Peer has disconnected", "PeerID", peer.ShortID())
+		m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
 	}
 
 	m.CleanKnownPeers()
@@ -341,13 +342,13 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	mAddr, _ := ma.NewMultiaddr(addr)
 	remotePeer := NewRemotePeer(mAddr, m.localPeer)
 	if m.PeerExist(remotePeer.StringID()) {
-		m.log.Infof("peer (%s) already exists", remotePeer.StringID())
+		m.log.Info("Peer already exists", "PeerID", remotePeer.StringID())
 		return nil
 	}
 
 	remotePeer.Timestamp = time.Now()
 	err = m.AddOrUpdatePeer(remotePeer)
-	m.log.Infow("added a peer", "PeerAddr", mAddr.String())
+	m.log.Info("Added a peer", "PeerAddr", mAddr.String())
 
 	return err
 }
