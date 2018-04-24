@@ -231,6 +231,7 @@ import:
 - package: github.com/btcsuite/btcutil
   subpackages:
   - base85
+- package: github.com/sirupsen/logrus
 testImport:
 - package: github.com/apex/log
   subpackages:
@@ -243,7 +244,6 @@ testImport:
 - package: github.com/libp2p/go-peerstream
 - package: github.com/pkg/errors
 - package: github.com/rs/zerolog
-- package: github.com/sirupsen/logrus
 - package: github.com/stretchr/testify
   subpackages:
   - assert

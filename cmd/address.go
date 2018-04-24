@@ -51,8 +51,6 @@ var addressNewCmd = &cobra.Command{
 		fmt.Println(fmt.Sprintf("Public Key:  %s", addr.PubKey().Base58()))
 		fmt.Println(fmt.Sprintf("Private Key: %s", addr.PrivKey().Base58()))
 		fmt.Println(fmt.Sprintf("Peer ID:     %s", addr.PeerID()))
-
-		addressmgr.IsValidAddr(newAddr)
 	},
 }
 

@@ -4,18 +4,14 @@ import (
 	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/peer"
 	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/druid/util/logger"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var (
-	log                     *zap.SugaredLogger // logger
-	hardcodedBootstrapNodes = []string{}       // hardcoded bootstrap node address
+	log                     logger.Logger // logger
+	hardcodedBootstrapNodes = []string{}  // hardcoded bootstrap node address
 )
-
-func init() {
-	log = util.NewLogger("/peer")
-}
 
 // loadCfg loads the config file
 func loadCfg(cfgDirPath string) (*configdir.Config, error) {
@@ -44,7 +40,9 @@ var startCmd = &cobra.Command{
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		log.Infow("Druid has started", "Version", util.ClientVersion)
+		log := logger.NewLogrus()
+
+		log.Info("Druid started", "Version", util.ClientVersion)
 
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
@@ -70,29 +68,28 @@ var startCmd = &cobra.Command{
 		}
 
 		// create the peer
-		log := util.NewLogger("peer")
 		p, err := peer.NewPeer(cfg, addressToListenOn, seed, log)
 		if err != nil {
-			log.Fatalf("failed to create peer")
+			log.Fatal("failed to create peer")
 		}
 
 		// add hardcoded nodes
 		if len(hardcodedBootstrapNodes) > 0 {
 			if err := p.AddBootstrapPeers(hardcodedBootstrapNodes, true); err != nil {
-				log.Fatalf("%s", err)
+				log.Fatal("%s", err)
 			}
 		}
 
 		// add bootstrap nodes
 		if len(cfg.Peer.BootstrapNodes) > 0 {
 			if err := p.AddBootstrapPeers(cfg.Peer.BootstrapNodes, false); err != nil {
-				log.Fatalf("%s", err)
+				log.Fatal("%s", err)
 			}
 		}
 
-		log.Infow("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", dev)
+		log.Info("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", dev)
 
-		protocol := peer.NewInception(p, log.Named("protocol"))
+		protocol := peer.NewInception(p, log)
 
 		// set protocol and handlers
 		p.SetProtocol(protocol)

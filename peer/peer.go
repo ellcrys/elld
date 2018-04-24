@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/util/logger"
+
 	"github.com/ellcrys/druid/configdir"
 
 	"github.com/thoas/go-funk"
@@ -23,28 +25,27 @@ import (
 	inet "github.com/libp2p/go-libp2p-net"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
-	"go.uber.org/zap"
 )
 
 // Peer represents a network node
 type Peer struct {
-	cfg             *configdir.Config  // peer config
-	address         ma.Multiaddr       // peer multiaddr
-	IP              net.IP             // peer ip
-	host            host.Host          // peer libp2p host
-	wg              sync.WaitGroup     // wait group for preventing the main thread from exiting
-	localPeer       *Peer              // local peer
-	peerManager     *Manager           // peer manager for managing connections to other remote peers
-	protoc          Protocol           // protocol instance
-	remote          bool               // remote indicates the peer represents a remote peer
-	Timestamp       time.Time          // the last time this peer was seen/active
-	isHardcodedSeed bool               // whether the peer was hardcoded as a seed
-	log             *zap.SugaredLogger // peer logger
-	rSeed           []byte             // random 256 bit seed to be used for seed random operations
+	cfg             *configdir.Config // peer config
+	address         ma.Multiaddr      // peer multiaddr
+	IP              net.IP            // peer ip
+	host            host.Host         // peer libp2p host
+	wg              sync.WaitGroup    // wait group for preventing the main thread from exiting
+	localPeer       *Peer             // local peer
+	peerManager     *Manager          // peer manager for managing connections to other remote peers
+	protoc          Protocol          // protocol instance
+	remote          bool              // remote indicates the peer represents a remote peer
+	Timestamp       time.Time         // the last time this peer was seen/active
+	isHardcodedSeed bool              // whether the peer was hardcoded as a seed
+	log             logger.Logger     // peer logger
+	rSeed           []byte            // random 256 bit seed to be used for seed random operations
 }
 
 // NewPeer creates a peer instance at the specified port
-func NewPeer(config *configdir.Config, address string, idSeed int64, log *zap.SugaredLogger) (*Peer, error) {
+func NewPeer(config *configdir.Config, address string, idSeed int64, log logger.Logger) (*Peer, error) {
 
 	// generate peer identity
 	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
@@ -83,7 +84,7 @@ func NewPeer(config *configdir.Config, address string, idSeed int64, log *zap.Su
 	}
 
 	peer.localPeer = peer
-	peer.peerManager = NewManager(config, peer, log.Named("manager"))
+	peer.peerManager = NewManager(config, peer, peer.log)
 	peer.IP = peer.ip()
 
 	return peer, nil
@@ -259,17 +260,17 @@ func (p *Peer) AddBootstrapPeers(peerAddresses []string, hardcoded bool) error {
 	for _, addr := range peerAddresses {
 
 		if !util.IsValidAddr(addr) {
-			p.log.Debugw("Invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
 
 		if p.isDevMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
-			p.log.Debugw("Only local or private address are allowed in dev mode", "Addr", addr)
+			p.log.Debug("Only local or private address are allowed in dev mode", "Addr", addr)
 			continue
 		}
 
 		if !p.DevMode() && !util.IsRoutableAddr(addr) {
-			p.log.Debugw("Invalid bootstrap peer address", "PeerAddr", addr)
+			p.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
 

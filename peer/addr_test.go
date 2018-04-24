@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/ellcrys/druid/configdir"
-	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
 )
 
@@ -27,9 +26,9 @@ var _ = Describe("Addr", func() {
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewPeer(config, "127.0.0.1:30010", 0, util.NewNopLogger())
+			lp, err = NewPeer(config, "127.0.0.1:30010", 0, log)
 			Expect(err).To(BeNil())
-			lpProtoc = NewInception(lp, util.NewNopLogger())
+			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
 		})
 
@@ -76,9 +75,9 @@ var _ = Describe("Addr", func() {
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewPeer(config, "127.0.0.1:30010", 0, util.NewNopLogger())
+			lp, err = NewPeer(config, "127.0.0.1:30010", 0, log)
 			Expect(err).To(BeNil())
-			lpProtoc = NewInception(lp, util.NewNopLogger())
+			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
 		})
 
@@ -127,19 +126,19 @@ var _ = Describe("Addr", func() {
 			var pt, pt2, pt3 *Inception
 
 			BeforeEach(func() {
-				p, err = NewPeer(config, "127.0.0.1:30011", 1, util.NewNopLogger())
+				p, err = NewPeer(config, "127.0.0.1:30011", 1, log)
 				Expect(err).To(BeNil())
-				pt = NewInception(p, util.NewNopLogger())
+				pt = NewInception(p, log)
 				p.SetProtocol(pt)
 
-				p2, err = NewPeer(config, "127.0.0.1:30012", 2, util.NewNopLogger())
+				p2, err = NewPeer(config, "127.0.0.1:30012", 2, log)
 				Expect(err).To(BeNil())
-				pt2 = NewInception(p2, util.NewNopLogger())
+				pt2 = NewInception(p2, log)
 				p2.SetProtocol(pt2)
 
-				p3, err = NewPeer(config, "127.0.0.1:30013", 3, util.NewNopLogger())
+				p3, err = NewPeer(config, "127.0.0.1:30013", 3, log)
 				Expect(err).To(BeNil())
-				pt3 = NewInception(p3, util.NewNopLogger())
+				pt3 = NewInception(p3, log)
 				p3.SetProtocol(pt3)
 			})
 

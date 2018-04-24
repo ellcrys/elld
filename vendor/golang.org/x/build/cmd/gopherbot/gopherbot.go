@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,7 +18,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -52,7 +55,7 @@ const (
 	frozenDueToAge = "FrozenDueToAge"
 )
 
-// GitHub Milestone IDs for the golang/go repo.
+// GitHub Milestone numbers for the golang/go repo.
 var (
 	proposal   = milestone{30, "Proposal"}
 	unreleased = milestone{22, "Unreleased"}
@@ -61,8 +64,8 @@ var (
 )
 
 type milestone struct {
-	ID   int
-	Name string
+	Number int
+	Name   string
 }
 
 func getGithubToken() (string, error) {
@@ -197,6 +200,7 @@ func main() {
 			log.Printf("got corpus update after %v", time.Since(t0))
 			break
 		}
+		lastTask = ""
 	}
 }
 
@@ -207,6 +211,12 @@ type gopherbot struct {
 	gorepo *maintner.GitHubRepo
 
 	knownContributors map[string]bool
+
+	releases struct {
+		sync.Mutex
+		lastUpdate time.Time
+		major      []string // last two releases, like: "1.9", "1.10"
+	}
 }
 
 var tasks = []struct {
@@ -222,10 +232,11 @@ var tasks = []struct {
 	{"label documentation issues", (*gopherbot).labelDocumentationIssues},
 	{"close stale WaitingForInfo", (*gopherbot).closeStaleWaitingForInfo},
 	{"cl2issue", (*gopherbot).cl2issue},
-	{"check cherry picks", (*gopherbot).checkCherryPicks},
 	{"update needs", (*gopherbot).updateNeeds},
 	{"congratulate new contributors", (*gopherbot).congratulateNewContributors},
 	{"un-wait CLs", (*gopherbot).unwaitCLs},
+	{"open cherry pick issues", (*gopherbot).openCherryPickIssues},
+	{"apply minor release milestones", (*gopherbot).setMinorMilestones},
 }
 
 func (b *gopherbot) initCorpus() {
@@ -286,7 +297,7 @@ func (b *gopherbot) setMilestone(ctx context.Context, gi *maintner.GitHubIssue, 
 		return nil
 	}
 	_, _, err := b.ghc.Issues.Edit(ctx, "golang", "go", int(gi.Number), &github.IssueRequest{
-		Milestone: github.Int(m.ID),
+		Milestone: github.Int(m.Number),
 	})
 	return err
 }
@@ -337,6 +348,51 @@ func (b *gopherbot) addGitHubComment(ctx context.Context, org, repo string, issu
 		Body: github.String(msg),
 	})
 	return err
+}
+
+// createGitHubIssue returns the number of the created issue, or 4242 in dry-run mode.
+func (b *gopherbot) createGitHubIssue(ctx context.Context, title, msg string, labels []string) (int, error) {
+	var since time.Time
+	var dup int
+	b.gorepo.ForeachIssue(func(gi *maintner.GitHubIssue) error {
+		since = gi.Updated
+		// TODO: check for gopherbot as author? check for exact match?
+		// This seems fine for now.
+		if gi.Title == title {
+			dup = int(gi.Number)
+			return errStopIteration
+		}
+		return nil
+	})
+	if dup != 0 {
+		// Issue's already been posted. Nothing to do.
+		return dup, nil
+	}
+	// See if there is a dup issue from when gopherbot last got its data from maintner.
+	is, _, err := b.ghc.Issues.ListByRepo(ctx, "golang", "go", &github.IssueListByRepoOptions{
+		State:       "all",
+		Since:       since,
+		ListOptions: github.ListOptions{PerPage: 1000},
+	})
+	if err != nil {
+		return 0, err
+	}
+	for _, i := range is {
+		if i.GetTitle() == title {
+			// Dup.
+			return i.GetNumber(), nil
+		}
+	}
+	if *dryRun {
+		log.Printf("[dry-run] would create issue with title %s and labels %v\n%s", title, labels, msg)
+		return 4242, nil
+	}
+	i, _, err := b.ghc.Issues.Create(ctx, "golang", "go", &github.IssueRequest{
+		Title:  github.String(title),
+		Body:   github.String(msg),
+		Labels: &labels,
+	})
+	return i.GetNumber(), err
 }
 
 type gerritCommentOpts struct {
@@ -587,34 +643,6 @@ func (b *gopherbot) closeStaleWaitingForInfo(ctx context.Context) error {
 		return err
 	})
 
-}
-
-// Issue 19776: assist with cherry picks based on Milestones
-func (b *gopherbot) checkCherryPicks(ctx context.Context) error {
-	// TODO(bradfitz): write this. Debugging stuff below only.
-	return nil
-
-	sum := map[string]int{}
-	b.gorepo.ForeachIssue(func(gi *maintner.GitHubIssue) error {
-		if gi.Milestone.IsNone() || gi.Milestone.IsUnknown() || gi.Milestone.Closed {
-			return nil
-		}
-		title := gi.Milestone.Title
-		if !strings.HasPrefix(title, "Go") || strings.Count(title, ".") != 2 {
-			return nil
-		}
-		sum[title]++
-		return nil
-	})
-	var titles []string
-	for k := range sum {
-		titles = append(titles, k)
-	}
-	sort.Slice(titles, func(i, j int) bool { return sum[titles[i]] < sum[titles[j]] })
-	for _, title := range titles {
-		fmt.Printf(" %10d %s\n", sum[title], title)
-	}
-	return nil
 }
 
 // cl2issue writes "Change https://golang.org/issue/NNNN mentions this issue"\
@@ -928,6 +956,197 @@ func (b *gopherbot) onLatestCL(ctx context.Context, cl *maintner.GerritCL, f fun
 	}
 	log.Printf("onLatestCL: maintner metadata for CL %d is behind; skipping action for now.", cl.Number)
 	return nil
+}
+
+// getMajorReleases returns the two most recent major Go 1.x releases,
+// formatted like []string{"1.9", "1.10"}.
+func (b *gopherbot) getMajorReleases(ctx context.Context) ([]string, error) {
+	b.releases.Lock()
+	defer b.releases.Unlock()
+	if b.releases.lastUpdate.After(time.Now().Add(time.Hour)) {
+		return b.releases.major, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequest("GET", "https://golang.org/dl/?mode=json", nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := http.DefaultClient.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	var releases []struct {
+		Version string `json:"version"`
+		Stable  bool   `json:"stable"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&releases); err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	var majorReleases []string
+	for _, r := range releases {
+		if !r.Stable {
+			continue
+		}
+		parts := strings.Split(r.Version, ".")
+		if len(parts) < 2 {
+			return nil, fmt.Errorf("invalid version: %s", r.Version)
+		}
+		if parts[0] != "go1" {
+			continue
+		}
+		if _, err := strconv.Atoi(parts[1]); err != nil {
+			return nil, fmt.Errorf("invalid version: %s", r.Version)
+		}
+		major := strings.TrimPrefix(parts[0], "go") + "." + parts[1]
+		if seen[major] {
+			continue
+		}
+		seen[major] = true
+		majorReleases = append(majorReleases, major)
+	}
+	sort.Slice(majorReleases, func(i, j int) bool {
+		ii, _ := strconv.Atoi(majorReleases[i][2:])
+		jj, _ := strconv.Atoi(majorReleases[i][2:])
+		return ii < jj
+	})
+	b.releases.lastUpdate = time.Now()
+	b.releases.major = majorReleases[len(majorReleases)-2:]
+	return b.releases.major, nil
+}
+
+// openCherryPickIssues opens CherryPickCandidate issues for backport when
+// asked on the main issue.
+func (b *gopherbot) openCherryPickIssues(ctx context.Context) error {
+	return b.gorepo.ForeachIssue(func(gi *maintner.GitHubIssue) error {
+		if gi.HasLabel("CherryPickApproved") && gi.HasLabel("CherryPickCandidate") {
+			if err := b.removeLabel(ctx, gi, "CherryPickCandidate"); err != nil {
+				return err
+			}
+		}
+		if gi.HasLabel(frozenDueToAge) || gi.PullRequest {
+			return nil
+		}
+		var backportComment *maintner.GitHubComment
+		if err := gi.ForeachComment(func(c *maintner.GitHubComment) error {
+			if strings.HasPrefix(c.Body, "Backport issue(s) opened") {
+				backportComment = nil
+				return errStopIteration
+			}
+			body := strings.ToLower(c.Body)
+			if strings.Contains(body, "@gopherbot") &&
+				strings.Contains(body, "please") &&
+				strings.Contains(body, "backport") {
+				backportComment = c
+			}
+			return nil
+		}); err != nil && err != errStopIteration {
+			return err
+		}
+		if backportComment == nil {
+			return nil
+		}
+		majorReleases, err := b.getMajorReleases(ctx)
+		if err != nil {
+			return err
+		}
+		var selectedReleases []string
+		for _, r := range majorReleases {
+			if strings.Contains(backportComment.Body, r) {
+				selectedReleases = append(selectedReleases, r)
+			}
+		}
+		if len(selectedReleases) == 0 {
+			selectedReleases = majorReleases
+		}
+		var openedIssues []string
+		for _, rel := range selectedReleases {
+			printIssue("open-backport-issue-"+rel, gi)
+			id, err := b.createGitHubIssue(ctx,
+				fmt.Sprintf("%s [%s backport]", gi.Title, rel),
+				fmt.Sprintf("@%s requested issue #%d to be considered for backport to the next %s minor release.\n\n%s\n",
+					backportComment.User.Login, gi.Number, rel, blockqoute(backportComment.Body)),
+				[]string{"CherryPickCandidate"})
+			if err != nil {
+				return err
+			}
+			openedIssues = append(openedIssues, fmt.Sprintf("#%d (for %s)", id, rel))
+		}
+		return b.addGitHubComment(ctx, "golang", "go", gi.Number, fmt.Sprintf("Backport issue(s) opened: %s.\n\nRemember to create the cherry-pick CL(s) as soon as the patch is submitted to master, according to https://golang.org/wiki/MinorReleases.", strings.Join(openedIssues, ", ")))
+	})
+}
+
+// setMinorMilestones applies the latest minor release milestone to issue
+// with [1.X backport] in the title.
+func (b *gopherbot) setMinorMilestones(ctx context.Context) error {
+	majorReleases, err := b.getMajorReleases(ctx)
+	if err != nil {
+		return err
+	}
+	return b.gorepo.ForeachIssue(func(gi *maintner.GitHubIssue) error {
+		if gi.Closed || gi.PullRequest || !gi.Milestone.IsNone() || gi.HasEvent("demilestoned") || gi.HasEvent("milestoned") {
+			return nil
+		}
+		var majorRel string
+		for _, r := range majorReleases {
+			if strings.Contains(gi.Title, "backport") && strings.HasSuffix(gi.Title, "["+r+" backport]") {
+				majorRel = r
+			}
+		}
+		if majorRel == "" {
+			return nil
+		}
+		m, err := b.getMinorMilestoneForMajor(ctx, majorRel)
+		if err != nil {
+			// Fail silently, the milestone might not exist yet.
+			log.Printf("Failed to apply minor release milestone to issue %d: %v", gi.Number, err)
+			return nil
+		}
+		return b.setMilestone(ctx, gi, m)
+	})
+}
+
+// getMinorMilestoneForMajor returns the latest open minor release milestone
+// for a given major release series.
+func (b *gopherbot) getMinorMilestoneForMajor(ctx context.Context, majorRel string) (milestone, error) {
+	var res milestone
+	var minorVers int
+	titlePrefix := "Go" + majorRel + "."
+	if err := b.gorepo.ForeachMilestone(func(m *maintner.GitHubMilestone) error {
+		if m.Closed {
+			return nil
+		}
+		if !strings.HasPrefix(m.Title, titlePrefix) {
+			return nil
+		}
+		n, err := strconv.Atoi(strings.TrimPrefix(m.Title, titlePrefix))
+		if err != nil {
+			return nil
+		}
+		if n > minorVers {
+			res = milestone{
+				Number: int(m.Number),
+				Name:   m.Title,
+			}
+			minorVers = n
+		}
+		return nil
+	}); err != nil {
+		return milestone{}, err
+	}
+	if minorVers == 0 {
+		return milestone{}, errors.New("no minor milestone found for release series " + majorRel)
+	}
+	return res, nil
+}
+
+func blockqoute(s string) string {
+	s = strings.TrimSpace(s)
+	s = "> " + s
+	s = strings.Replace(s, "\n", "\n> ", -1)
+	return s
 }
 
 // errStopIteration is used to stop iteration over issues or comments.

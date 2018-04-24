@@ -1,8 +1,8 @@
-hash: f37cfdbe34c8c57e8e4209a3c4906cc04a95eb8b84aea8cb183fc3e321ddbfea
-updated: 2018-04-21T17:34:17.280752+01:00
+hash: 40e6ad858f75005f299617f8550f74fe7372a35987e879aec1996f2f5b076dc8
+updated: 2018-04-24T22:13:26.179893+01:00
 imports:
 - name: cloud.google.com/go
-  version: 05862f1a656dcf9aefbefad9443ee8ad79670697
+  version: 34d27c6512f8a8ca6893882bcd81a0e4c294ee35
   subpackages:
   - storage
 - name: github.com/agl/ed25519
@@ -17,6 +17,7 @@ imports:
 - name: github.com/btcsuite/btcutil
   version: 501929d3d046174c3d39f0ea54ece471aa17238c
   subpackages:
+  - base58
   - base85
 - name: github.com/BurntSushi/toml
   version: a368813c5e648fee92e5f6c30e3944ff9d5e8895
@@ -80,10 +81,6 @@ imports:
   - ratelimit
 - name: github.com/jinzhu/configor
   version: ec34f328956f53dfbd06e9f5306e37e6943443c3
-- name: github.com/kr/pretty
-  version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
-- name: github.com/kr/text
-  version: 7cafcd837844e784b526369c9bce262804aebc60
 - name: github.com/libp2p/go-addr-util
   version: 3bd34419494fb7f15182ddd19a5d92ac017a27c6
 - name: github.com/libp2p/go-flow-metrics
@@ -252,10 +249,12 @@ imports:
   - log
 - name: github.com/satori/go.uuid
   version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+- name: github.com/sirupsen/logrus
+  version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
 - name: github.com/spaolacci/murmur3
   version: f09979ecbc725b9e6d41a297405f65e7e8804acc
 - name: github.com/spf13/cobra
-  version: 615425954c3b0d9485a7027d4d451fdcdfdee84e
+  version: 0ab5b6bcfcde193577634059f6f211c850a456ec
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: github.com/thoas/go-funk
@@ -308,15 +307,16 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: 86f50f009ac7c74875e7270e3188165916a999bd
+  version: 58ba60d65fdebb279bcf7990e5b51beeb62e5b89
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
-  version: e73bf333ef8920dbb52ad18d4bd38ad9d9bc76d7
+  version: 2b6c08872f4b66da917bb4ce98df4f0307330f78
   subpackages:
   - acme/autocert
   - blake2s
   - blowfish
+  - ripemd160
   - sha3
   - ssh/terminal
 - name: golang.org/x/net
@@ -393,7 +393,7 @@ imports:
   - unicode/norm
   - width
 - name: golang.org/x/tools
-  version: 94b14834a20132093826ea5e2da5502a13908ad3
+  version: c1def519f03ddf76f16b3e444ee1095d73afa01b
   subpackages:
   - go/buildutil
   - go/callgraph
@@ -402,7 +402,7 @@ imports:
   - go/ssa
   - go/ssa/ssautil
 - name: google.golang.org/api
-  version: b08f8989af4899034b9816f5291a5bbb1bd576bb
+  version: 8b8c1d4168b3aa7d5fbdb9eb159a1a7ac0cc146d
   subpackages:
   - compute/v1
 - name: gopkg.in/yaml.v2
@@ -424,8 +424,6 @@ testImports:
   version: 816c9085562cd7ee03e7f8188a1cfd942858cded
 - name: github.com/rs/zerolog
   version: d2b7a51951c626ef9e7ca5ba8fe1cf1c4adefdba
-- name: github.com/sirupsen/logrus
-  version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
 - name: github.com/stretchr/testify
   version: c679ae2cc0cb27ec3293fea7e254e47386f05d69
   subpackages:
