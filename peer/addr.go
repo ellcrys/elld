@@ -17,7 +17,7 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-// onAddr handles "addr" message
+// onAddr processes "addr" message
 func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	remoteAddr := util.FullRemoteAddressFromStream(s)
@@ -101,6 +101,7 @@ func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Peer 
 			h.Write([]byte(c.Address))               // add the address
 			h.Write([]byte(strconv.Itoa(now.Day()))) // the current day
 			h.Write(pt.LocalPeer().rSeed)            // random seed
+
 			sortCandidateAddrs = append(sortCandidateAddrs, &util.BigIntWithMeta{
 				Int:  big.NewInt(0).SetBytes(h.Sum(nil)),
 				Meta: c,
@@ -160,7 +161,7 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 			continue
 		}
 
-		if !pt.PM().config.Peer.Dev && !util.IsRoutableAddr(addr.Address) {
+		if !pt.LocalPeer().DevMode() && !util.IsRoutableAddr(addr.Address) {
 			continue
 		}
 
