@@ -17,21 +17,21 @@ import (
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
-	kpm               *sync.Mutex        // known peer mutex
-	gm                *sync.Mutex        // general mutex
-	localPeer         *Peer              // local peer
-	bootstrapPeers    map[string]*Peer   // bootstrap peers
-	knownPeers        map[string]*Peer   // peers known to the peer manager
-	log               *zap.SugaredLogger // manager's logger
-	config            *configdir.Config  // manager's configuration
-	getAddrTicker     *time.Ticker       // ticker that sends "getaddr" messages
-	pingTicker        *time.Ticker       // ticker that sends "ping" messages
-	activeConnections int                // number of active connections
-	stop              bool               // signifies the start of the manager
+	kpm            *sync.Mutex        // known peer mutex
+	gm             *sync.Mutex        // general mutex
+	localPeer      *Peer              // local peer
+	bootstrapPeers map[string]*Peer   // bootstrap peers
+	knownPeers     map[string]*Peer   // peers known to the peer manager
+	log            *zap.SugaredLogger // manager's logger
+	config         *configdir.Config  // manager's configuration
+	connMgr        *ConnectionManager // connection manager
+	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
+	pingTicker     *time.Ticker       // ticker that sends "ping" messages
+	stop           bool               // signifies the start of the manager
 }
 
 // NewManager creates an instance of the peer manager
-func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
+func NewManager(cfg *configdir.Config, localPeer *Peer, log *zap.SugaredLogger) *Manager {
 
 	if cfg == nil {
 		cfg = &configdir.Config{}
@@ -45,24 +45,16 @@ func NewManager(cfg *configdir.Config, localPeer *Peer) *Manager {
 		kpm:            new(sync.Mutex),
 		gm:             new(sync.Mutex),
 		localPeer:      localPeer,
-		log:            peerLog.Named("manager"),
+		log:            log,
 		bootstrapPeers: make(map[string]*Peer),
 		knownPeers:     make(map[string]*Peer),
 		config:         cfg,
 	}
 
-	m.localPeer.host.Network().Notify(&Notification{
-		pm: m,
-	})
+	m.connMgr = NewConnMrg(m, log.Named("conn_manager"))
+	m.localPeer.host.Network().Notify(m.connMgr)
 
 	return m
-}
-
-// onPeerConnect is called when peer connects to the local peer
-func (m *Manager) onPeerConnect(peerAddr ma.Multiaddr) {
-	m.gm.Lock()
-	defer m.gm.Unlock()
-	m.activeConnections++
 }
 
 // PeerExist checks whether a peer is a known peer
@@ -99,10 +91,6 @@ func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 	}
 
 	m.CleanKnownPeers()
-
-	m.gm.Lock()
-	m.activeConnections--
-	m.gm.Unlock()
 }
 
 // AddBootstrapPeer adds a peer to the manager
@@ -120,10 +108,31 @@ func (m *Manager) GetBootstrapPeer(id string) *Peer {
 	return m.bootstrapPeers[id]
 }
 
+// connectToPeer attempts to connect to a peer
+func (m *Manager) connectToPeer(peerID string) error {
+	peer := m.GetKnownPeer(peerID)
+	if peer == nil {
+		return fmt.Errorf("peer not found")
+	}
+	return m.localPeer.connectToPeer(peer)
+}
+
+// getUnconnectedPeers returns the peers that are not connected
+// to the local peer. Hardcoded bootstrap peers are not included.
+func (m *Manager) getUnconnectedPeers() (peers []*Peer) {
+	for _, p := range m.GetActivePeers(0) {
+		if !p.isHardcodedSeed && !p.Connected() {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
-	go m.sendPeriodicGetAddrMsg()
-	go m.sendPeriodicPingMsgs()
+	m.connMgr.Manage()
+	// go m.sendPeriodicGetAddrMsg()
+	// go m.sendPeriodicPingMsgs()
 }
 
 // sendPeriodicGetAddrMsg sends "getaddr" message to all known active
@@ -157,18 +166,27 @@ func (m *Manager) sendPeriodicPingMsgs() {
 }
 
 // AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
-// exist. If the peer already exists, only its timestamp is updated
+// exist. If the peer already exists:
+// - if the peer has been seen in the last 24 hours and its current
+// 	 timestamp is over 60 minutes old, then update the timestamp to 60 minutes ago.
+// - else if the peer has not been seen in the last 24 hours and its current timestamp is
+//	 over 24 hours, then update the timestamp to 24 hours ago.
+// - else use whatever timestamp is returned
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 
 	if p == nil {
-		return fmt.Errorf("nil received as *Peer")
+		return fmt.Errorf("nil received")
+	}
+
+	if p.IsSame(m.localPeer) {
+		return fmt.Errorf("peer is the local peer")
 	}
 
 	if !util.IsValidAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not valid")
 	}
 
-	if !m.config.Peer.Dev && !util.IsRoutableAddr(p.GetMultiAddr()) {
+	if !m.localPeer.DevMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not routable")
 	}
 
@@ -186,8 +204,22 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return nil
 	}
 
+	if existingPeer.GetMultiAddr() != p.GetMultiAddr() {
+		return fmt.Errorf("existing peer address do not match")
+	}
+
+	now := time.Now()
+	if now.Add(-24*time.Hour).Before(p.Timestamp) && now.Add(-60*time.Minute).Before(existingPeer.Timestamp) {
+		existingPeer.Timestamp = now.Add(-60 * time.Minute)
+		return nil
+	}
+
+	if !now.Add(-24*time.Hour).Before(p.Timestamp) && !now.Add(-24*time.Hour).Before(existingPeer.Timestamp) {
+		existingPeer.Timestamp = now.Add(-24 * time.Hour)
+		return nil
+	}
+
 	existingPeer.Timestamp = p.Timestamp
-	existingPeer.address = p.address
 	return nil
 }
 
@@ -198,7 +230,7 @@ func (m *Manager) KnownPeers() map[string]*Peer {
 
 // NeedMorePeers checks whether we need more peers
 func (m *Manager) NeedMorePeers() bool {
-	return len(m.GetActivePeers(0)) < 1000
+	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
 }
 
 // IsLocalPeer checks if a peer is the local peer
@@ -302,7 +334,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 
-	if !m.config.Peer.Dev && !util.IsRoutableAddr(addr) {
+	if !m.localPeer.DevMode() && !util.IsRoutableAddr(addr) {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 

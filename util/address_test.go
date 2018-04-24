@@ -127,6 +127,54 @@ var _ = Describe("Address", func() {
 		})
 	})
 
+	Describe(".IDFromAddrString", func() {
+		It("should return empty string if address is invalid", func() {
+			addr := IDFromAddrString("/ip427.0.0.1/tcp40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(addr.Pretty()).To(Equal(""))
+		})
+
+		It("should return 12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42", func() {
+			addr := IDFromAddrString("/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(addr.Pretty()).To(Equal("12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))
+		})
+	})
+
+	Describe(".ParseAddr", func() {
+		It("should return tcp = 40104, ip4 = 127.0.0.1, ip6= and ipfs=12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42", func() {
+			result := ParseAddr("/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(result).To(Equal(map[string]string{
+				"tcp":  "40104",
+				"ip4":  "127.0.0.1",
+				"ip6":  "",
+				"ipfs": "12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42",
+			}))
+		})
+
+		It("should return nil when addr is invalid", func() {
+			result := ParseAddr("/ip427.0.0.1/tcp04/ipfs2D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(result).To(BeNil())
+		})
+	})
+
+	Describe(".GetIPFromAddr", func() {
+		It("should return ip4 ip", func() {
+			ip := GetIPFromAddr("/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(ip).ToNot(BeNil())
+			Expect(ip.String()).To(Equal("127.0.0.1"))
+		})
+
+		It("should return ip6 ip", func() {
+			ip := GetIPFromAddr("/ip6/::1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(ip).ToNot(BeNil())
+			Expect(ip.String()).To(Equal("::1"))
+		})
+
+		It("should return nil when addr is invalid", func() {
+			ip := GetIPFromAddr("/ip6::1tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42")
+			Expect(ip).To(BeNil())
+		})
+	})
+
 	Describe(".ShortID", func() {
 		It("should return empty string", func() {
 			Expect(ShortID(peer.ID(""))).To(Equal(""))

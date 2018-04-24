@@ -227,6 +227,10 @@ import:
   - compute/v1
 - package: gopkg.in/yaml.v2
 - package: github.com/jinzhu/configor
+- package: github.com/ellcrys/go-libp2p-crypto
+- package: github.com/btcsuite/btcutil
+  subpackages:
+  - base85
 testImport:
 - package: github.com/apex/log
   subpackages:

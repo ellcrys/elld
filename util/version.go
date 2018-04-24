@@ -16,4 +16,7 @@ var (
 
 	// GetAddrVersion is the current getaddr algorithm
 	GetAddrVersion = ProtocolVersion + "/getaddr/1"
+
+	// AddrVersion is the current addr algorithm
+	AddrVersion = ProtocolVersion + "/addr/1"
 )

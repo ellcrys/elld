@@ -2,11 +2,18 @@ package util
 
 import (
 	"encoding/json"
+	"math/big"
 	r "math/rand"
+	"sort"
 	"time"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const (
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+)
 
 func init() {
 	r.Seed(time.Now().UnixNano())
@@ -18,11 +25,50 @@ func StructToBytes(s interface{}) []byte {
 	return b
 }
 
-// RandString gets random string of fixed length
+// RandString is like RandBytes but returns string
 func RandString(n int) string {
+	return string(RandBytes(n))
+}
+
+// RandBytes gets random string of fixed length
+func RandBytes(n int) []byte {
 	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[r.Intn(len(letterBytes))]
+	for i, cache, remain := n-1, r.Int63(), letterIdxMax; i >= 0; {
+		if remain == 0 {
+			cache, remain = r.Int63(), letterIdxMax
+		}
+		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i--
+		}
+		cache >>= letterIdxBits
+		remain--
 	}
-	return string(b)
+
+	return b
+}
+
+// BigIntWithMeta represents a big integer with an arbitrary meta object attached
+type BigIntWithMeta struct {
+	Int  *big.Int
+	Meta interface{}
+}
+
+type byBigIntWithMeta []*BigIntWithMeta
+
+func (s byBigIntWithMeta) Len() int {
+	return len(s)
+}
+
+func (s byBigIntWithMeta) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s byBigIntWithMeta) Less(i, j int) bool {
+	return s[i].Int.Cmp(s[j].Int) == -1
+}
+
+// AscOrderBigIntMeta sorts a slice of BigIntWithMeta in ascending order
+func AscOrderBigIntMeta(values []*BigIntWithMeta) {
+	sort.Sort(byBigIntWithMeta(values))
 }
