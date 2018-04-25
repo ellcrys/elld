@@ -28,6 +28,7 @@ type Manager struct {
 	connMgr        *ConnectionManager // connection manager
 	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
 	pingTicker     *time.Ticker       // ticker that sends "ping" messages
+	selfAdvTicker  *time.Ticker       // ticker that sends "addr" message for self advertisement
 	stop           bool               // signifies the start of the manager
 }
 
@@ -41,6 +42,7 @@ func NewManager(cfg *configdir.Config, localPeer *Peer, log logger.Logger) *Mana
 
 	cfg.Peer.GetAddrInterval = 10
 	cfg.Peer.PingInterval = 60
+	cfg.Peer.SelfAdvInterval = 10
 
 	m := &Manager{
 		kpm:            new(sync.Mutex),
@@ -131,7 +133,8 @@ func (m *Manager) getUnconnectedPeers() (peers []*Peer) {
 
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
-	m.connMgr.Manage()
+	go m.connMgr.Manage()
+	go m.selfAdvertisement()
 	// go m.sendPeriodicGetAddrMsg()
 	// go m.sendPeriodicPingMsgs()
 }
@@ -162,6 +165,27 @@ func (m *Manager) sendPeriodicPingMsgs() {
 		select {
 		case <-m.pingTicker.C:
 			m.localPeer.protoc.SendPing(m.GetKnownPeers())
+		}
+	}
+}
+
+// selfAdvertisement send an Addr message containing only the
+// local peer address to all connected peers
+func (m *Manager) selfAdvertisement() {
+	m.selfAdvTicker = time.NewTicker(time.Duration(m.config.Peer.SelfAdvInterval) * time.Second)
+	for {
+		if m.stop {
+			break
+		}
+		select {
+		case <-m.selfAdvTicker.C:
+			connectedPeers := []*Peer{}
+			for _, p := range m.GetKnownPeers() {
+				if p.Connected() {
+					connectedPeers = append(connectedPeers, p)
+				}
+			}
+			m.localPeer.protoc.SelfAdvertise(connectedPeers)
 		}
 	}
 }
@@ -260,6 +284,7 @@ func (m *Manager) TimestampPunishment(remotePeer *Peer) error {
 
 // CleanKnownPeers removes old peers from the known peers
 func (m *Manager) CleanKnownPeers() {
+
 	activePeers := m.GetActivePeers(0)
 
 	m.kpm.Lock()
@@ -275,9 +300,14 @@ func (m *Manager) CleanKnownPeers() {
 
 // GetKnownPeers gets all the known peers (active or inactive)
 func (m *Manager) GetKnownPeers() (peers []*Peer) {
+
+	m.kpm.Lock()
+	defer m.kpm.Unlock()
+
 	for _, p := range m.knownPeers {
 		peers = append(peers, p)
 	}
+
 	return peers
 }
 

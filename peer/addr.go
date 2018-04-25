@@ -23,7 +23,6 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
-
 	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
@@ -61,7 +60,6 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	}
 
 	pt.log.Info("Received Addr message from peer", "PeerID", remotePeerIDShort, "NumAddrs", len(resp.Addresses), "InvalidAddrs", invalidAddrs)
-
 	return resp.Addresses, nil
 }
 
@@ -71,7 +69,6 @@ func (pt *Inception) OnAddr(s net.Stream) {
 
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
-
 	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
 		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Addr")
 		return

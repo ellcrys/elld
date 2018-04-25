@@ -6,6 +6,7 @@ type PeerConfig struct {
 	Dev              bool     `json:"dev"`
 	GetAddrInterval  int64    `json:"getAddrInt"`
 	PingInterval     int64    `json:"pingInt"`
+	SelfAdvInterval  int64    `json:"selfAdvInt"`
 	MaxAddrsExpected int      `json:"maxAddrsExpected"`
 	MaxConnections   int      `json:"maxConnections"`
 }
