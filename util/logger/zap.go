@@ -14,6 +14,7 @@ type Zap struct {
 func NewZap(dev bool) Logger {
 
 	var log *zap.SugaredLogger
+	var cfg *zap.Config
 
 	if !dev {
 		cfg := zap.NewProductionConfig()
