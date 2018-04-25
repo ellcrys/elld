@@ -186,6 +186,7 @@ func (m *Manager) selfAdvertisement() {
 				}
 			}
 			m.localPeer.protoc.SelfAdvertise(connectedPeers)
+			m.CleanKnownPeers()
 		}
 	}
 }
@@ -282,7 +283,10 @@ func (m *Manager) TimestampPunishment(remotePeer *Peer) error {
 	return nil
 }
 
-// CleanKnownPeers removes old peers from the known peers
+// CleanKnownPeers removes old peers from the list
+// of peers known by the local peer. Typically, we remove
+// peers based on the last time they were seen. 
+// TODO: Also remove based on connection failure count?
 func (m *Manager) CleanKnownPeers() {
 
 	activePeers := m.GetActivePeers(0)
