@@ -73,6 +73,10 @@ var startCmd = &cobra.Command{
 			log.Fatal("failed to create peer")
 		}
 
+		if p.DevMode() {
+			log.SetToDebug()
+		}
+
 		// add hardcoded nodes
 		if len(hardcodedBootstrapNodes) > 0 {
 			if err := p.AddBootstrapPeers(hardcodedBootstrapNodes, true); err != nil {
