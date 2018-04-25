@@ -7,6 +7,7 @@ import (
 // Zap implements Logger
 type Zap struct {
 	log *zap.SugaredLogger
+	cfg *zap.Config
 }
 
 // NewZap creates a zap backed logger
@@ -15,17 +16,20 @@ func NewZap(dev bool) Logger {
 	var log *zap.SugaredLogger
 
 	if !dev {
-		logger, _ := zap.NewProduction()
+		cfg := zap.NewProductionConfig()
+		logger, _ := cfg.Build()
 		defer logger.Sync()
 		log = logger.Sugar()
 	} else {
-		logger, _ := zap.NewDevelopment()
+		cfg := zap.NewDevelopmentConfig()
+		logger, _ := cfg.Build()
 		defer logger.Sync()
 		log = logger.Sugar()
 	}
 
 	l := &Zap{
 		log,
+		cfg,
 	}
 
 	return l
@@ -39,10 +43,17 @@ func NewZapNoOp() Logger {
 	log := logger.Sugar()
 
 	l := &Zap{
-		log,
+		log: log,
 	}
 
 	return l
+}
+
+// SetToDebug sets the logger to DEBUG level
+func (l *Zap) SetToDebug() {
+	if l.cfg != nil {
+		l.cfg.Level.SetLevel(zap.DebugLevel)
+	}
 }
 
 // Debug logs a message at level Debug on the standard logger
