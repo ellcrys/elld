@@ -501,7 +501,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("return err.Error('nil passed') when nil is passed as peer", func() {
-			err := mgr.TimestampPunishment(nil)
+			err := mgr.onFailedConnection(nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("nil passed"))
 		})
@@ -513,7 +513,7 @@ var _ = Describe("PeerManager", func() {
 				"peer1": peer1,
 			}
 			currentTime := peer1.Timestamp.Unix()
-			err := mgr.TimestampPunishment(peer1)
+			err := mgr.onFailedConnection(peer1)
 			Expect(err).To(BeNil())
 			actual := peer1.Timestamp.Unix()
 			Expect(currentTime > actual).To(BeTrue())

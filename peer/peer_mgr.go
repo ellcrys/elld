@@ -41,10 +41,18 @@ func NewManager(cfg *configdir.Config, localPeer *Peer, log logger.Logger) *Mana
 		cfg.Peer = &configdir.PeerConfig{}
 	}
 
-	cfg.Peer.GetAddrInterval = 10
-	cfg.Peer.PingInterval = 60
-	cfg.Peer.SelfAdvInterval = 10
-	cfg.Peer.CleanUpInterval = 10
+	if cfg.Peer.Dev {
+		cfg.Peer.GetAddrInterval = 10
+		cfg.Peer.PingInterval = 60
+		cfg.Peer.SelfAdvInterval = 10
+		cfg.Peer.CleanUpInterval = 10
+
+	} else {
+		cfg.Peer.GetAddrInterval = 10
+		cfg.Peer.PingInterval = 60
+		cfg.Peer.SelfAdvInterval = 10
+		cfg.Peer.CleanUpInterval = 10
+	}
 
 	m := &Manager{
 		kpm:            new(sync.Mutex),
@@ -89,9 +97,9 @@ func (m *Manager) GetKnownPeer(peerID string) *Peer {
 func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
 
 	peerID := util.IDFromAddr(peerAddr).Pretty()
-	if m.PeerExist(peerID) {
-		peer := m.GetKnownPeer(peerID)
-		peer.Timestamp = peer.Timestamp.Add(-2 * time.Hour)
+
+	if peer := m.GetKnownPeer(peerID); peer != nil {
+		m.onFailedConnection(peer)
 		m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
 	}
 
@@ -203,9 +211,9 @@ func (m *Manager) periodicCleanUp() {
 			break
 		}
 		select {
-		case <-m.pingTicker.C:
-			m.log.Debug("Cleaning up old peers", "NumKnownPeers", len(m.knownPeers))
-			m.CleanKnownPeers()
+		case <-m.cleanUpTicker.C:
+			nCleaned := m.CleanKnownPeers()
+			m.log.Debug("Cleaned up old peers", "NumKnownPeers", len(m.knownPeers), "NumPeersCleaned", nCleaned)
 		}
 	}
 }
@@ -289,11 +297,11 @@ func (m *Manager) isActive(p *Peer) bool {
 	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp)
 }
 
-// TimestampPunishment sets a new timestamp on a peer by deducting a fixed
-// amount of time from the current timestamp and resigning the new value.
-// It will also call CleanKnowPeer. The purpose is to gradually, remove
-// old, disconnected peers.
-func (m *Manager) TimestampPunishment(remotePeer *Peer) error {
+// onFailedConnection sets a new timestamp on a peer by deducting a fixed
+// amount of time from its current timestamp.
+// It will also call CleanKnowPeer. The purpose is to expedite the removal
+// of disconnected
+func (m *Manager) onFailedConnection(remotePeer *Peer) error {
 	if remotePeer == nil {
 		return fmt.Errorf("nil passed")
 	}
@@ -306,24 +314,29 @@ func (m *Manager) TimestampPunishment(remotePeer *Peer) error {
 // of peers known by the local peer. Typically, we remove
 // peers based on the last time they were seen. At least 3 connections
 // must be active before we can clean.
+// It returns the number of peers removed
 // TODO: Also remove based on connection failure count?
-func (m *Manager) CleanKnownPeers() {
+func (m *Manager) CleanKnownPeers() int {
 
 	if m.connMgr.connectionCount() < 3 {
-		return
+		return 0
 	}
 
 	activePeers := m.GetActivePeers(0)
+	numActivePeers := len(activePeers)
 
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
 	newKnownPeers := make(map[string]*Peer)
+	numNewKnownPeers := 0
 	for _, p := range activePeers {
 		newKnownPeers[p.StringID()] = p
+		numNewKnownPeers++
 	}
 
 	m.knownPeers = newKnownPeers
+	return numActivePeers - numNewKnownPeers
 }
 
 // GetKnownPeers gets all the known peers (active or inactive)

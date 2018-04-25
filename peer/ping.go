@@ -64,7 +64,7 @@ func (pt *Inception) SendPing(remotePeers []*Peer) {
 		_remotePeer := remotePeer
 		go func() {
 			if err := pt.sendPing(_remotePeer); err != nil {
-				pt.PM().TimestampPunishment(_remotePeer)
+				pt.PM().onFailedConnection(_remotePeer)
 			}
 		}()
 	}
