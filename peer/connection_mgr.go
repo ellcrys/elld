@@ -63,7 +63,7 @@ func (m *ConnectionManager) establishConnections() {
 			if m.pm.NeedMorePeers() {
 				unconnectedPeers := m.pm.getUnconnectedPeers()
 				if len(unconnectedPeers) > 0 {
-					m.log.Debug("Connecting to more peers", "UnconnectedPeers", len(unconnectedPeers))
+					m.log.Info("Establishing connection with more peers", "UnconnectedPeers", len(unconnectedPeers))
 					for _, p := range unconnectedPeers {
 						m.pm.connectToPeer(p.StringID())
 					}
