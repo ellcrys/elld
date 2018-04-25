@@ -44,6 +44,11 @@ func isValidKeyValues(kv []interface{}) error {
 	return nil
 }
 
+// SetToDebug sets the logger to DEBUG level
+func (l *Logrus) SetToDebug() {
+	l.log.SetLevel(logrus.DebugLevel)
+}
+
 func (l *Logrus) toFields(kv []interface{}) (f logrus.Fields) {
 	f = logrus.Fields{}
 	for i := 0; i < len(kv); i++ {
