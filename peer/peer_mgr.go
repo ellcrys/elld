@@ -29,6 +29,7 @@ type Manager struct {
 	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
 	pingTicker     *time.Ticker       // ticker that sends "ping" messages
 	selfAdvTicker  *time.Ticker       // ticker that sends "addr" message for self advertisement
+	cleanUpTicker  *time.Ticker       // ticker that cleans up the peer
 	stop           bool               // signifies the start of the manager
 }
 
@@ -43,6 +44,7 @@ func NewManager(cfg *configdir.Config, localPeer *Peer, log logger.Logger) *Mana
 	cfg.Peer.GetAddrInterval = 10
 	cfg.Peer.PingInterval = 60
 	cfg.Peer.SelfAdvInterval = 10
+	cfg.Peer.CleanUpInterval = 10
 
 	m := &Manager{
 		kpm:            new(sync.Mutex),
@@ -135,6 +137,7 @@ func (m *Manager) getUnconnectedPeers() (peers []*Peer) {
 func (m *Manager) Manage() {
 	go m.connMgr.Manage()
 	go m.selfAdvertisement()
+	go m.periodicCleanUp()
 	// go m.sendPeriodicGetAddrMsg()
 	// go m.sendPeriodicPingMsgs()
 }
@@ -186,6 +189,22 @@ func (m *Manager) selfAdvertisement() {
 				}
 			}
 			m.localPeer.protoc.SelfAdvertise(connectedPeers)
+			m.CleanKnownPeers()
+		}
+	}
+}
+
+// periodicCleanUp performs peer clean up such as
+// removing old know peers.
+func (m *Manager) periodicCleanUp() {
+	m.cleanUpTicker = time.NewTicker(time.Duration(m.config.Peer.CleanUpInterval) * time.Second)
+	for {
+		if m.stop {
+			break
+		}
+		select {
+		case <-m.pingTicker.C:
+			m.log.Debug("Cleaning up old peers", "NumKnownPeers", len(m.knownPeers))
 			m.CleanKnownPeers()
 		}
 	}
@@ -285,9 +304,14 @@ func (m *Manager) TimestampPunishment(remotePeer *Peer) error {
 
 // CleanKnownPeers removes old peers from the list
 // of peers known by the local peer. Typically, we remove
-// peers based on the last time they were seen. 
+// peers based on the last time they were seen. At least 3 connections
+// must be active before we can clean.
 // TODO: Also remove based on connection failure count?
 func (m *Manager) CleanKnownPeers() {
+
+	if m.connMgr.connectionCount() < 3 {
+		return
+	}
 
 	activePeers := m.GetActivePeers(0)
 
