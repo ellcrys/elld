@@ -225,7 +225,10 @@ func (m *Manager) periodicCleanUp() {
 // - else if the peer has not been seen in the last 24 hours and its current timestamp is
 //	 over 24 hours, then update the timestamp to 24 hours ago.
 // - else use whatever timestamp is returned
+// - clean old addresses
 func (m *Manager) AddOrUpdatePeer(p *Peer) error {
+
+	defer m.CleanKnownPeers()
 
 	if p == nil {
 		return fmt.Errorf("nil received")
