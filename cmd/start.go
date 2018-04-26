@@ -4,34 +4,12 @@ import (
 	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/peer"
 	"github.com/ellcrys/druid/util"
-	"github.com/ellcrys/druid/util/logger"
 	"github.com/spf13/cobra"
 )
 
 var (
-	log                     logger.Logger // logger
-	hardcodedBootstrapNodes = []string{}  // hardcoded bootstrap node address
+	hardcodedBootstrapNodes = []string{} // hardcoded bootstrap node address
 )
-
-// loadCfg loads the config file
-func loadCfg(cfgDirPath string) (*configdir.Config, error) {
-
-	cfgDir, err := configdir.NewConfigDir(cfgDirPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cfgDir.Init(); err != nil {
-		return nil, err
-	}
-
-	cfg, err := cfgDir.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
 
 func defaultConfig(cfg *configdir.Config) {
 	cfg.Peer.GetAddrInterval = util.NonZeroOrDefIn64(cfg.Peer.GetAddrInterval, 10)
@@ -47,20 +25,12 @@ var startCmd = &cobra.Command{
 	Long:  `Start the peer`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		log := logger.NewLogrus()
-
 		log.Info("Druid started", "Version", util.ClientVersion)
 
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
 		seed, _ := cmd.Flags().GetInt64("seed")
 		dev, _ := cmd.Flags().GetBool("dev")
-		cfgDirPath, _ := cmd.Root().PersistentFlags().GetString("cfgdir")
-
-		cfg, err := loadCfg(cfgDirPath)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
 
 		if dev {
 			cfg.Peer.Dev = dev
@@ -118,7 +88,6 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	rootCmd.PersistentFlags().String("cfgdir", "", "Configuration directory")
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")

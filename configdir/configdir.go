@@ -39,6 +39,11 @@ func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
 	return
 }
 
+// Path returns the config path
+func (cd *ConfigDir) Path() string {
+	return cd.path
+}
+
 // creates the config (ellcrys.json) file if it does not exist.
 // Returns true and nil if config file already exists, false and nil
 // if config file did not exist and was created. Otherwise, returns false and error
