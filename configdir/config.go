@@ -14,7 +14,18 @@ type PeerConfig struct {
 
 // Config represents the client's configuration
 type Config struct {
-	Peer *PeerConfig `json:"peer"`
+	Peer      *PeerConfig `json:"peer"`
+	configDir string
+}
+
+// SetConfigDir sets the config directory
+func (c *Config) SetConfigDir(d string) {
+	c.configDir = d
+}
+
+// ConfigDir returns the config directory
+func (c *Config) ConfigDir() string {
+	return c.configDir
 }
 
 var defaultConfig = Config{}
