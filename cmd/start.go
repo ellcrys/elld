@@ -33,6 +33,13 @@ func loadCfg(cfgDirPath string) (*configdir.Config, error) {
 	return cfg, nil
 }
 
+func defaultConfig(cfg *configdir.Config) {
+	cfg.Peer.GetAddrInterval = util.NonZeroOrDefIn64(cfg.Peer.GetAddrInterval, 10)
+	cfg.Peer.PingInterval = util.NonZeroOrDefIn64(cfg.Peer.PingInterval, 60)
+	cfg.Peer.SelfAdvInterval = util.NonZeroOrDefIn64(cfg.Peer.SelfAdvInterval, 10)
+	cfg.Peer.CleanUpInterval = util.NonZeroOrDefIn64(cfg.Peer.CleanUpInterval, 10)
+}
+
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
@@ -55,13 +62,14 @@ var startCmd = &cobra.Command{
 			log.Fatal(err.Error())
 		}
 
-		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapAddresses...)
-		cfg.Peer.Dev = dev
-		cfg.Peer.MaxAddrsExpected = 1000
-
-		if cfg.Peer.MaxConnections == 0 {
-			cfg.Peer.MaxConnections = 60
+		if dev {
+			cfg.Peer.Dev = dev
+			defaultConfig(cfg)
 		}
+
+		cfg.Peer.MaxConnections = util.NonZeroOrDefIn64(cfg.Peer.MaxConnections, 60)
+		cfg.Peer.BootstrapNodes = append(cfg.Peer.BootstrapNodes, bootstrapAddresses...)
+		cfg.Peer.MaxAddrsExpected = 1000
 
 		if !util.IsValidHostPortAddress(addressToListenOn) {
 			log.Fatal("invalid bind address provided")

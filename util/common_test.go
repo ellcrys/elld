@@ -30,4 +30,14 @@ var _ = Describe("Common", func() {
 			Expect(v[2].Int.Int64()).To(Equal(int64(3)))
 		})
 	})
+
+	Describe(".NonZeroOrDefIn64", func() {
+		It("should return 3 when v=0", func() {
+			Expect(NonZeroOrDefIn64(0, 3)).To(Equal(int64(3)))
+		})
+
+		It("should return 2 when v=2", func() {
+			Expect(NonZeroOrDefIn64(2, 3)).To(Equal(int64(2)))
+		})
+	})
 })

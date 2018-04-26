@@ -21,7 +21,7 @@ var ConnectionEstTickerTime = 10 * time.Second
 type ConnectionManager struct {
 	gmx        *sync.Mutex
 	pm         *Manager
-	activeConn int
+	activeConn int64
 	log        logger.Logger
 	connEstInt *time.Ticker
 }
@@ -41,7 +41,7 @@ func (m *ConnectionManager) Manage() {
 }
 
 // connectionCount returns the number of active connections
-func (m *ConnectionManager) connectionCount() int {
+func (m *ConnectionManager) connectionCount() int64 {
 	m.gmx.Lock()
 	defer m.gmx.Unlock()
 	return m.activeConn

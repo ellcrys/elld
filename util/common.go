@@ -72,3 +72,11 @@ func (s byBigIntWithMeta) Less(i, j int) bool {
 func AscOrderBigIntMeta(values []*BigIntWithMeta) {
 	sort.Sort(byBigIntWithMeta(values))
 }
+
+// NonZeroOrDefIn64 checks if v is 0 so it returns def, otherwise returns v
+func NonZeroOrDefIn64(v int64, def int64) int64 {
+	if v == 0 {
+		return def
+	}
+	return v
+}

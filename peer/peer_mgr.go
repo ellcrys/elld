@@ -41,17 +41,11 @@ func NewManager(cfg *configdir.Config, localPeer *Peer, log logger.Logger) *Mana
 		cfg.Peer = &configdir.PeerConfig{}
 	}
 
-	if cfg.Peer.Dev {
-		cfg.Peer.GetAddrInterval = 10
-		cfg.Peer.PingInterval = 60
-		cfg.Peer.SelfAdvInterval = 10
-		cfg.Peer.CleanUpInterval = 10
-
-	} else {
-		cfg.Peer.GetAddrInterval = 10
-		cfg.Peer.PingInterval = 60
-		cfg.Peer.SelfAdvInterval = 10
-		cfg.Peer.CleanUpInterval = 10
+	if !cfg.Peer.Dev {
+		cfg.Peer.GetAddrInterval = 30 * 60
+		cfg.Peer.PingInterval = 30 * 60
+		cfg.Peer.SelfAdvInterval = 24 * 60 * 60
+		cfg.Peer.CleanUpInterval = 10 * 60
 	}
 
 	m := &Manager{
@@ -144,10 +138,10 @@ func (m *Manager) getUnconnectedPeers() (peers []*Peer) {
 // Manage starts managing peer connections.
 func (m *Manager) Manage() {
 	go m.connMgr.Manage()
-	go m.selfAdvertisement()
+	go m.periodicSelfAdvertisement()
 	go m.periodicCleanUp()
+	go m.periodicPingMsgs()
 	// go m.sendPeriodicGetAddrMsg()
-	// go m.sendPeriodicPingMsgs()
 }
 
 // sendPeriodicGetAddrMsg sends "getaddr" message to all known active
@@ -165,9 +159,9 @@ func (m *Manager) sendPeriodicGetAddrMsg() {
 	}
 }
 
-// sendPeriodicPingMsgs sends "ping" messages to all peers
+// periodicPingMsgs sends "ping" messages to all peers
 // as a basic health check routine.
-func (m *Manager) sendPeriodicPingMsgs() {
+func (m *Manager) periodicPingMsgs() {
 	m.pingTicker = time.NewTicker(time.Duration(m.config.Peer.PingInterval) * time.Second)
 	for {
 		if m.stop {
@@ -180,9 +174,9 @@ func (m *Manager) sendPeriodicPingMsgs() {
 	}
 }
 
-// selfAdvertisement send an Addr message containing only the
+// periodicSelfAdvertisement send an Addr message containing only the
 // local peer address to all connected peers
-func (m *Manager) selfAdvertisement() {
+func (m *Manager) periodicSelfAdvertisement() {
 	m.selfAdvTicker = time.NewTicker(time.Duration(m.config.Peer.SelfAdvInterval) * time.Second)
 	for {
 		if m.stop {
