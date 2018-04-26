@@ -1,26 +1,27 @@
 package peer
 
 import (
-	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Handshake", func() {
-	var config = &configdir.Config{
-		Peer: &configdir.PeerConfig{
-			Dev:              true,
-			MaxAddrsExpected: 100,
-		},
-	}
+
+	BeforeEach(func() {
+		Expect(setTestCfg()).To(BeNil())
+	})
+
+	AfterEach(func() {
+		Expect(removeTestCfgDir()).To(BeNil())
+	})
 
 	Describe(".SendHandshake", func() {
 
 		Context("With 0 addresses in local and remote peers", func() {
 
 			It("should return error.Error('handshake failed. failed to connect to peer. dial to self attempted')", func() {
-				rp, err := NewPeer(config, "127.0.0.1:40001", 1, log)
+				rp, err := NewPeer(cfg, "127.0.0.1:40001", 1, log)
 				Expect(err).To(BeNil())
 				rpProtoc := NewInception(rp, log)
 				rp.Host().Close()
@@ -30,11 +31,11 @@ var _ = Describe("Handshake", func() {
 			})
 
 			It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
-				lp, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+				lp, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 				Expect(err).To(BeNil())
 				lpProtoc := NewInception(lp, log)
 
-				rp, err := NewPeer(config, "127.0.0.1:40001", 1, log)
+				rp, err := NewPeer(cfg, "127.0.0.1:40001", 1, log)
 				Expect(err).To(BeNil())
 				rpProtoc := NewInception(lp, log) // lp should be rp, as such, will cause the protocol to use lp's private key
 				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)
@@ -44,12 +45,12 @@ var _ = Describe("Handshake", func() {
 			})
 
 			It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
-				lp, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+				lp, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 				Expect(err).To(BeNil())
 				lpProtoc := NewInception(lp, log)
 				lp.SetProtocol(lpProtoc)
 
-				rp, err := NewPeer(config, "127.0.0.1:40001", 1, log)
+				rp, err := NewPeer(cfg, "127.0.0.1:40001", 1, log)
 				Expect(err).To(BeNil())
 				rpProtoc := NewInception(rp, log)
 				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)

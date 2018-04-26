@@ -4,6 +4,7 @@ package configdir
 type PeerConfig struct {
 	BootstrapNodes   []string `json:"boostrapNodes"`
 	Dev              bool     `json:"dev"`
+	Test             bool     `json:"-"`
 	GetAddrInterval  int64    `json:"getAddrInt"`
 	PingInterval     int64    `json:"pingInt"`
 	SelfAdvInterval  int64    `json:"selfAdvInt"`

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/database"
 	"github.com/ellcrys/druid/util/logger"
 
 	"github.com/ellcrys/druid/configdir"
@@ -42,6 +43,7 @@ type Peer struct {
 	isHardcodedSeed bool              // whether the peer was hardcoded as a seed
 	log             logger.Logger     // peer logger
 	rSeed           []byte            // random 256 bit seed to be used for seed random operations
+	db              database.DB
 }
 
 // NewPeer creates a peer instance at the specified port
@@ -87,6 +89,8 @@ func NewPeer(config *configdir.Config, address string, idSeed int64, log logger.
 	peer.peerManager = NewManager(config, peer, peer.log)
 	peer.IP = peer.ip()
 
+	log.Info("Opened local database", "Backend", "LevelDB")
+
 	return peer, nil
 }
 
@@ -99,6 +103,15 @@ func NewRemotePeer(address ma.Multiaddr, localPeer *Peer) *Peer {
 	}
 	peer.IP = peer.ip()
 	return peer
+}
+
+// OpenDB opens the database
+func (p *Peer) OpenDB() error {
+	if p.db != nil {
+		return fmt.Errorf("db already open")
+	}
+	p.db = database.NewGeneralDB(p.cfg.ConfigDir())
+	return p.db.Open()
 }
 
 // PM returns the peer manager
@@ -323,8 +336,19 @@ func (p *Peer) Wait() {
 
 // Stop stops the peer and release any held resources.
 func (p *Peer) Stop() {
-	p.PM().Stop()
-	p.wg.Done()
+
+	if pm := p.PM(); pm != nil {
+		pm.Stop()
+	}
+
+	if p.wg != (sync.WaitGroup{}) {
+		p.wg.Done()
+	}
+
+	if p.db != nil {
+		p.db = nil
+		p.db.Close()
+	}
 }
 
 // PeerFromAddr creates a Peer object from a multiaddr

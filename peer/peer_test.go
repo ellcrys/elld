@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/testutil"
 	"github.com/ellcrys/druid/util"
 	host "github.com/libp2p/go-libp2p-host"
@@ -15,39 +14,42 @@ import (
 )
 
 var _ = Describe("Peer", func() {
-	var config = &configdir.Config{
-		Peer: &configdir.PeerConfig{
-			Dev: true,
-		},
-	}
+
+	BeforeEach(func() {
+		Expect(setTestCfg()).To(BeNil())
+	})
+
+	AfterEach(func() {
+		Expect(removeTestCfgDir()).To(BeNil())
+	})
 
 	Describe(".NewPeer", func() {
 		Context("address", func() {
 			It("return err.Error('failed to parse address. Expects 'ip:port' format') when only port is provided", func() {
-				_, err := NewPeer(config, "40100", 1, log)
+				_, err := NewPeer(cfg, "40100", 1, log)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
 			})
 
 			It("return err.Error('failed to parse address. Expects 'ip:port' format') when only ip is provided", func() {
-				_, err := NewPeer(config, "127.0.0.1", 1, log)
+				_, err := NewPeer(cfg, "127.0.0.1", 1, log)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
 			})
 
 			It("return err.Error('failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0') when address is invalid and port is valid", func() {
-				_, err := NewPeer(config, "127.0.0:40000", 1, log)
+				_, err := NewPeer(cfg, "127.0.0:40000", 1, log)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0"))
 			})
 
 			It("return nil if address is ':40000'", func() {
-				_, err := NewPeer(config, ":40000", 1, log)
+				_, err := NewPeer(cfg, ":40000", 1, log)
 				Expect(err).To(BeNil())
 			})
 
 			It("return nil if address is '127.0.0.1:40000'", func() {
-				_, err := NewPeer(config, "127.0.0.1:40000", 1, log)
+				_, err := NewPeer(cfg, "127.0.0.1:40000", 1, log)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -60,7 +62,7 @@ var _ = Describe("Peer", func() {
 		})
 
 		It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.ID().Pretty()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			p.Host().Close()
@@ -74,7 +76,7 @@ var _ = Describe("Peer", func() {
 		})
 
 		It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.StringID()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			p.Host().Close()
@@ -88,7 +90,7 @@ var _ = Describe("Peer", func() {
 		})
 
 		It("should return '12D3KooWL3XJ..JiXkSj7333Jw'", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.ShortID()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
 			p.Host().Close()
@@ -97,7 +99,7 @@ var _ = Describe("Peer", func() {
 
 	Describe(".PrivKey", func() {
 		It("should return private key", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.PrivKey()).NotTo(BeNil())
 			p.Host().Close()
@@ -111,7 +113,7 @@ var _ = Describe("Peer", func() {
 		})
 
 		It("should return '/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.GetMultiAddr()).To(Equal("/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			p.Host().Close()
@@ -120,7 +122,7 @@ var _ = Describe("Peer", func() {
 
 	Describe(".GetAddr", func() {
 		It("should return '127.0.0.1:40000'", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.GetAddr()).To(Equal("127.0.0.1:40000"))
 			p.Host().Close()
@@ -129,7 +131,7 @@ var _ = Describe("Peer", func() {
 
 	Describe(".PeerFromAddr", func() {
 		It("should return error if address is not valid", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			_, err = p.PeerFromAddr("/invalid", false)
 			Expect(err).ToNot(BeNil())
@@ -139,21 +141,21 @@ var _ = Describe("Peer", func() {
 
 	Describe(".IsBadTimestamp", func() {
 		It("should return false when time is zero", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			p.Timestamp = time.Time{}
 			Expect(err).To(BeNil())
 			Expect(p.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 10 minutes, 1 second in the future", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			p.Timestamp = time.Now().Add(10*time.Minute + 1*time.Second)
 			Expect(err).To(BeNil())
 			Expect(p.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 3 hours, 1 second in the past", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			p.Timestamp = time.Now().Add(-3 * time.Hour)
 			Expect(err).To(BeNil())
 			Expect(p.IsBadTimestamp()).To(BeTrue())
@@ -162,7 +164,7 @@ var _ = Describe("Peer", func() {
 
 	Describe(".GetIP4TCPAddr", func() {
 		It("should return '/ip4/127.0.0.1/tcp/40000'", func() {
-			p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 			Expect(err).To(BeNil())
 			Expect(p.GetIP4TCPAddr().String()).To(Equal("/ip4/127.0.0.1/tcp/40000"))
 			p.Host().Close()
@@ -172,7 +174,7 @@ var _ = Describe("Peer", func() {
 	Describe(".AddBootstrapPeers", func() {
 		Context("with empty address", func() {
 			It("peer manager's bootstrap list should be empty", func() {
-				p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+				p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 				Expect(err).To(BeNil())
 				p.AddBootstrapPeers(nil, false)
 				Expect(p.PM().GetBootstrapPeers()).To(HaveLen(0))
@@ -182,7 +184,7 @@ var _ = Describe("Peer", func() {
 
 		Context("with invalid address", func() {
 			It("peer manager's bootstrap list should not contain invalid address", func() {
-				p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+				p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 				Expect(err).To(BeNil())
 				p.AddBootstrapPeers([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
 				Expect(p.PM().GetBootstrapPeers()).To(HaveLen(0))
@@ -190,7 +192,7 @@ var _ = Describe("Peer", func() {
 			})
 
 			It("peer manager's bootstrap list contain only one valid address", func() {
-				p, err := NewPeer(config, "127.0.0.1:40000", 0, log)
+				p, err := NewPeer(cfg, "127.0.0.1:40000", 0, log)
 				Expect(err).To(BeNil())
 				p.AddBootstrapPeers([]string{
 					"/ip4/127.0.0.1/tcp/40000",
@@ -210,7 +212,7 @@ var _ = Describe("Peer", func() {
 		var err error
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40105", 5, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40105", 5, log)
 			Expect(err).To(BeNil())
 			host = p.Host()
 			Expect(err).To(BeNil())
@@ -261,9 +263,9 @@ var _ = Describe("Peer", func() {
 		var err error
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40106", 6, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40106", 6, log)
 			Expect(err).To(BeNil())
-			p2, err = NewPeer(config, "127.0.0.1:40107", 7, log)
+			p2, err = NewPeer(cfg, "127.0.0.1:40107", 7, log)
 			Expect(err).To(BeNil())
 			p2.SetLocalPeer(p)
 			host = p.Host()
@@ -282,12 +284,12 @@ var _ = Describe("Peer", func() {
 		})
 
 		It("should return true when peer is connected", func() {
-			lp, err := NewPeer(config, "127.0.0.1:40108", 8, log)
+			lp, err := NewPeer(cfg, "127.0.0.1:40108", 8, log)
 			Expect(err).To(BeNil())
 			defer lp.host.Close()
 			lpProtoc := NewInception(lp, log)
 
-			rp, err := NewPeer(config, "127.0.0.1:40109", 9, log)
+			rp, err := NewPeer(cfg, "127.0.0.1:40109", 9, log)
 			Expect(err).To(BeNil())
 			defer rp.host.Close()
 			rpProtoc := NewInception(rp, log)
@@ -309,7 +311,7 @@ var _ = Describe("Peer", func() {
 
 	Describe(".ip", func() {
 		It("should return ip as 127.0.0.1", func() {
-			p, err := NewPeer(config, "127.0.0.1:40106", 6, log)
+			p, err := NewPeer(cfg, "127.0.0.1:40106", 6, log)
 			Expect(err).To(BeNil())
 			ip := p.ip()
 			Expect(ip).ToNot(BeNil())

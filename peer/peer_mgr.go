@@ -240,6 +240,10 @@ func (m *Manager) AddOrUpdatePeer(p *Peer) error {
 		return fmt.Errorf("peer address is not routable")
 	}
 
+	if !m.config.Peer.Test { // don't do this in test environment (we will test savePeer alone)
+		defer m.savePeers()
+	}
+
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
@@ -419,6 +423,29 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	m.log.Info("Added a peer", "PeerAddr", mAddr.String())
 
 	return err
+}
+
+// savePeers stores peer addresses to a persistent store
+func (m *Manager) savePeers() {
+
+	peers := m.CopyActivePeers(0)
+
+	var addresses = make([]string, len(peers))
+	for i, p := range peers {
+		addresses[i] = p.GetMultiAddr()
+	}
+
+	if err := m.localPeer.db.Address().ClearAll(); err != nil {
+		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(addresses))
+		return
+	}
+
+	if err := m.localPeer.db.Address().SaveAll(addresses); err != nil {
+		m.log.Error("failed to save addresses to storage", "Err", err.Error(), "NumAddrs", len(addresses))
+		return
+	}
+
+	m.log.Debug("Saved addresses", "NumAddrs", len(addresses))
 }
 
 // Stop gracefully stops running routines managed by the manager

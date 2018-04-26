@@ -16,11 +16,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func NewMgr(config *configdir.Config) *Manager {
+func NewMgr(cfg *configdir.Config) *Manager {
 	var mgr = new(Manager)
 	mgr.kpm = &sync.Mutex{}
 	mgr.gm = &sync.Mutex{}
-	mgr.config = config
+	mgr.config = cfg
 	mgr.knownPeers = make(map[string]*Peer)
 	mgr.log = log
 	mgr.connMgr = NewConnMrg(mgr, mgr.log)
@@ -29,11 +29,13 @@ func NewMgr(config *configdir.Config) *Manager {
 
 var _ = Describe("PeerManager", func() {
 
-	var config = &configdir.Config{
-		Peer: &configdir.PeerConfig{
-			Dev: true,
-		},
-	}
+	BeforeEach(func() {
+		Expect(setTestCfg()).To(BeNil())
+	})
+
+	AfterEach(func() {
+		Expect(removeTestCfgDir()).To(BeNil())
+	})
 
 	Describe(".AddOrUpdatePeer", func() {
 
@@ -42,7 +44,7 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -55,7 +57,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("return nil when peer is successfully added and peers list increases to 1", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			defer p2.Host().Close()
 			err = mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
@@ -63,14 +65,14 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("when peer exist but has a different address, return error", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40003", 3, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40003", 3, log)
 			Expect(err).To(BeNil())
 			defer p2.Host().Close()
 
 			err = mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
 
-			p3, err := NewPeer(config, "127.0.0.1:40004", 3, log)
+			p3, err := NewPeer(cfg, "127.0.0.1:40004", 3, log)
 			Expect(err).To(BeNil())
 			defer p2.Host().Close()
 
@@ -103,21 +105,21 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return nil when peer is not in known peer list", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			Expect(mgr.GetKnownPeer(p2.StringID())).To(BeNil())
 			p2.host.Close()
 		})
 
 		It("should return peer when peer is in known peer list", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40003", 3, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40003", 3, log)
 			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
 			actual := mgr.GetKnownPeer(p2.StringID())
@@ -138,14 +140,14 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("peer does not exist, must return false", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			defer p2.Host().Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p.StringID())).To(BeFalse())
@@ -153,7 +155,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("peer exists, must return true", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			defer p2.Host().Close()
 			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
@@ -173,14 +175,14 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
-		It("should set the disconnected peer's timestamp to at least 2 hour ago", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+		It("should set the disconnected peer's timestamp to at least 1 hour ago", func() {
+			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 
 			mgr.AddOrUpdatePeer(p2)
@@ -191,7 +193,7 @@ var _ = Describe("PeerManager", func() {
 			newTimestamp := p2.Timestamp.Unix()
 			Expect(newTimestamp).ToNot(Equal(currentTimestamp))
 			Expect(newTimestamp >= currentTimestamp).ToNot(BeTrue())
-			Expect(currentTimestamp - newTimestamp).To(Equal(int64(7200)))
+			Expect(currentTimestamp - newTimestamp).To(Equal(int64(3600)))
 		})
 
 		AfterEach(func() {
@@ -206,14 +208,14 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return peer1 as the only known peer", func() {
-			p2, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			mgr.AddOrUpdatePeer(p2)
 			actual := mgr.GetKnownPeers()
@@ -234,7 +236,7 @@ var _ = Describe("PeerManager", func() {
 		address := "/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -279,7 +281,7 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -323,7 +325,7 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -364,7 +366,7 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".CopyActivePeers", func() {
 
-		var mgr = NewMgr(config)
+		var mgr = NewMgr(cfg)
 		mgr.knownPeers = make(map[string]*Peer)
 		peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 		mgr.knownPeers = map[string]*Peer{
@@ -385,7 +387,7 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -455,14 +457,14 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return true when peer manager does not have upto 1000 peers and has not reached max connection", func() {
-			mgr.config.Peer.MaxConnections = 120
+			cfg.Peer.MaxConnections = 120
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 			mgr.knownPeers = map[string]*Peer{
@@ -472,7 +474,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("should return false when peer manager does not have upto 1000 peers and but has reached max connection", func() {
-			mgr.config.Peer.MaxConnections = 10
+			cfg.Peer.MaxConnections = 10
 			mgr.connMgr.activeConn = 10
 			mgr.knownPeers = make(map[string]*Peer)
 			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
@@ -494,7 +496,7 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -532,7 +534,7 @@ var _ = Describe("PeerManager", func() {
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40001", 1, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -549,14 +551,14 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("should return false if not local peer", func() {
-			peer1, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			peer1, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			Expect(mgr.IsLocalPeer(peer1)).To(BeFalse())
 			peer1.host.Close()
 		})
 
 		It("should return true if peer is the local peer", func() {
-			peer1, err := NewPeer(config, "127.0.0.1:40002", 2, log)
+			peer1, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			defer peer1.host.Close()
 			mgr.localPeer = peer1
@@ -570,7 +572,7 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".establishConnection", func() {
 		It("should return nil when peer does not exist", func() {
-			var mgr = NewMgr(config)
+			var mgr = NewMgr(cfg)
 			err := mgr.connectToPeer("invalid")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("peer not found"))
@@ -584,9 +586,9 @@ var _ = Describe("PeerManager", func() {
 		var err error
 
 		BeforeEach(func() {
-			p, err = NewPeer(config, "127.0.0.1:40106", 6, log)
+			p, err = NewPeer(cfg, "127.0.0.1:40106", 6, log)
 			Expect(err).To(BeNil())
-			p2, err = NewPeer(config, "127.0.0.1:40107", 7, log)
+			p2, err = NewPeer(cfg, "127.0.0.1:40107", 7, log)
 			Expect(err).To(BeNil())
 			p2.SetLocalPeer(p)
 			host = p.Host()
@@ -605,7 +607,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("should return p3 in slice when only 1 peer is not connected", func() {
-			p3, err := NewPeer(config, "127.0.0.1:40108", 8, log)
+			p3, err := NewPeer(cfg, "127.0.0.1:40108", 8, log)
 			Expect(err).To(BeNil())
 			defer p3.Host().Close()
 			p.PM().AddOrUpdatePeer(p3)
