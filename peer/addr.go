@@ -38,7 +38,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	}
 
 	// we need to ensure the amount of addresses does not exceed the max. address expected
-	if len(resp.Addresses) > pt.LocalPeer().cfg.Peer.MaxAddrsExpected {
+	if int64(len(resp.Addresses)) > pt.LocalPeer().cfg.Peer.MaxAddrsExpected {
 		pt.log.Debug("Too many addresses received. Ignoring addresses", "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
 		return nil, fmt.Errorf("too many addresses received. Ignoring addresses")
 	}
