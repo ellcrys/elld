@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 
 	"github.com/ellcrys/druid/configdir"
@@ -28,32 +29,6 @@ var (
 	cfg *configdir.Config
 	log logger.Logger
 )
-
-// loadCfg loads the config file
-func loadCfg(cfgDirPath string) (*configdir.Config, error) {
-
-	cfgDir, err := configdir.NewConfigDir(cfgDirPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cfgDir.Init(); err != nil {
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, err
-	}
-
-	cfg, err := cfgDir.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	cfg.SetConfigDir(cfgDir.Path())
-
-	return cfg, nil
-}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -87,8 +62,10 @@ func initConfig() {
 	log = logger.NewLogrus()
 
 	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
-	cfg, err = loadCfg(cfgDirPath)
+	cfg, err = util.LoadCfg(cfgDirPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	cfg.Peer.Test = false
 }

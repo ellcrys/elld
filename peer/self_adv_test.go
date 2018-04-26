@@ -6,37 +6,35 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/util"
 )
 
 var _ = Describe("SelfAdv", func() {
 
-	var config = &configdir.Config{
-		Peer: &configdir.PeerConfig{
-			Dev:              true,
-			MaxAddrsExpected: 5,
-		},
-	}
+	BeforeEach(func() {
+		Expect(setTestCfg()).To(BeNil())
+	})
+
+	AfterEach(func() {
+		Expect(removeTestCfgDir()).To(BeNil())
+	})
 
 	Describe(".SelfAdvertise", func() {
 
 		var err error
 		var lp *Peer
 		var lpProtoc *Inception
-		var mgr *Manager
 
 		BeforeEach(func() {
-			lp, err = NewPeer(config, "127.0.0.1:30010", 0, log)
+			lp, err = NewPeer(cfg, "127.0.0.1:30010", 0, log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
 			lp.SetProtocolHandler(util.AddrVersion, lpProtoc.OnAddr)
-			mgr = lp.PM()
 		})
 
 		It("should successfully self advertise peer; remote peer must add the advertised peer", func() {
-			p2, err := NewPeer(config, "127.0.0.1:30011", 1, log)
+			p2, err := NewPeer(cfg, "127.0.0.1:30011", 1, log)
 			Expect(err).To(BeNil())
 			p2.Timestamp = time.Now()
 			pt := NewInception(p2, log)

@@ -6,6 +6,8 @@ import (
 	r "math/rand"
 	"sort"
 	"time"
+
+	"github.com/ellcrys/druid/configdir"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -79,4 +81,30 @@ func NonZeroOrDefIn64(v int64, def int64) int64 {
 		return def
 	}
 	return v
+}
+
+// LoadCfg loads the config file
+func LoadCfg(cfgDirPath string) (*configdir.Config, error) {
+
+	cfgDir, err := configdir.NewConfigDir(cfgDirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cfgDir.Init(); err != nil {
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, err
+	}
+
+	cfg, err := cfgDir.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.SetConfigDir(cfgDir.Path())
+
+	return cfg, nil
 }

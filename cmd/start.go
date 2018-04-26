@@ -69,6 +69,10 @@ var startCmd = &cobra.Command{
 			}
 		}
 
+		if err = p.OpenDB(); err != nil {
+			log.Fatal("failed to open local database")
+		}
+
 		log.Info("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", dev)
 
 		protocol := peer.NewInception(p, log)
