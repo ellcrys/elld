@@ -22,10 +22,10 @@ var _ = Describe("AddressStore", func() {
 
 	Describe(".makeKey", func() {
 
-		It("when key is 'key_a', return 'address-6b65795f61a7ffc6f8bf1ed76651c147'", func() {
+		It("when key is 'key_a', return 'address-6b65795f61a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'", func() {
 			k := makeKey("key_a")
 			Expect(k).ToNot(BeNil())
-			Expect(string(k)).To(Equal("address-6b65795f61a7ffc6f8bf1ed76651c147"))
+			Expect(string(k)).To(Equal("address-6b65795f61a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"))
 		})
 
 	})
