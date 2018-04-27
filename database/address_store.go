@@ -11,7 +11,7 @@ var PrefixAddress = "address-"
 
 func makeKey(k string) []byte {
 	bs := hex.EncodeToString(sha3.New256().Sum([]byte(k)))
-	return append([]byte(PrefixAddress), []byte(bs)...)[:40]
+	return append([]byte(PrefixAddress), []byte(bs)...)
 }
 
 // AddressStore provides query and storage capabilities for addresses
