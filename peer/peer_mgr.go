@@ -323,21 +323,21 @@ func (m *Manager) CleanKnownPeers() int {
 		return 0
 	}
 
-	activePeers := m.GetActivePeers(0)
-	numActivePeers := len(activePeers)
-
 	m.kpm.Lock()
 	defer m.kpm.Unlock()
 
+	before := len(m.knownPeers)
+
 	newKnownPeers := make(map[string]*Peer)
-	numNewKnownPeers := 0
-	for _, p := range activePeers {
-		newKnownPeers[p.StringID()] = p
-		numNewKnownPeers++
+	for k, p := range m.knownPeers {
+		if m.isActive(p) {
+			newKnownPeers[k] = p
+		}
 	}
 
 	m.knownPeers = newKnownPeers
-	return numActivePeers - numNewKnownPeers
+
+	return before - len(newKnownPeers)
 }
 
 // GetKnownPeers gets all the known peers (active or inactive)
@@ -426,7 +426,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 }
 
 // savePeers stores peer addresses to a persistent store
-func (m *Manager) savePeers() {
+func (m *Manager) savePeers() error {
 
 	peers := m.CopyActivePeers(0)
 
@@ -437,15 +437,16 @@ func (m *Manager) savePeers() {
 
 	if err := m.localPeer.db.Address().ClearAll(); err != nil {
 		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(addresses))
-		return
+		return fmt.Errorf("failed to clear persistent addresses")
 	}
 
 	if err := m.localPeer.db.Address().SaveAll(addresses); err != nil {
 		m.log.Error("failed to save addresses to storage", "Err", err.Error(), "NumAddrs", len(addresses))
-		return
+		return fmt.Errorf("failed to clear persistent addresses")
 	}
 
 	m.log.Debug("Saved addresses", "NumAddrs", len(addresses))
+	return nil
 }
 
 // Stop gracefully stops running routines managed by the manager
