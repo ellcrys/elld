@@ -437,14 +437,35 @@ func (m *Manager) serializeActivePeers() ([][]byte, error) {
 	for _, p := range peers {
 		if !p.isHardcodedSeed {
 			bs, _ := json.Marshal(map[string]interface{}{
-				"addr":      p.GetMultiAddr(),
-				"timestamp": p.Timestamp.Unix(),
+				"addr": p.GetMultiAddr(),
+				"ts":   p.Timestamp.Unix(),
 			})
 			serPeer = append(serPeer, bs)
 		}
 	}
 
 	return serPeer, nil
+}
+
+// deserializePeers takes a slice of bytes which was created by
+// serializeActivePeers and create a new remote peer
+func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Peer, error) {
+
+	var peers = make([]*Peer, len(serPeers))
+
+	for i, p := range serPeers {
+		var data map[string]interface{}
+		if err := json.Unmarshal(p, &data); err != nil {
+			return nil, err
+		}
+
+		addr, _ := ma.NewMultiaddr(data["addr"].(string))
+		peer := NewRemotePeer(addr, m.localPeer)
+		peer.Timestamp = time.Unix(int64(data["ts"].(float64)), 0)
+		peers[i] = peer
+	}
+
+	return peers, nil
 }
 
 // savePeers stores peer addresses to a persistent store
