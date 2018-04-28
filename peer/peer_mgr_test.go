@@ -227,6 +227,48 @@ var _ = Describe("PeerManager", func() {
 		})
 	})
 
+	Describe(".deserializePeers", func() {
+
+		var p *Peer
+		var err error
+		var mgr *Manager
+
+		BeforeEach(func() {
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			Expect(err).To(BeNil())
+			mgr = p.PM()
+			mgr.localPeer = p
+			err = p.OpenDB()
+			Expect(err).To(BeNil())
+		})
+
+		It("should successfully deserialize peer", func() {
+			addrStr := "/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o"
+			addr, _ := ma.NewMultiaddr(addrStr)
+			p2 := NewRemotePeer(addr, p)
+			p2.Timestamp = time.Now()
+			mgr.knownPeers[p2.StringID()] = p2
+
+			err := mgr.savePeers()
+			Expect(err).To(BeNil())
+
+			addrs, err := p.db.Address().GetAll()
+			Expect(err).To(BeNil())
+			Expect(addrs).To(HaveLen(1))
+
+			peers, err := mgr.deserializePeers(addrs)
+			Expect(err).To(BeNil())
+			Expect(peers).To(HaveLen(1))
+			Expect(peers[0].GetMultiAddr()).To(Equal(addrStr))
+			Expect(peers[0].Timestamp.Unix()).To(Equal(p2.Timestamp.Unix()))
+		})
+
+		AfterEach(func() {
+			p.db.Close()
+			p.Host().Close()
+		})
+	})
+
 	Describe(".GetKnownPeer", func() {
 
 		var p *Peer
