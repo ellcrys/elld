@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ import (
 // sendGetAddr sends a wire.GetAddr message to a remote peer.
 // The remote peer will respond with a wire.Addr message which the function
 // must process using the OnAddr handler and return the response.
-func (pt *Inception) sendGetAddr(remotePeer *Peer) ([]*wire.Address, error) {
+func (pt *Inception) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
 
 	remotePeerIDShort := remotePeer.ShortID()
 	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.GetAddrVersion)
@@ -40,7 +40,7 @@ func (pt *Inception) sendGetAddr(remotePeer *Peer) ([]*wire.Address, error) {
 
 // SendGetAddr sends GetAddr message to peers in separate goroutines.
 // GetAddr returns with a list of addr that should be relayed to other peers.
-func (pt *Inception) SendGetAddr(remotePeers []*Peer) error {
+func (pt *Inception) SendGetAddr(remotePeers []*Node) error {
 
 	if !pt.PM().NeedMorePeers() {
 		return nil
@@ -68,7 +68,7 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 
 	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
 	remoteAddr := util.FullRemoteAddressFromStream(s)
-	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
+	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
 	defer s.Close()
 
 	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {

@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ import (
 // to all connected peers known to the local peer.
 // The caller is responsible for ensuring only connected peers are passed.
 // Returns the number of peers advertised to.
-func (pt *Inception) SelfAdvertise(connectedPeers []*Peer) int {
+func (pt *Inception) SelfAdvertise(connectedPeers []*Node) int {
 
 	pt.log.Info("Attempting to advertise self", "ConnectedPeers", len(connectedPeers))
 

@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-func (pt *Inception) sendPing(remotePeer *Peer) error {
+func (pt *Inception) sendPing(remotePeer *Node) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
 	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
@@ -58,7 +58,7 @@ func (pt *Inception) sendPing(remotePeer *Peer) error {
 }
 
 // SendPing sends a ping message
-func (pt *Inception) SendPing(remotePeers []*Peer) {
+func (pt *Inception) SendPing(remotePeers []*Node) {
 	pt.log.Info("Sending ping to peer(s)", "NumPeers", len(remotePeers))
 	for _, remotePeer := range remotePeers {
 		_remotePeer := remotePeer
@@ -73,7 +73,7 @@ func (pt *Inception) SendPing(remotePeers []*Peer) {
 // OnPing handles incoming ping message
 func (pt *Inception) OnPing(s net.Stream) {
 
-	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
+	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
 	defer s.Close()
 

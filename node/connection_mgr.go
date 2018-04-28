@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"sync"
@@ -49,7 +49,7 @@ func (m *ConnectionManager) connectionCount() int64 {
 
 // needMoreConnections checks whether the local peer needs new connections
 func (m *ConnectionManager) needMoreConnections() bool {
-	return m.connectionCount() < m.pm.config.Peer.MaxConnections
+	return m.connectionCount() < m.pm.config.Node.MaxConnections
 }
 
 // establishConnections will attempt to send a handshake to

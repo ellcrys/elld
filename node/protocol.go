@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"encoding/json"
@@ -15,29 +15,29 @@ import (
 
 // Protocol represents a protocol
 type Protocol interface {
-	SendHandshake(*Peer) error
+	SendHandshake(*Node) error
 	OnHandshake(net.Stream)
-	SendPing([]*Peer)
+	SendPing([]*Node)
 	OnPing(net.Stream)
-	SendGetAddr([]*Peer) error
+	SendGetAddr([]*Node) error
 	OnGetAddr(net.Stream)
 	OnAddr(net.Stream)
 	RelayAddr([]*wire.Address) error
-	SelfAdvertise([]*Peer) int
+	SelfAdvertise([]*Node) int
 }
 
 // Inception represents the peer protocol
 type Inception struct {
 	arm                         *sync.Mutex   // addr relay mutex
 	version                     string        // the protocol version
-	peer                        *Peer         // the local peer
+	peer                        *Node         // the local peer
 	log                         logger.Logger // the logger
 	lastRelayPeersSelectionTime time.Time     // the time the last addr msg relay peers where selected
-	addrRelayPeers              [2]*Peer      // peers to relay addr msgs to
+	addrRelayPeers              [2]*Node      // peers to relay addr msgs to
 }
 
 // NewInception creates a new instance of the protocol codenamed "Inception"
-func NewInception(p *Peer, log logger.Logger) *Inception {
+func NewInception(p *Node, log logger.Logger) *Inception {
 	return &Inception{
 		peer: p,
 		log:  log,
@@ -46,7 +46,7 @@ func NewInception(p *Peer, log logger.Logger) *Inception {
 }
 
 // LocalPeer returns the local peer
-func (protoc *Inception) LocalPeer() *Peer {
+func (protoc *Inception) LocalPeer() *Node {
 	return protoc.peer
 }
 

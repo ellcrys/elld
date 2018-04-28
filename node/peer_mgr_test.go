@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func NewMgr(cfg *configdir.Config) *Manager {
 	mgr.kpm = &sync.Mutex{}
 	mgr.gm = &sync.Mutex{}
 	mgr.config = cfg
-	mgr.knownPeers = make(map[string]*Peer)
+	mgr.knownPeers = make(map[string]*Node)
 	mgr.log = log
 	mgr.connMgr = NewConnMrg(mgr, mgr.log)
 	return mgr
@@ -39,12 +39,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".AddOrUpdatePeer", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -57,7 +57,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("return nil when peer is successfully added and peers list increases to 1", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			defer p2.Host().Close()
 			err = mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
@@ -65,14 +65,14 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("when peer exist but has a different address, return error", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40003", 3, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40003", 3, log)
 			Expect(err).To(BeNil())
 			defer p2.Host().Close()
 
 			err = mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
 
-			p3, err := NewPeer(cfg, "127.0.0.1:40004", 3, log)
+			p3, err := NewNode(cfg, "127.0.0.1:40004", 3, log)
 			Expect(err).To(BeNil())
 			defer p2.Host().Close()
 
@@ -100,12 +100,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".CleanKnownPeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -120,10 +120,10 @@ var _ = Describe("PeerManager", func() {
 			mgr.connMgr.activeConn = 3
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
-			p2 := NewRemotePeer(addr, p)
+			p2 := NewRemoteNode(addr, p)
 			p2.Timestamp = time.Now()
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := NewRemotePeer(addr2, p)
+			p3 := NewRemoteNode(addr2, p)
 			p3.Timestamp = time.Now()
 			mgr.knownPeers[p2.StringID()] = p2
 			mgr.knownPeers[p3.StringID()] = p3
@@ -136,10 +136,10 @@ var _ = Describe("PeerManager", func() {
 			mgr.connMgr.activeConn = 3
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
-			p2 := NewRemotePeer(addr, p)
+			p2 := NewRemoteNode(addr, p)
 			p2.Timestamp = time.Now()
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := NewRemotePeer(addr2, p)
+			p3 := NewRemoteNode(addr2, p)
 			mgr.knownPeers[p2.StringID()] = p2
 			mgr.knownPeers[p3.StringID()] = p3
 
@@ -154,12 +154,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".serializeActivePeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -167,12 +167,12 @@ var _ = Describe("PeerManager", func() {
 
 		It("should successfully store peer addresses", func() {
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
-			p2 := NewRemotePeer(addr, p)
+			p2 := NewRemoteNode(addr, p)
 			p2.Timestamp = time.Now()
 			mgr.knownPeers[p2.StringID()] = p2
 
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := NewRemotePeer(addr2, p)
+			p3 := NewRemoteNode(addr2, p)
 			p3.Timestamp = time.Now()
 			mgr.knownPeers[p3.StringID()] = p3
 
@@ -188,12 +188,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".savePeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -205,10 +205,10 @@ var _ = Describe("PeerManager", func() {
 			mgr.connMgr.activeConn = 3
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
-			p2 := NewRemotePeer(addr, p)
+			p2 := NewRemoteNode(addr, p)
 			p2.Timestamp = time.Now()
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := NewRemotePeer(addr2, p)
+			p3 := NewRemoteNode(addr2, p)
 			p3.Timestamp = time.Now()
 			mgr.knownPeers[p2.StringID()] = p2
 			mgr.knownPeers[p3.StringID()] = p3
@@ -229,12 +229,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".deserializePeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -245,7 +245,7 @@ var _ = Describe("PeerManager", func() {
 		It("should successfully deserialize peer", func() {
 			addrStr := "/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o"
 			addr, _ := ma.NewMultiaddr(addrStr)
-			p2 := NewRemotePeer(addr, p)
+			p2 := NewRemoteNode(addr, p)
 			p2.Timestamp = time.Now()
 			mgr.knownPeers[p2.StringID()] = p2
 
@@ -271,26 +271,26 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".GetKnownPeer", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return nil when peer is not in known peer list", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			Expect(mgr.GetKnownPeer(p2.StringID())).To(BeNil())
 			p2.host.Close()
 		})
 
 		It("should return peer when peer is in known peer list", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40003", 3, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40003", 3, log)
 			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
 			actual := mgr.GetKnownPeer(p2.StringID())
@@ -306,19 +306,19 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".PeerExist", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("peer does not exist, must return false", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			defer p2.Host().Close()
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p.StringID())).To(BeFalse())
@@ -326,7 +326,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("peer exists, must return true", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			defer p2.Host().Close()
 			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
@@ -341,19 +341,19 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".onPeerDisconnet", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should set the disconnected peer's timestamp to at least 1 hour ago", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 
 			mgr.AddOrUpdatePeer(p2)
@@ -374,19 +374,19 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".GetKnownPeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return peer1 as the only known peer", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			p2, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			mgr.AddOrUpdatePeer(p2)
 			actual := mgr.GetKnownPeers()
@@ -401,13 +401,13 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".CreatePeerFromAddress", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 		address := "/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -447,38 +447,38 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".isActive", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return false when Timestamp is zero", func() {
-			peer := &Peer{}
+			peer := &Node{}
 			Expect(mgr.isActive(peer)).To(BeFalse())
 		})
 
 		It("should return false when Timestamp is 3 hours 10 seconds ago", func() {
-			peer := &Peer{
+			peer := &Node{
 				Timestamp: time.Now().Add((-3 * (60 * 60) * time.Second) + 10),
 			}
 			Expect(mgr.isActive(peer)).To(BeFalse())
 		})
 
 		It("should return false when Timestamp is 3 hours ago", func() {
-			peer := &Peer{
+			peer := &Node{
 				Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second),
 			}
 			Expect(mgr.isActive(peer)).To(BeFalse())
 		})
 
 		It("should return true when Timestamp is 2 hours, 59 minute ago", func() {
-			peer := &Peer{
+			peer := &Node{
 				Timestamp: time.Now().Add((-2 * (60 * 60) * time.Second) + 59*time.Minute),
 			}
 			Expect(mgr.isActive(peer)).To(BeTrue())
@@ -491,19 +491,19 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".GetActivePeers", func() {
 
-		var p, peer1, peer2, peer3 *Peer
+		var p, peer1, peer2, peer3 *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
-			peer1 = &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			peer2 = &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			peer3 = &Peer{Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Peer{
+			peer1 = &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			peer2 = &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			peer3 = &Node{Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Node{
 				"peer1": peer1,
 				"peer2": peer2,
 				"peer3": peer3,
@@ -527,7 +527,7 @@ var _ = Describe("PeerManager", func() {
 		It("should return a map with 1 elements with either peer1 or peer2 when limit is set to 1", func() {
 			actual := mgr.GetActivePeers(1)
 			Expect(actual).To(HaveLen(1))
-			Expect([]*Peer{peer1, peer2}).To(ContainElement(actual[0]))
+			Expect([]*Node{peer1, peer2}).To(ContainElement(actual[0]))
 		})
 
 		AfterEach(func() {
@@ -538,9 +538,9 @@ var _ = Describe("PeerManager", func() {
 	Describe(".CopyActivePeers", func() {
 
 		var mgr = NewMgr(cfg)
-		mgr.knownPeers = make(map[string]*Peer)
-		peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-		mgr.knownPeers = map[string]*Peer{
+		mgr.knownPeers = make(map[string]*Node)
+		peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+		mgr.knownPeers = map[string]*Node{
 			"peer1": peer1,
 		}
 
@@ -553,29 +553,29 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".GetRandomActivePeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
-			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			peer2 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			peer3 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Peer{
+			mgr.knownPeers = make(map[string]*Node)
+			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			peer2 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			peer3 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Node{
 				"peer1": peer1,
 				"peer2": peer2,
 				"peer3": peer3,
 			}
 
-			var result []*Peer
+			var result []*Node
 			var sameIndexCount = 0
 			result = mgr.GetRandomActivePeers(3)
 
@@ -591,17 +591,17 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("Should return the limit requested if known active peers are more than limit", func() {
-			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			peer2 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			peer3 := &Peer{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Peer{
+			mgr.knownPeers = make(map[string]*Node)
+			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			peer2 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			peer3 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Node{
 				"peer1": peer1,
 				"peer2": peer2,
 				"peer3": peer3,
 			}
 
-			var result []*Peer
+			var result []*Node
 			var sameIndexCount = 0
 			result = mgr.GetRandomActivePeers(2)
 
@@ -623,33 +623,33 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".NeedMorePeers", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
 		})
 
 		It("should return true when peer manager does not have upto 1000 peers and has not reached max connection", func() {
-			cfg.Peer.MaxConnections = 120
-			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Peer{
+			cfg.Node.MaxConnections = 120
+			mgr.knownPeers = make(map[string]*Node)
+			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Node{
 				"peer1": peer1,
 			}
 			Expect(mgr.NeedMorePeers()).To(BeTrue())
 		})
 
 		It("should return false when peer manager does not have upto 1000 peers and but has reached max connection", func() {
-			cfg.Peer.MaxConnections = 10
+			cfg.Node.MaxConnections = 10
 			mgr.connMgr.activeConn = 10
-			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Peer{
+			mgr.knownPeers = make(map[string]*Node)
+			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			mgr.knownPeers = map[string]*Node{
 				"peer1": peer1,
 			}
 			Expect(mgr.NeedMorePeers()).To(BeFalse())
@@ -662,12 +662,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".TimestampPunishment", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -680,9 +680,9 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("reduce timestamp by an 3600 seconds", func() {
-			mgr.knownPeers = make(map[string]*Peer)
-			peer1 := &Peer{Timestamp: time.Now()}
-			mgr.knownPeers = map[string]*Peer{
+			mgr.knownPeers = make(map[string]*Node)
+			peer1 := &Node{Timestamp: time.Now()}
+			mgr.knownPeers = map[string]*Node{
 				"peer1": peer1,
 			}
 			currentTime := peer1.Timestamp.Unix()
@@ -700,12 +700,12 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".IsLocalPeer", func() {
 
-		var p *Peer
+		var p *Node
 		var err error
 		var mgr *Manager
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			p, err = NewNode(cfg, "127.0.0.1:40001", 1, log)
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localPeer = p
@@ -717,19 +717,19 @@ var _ = Describe("PeerManager", func() {
 
 		It("should return false if local peer is nil", func() {
 			mgr.localPeer = nil
-			peer1 := &Peer{Timestamp: time.Now()}
+			peer1 := &Node{Timestamp: time.Now()}
 			Expect(mgr.IsLocalPeer(peer1)).To(BeFalse())
 		})
 
 		It("should return false if not local peer", func() {
-			peer1, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			peer1, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			Expect(mgr.IsLocalPeer(peer1)).To(BeFalse())
 			peer1.host.Close()
 		})
 
 		It("should return true if peer is the local peer", func() {
-			peer1, err := NewPeer(cfg, "127.0.0.1:40002", 2, log)
+			peer1, err := NewNode(cfg, "127.0.0.1:40002", 2, log)
 			Expect(err).To(BeNil())
 			defer peer1.host.Close()
 			mgr.localPeer = peer1
@@ -753,15 +753,15 @@ var _ = Describe("PeerManager", func() {
 	Describe(".getUnconnectedPeers", func() {
 
 		var host, host2 host.Host
-		var p, p2 *Peer
+		var p, p2 *Node
 		var err error
 
 		BeforeEach(func() {
-			p, err = NewPeer(cfg, "127.0.0.1:40106", 6, log)
+			p, err = NewNode(cfg, "127.0.0.1:40106", 6, log)
 			Expect(err).To(BeNil())
-			p2, err = NewPeer(cfg, "127.0.0.1:40107", 7, log)
+			p2, err = NewNode(cfg, "127.0.0.1:40107", 7, log)
 			Expect(err).To(BeNil())
-			p2.SetLocalPeer(p)
+			p2.SetLocalNode(p)
 			host = p.Host()
 			Expect(err).To(BeNil())
 			host2 = p2.Host()
@@ -778,7 +778,7 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("should return p3 in slice when only 1 peer is not connected", func() {
-			p3, err := NewPeer(cfg, "127.0.0.1:40108", 8, log)
+			p3, err := NewNode(cfg, "127.0.0.1:40108", 8, log)
 			Expect(err).To(BeNil())
 			defer p3.Host().Close()
 			p.PM().AddOrUpdatePeer(p3)

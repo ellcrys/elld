@@ -15,7 +15,7 @@ type PeerConfig struct {
 
 // Config represents the client's configuration
 type Config struct {
-	Peer      *PeerConfig `json:"peer"`
+	Node      *PeerConfig `json:"peer"`
 	configDir string
 }
 
@@ -32,5 +32,5 @@ func (c *Config) ConfigDir() string {
 var defaultConfig = Config{}
 
 func init() {
-	defaultConfig.Peer = &PeerConfig{}
+	defaultConfig.Node = &PeerConfig{}
 }
