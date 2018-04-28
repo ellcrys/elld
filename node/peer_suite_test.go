@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"os"
@@ -24,9 +24,9 @@ func setTestCfg() error {
 	cfgDir := path.Join(dir, ".ellcrys_test")
 	os.MkdirAll(cfgDir, 0700)
 	cfg, err = util.LoadCfg(cfgDir)
-	cfg.Peer.Dev = true
-	cfg.Peer.MaxAddrsExpected = 5
-	cfg.Peer.Test = true
+	cfg.Node.Dev = true
+	cfg.Node.MaxAddrsExpected = 5
+	cfg.Node.Test = true
 	return err
 }
 

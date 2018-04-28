@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"time"
@@ -22,11 +22,11 @@ var _ = Describe("SelfAdv", func() {
 	Describe(".SelfAdvertise", func() {
 
 		var err error
-		var lp *Peer
+		var lp *Node
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewPeer(cfg, "127.0.0.1:30010", 0, log)
+			lp, err = NewNode(cfg, "127.0.0.1:30010", 0, log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
@@ -34,7 +34,7 @@ var _ = Describe("SelfAdv", func() {
 		})
 
 		It("should successfully self advertise peer; remote peer must add the advertised peer", func() {
-			p2, err := NewPeer(cfg, "127.0.0.1:30011", 1, log)
+			p2, err := NewNode(cfg, "127.0.0.1:30011", 1, log)
 			Expect(err).To(BeNil())
 			p2.Timestamp = time.Now()
 			pt := NewInception(p2, log)
@@ -42,7 +42,7 @@ var _ = Describe("SelfAdv", func() {
 			p2.SetProtocolHandler(util.AddrVersion, pt.OnAddr)
 
 			Expect(p2.PM().knownPeers).To(HaveLen(0))
-			n := lpProtoc.SelfAdvertise([]*Peer{p2})
+			n := lpProtoc.SelfAdvertise([]*Node{p2})
 			Expect(n).To(Equal(1))
 			time.Sleep(5 * time.Millisecond)
 			Expect(p2.PM().knownPeers).To(HaveLen(1))

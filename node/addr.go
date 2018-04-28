@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"bufio"
@@ -21,7 +21,7 @@ import (
 func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	remoteAddr := util.FullRemoteAddressFromStream(s)
-	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
+	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
 	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
@@ -38,7 +38,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	}
 
 	// we need to ensure the amount of addresses does not exceed the max. address expected
-	if int64(len(resp.Addresses)) > pt.LocalPeer().cfg.Peer.MaxAddrsExpected {
+	if int64(len(resp.Addresses)) > pt.LocalPeer().cfg.Node.MaxAddrsExpected {
 		pt.log.Debug("Too many addresses received. Ignoring addresses", "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
 		return nil, fmt.Errorf("too many addresses received. Ignoring addresses")
 	}
@@ -46,7 +46,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	invalidAddrs := 0
 	for _, addr := range resp.Addresses {
 
-		p, _ := pt.LocalPeer().PeerFromAddr(addr.Address, true)
+		p, _ := pt.LocalPeer().NodeFromAddr(addr.Address, true)
 		p.Timestamp = time.Unix(addr.Timestamp, 0)
 
 		if p.IsBadTimestamp() {
@@ -68,7 +68,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 func (pt *Inception) OnAddr(s net.Stream) {
 
 	remoteAddr := util.FullRemoteAddressFromStream(s)
-	remotePeer := NewRemotePeer(remoteAddr, pt.LocalPeer())
+	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
 	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
 		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Addr")
 		return
@@ -88,7 +88,7 @@ func (pt *Inception) OnAddr(s net.Stream) {
 // for the next 24 hours. If we haven't determined these addresses or it has been 24 hours since
 // we last selected an addr, we randomly select new addresses from the candidate addresses otherwise,
 // we return the current relay addresses.
-func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Peer {
+func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Node {
 
 	now := time.Now()
 	pt.arm.Lock()
@@ -120,12 +120,12 @@ func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Peer 
 		util.AscOrderBigIntMeta(sortCandidateAddrs)
 
 		if len(sortCandidateAddrs) >= 1 {
-			p, _ := pt.LocalPeer().PeerFromAddr(sortCandidateAddrs[0].Meta.(*wire.Address).Address, true)
+			p, _ := pt.LocalPeer().NodeFromAddr(sortCandidateAddrs[0].Meta.(*wire.Address).Address, true)
 			p.Timestamp = time.Unix(sortCandidateAddrs[0].Meta.(*wire.Address).Timestamp, 0)
 			pt.addrRelayPeers[0] = p
 
 			if len(sortCandidateAddrs) >= 2 {
-				p2, _ := pt.LocalPeer().PeerFromAddr(sortCandidateAddrs[1].Meta.(*wire.Address).Address, true)
+				p2, _ := pt.LocalPeer().NodeFromAddr(sortCandidateAddrs[1].Meta.(*wire.Address).Address, true)
 				p2.Timestamp = time.Unix(sortCandidateAddrs[1].Meta.(*wire.Address).Timestamp, 0)
 				pt.addrRelayPeers[1] = p2
 			}

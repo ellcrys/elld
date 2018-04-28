@@ -84,5 +84,5 @@ func initConfig() {
 		log.Fatal(err.Error())
 	}
 
-	cfg.Peer.Test = false
+	cfg.Node.Test = false
 }

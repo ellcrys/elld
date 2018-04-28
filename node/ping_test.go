@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"time"
@@ -20,7 +20,7 @@ var _ = Describe("Ping", func() {
 
 	Describe(".sendPing", func() {
 		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
-			rp, err := NewPeer(cfg, "127.0.0.1:30000", 0, log)
+			rp, err := NewNode(cfg, "127.0.0.1:30000", 0, log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.Host().Close()
@@ -30,11 +30,11 @@ var _ = Describe("Ping", func() {
 		})
 
 		It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
-			lp, err := NewPeer(cfg, "127.0.0.1:30001", 1, log)
+			lp, err := NewNode(cfg, "127.0.0.1:30001", 1, log)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp, log)
 
-			rp, err := NewPeer(cfg, "127.0.0.1:30002", 2, log)
+			rp, err := NewNode(cfg, "127.0.0.1:30002", 2, log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(lp, log) // lp should be rp, as such, will cause the protocol to use lp's private key
 			rp.SetProtocolHandler(util.PingVersion, rpProtoc.OnPing)
@@ -45,11 +45,11 @@ var _ = Describe("Ping", func() {
 		})
 
 		It("should return nil and update remote peer timestamp locally", func() {
-			lp, err := NewPeer(cfg, "127.0.0.1:30001", 1, log)
+			lp, err := NewNode(cfg, "127.0.0.1:30001", 1, log)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp, log)
 
-			rp, err := NewPeer(cfg, "127.0.0.1:30002", 2, log)
+			rp, err := NewNode(cfg, "127.0.0.1:30002", 2, log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.SetProtocolHandler(util.PingVersion, rpProtoc.OnPing)

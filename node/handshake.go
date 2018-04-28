@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ import (
 )
 
 // SendHandshake sends an introduction message to a peer
-func (pt *Inception) SendHandshake(remotePeer *Peer) error {
+func (pt *Inception) SendHandshake(remotePeer *Node) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
 	pt.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
@@ -61,7 +61,7 @@ func (pt *Inception) SendHandshake(remotePeer *Peer) error {
 // OnHandshake handles incoming handshake request
 func (pt *Inception) OnHandshake(s net.Stream) {
 
-	remotePeer := NewRemotePeer(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
+	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
 	defer s.Close()
 

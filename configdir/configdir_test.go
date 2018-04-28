@@ -99,7 +99,7 @@ var _ = Describe("Configdir", func() {
 				defer os.RemoveAll(dirName)
 
 				defaultConfig = Config{
-					Peer: &PeerConfig{
+					Node: &PeerConfig{
 						BootstrapNodes: []string{"127.0.0.1:4000"},
 					},
 				}
@@ -113,12 +113,12 @@ var _ = Describe("Configdir", func() {
 				cfg, err := cfgDir.Load()
 				Expect(err).To(BeNil())
 				Expect(cfg).To(Equal(&Config{
-					Peer: &PeerConfig{
+					Node: &PeerConfig{
 						BootstrapNodes: []string{"127.0.0.1:4000"},
 					},
 				}))
 
-				defaultConfig.Peer = &PeerConfig{}
+				defaultConfig.Node = &PeerConfig{}
 			})
 		})
 

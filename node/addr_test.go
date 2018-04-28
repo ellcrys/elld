@@ -1,4 +1,4 @@
-package peer
+package node
 
 import (
 	"time"
@@ -22,11 +22,11 @@ var _ = Describe("Addr", func() {
 	Describe(".getAddrRelayPeers", func() {
 
 		var err error
-		var lp *Peer
+		var lp *Node
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewPeer(cfg, "127.0.0.1:30010", 0, log)
+			lp, err = NewNode(cfg, "127.0.0.1:30010", 0, log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
@@ -71,11 +71,11 @@ var _ = Describe("Addr", func() {
 	Describe(".RelayAddr", func() {
 
 		var err error
-		var lp *Peer
+		var lp *Node
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewPeer(cfg, "127.0.0.1:30010", 0, log)
+			lp, err = NewNode(cfg, "127.0.0.1:30010", 0, log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
@@ -122,21 +122,21 @@ var _ = Describe("Addr", func() {
 		Context("with relay peers", func() {
 
 			var err error
-			var p, p2, p3 *Peer
+			var p, p2, p3 *Node
 			var pt, pt2, pt3 *Inception
 
 			BeforeEach(func() {
-				p, err = NewPeer(cfg, "127.0.0.1:30011", 1, log)
+				p, err = NewNode(cfg, "127.0.0.1:30011", 1, log)
 				Expect(err).To(BeNil())
 				pt = NewInception(p, log)
 				p.SetProtocol(pt)
 
-				p2, err = NewPeer(cfg, "127.0.0.1:30012", 2, log)
+				p2, err = NewNode(cfg, "127.0.0.1:30012", 2, log)
 				Expect(err).To(BeNil())
 				pt2 = NewInception(p2, log)
 				p2.SetProtocol(pt2)
 
-				p3, err = NewPeer(cfg, "127.0.0.1:30013", 3, log)
+				p3, err = NewNode(cfg, "127.0.0.1:30013", 3, log)
 				Expect(err).To(BeNil())
 				pt3 = NewInception(p3, log)
 				p3.SetProtocol(pt3)
