@@ -137,7 +137,17 @@ func (m *Manager) getUnconnectedPeers() (peers []*Peer) {
 }
 
 // Manage starts managing peer connections.
+// Load peers that were serialized and stored in database.
+// Start connection manager
+// Start periodic self advertisement to other peers
+// Start periodic clean up of known peer list
+// Start periodic ping messages to peers
 func (m *Manager) Manage() {
+
+	if err := m.loadPeers(); err != nil {
+		m.log.Error("failed to load peer addresses from database", "Err", err.Error())
+	}
+
 	go m.connMgr.Manage()
 	go m.periodicSelfAdvertisement()
 	go m.periodicCleanUp()
@@ -488,6 +498,32 @@ func (m *Manager) savePeers() error {
 	}
 
 	m.log.Debug("Saved addresses", "NumAddrs", len(serPeer))
+	return nil
+}
+
+// LoadPeers loads peers stored in the local database
+func (m *Manager) loadPeers() error {
+
+	if m.localPeer.db == nil {
+		return fmt.Errorf("db not opened")
+	}
+
+	peersSer, err := m.localPeer.db.Address().GetAll()
+	if err != nil {
+		return fmt.Errorf("failed to load peers. %s", err)
+	}
+
+	peers, err := m.deserializePeers(peersSer)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize peers. %s", err)
+	}
+
+	for _, p := range peers {
+		m.AddOrUpdatePeer(p)
+	}
+
+	m.log.Info("Finished loading persisted peer addresses", "NumAddrs", len(peers))
+
 	return nil
 }
 
