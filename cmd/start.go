@@ -29,11 +29,9 @@ var startCmd = &cobra.Command{
 
 		bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 		addressToListenOn, _ := cmd.Flags().GetString("address")
-		seed, _ := cmd.Flags().GetInt64("seed")
-		dev, _ := cmd.Flags().GetBool("dev")
 
-		if dev {
-			cfg.Peer.Dev = dev
+		if devMode {
+			cfg.Peer.Dev = devMode
 			defaultConfig(cfg)
 		}
 
@@ -73,7 +71,7 @@ var startCmd = &cobra.Command{
 			log.Fatal("failed to open local database")
 		}
 
-		log.Info("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", dev)
+		log.Info("Waiting patiently to interact on", "Addr", p.GetMultiAddr(), "Dev", devMode)
 
 		protocol := peer.NewInception(p, log)
 
@@ -94,6 +92,5 @@ func init() {
 	rootCmd.AddCommand(startCmd)
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
-	startCmd.Flags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
-	startCmd.Flags().Bool("dev", false, "Run client in development mode")
+
 }
