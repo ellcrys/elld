@@ -1,6 +1,7 @@
 package peer
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -425,27 +426,47 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	return err
 }
 
+// serializeActivePeers returns a json encoded list of active
+// peers. This is needed to persist peer addresses along with other
+// state information. Hardcoded peers are not included.
+func (m *Manager) serializeActivePeers() ([][]byte, error) {
+
+	peers := m.CopyActivePeers(0)
+	serPeer := [][]byte{}
+
+	for _, p := range peers {
+		if !p.isHardcodedSeed {
+			bs, _ := json.Marshal(map[string]interface{}{
+				"addr":      p.GetMultiAddr(),
+				"timestamp": p.Timestamp.Unix(),
+			})
+			serPeer = append(serPeer, bs)
+		}
+	}
+
+	return serPeer, nil
+}
+
 // savePeers stores peer addresses to a persistent store
 func (m *Manager) savePeers() error {
 
-	peers := m.CopyActivePeers(0)
-
-	var addresses = make([]string, len(peers))
-	for i, p := range peers {
-		addresses[i] = p.GetMultiAddr()
+	serPeer, err := m.serializeActivePeers()
+	if err != nil {
+		m.log.Error("failed to serialize active addresses", "Err", err.Error(), "NumAddrs", len(serPeer))
+		return fmt.Errorf("failed to serialize active addresses")
 	}
 
 	if err := m.localPeer.db.Address().ClearAll(); err != nil {
-		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(addresses))
+		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(serPeer))
 		return fmt.Errorf("failed to clear persistent addresses")
 	}
 
-	if err := m.localPeer.db.Address().SaveAll(addresses); err != nil {
-		m.log.Error("failed to save addresses to storage", "Err", err.Error(), "NumAddrs", len(addresses))
+	if err := m.localPeer.db.Address().SaveAll(serPeer); err != nil {
+		m.log.Error("failed to save addresses to storage", "Err", err.Error(), "NumAddrs", len(serPeer))
 		return fmt.Errorf("failed to clear persistent addresses")
 	}
 
-	m.log.Debug("Saved addresses", "NumAddrs", len(addresses))
+	m.log.Debug("Saved addresses", "NumAddrs", len(serPeer))
 	return nil
 }
 

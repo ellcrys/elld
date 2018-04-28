@@ -152,6 +152,40 @@ var _ = Describe("PeerManager", func() {
 		})
 	})
 
+	Describe(".serializeActivePeers", func() {
+
+		var p *Peer
+		var err error
+		var mgr *Manager
+
+		BeforeEach(func() {
+			p, err = NewPeer(cfg, "127.0.0.1:40001", 1, log)
+			Expect(err).To(BeNil())
+			mgr = p.PM()
+			mgr.localPeer = p
+		})
+
+		It("should successfully store peer addresses", func() {
+			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+			p2 := NewRemotePeer(addr, p)
+			p2.Timestamp = time.Now()
+			mgr.knownPeers[p2.StringID()] = p2
+
+			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+			p3 := NewRemotePeer(addr2, p)
+			p3.Timestamp = time.Now()
+			mgr.knownPeers[p3.StringID()] = p3
+
+			data, err := mgr.serializeActivePeers()
+			Expect(err).To(BeNil())
+			Expect(data).ToNot(BeEmpty())
+		})
+
+		AfterEach(func() {
+			defer p.Host().Close()
+		})
+	})
+
 	Describe(".savePeers", func() {
 
 		var p *Peer

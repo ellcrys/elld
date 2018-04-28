@@ -15,7 +15,7 @@ type DB interface {
 
 // AddrStore describes a database interface for accessing and managing addresses
 type AddrStore interface {
-	GetAll() ([]string, error)
-	SaveAll([]string) error
+	GetAll() ([][]byte, error)
+	SaveAll([][]byte) error
 	ClearAll() error
 }
