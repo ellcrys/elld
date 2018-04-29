@@ -8,12 +8,6 @@ message Handshake {
     bytes sig = 2;          // message signature
 }
 
-// HandshakeAck is a response to Handshake message
-message HandshakeAck {
-    string subVersion = 1;                  // version of the client
-    bytes sig = 2;                          // message signature
-}
-
 // GetAddr is used to request for addresses from other peers
 message GetAddr {
     bytes sig = 1;
