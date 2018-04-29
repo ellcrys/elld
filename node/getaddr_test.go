@@ -29,23 +29,6 @@ var _ = Describe("Getaddr", func() {
 			Expect(err.Error()).To(Equal("getaddr failed. failed to connect to peer. dial to self attempted"))
 		})
 
-		It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
-			lp, err := NewNode(cfg, "127.0.0.1:30011", 1, log)
-			Expect(err).To(BeNil())
-			lpProtoc := NewInception(lp, log)
-
-			rp, err := NewNode(cfg, "127.0.0.1:30012", 2, log)
-			Expect(err).To(BeNil())
-			rpProtoc := NewInception(lp, log) // lp should be rp, as such, will cause the protocol to use lp's private key
-			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
-
-			_, err = lpProtoc.sendGetAddr(rp)
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("failed to verify message signature"))
-			lp.Host().Close()
-			rp.Host().Close()
-		})
-
 		It("when rp2 timestamp is 3 hours ago, it should not be returned", func() {
 			lp, err := NewNode(cfg, "127.0.0.1:30011", 4, log)
 			Expect(err).To(BeNil())

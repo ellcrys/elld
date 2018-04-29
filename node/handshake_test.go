@@ -30,20 +30,6 @@ var _ = Describe("Handshake", func() {
 				Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
 			})
 
-			It("should return error.Error('failed to verify message signature') when remote peer signature is invalid", func() {
-				lp, err := NewNode(cfg, "127.0.0.1:40000", 0, log)
-				Expect(err).To(BeNil())
-				lpProtoc := NewInception(lp, log)
-
-				rp, err := NewNode(cfg, "127.0.0.1:40001", 1, log)
-				Expect(err).To(BeNil())
-				rpProtoc := NewInception(lp, log) // lp should be rp, as such, will cause the protocol to use lp's private key
-				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)
-
-				err = lpProtoc.SendHandshake(rp)
-				Expect(err).NotTo(BeNil())
-			})
-
 			It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
 				lp, err := NewNode(cfg, "127.0.0.1:40000", 0, log)
 				Expect(err).To(BeNil())

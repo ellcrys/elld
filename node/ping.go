@@ -28,7 +28,6 @@ func (pt *Inception) sendPing(remotePeer *Node) error {
 
 	w := bufio.NewWriter(s)
 	msg := &wire.Ping{}
-	msg.Sig = pt.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		pt.log.Debug("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to write to stream")
@@ -43,13 +42,6 @@ func (pt *Inception) sendPing(remotePeer *Node) error {
 	if err := decoder.Decode(pongMsg); err != nil {
 		pt.log.Debug("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read pong response")
-	}
-
-	sig := pongMsg.Sig
-	pongMsg.Sig = nil
-	if err := pt.verify(pongMsg, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debug("failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("failed to verify message signature")
 	}
 
 	remotePeer.Timestamp = time.Now()
@@ -88,17 +80,8 @@ func (pt *Inception) OnPing(s net.Stream) {
 		return
 	}
 
-	// verify signature
-	sig := msg.Sig
-	msg.Sig = nil
-	if err := pt.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debug("failed to verify ping message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return
-	}
-
 	// send pong message
 	pongMsg := &wire.Pong{}
-	pongMsg.Sig = pt.sign(pongMsg)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
 	if err := enc.Encode(pongMsg); err != nil {

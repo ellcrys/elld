@@ -30,13 +30,6 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 		return nil, fmt.Errorf("failed to read Addr response")
 	}
 
-	sig := resp.Sig
-	resp.Sig = nil
-	if err := pt.verify(resp, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debug("Failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return nil, fmt.Errorf("failed to verify message signature")
-	}
-
 	// we need to ensure the amount of addresses does not exceed the max. address expected
 	if int64(len(resp.Addresses)) > pt.LocalPeer().cfg.Node.MaxAddrsExpected {
 		pt.log.Debug("Too many addresses received. Ignoring addresses", "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
@@ -194,7 +187,6 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 
 	successfullyRelayed := 0
 	addrMsg := &wire.Addr{Addresses: relayable}
-	addrMsg.Sig = pt.sign(addrMsg)
 	for _, remotePeer := range relayPeers {
 
 		if remotePeer == nil {
