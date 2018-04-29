@@ -36,7 +36,7 @@ func (pt *Inception) SendHandshake(remotePeer *Node) error {
 
 	pt.log.Debug("Sent handshake to peer", "PeerID", remotePeerIDShort)
 
-	resp := &wire.HandshakeAck{}
+	resp := &wire.Handshake{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
 		pt.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
@@ -85,7 +85,7 @@ func (pt *Inception) OnHandshake(s net.Stream) {
 		return
 	}
 
-	ack := &wire.HandshakeAck{SubVersion: util.ClientVersion}
+	ack := &wire.Handshake{SubVersion: util.ClientVersion}
 	ack.Sig = pt.sign(ack)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
