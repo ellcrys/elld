@@ -1,12 +1,14 @@
 package node
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ellcrys/druid/util/logger"
+	pc "github.com/multiformats/go-multicodec/protobuf"
 
 	"github.com/ellcrys/druid/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
@@ -77,4 +79,33 @@ func (protoc *Inception) verify(msg interface{}, sig []byte, pKey ic.PubKey) err
 		return fmt.Errorf("invalid signature")
 	}
 	return nil
+}
+
+// reject sends a reject message.
+// The caller is expected to close the stream
+func (protoc *Inception) reject(s net.Stream, msg string, code int, reason string, extraData []byte) error {
+	rMsg := wire.NewRejectMsg(msg, int32(code), reason, extraData)
+	w := bufio.NewWriter(s)
+	if err := pc.Multicodec(nil).Encoder(w).Encode(rMsg); err != nil {
+		return fmt.Errorf("reject message failed. failed to write to stream")
+	}
+	w.Flush()
+	return nil
+}
+
+// isRejected checks if the message is a `reject`.
+// Returns the message`
+func (protoc *Inception) isRejected(s net.Stream) (*wire.Reject, error) {
+
+	var msg wire.Reject
+
+	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(&msg); err != nil {
+		return nil, fmt.Errorf("failed to read from stream. %s", err)
+	}
+
+	if msg.Code != 0 {
+		return &msg, wire.ErrRejected
+	}
+
+	return nil, nil
 }

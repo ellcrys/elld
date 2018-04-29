@@ -32,7 +32,7 @@ func (pt *Inception) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
 	}
 	w.Flush()
 
-	pt.log.Info("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
+	pt.log.Debug("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
 
 	return pt.onAddr(s)
 }
@@ -64,13 +64,14 @@ func (pt *Inception) SendGetAddr(remotePeers []*Node) error {
 // OnGetAddr processes a wire.GetAddr request.
 // Sends a list of active addresses to the sender
 func (pt *Inception) OnGetAddr(s net.Stream) {
+	defer s.Close()
 
 	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
-	defer s.Close()
 
 	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+		s.Reset()
 		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
 		return
 	}
@@ -80,10 +81,11 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 		return
 	}
 
-	pt.log.Info("Received GetAddr message", "PeerID", remotePeerIDShort)
+	pt.log.Debug("Received GetAddr message", "PeerID", remotePeerIDShort)
 
 	msg := &wire.GetAddr{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+		s.Reset()
 		pt.log.Error("failed to read getaddr message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
@@ -93,11 +95,10 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 		activePeers = pt.PM().GetRandomActivePeers(2500)
 	}
 
-	// send getaddr response message
-	getAddrResp := &wire.Addr{}
+	addr := &wire.Addr{}
 	for _, peer := range activePeers {
 		if !pt.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.isHardcodedSeed {
-			getAddrResp.Addresses = append(getAddrResp.Addresses, &wire.Address{
+			addr.Addresses = append(addr.Addresses, &wire.Address{
 				Address:   peer.GetMultiAddr(),
 				Timestamp: peer.Timestamp.Unix(),
 			})
@@ -106,12 +107,12 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
-	if err := enc.Encode(getAddrResp); err != nil {
+	if err := enc.Encode(addr); err != nil {
+		s.Reset()
 		pt.log.Error("failed to send GetAddr response", "Err", err)
 		return
 	}
 
-	pt.log.Info("Sent GetAddr response to peer", "PeerID", remotePeerIDShort)
-
+	pt.log.Debug("Sent GetAddr response to peer", "PeerID", remotePeerIDShort)
 	w.Flush()
 }

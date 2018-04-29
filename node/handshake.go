@@ -28,9 +28,11 @@ func (pt *Inception) SendHandshake(remotePeer *Node) error {
 	w := bufio.NewWriter(s)
 	msg := &wire.Handshake{SubVersion: util.ClientVersion}
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
+		s.Reset()
 		pt.log.Debug("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to write to stream")
 	}
+
 	w.Flush()
 
 	pt.log.Debug("Sent handshake to peer", "PeerID", remotePeerIDShort)
@@ -38,6 +40,7 @@ func (pt *Inception) SendHandshake(remotePeer *Node) error {
 	resp := &wire.Handshake{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
+		s.Reset()
 		pt.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
 	}
@@ -58,6 +61,7 @@ func (pt *Inception) OnHandshake(s net.Stream) {
 	defer s.Close()
 
 	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+		s.Reset()
 		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Handshake")
 		return
 	}
@@ -66,6 +70,7 @@ func (pt *Inception) OnHandshake(s net.Stream) {
 
 	msg := &wire.Handshake{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+		s.Reset()
 		pt.log.Error("failed to read handshake message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
@@ -74,13 +79,14 @@ func (pt *Inception) OnHandshake(s net.Stream) {
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
 	if err := enc.Encode(ack); err != nil {
+		s.Reset()
 		pt.log.Error("failed to send handshake response", "Err", err)
 		return
 	}
+	w.Flush()
 
 	remotePeer.Timestamp = time.Now()
 	pt.PM().AddOrUpdatePeer(remotePeer)
 	pt.log.Info("Handshake has been acknowledged", "PeerID", remotePeerIDShort, "SubVersion", msg.SubVersion)
 
-	w.Flush()
 }
