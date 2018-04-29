@@ -14,3 +14,9 @@ import:
 - package: github.com/onsi/gomega
   subpackages:
   - '...'
+- package: google.golang.org/grpc
+  version: v1.11.3
+- package: github.com/golang/protobuf
+  version: v1.0.0
+  subpackages:
+  - proto
