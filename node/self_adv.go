@@ -16,8 +16,6 @@ import (
 // Returns the number of peers advertised to.
 func (pt *Inception) SelfAdvertise(connectedPeers []*Node) int {
 
-	pt.log.Info("Attempting to advertise self", "ConnectedPeers", len(connectedPeers))
-
 	msg := &wire.Addr{Addresses: []*wire.Address{{Address: pt.LocalPeer().GetMultiAddr(), Timestamp: time.Now().Unix()}}}
 
 	successfullySent := 0
@@ -31,7 +29,7 @@ func (pt *Inception) SelfAdvertise(connectedPeers []*Node) int {
 
 		w := bufio.NewWriter(s)
 		if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-			pt.log.Debug("Addr failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
+			pt.log.Error("Addr failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
 			continue
 		}
 
@@ -40,6 +38,7 @@ func (pt *Inception) SelfAdvertise(connectedPeers []*Node) int {
 		s.Close()
 	}
 
-	pt.log.Info("Self advertisement attempt completed", "ConnectedPeers", len(connectedPeers), "NumAdvertisedTo", successfullySent)
+	pt.log.Info("Self advertisement completed", "ConnectedPeers", len(connectedPeers), "NumAdvertisedTo", successfullySent)
+
 	return successfullySent
 }

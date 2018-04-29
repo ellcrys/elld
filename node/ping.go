@@ -29,6 +29,7 @@ func (pt *Inception) sendPing(remotePeer *Node) error {
 	w := bufio.NewWriter(s)
 	msg := &wire.Ping{}
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
+		s.Reset()
 		pt.log.Debug("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to write to stream")
 	}
@@ -40,6 +41,7 @@ func (pt *Inception) sendPing(remotePeer *Node) error {
 	pongMsg := &wire.Pong{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(pongMsg); err != nil {
+		s.Reset()
 		pt.log.Debug("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read pong response")
 	}
@@ -68,14 +70,15 @@ func (pt *Inception) SendPing(remotePeers []*Node) {
 // OnPing handles incoming ping message
 func (pt *Inception) OnPing(s net.Stream) {
 
+	defer s.Close()
 	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
-	defer s.Close()
 
 	pt.log.Info("Received ping message", "PeerID", remotePeerIDShort)
 
 	msg := &wire.Ping{}
 	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+		s.Reset()
 		pt.log.Error("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
