@@ -19,9 +19,9 @@ import (
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
-	kpm            *sync.Mutex        // known peer mutex
-	gm             *sync.Mutex        // general mutex
-	localPeer      *Node              // local peer
+	knownPeerMtx   *sync.Mutex        // known peer mutex
+	generalMtx     *sync.Mutex        // general mutex
+	localNode      *Node              // local node
 	bootstrapNodes map[string]*Node   // bootstrap peers
 	knownPeers     map[string]*Node   // peers known to the peer manager
 	log            logger.Logger      // manager's logger
@@ -50,9 +50,9 @@ func NewManager(cfg *configdir.Config, localPeer *Node, log logger.Logger) *Mana
 	}
 
 	m := &Manager{
-		kpm:            new(sync.Mutex),
-		gm:             new(sync.Mutex),
-		localPeer:      localPeer,
+		knownPeerMtx:   new(sync.Mutex),
+		generalMtx:     new(sync.Mutex),
+		localNode:      localPeer,
 		log:            log,
 		bootstrapNodes: make(map[string]*Node),
 		knownPeers:     make(map[string]*Node),
@@ -60,15 +60,15 @@ func NewManager(cfg *configdir.Config, localPeer *Node, log logger.Logger) *Mana
 	}
 
 	m.connMgr = NewConnMrg(m, log)
-	m.localPeer.host.Network().Notify(m.connMgr)
+	m.localNode.host.Network().Notify(m.connMgr)
 
 	return m
 }
 
 // PeerExist checks whether a peer is a known peer
 func (m *Manager) PeerExist(peerID string) bool {
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 	_, exist := m.knownPeers[peerID]
 	return exist
 }
@@ -79,8 +79,8 @@ func (m *Manager) GetKnownPeer(peerID string) *Node {
 		return nil
 	}
 
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 	peer, _ := m.knownPeers[peerID]
 	return peer
 }
@@ -122,7 +122,7 @@ func (m *Manager) connectToPeer(peerID string) error {
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
-	return m.localPeer.connectToNode(peer)
+	return m.localNode.connectToNode(peer)
 }
 
 // getUnconnectedPeers returns the peers that are not connected
@@ -165,7 +165,7 @@ func (m *Manager) sendPeriodicGetAddrMsg() {
 		}
 		select {
 		case <-m.getAddrTicker.C:
-			m.localPeer.protoc.SendGetAddr(m.GetActivePeers(0))
+			m.localNode.protoc.SendGetAddr(m.GetActivePeers(0))
 		}
 	}
 }
@@ -180,7 +180,7 @@ func (m *Manager) periodicPingMsgs() {
 		}
 		select {
 		case <-m.pingTicker.C:
-			m.localPeer.protoc.SendPing(m.GetKnownPeers())
+			m.localNode.protoc.SendPing(m.GetKnownPeers())
 		}
 	}
 }
@@ -201,7 +201,7 @@ func (m *Manager) periodicSelfAdvertisement() {
 					connectedPeers = append(connectedPeers, p)
 				}
 			}
-			m.localPeer.protoc.SelfAdvertise(connectedPeers)
+			m.localNode.protoc.SelfAdvertise(connectedPeers)
 			m.CleanKnownPeers()
 		}
 	}
@@ -239,7 +239,7 @@ func (m *Manager) AddOrUpdatePeer(p *Node) error {
 		return fmt.Errorf("nil received")
 	}
 
-	if p.IsSame(m.localPeer) {
+	if p.IsSame(m.localNode) {
 		return fmt.Errorf("peer is the local peer")
 	}
 
@@ -247,7 +247,7 @@ func (m *Manager) AddOrUpdatePeer(p *Node) error {
 		return fmt.Errorf("peer address is not valid")
 	}
 
-	if !m.localPeer.DevMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
+	if !m.localNode.DevMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not routable")
 	}
 
@@ -255,8 +255,8 @@ func (m *Manager) AddOrUpdatePeer(p *Node) error {
 		defer m.savePeers()
 	}
 
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 
 	// set timestamp only if not set by caller or elsewhere
 	if p.Timestamp.IsZero() {
@@ -298,9 +298,9 @@ func (m *Manager) NeedMorePeers() bool {
 	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
 }
 
-// IsLocalPeer checks if a peer is the local peer
-func (m *Manager) IsLocalPeer(p *Node) bool {
-	return p != nil && m.localPeer != nil && p.StringID() == m.localPeer.StringID()
+// IsLocalNode checks if a peer is the local peer
+func (m *Manager) IsLocalNode(p *Node) bool {
+	return p != nil && m.localNode != nil && p.StringID() == m.localNode.StringID()
 }
 
 // isActive returns true of a peer is considered active.
@@ -334,8 +334,8 @@ func (m *Manager) CleanKnownPeers() int {
 		return 0
 	}
 
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 
 	before := len(m.knownPeers)
 
@@ -354,8 +354,8 @@ func (m *Manager) CleanKnownPeers() int {
 // GetKnownPeers gets all the known peers (active or inactive)
 func (m *Manager) GetKnownPeers() (peers []*Node) {
 
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 
 	for _, p := range m.knownPeers {
 		peers = append(peers, p)
@@ -367,8 +367,8 @@ func (m *Manager) GetKnownPeers() (peers []*Node) {
 // GetActivePeers returns active peers. Passing a zero or negative value
 // as limit means no limit is applied.
 func (m *Manager) GetActivePeers(limit int) (peers []*Node) {
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 	for _, p := range m.knownPeers {
 		if limit > 0 && len(peers) >= limit {
 			return
@@ -393,8 +393,8 @@ func (m *Manager) CopyActivePeers(limit int) (peers []*Node) {
 func (m *Manager) GetRandomActivePeers(limit int) []*Node {
 
 	knownActivePeers := m.CopyActivePeers(0)
-	m.kpm.Lock()
-	defer m.kpm.Unlock()
+	m.knownPeerMtx.Lock()
+	defer m.knownPeerMtx.Unlock()
 
 	// shuffle known peer slice
 	for i := range knownActivePeers {
@@ -418,12 +418,12 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 
-	if !m.localPeer.DevMode() && !util.IsRoutableAddr(addr) {
+	if !m.localNode.DevMode() && !util.IsRoutableAddr(addr) {
 		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
 	}
 
 	mAddr, _ := ma.NewMultiaddr(addr)
-	remotePeer := NewRemoteNode(mAddr, m.localPeer)
+	remotePeer := NewRemoteNode(mAddr, m.localNode)
 	if m.PeerExist(remotePeer.StringID()) {
 		m.log.Info("Peer already exists", "PeerID", remotePeer.StringID())
 		return nil
@@ -470,7 +470,7 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 		}
 
 		addr, _ := ma.NewMultiaddr(data["addr"].(string))
-		peer := NewRemoteNode(addr, m.localPeer)
+		peer := NewRemoteNode(addr, m.localNode)
 		peer.Timestamp = time.Unix(int64(data["ts"].(float64)), 0)
 		peers[i] = peer
 	}
@@ -487,12 +487,12 @@ func (m *Manager) savePeers() error {
 		return fmt.Errorf("failed to serialize active addresses")
 	}
 
-	if err := m.localPeer.db.Address().ClearAll(); err != nil {
+	if err := m.localNode.db.Address().ClearAll(); err != nil {
 		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(serPeer))
 		return fmt.Errorf("failed to clear persistent addresses")
 	}
 
-	if err := m.localPeer.db.Address().SaveAll(serPeer); err != nil {
+	if err := m.localNode.db.Address().SaveAll(serPeer); err != nil {
 		m.log.Error("failed to save addresses to storage", "Err", err.Error(), "NumAddrs", len(serPeer))
 		return fmt.Errorf("failed to clear persistent addresses")
 	}
@@ -504,11 +504,11 @@ func (m *Manager) savePeers() error {
 // LoadPeers loads peers stored in the local database
 func (m *Manager) loadPeers() error {
 
-	if m.localPeer.db == nil {
+	if m.localNode.db == nil {
 		return fmt.Errorf("db not opened")
 	}
 
-	peersSer, err := m.localPeer.db.Address().GetAll()
+	peersSer, err := m.localNode.db.Address().GetAll()
 	if err != nil {
 		return fmt.Errorf("failed to load peers. %s", err)
 	}
