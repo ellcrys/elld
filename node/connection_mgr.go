@@ -11,10 +11,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// ConnectionEstTickerTime is the interval between attempts
-// to establish connections with peers
-var ConnectionEstTickerTime = 10 * time.Second
-
 // ConnectionManager manages the active connections
 // ensuring the required number of connections at any given
 // time is maintained
@@ -56,7 +52,7 @@ func (m *ConnectionManager) needMoreConnections() bool {
 // addresses that have not been connected to as long as the max
 // connection limit has not been reached
 func (m *ConnectionManager) establishConnections() {
-	m.connEstInt = time.NewTicker(ConnectionEstTickerTime)
+	m.connEstInt = time.NewTicker(time.Duration(m.pm.config.Node.ConnEstInterval) * time.Second)
 	for {
 		select {
 		case <-m.connEstInt.C:
