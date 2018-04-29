@@ -15,8 +15,11 @@ import (
 
 func (pt *Inception) sendPing(remotePeer *Node) error {
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	remotePeerIDShort := remotePeer.ShortID()
-	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.PingVersion)
+	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(ctx, remotePeer.ID(), util.PingVersion)
 	if err != nil {
 		pt.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
