@@ -165,19 +165,18 @@ var _ = Describe("PeerManager", func() {
 			mgr.localNode = p
 		})
 
-		It("should successfully store peer addresses", func() {
+		It("should successfully serialize 2 addresses", func() {
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := NewRemoteNode(addr, p)
-			p2.Timestamp = time.Now()
+			p2.Timestamp = time.Now().Add(21 * time.Minute)
 			mgr.knownPeers[p2.StringID()] = p2
 
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
 			p3 := NewRemoteNode(addr2, p)
-			p3.Timestamp = time.Now()
+			p3.Timestamp = time.Now().Add(21 * time.Minute)
 			mgr.knownPeers[p3.StringID()] = p3
 
-			data, err := mgr.serializeActivePeers()
-			Expect(err).To(BeNil())
+			data := mgr.serializeActivePeers()
 			Expect(data).ToNot(BeEmpty())
 		})
 
@@ -201,15 +200,29 @@ var _ = Describe("PeerManager", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("should successfully store peer addresses", func() {
+		It("should not store peers less than 20 minutes old", func() {
+			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+			p2 := NewRemoteNode(addr, p)
+			p2.Timestamp = time.Now()
+			mgr.knownPeers[p2.StringID()] = p2
+
+			err := mgr.savePeers()
+			Expect(err).To(BeNil())
+
+			addrs, err := p.db.Address().GetAll()
+			Expect(err).To(BeNil())
+			Expect(addrs).To(HaveLen(0))
+		})
+
+		It("should successfully store 2 peer addresses", func() {
 			mgr.connMgr.activeConn = 3
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
 			p2 := NewRemoteNode(addr, p)
-			p2.Timestamp = time.Now()
+			p2.Timestamp = time.Now().Add(21 * time.Minute)
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
 			p3 := NewRemoteNode(addr2, p)
-			p3.Timestamp = time.Now()
+			p3.Timestamp = time.Now().Add(21 * time.Minute)
 			mgr.knownPeers[p2.StringID()] = p2
 			mgr.knownPeers[p3.StringID()] = p3
 
@@ -246,7 +259,7 @@ var _ = Describe("PeerManager", func() {
 			addrStr := "/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o"
 			addr, _ := ma.NewMultiaddr(addrStr)
 			p2 := NewRemoteNode(addr, p)
-			p2.Timestamp = time.Now()
+			p2.Timestamp = time.Now().Add(21 * time.Minute)
 			mgr.knownPeers[p2.StringID()] = p2
 
 			err := mgr.savePeers()
