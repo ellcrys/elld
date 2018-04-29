@@ -438,14 +438,15 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 // serializeActivePeers returns a json encoded list of active
 // peers. This is needed to persist peer addresses along with other
-// state information. Hardcoded peers are not included.
-func (m *Manager) serializeActivePeers() ([][]byte, error) {
+// state information. Hardcoded peers and peers that are less than 
+// 20 minutes old are not saved.
+func (m *Manager) serializeActivePeers() [][]byte {
 
 	peers := m.CopyActivePeers(0)
 	serPeer := [][]byte{}
 
 	for _, p := range peers {
-		if !p.isHardcodedSeed {
+		if !p.isHardcodedSeed && time.Now().Add(20*time.Minute).Before(p.Timestamp) {
 			bs, _ := json.Marshal(map[string]interface{}{
 				"addr": p.GetMultiAddr(),
 				"ts":   p.Timestamp.Unix(),
@@ -454,7 +455,7 @@ func (m *Manager) serializeActivePeers() ([][]byte, error) {
 		}
 	}
 
-	return serPeer, nil
+	return serPeer
 }
 
 // deserializePeers takes a slice of bytes which was created by
@@ -481,11 +482,7 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 // savePeers stores peer addresses to a persistent store
 func (m *Manager) savePeers() error {
 
-	serPeer, err := m.serializeActivePeers()
-	if err != nil {
-		m.log.Error("failed to serialize active addresses", "Err", err.Error(), "NumAddrs", len(serPeer))
-		return fmt.Errorf("failed to serialize active addresses")
-	}
+	serPeer := m.serializeActivePeers()
 
 	if err := m.localNode.db.Address().ClearAll(); err != nil {
 		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(serPeer))
