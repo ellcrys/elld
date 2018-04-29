@@ -9,6 +9,7 @@ type PeerConfig struct {
 	PingInterval     int64    `json:"pingInt"`
 	SelfAdvInterval  int64    `json:"selfAdvInt"`
 	CleanUpInterval  int64    `json:"cleanUpInt"`
+	ConnEstInterval  int64    `json:"conEstInt"`
 	MaxAddrsExpected int64    `json:"maxAddrsExpected"`
 	MaxConnections   int64    `json:"maxConnections"`
 }
