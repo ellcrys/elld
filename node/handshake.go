@@ -27,7 +27,6 @@ func (pt *Inception) SendHandshake(remotePeer *Node) error {
 
 	w := bufio.NewWriter(s)
 	msg := &wire.Handshake{SubVersion: util.ClientVersion}
-	msg.Sig = pt.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		pt.log.Debug("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to write to stream")
@@ -41,13 +40,6 @@ func (pt *Inception) SendHandshake(remotePeer *Node) error {
 	if err := decoder.Decode(resp); err != nil {
 		pt.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
-	}
-
-	sig := resp.Sig
-	resp.Sig = nil
-	if err := pt.verify(resp, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debug("failed to verify message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("failed to verify message signature")
 	}
 
 	remotePeer.Timestamp = time.Now()
@@ -78,15 +70,7 @@ func (pt *Inception) OnHandshake(s net.Stream) {
 		return
 	}
 
-	sig := msg.Sig
-	msg.Sig = nil
-	if err := pt.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debug("failed to verify handshake message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return
-	}
-
 	ack := &wire.Handshake{SubVersion: util.ClientVersion}
-	ack.Sig = pt.sign(ack)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
 	if err := enc.Encode(ack); err != nil {

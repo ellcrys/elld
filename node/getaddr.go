@@ -26,7 +26,6 @@ func (pt *Inception) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
 
 	w := bufio.NewWriter(s)
 	msg := &wire.GetAddr{}
-	msg.Sig = pt.sign(msg)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
 		pt.log.Debug("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("getaddr failed. failed to write to stream")
@@ -89,14 +88,6 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 		return
 	}
 
-	// verify signature
-	sig := msg.Sig
-	msg.Sig = nil
-	if err := pt.verify(msg, sig, s.Conn().RemotePublicKey()); err != nil {
-		pt.log.Debug("failed to verify getaddr message signature", "Err", err, "PeerID", remotePeerIDShort)
-		return
-	}
-
 	activePeers := pt.PM().GetActivePeers(0)
 	if len(activePeers) > 2500 {
 		activePeers = pt.PM().GetRandomActivePeers(2500)
@@ -113,7 +104,6 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 		}
 	}
 
-	getAddrResp.Sig = pt.sign(getAddrResp)
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
 	if err := enc.Encode(getAddrResp); err != nil {

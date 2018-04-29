@@ -19,7 +19,6 @@ func (pt *Inception) SelfAdvertise(connectedPeers []*Node) int {
 	pt.log.Info("Attempting to advertise self", "ConnectedPeers", len(connectedPeers))
 
 	msg := &wire.Addr{Addresses: []*wire.Address{{Address: pt.LocalPeer().GetMultiAddr(), Timestamp: time.Now().Unix()}}}
-	msg.Sig = pt.sign(msg)
 
 	successfullySent := 0
 	for _, peer := range connectedPeers {
