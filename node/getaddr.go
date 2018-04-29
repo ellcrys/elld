@@ -105,7 +105,7 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 	// send getaddr response message
 	getAddrResp := &wire.Addr{}
 	for _, peer := range activePeers {
-		if !pt.PM().IsLocalPeer(peer) && !peer.IsSame(remotePeer) && !peer.isHardcodedSeed {
+		if !pt.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.isHardcodedSeed {
 			getAddrResp.Addresses = append(getAddrResp.Addresses, &wire.Address{
 				Address:   peer.GetMultiAddr(),
 				Timestamp: peer.Timestamp.Unix(),
