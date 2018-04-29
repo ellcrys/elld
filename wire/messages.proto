@@ -14,3 +14,14 @@ message HandshakeResponse {
     repeated string addresses = 1;      // list of addresses
     bytes sig = 2;                      // message signature
 }
+
+
+message ContractService {
+    string function = 1;    // smart contract function
+    bytes data = 2;         // payload
+}
+
+message ContractServiceResponse {
+    string status = 1;  // status of the request
+    bytes data = 2;     // payload
+}
