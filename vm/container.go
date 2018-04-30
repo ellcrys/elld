@@ -110,7 +110,7 @@ func pullImg() error {
 
 func runContainer(port int, targetPort int, execpath string) (containerID string, err error) {
 	vmLog.Debugf("Create and run container with image %s", imgTag)
-	containerCmd := exec.Command("docker", "run", "-d", "--volume", fmt.Sprintf("%s:%s", execpath, "/contracts"), "-p", fmt.Sprintf("%s:%s", port, targetPort), "--add-host", fmt.Sprintf("http://127.0.0.1:%s", targetPort), imgTag)
+	containerCmd := exec.Command("docker", "run", "-d", "--volume", fmt.Sprintf("%s:%s", execpath, "/contracts"), "-p", fmt.Sprintf("%s:%s", port, targetPort), imgTag)
 	var stdout, stderr []byte
 	var errStdout, errStderr error
 	stdoutIn, _ := containerCmd.StdoutPipe()
