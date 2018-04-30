@@ -28,7 +28,6 @@ type VM struct {
 
 //DeployConfig deploy configuration struct
 type DeployConfig struct {
-	path       string //path to mount the contract
 	contractID string // contract id
 	archive    string // path to archive where contract is saved
 }
