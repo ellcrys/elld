@@ -4,14 +4,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-
-	"go.uber.org/zap"
 )
 
 var dockerCmd *exec.Cmd
 
 //HasDocker checks if system has docker installed
-func HasDocker(vmlog *zap.SugaredLogger) bool {
+func HasDocker() bool {
 
 	//docker -v command
 	dockerCmd = exec.Command("docker", "-v")
@@ -41,7 +39,7 @@ func HasDocker(vmlog *zap.SugaredLogger) bool {
 	}
 
 	if errStdout != nil || errStderr != nil {
-		vmlog.Fatalf("failed to capture stdout or stderr\n")
+		vmLog.Fatalf("failed to capture stdout or stderr\n")
 	}
 
 	outStr, errStr := string(stdout), string(stderr)
