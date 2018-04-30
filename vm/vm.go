@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os/user"
 
 	"github.com/ellcrys/druid/util"
 	pb "github.com/ellcrys/druid/wire"
+	"github.com/mholt/archiver"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -26,13 +28,16 @@ type VM struct {
 
 //DeployConfig deploy configuration struct
 type DeployConfig struct {
-	path string
+	path       string //path to mount the contract
+	contractID string // contract id
+	archive    string // path to archive where contract is saved
 }
 
 //InvokeConfig invoke configuration struct
 type InvokeConfig struct {
-	funcName string
-	data     []byte
+	contractID string
+	funcName   string
+	data       []byte
 }
 
 //InvokeResponseData is the structure of data expected from Invoke request
@@ -41,9 +46,38 @@ type InvokeResponseData struct {
 	code    int
 }
 
+//TempPath where contracts are stored
+const TempPath = "/.ellcrys/tmp/"
+
 //Deploy a new contract project
 func (vm *VM) Deploy(config *DeployConfig) error {
-	//...
+	//verify if archive is valid
+	vmLog.Infof("Verifying archive")
+	signer := NewSigner()
+	err := signer.Verify(config.archive)
+	if err != nil {
+		vmLog.Errorf("Verification Failed: Invalid archive %s", err)
+		return fmt.Errorf("Verification Failed: Invalid archive %s", err)
+	}
+
+	vmLog.Infof("Contract verification passed %s %s", config.contractID, "√")
+
+	//Unzip archive to tmp path
+	usr, err := user.Current()
+	if err != nil {
+		return err
+	}
+	//Save contrtact at temp path with folder named after it's ID. E.g: /usr/home/.ellcrys/tmp/83545762936
+	outputDir := fmt.Sprintf("%s%s%s", usr.HomeDir, TempPath, config.contractID)
+
+	err := archiver.Zip.Open(config.archive, outputDir)
+	if err != nil {
+		vmLog.Errorf("Could not decompress archive %s", err)
+		return fmt.Errorf("Could not decompress archive %s", err)
+	}
+
+	vmLog.Infof("Contract Deployed %s %s", config.contractID, "√")
+
 	return nil
 }
 

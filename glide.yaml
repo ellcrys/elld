@@ -20,3 +20,7 @@ import:
   version: v1.0.0
   subpackages:
   - proto
+- package: github.com/mholt/archiver
+  version: v2.0
+  subpackages:
+  - cmd/archiver

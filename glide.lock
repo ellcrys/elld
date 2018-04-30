@@ -1,5 +1,5 @@
-hash: 336de0758bf70076c28241d5ec22411e32ac8a6ad509a878fab861f4aa1b9967
-updated: 2018-04-29T23:31:52.862371+01:00
+hash: 3a9a79d92d5191486877e317e9c445caa59103c8a3498b74615b1df0795cdd30
+updated: 2018-04-30T11:58:32.24808+01:00
 imports:
 - name: github.com/agl/ed25519
   version: 5312a61534124124185d41f09206b9fef1d88403
@@ -152,6 +152,10 @@ imports:
   version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
 - name: github.com/mattn/go-isatty
   version: 6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c
+- name: github.com/mholt/archiver
+  version: cdc68dd1f170b8dfc1a0d2231b5bb0967ed67006
+  subpackages:
+  - cmd/archiver
 - name: github.com/minio/blake2b-simd
   version: 3f5f724cb5b182a5c278d6d3d55b40e7f8c2efb4
 - name: github.com/minio/sha256-simd
@@ -262,6 +266,13 @@ imports:
   subpackages:
   - blake2s
   - blowfish
+  - cast5
+  - openpgp
+  - openpgp/armor
+  - openpgp/elgamal
+  - openpgp/errors
+  - openpgp/packet
+  - openpgp/s2k
   - sha3
 - name: golang.org/x/net
   version: 6078986fec03a1dcc236c34816c71b0e05018fda
