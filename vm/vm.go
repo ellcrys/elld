@@ -86,6 +86,7 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 	resp, err := vm.serviceClient.ContractInvoke(ctx, &pb.ContractInvokeRequest{
 		Function: config.funcName,
 		Data:     config.data,
+		ConractID: config.contractID
 	})
 
 	if err != nil {

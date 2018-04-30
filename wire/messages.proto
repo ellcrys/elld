@@ -24,7 +24,8 @@ service ContractService {
 //ContractInvokeRequest represents a request to invoke a smart contract
 message ContractInvokeRequest {
     string function = 1;    // smart contract function
-    bytes data = 2;         // payload
+    string contractID = 2; // contract id
+    bytes data = 3;         // payload
 }
 
 //ContractInvokeResponse is a response to the ContractService message

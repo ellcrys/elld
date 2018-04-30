@@ -49,11 +49,10 @@ func NewContainer(port int, targetPort int, mountPath string) (*Container, error
 	}
 
 	//run the container
-	containerID, err := runContainer()
+	containerID, err := runContainer(port, targetPort, execpath)
 	if err != nil {
 		return nil, err
 	}
-
 
 	return &Container{
 		port:       port,
@@ -109,7 +108,7 @@ func pullImg() error {
 }
 
 
-func runContainer() (containerID string, err error) {
+func runContainer(port int, targetPort int, execpath string) (containerID string, err error) {
 	vmLog.Debugf("Create and run container with image %s", imgTag)
 	containerCmd := exec.Command("docker", "run", "-d", "--volume", fmt.Sprintf("%s:%s", execpath, "/contracts"), "-p", fmt.Sprintf("%s:%s", port, targetPort), "--add-host", fmt.Sprintf("http://127.0.0.1:%s", targetPort), imgTag)
 	var stdout, stderr []byte
