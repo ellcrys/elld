@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/txpool"
+
 	"github.com/ellcrys/druid/database"
 	"github.com/ellcrys/druid/util/logger"
 
@@ -44,6 +46,7 @@ type Node struct {
 	log             logger.Logger     // node logger
 	rSeed           []byte            // random 256 bit seed to be used for seed random operations
 	db              database.DB
+	txPool          *txpool.TxPool
 }
 
 // NewNode creates a node instance at the specified port
@@ -83,6 +86,7 @@ func NewNode(config *configdir.Config, address string, idSeed int64, log logger.
 		wg:      sync.WaitGroup{},
 		log:     log,
 		rSeed:   util.RandBytes(64),
+		txPool:  txpool.NewTxPool(config.TxPool.Capacity),
 	}
 
 	node.localNode = node
@@ -319,9 +323,12 @@ func (n *Node) connectToNode(remote *Node) error {
 }
 
 // Start starts the node.
+// Set Tx Pool relay callback
 // Send handshake to each bootstrap node.
-// Then send GetAddr message if handshake is successful
 func (n *Node) Start() {
+
+	n.txPool.OnQueued(n.protoc.RelayTx)
+
 	n.PM().Manage()
 	for _, node := range n.PM().bootstrapNodes {
 		go n.connectToNode(node)

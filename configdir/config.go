@@ -14,9 +14,15 @@ type PeerConfig struct {
 	MaxConnections   int64    `json:"maxConnections"`
 }
 
+// TxPoolConfig defines configuration for the transaction pool
+type TxPoolConfig struct {
+	Capacity int64 `json:"cap"`
+}
+
 // Config represents the client's configuration
 type Config struct {
-	Node      *PeerConfig `json:"peer"`
+	Node      *PeerConfig   `json:"peer"`
+	TxPool    *TxPoolConfig `json:"txPool"`
 	configDir string
 }
 
