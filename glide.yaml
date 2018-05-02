@@ -239,6 +239,7 @@ import:
   version: ^1.0.0
 - package: github.com/shopspring/decimal
 - package: github.com/c-bata/go-prompt
+- package: github.com/robertkrimen/otto
 testImport:
 - package: github.com/apex/log
   subpackages:
