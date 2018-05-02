@@ -4,9 +4,7 @@ package wire;
 
 // Handshake represents the first message between peers
 message Handshake {
-    string address = 1;     // senders address
-    string subVersion = 2;  // version of the client
-    bytes sig = 3;          // message signature
+    string subVersion = 1;  // version of the client
 }
 
 // HandshakeResponse is a response to Handshake message
@@ -32,4 +30,35 @@ message ContractInvokeRequest {
 message ContractInvokeResponse {
     string status = 1;  // status of the request
     bytes data = 2;     // payload
+
+}
+
+// GetAddr is used to request for addresses from other peers
+message GetAddr {
+}
+
+// GetAddrResponse is used to send addresses in response to a GetAddr
+message Addr {
+    repeated Address addresses = 1;  // list of addresses
+}
+
+message Address {
+    string address = 1;
+    int64 timestamp = 2;
+}
+
+// Ping represents a ping message
+message Ping {
+}
+
+// Pong represents a pong message
+message Pong {
+}
+
+// Reject is used to inform a node that its message was rejected
+message Reject {
+    string message = 1;
+    int32 code = 2;
+    string reason = 3;
+    bytes extraData = 4;
 }

@@ -20,7 +20,7 @@ const imgTag = "ellcrys-contract"
 const registry = "localhost:5000" //ellcrys image registry
 
 //NewContainer creates a new docker container for executing smart contracts
-func NewContainer(port int, targetPort int, mountPath string) (*Container, error) {
+func NewContainer(port int, targetPort int, mountPath string, contractID string) (*Container, error) {
 	var execpath string
 	usr, err := user.Current()
 	if err != nil {
@@ -28,9 +28,9 @@ func NewContainer(port int, targetPort int, mountPath string) (*Container, error
 	}
 
 	if mountPath != "" {
-		execpath = mountPath
+		execpath = mountPath + "/" + contractID
 	} else {
-		execpath = usr.HomeDir + TempPath
+		execpath = usr.HomeDir + TempPath + "/" + contractID
 	}
 
 	//Check if docker is installed
@@ -49,7 +49,7 @@ func NewContainer(port int, targetPort int, mountPath string) (*Container, error
 	}
 
 	//run the container
-	containerID, err := runContainer(port, targetPort, execpath)
+	containerID, err := runContainer(port, targetPort, execpath, containerID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +108,9 @@ func pullImg() error {
 }
 
 
-func runContainer(port int, targetPort int, execpath string) (containerID string, err error) {
+func runContainer(port int, targetPort int, execpath string, contractID string) (containerID string, err error) {
 	vmLog.Debugf("Create and run container with image %s", imgTag)
-	containerCmd := exec.Command("docker", "run", "-d", "--volume", fmt.Sprintf("%s:%s", execpath, "/contracts"), "-p", fmt.Sprintf("%s:%s", port, targetPort), imgTag)
+	containerCmd := exec.Command("docker", "run", "-d", "--volume", fmt.Sprintf("%s:%s", execpath, "/contracts"), "-p", fmt.Sprintf("%s:%s", port, targetPort), imgTag, "npm",  "start", "--prefix", "./contracts/"+contractID)
 	var stdout, stderr []byte
 	var errStdout, errStderr error
 	stdoutIn, _ := containerCmd.StdoutPipe()

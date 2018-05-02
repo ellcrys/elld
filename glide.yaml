@@ -1,26 +1,54 @@
 package: github.com/ellcrys/druid
 import:
+- package: github.com/Sirupsen/logrus
+- package: github.com/btcsuite/btcutil
+  subpackages:
+  - base58
+- package: github.com/ellcrys/go-libp2p-crypto
+- package: github.com/golang/protobuf
+  version: v1.1.0
+  subpackages:
+  - proto
+- package: github.com/jinzhu/configor
 - package: github.com/libp2p/go-libp2p
 - package: github.com/libp2p/go-libp2p-crypto
 - package: github.com/libp2p/go-libp2p-host
 - package: github.com/libp2p/go-libp2p-net
+- package: github.com/libp2p/go-libp2p-peer
+- package: github.com/libp2p/go-libp2p-peerstore
 - package: github.com/libp2p/go-libp2p-protocol
-- package: go.uber.org/zap
-- package: github.com/multiformats/go-multiaddr
-- package: github.com/multiformats/go-multicodec
-- package: github.com/onsi/ginkgo
-  subpackages:
-  - ginkgo
-- package: github.com/onsi/gomega
-  subpackages:
-  - '...'
-- package: google.golang.org/grpc
-  version: v1.11.3
-- package: github.com/golang/protobuf
-  version: v1.0.0
-  subpackages:
-  - proto
 - package: github.com/mholt/archiver
   version: v2.0
+- package: github.com/mitchellh/go-homedir
+- package: github.com/multiformats/go-multiaddr
+  version: 0.1.2
+- package: github.com/multiformats/go-multicodec
   subpackages:
-  - cmd/archiver
+  - protobuf
+- package: github.com/multiformats/go-multihash
+  version: v1.0.6
+- package: github.com/spf13/cobra
+  version: v0.0.2
+- package: github.com/syndtr/goleveldb
+  subpackages:
+  - leveldb
+  - leveldb/util
+- package: github.com/thoas/go-funk
+  version: "0.2"
+- package: go.uber.org/zap
+  version: v1.8.0
+- package: golang.org/x/crypto
+  subpackages:
+  - openpgp
+  - ripemd160
+  - sha3
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc
+  version: v1.11.3
+testImport:
+- package: github.com/onsi/ginkgo
+  version: v1.4.0
+- package: github.com/onsi/gomega
+  version: v1.3.0

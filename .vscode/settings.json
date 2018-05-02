@@ -1,14 +1,22 @@
 {
     "cSpell.words": [
         "Decapsulate",
+        "Logrus",
+        "Msgs",
         "Notifiee",
         "Specs",
+        "cfgdir",
+        "configor",
         "cryptocurrency",
+        "dbfile",
+        "decr",
         "druid",
         "golog",
         "gologging",
         "ipfs",
+        "leveldb",
         "libp",
+        "maddr",
         "mrand",
         "notif",
         "protoc"

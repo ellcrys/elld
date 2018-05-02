@@ -48,18 +48,49 @@ type InvokeResponseData struct {
 //TempPath where contracts are stored
 const TempPath = "/.ellcrys/tmp/"
 
+//spawn
+func spawn(contractID string) (*Container, pb.ContractServiceClient) {
+	port := 4000
+	targetPort := 4000
+	//Create new container instance
+	container := make(chan *Container)
+	var cont *Container
+	var err error
+
+	go func(container *Container, cont *Container){
+		cont, err := NewContainer(port, targetPort, "", contractID)
+		if err != nil {
+			vmLog.Fatalf("Container initialization failed %s", err)
+		}
+
+		container <- cont //send cont to container
+	}(container, cont)
+
+	//container address
+	addr := fmt.Sprintf("0.0.0.0:%d", port)
+
+	//Dial container
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		vmLog.Fatalf("Dial failed err: %v", err)
+	}
+	//Create a new grpc client
+	client := pb.NewContractServiceClient(conn)
+	
+	return <-container, client
+}
 //Deploy a new contract project
 func (vm *VM) Deploy(config *DeployConfig) error {
 	//verify if archive is valid
-	vmLog.Infof("Verifying archive")
-	signer := NewSigner()
-	err := signer.Verify(config.archive)
-	if err != nil {
-		vmLog.Errorf("Verification Failed: Invalid archive %s", err)
-		return fmt.Errorf("Verification Failed: Invalid archive %s", err)
-	}
+	// vmLog.Infof("Verifying archive")
+	// signer := NewSigner()
+	// err := signer.Verify(config.archive)
+	// if err != nil {
+	// 	vmLog.Errorf("Verification Failed: Invalid archive %s", err)
+	// 	return fmt.Errorf("Verification Failed: Invalid archive %s", err)
+	// }
 
-	vmLog.Infof("Contract verification passed %s %s", config.contractID, "√")
+	// vmLog.Infof("Contract verification passed %s %s", config.contractID, "√")
 
 	//Unzip archive to tmp path
 	usr, err := user.Current()
@@ -80,10 +111,11 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 	return nil
 }
 
-//Invoke a smart contract function
+//Invoke a smart contract
 func (vm *VM) Invoke(config *InvokeConfig) error {
+	container, serviceClient := spawn(config.contractID)
 	ctx := context.Background()
-	resp, err := vm.serviceClient.ContractInvoke(ctx, &pb.ContractInvokeRequest{
+	resp, err := serviceClient.ContractInvoke(ctx, &pb.ContractInvokeRequest{
 		Function: config.funcName,
 		Data:     config.data,
 		ConractID: config.contractID
@@ -120,31 +152,9 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 }
 
 //NewVM create a new instance VM
-//It is responsible for creating a new container and setup a bidirectional stream
+//It is responsible for creating and managing contract containers
 func NewVM() *VM {
-
-	port := 4000
-	targetPort := 4000
-	//Create new container instance
-	container, err := NewContainer(port, targetPort, "")
-	if err != nil {
-		vmLog.Fatalf("Container initialization failed %s", err)
-	}
-
-	//container address
-	addr := fmt.Sprintf("http://127.0.0.1:%d", port)
-
-	//Dial container
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
-	if err != nil {
-		vmLog.Fatalf("Dial failed err: %v", err)
-	}
-	//Create a new grpc client
-	client := pb.NewContractServiceClient(conn)
-
 	return &VM{
-		container:     container,
-		serviceClient: client,
 		log:           vmLog,
 	}
 }
