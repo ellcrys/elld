@@ -12,10 +12,10 @@ import (
 // which is responsible for collecting, validating and providing processed
 // transactions for block inclusion and propagation.
 type TxPool struct {
-	gmx        *sync.Mutex                // general mutex
-	queue      *TxQueue                   // transaction queue
-	queueMap   map[string]struct{}        // maps transactions present in queue by their hash
-	onQueuedCB func(tx *wire.Transaction) // called each time a transaction is queued
+	gmx        *sync.Mutex                      // general mutex
+	queue      *TxQueue                         // transaction queue
+	queueMap   map[string]struct{}              // maps transactions present in queue by their hash
+	onQueuedCB func(tx *wire.Transaction) error // called each time a transaction is queued
 }
 
 // NewTxPool creates a new instance of TxPool
@@ -81,7 +81,7 @@ func (tp *TxPool) addTx(tx *wire.Transaction) bool {
 
 // OnQueued sets the callback to be called each time a transaction has been
 // validated and queued.
-func (tp *TxPool) OnQueued(f func(tx *wire.Transaction)) {
+func (tp *TxPool) OnQueued(f func(tx *wire.Transaction) error) {
 	tp.onQueuedCB = f
 }
 

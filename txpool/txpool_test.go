@@ -66,8 +66,9 @@ var _ = Describe("TxPool", func() {
 		It("should return nil and call onQueueCB function ", func() {
 			onQueueFuncCalled := false
 			tp := NewTxPool(1)
-			tp.OnQueued(func(tx *wire.Transaction) {
+			tp.OnQueued(func(tx *wire.Transaction) error {
 				onQueueFuncCalled = true
+				return nil
 			})
 			a, _ := crypto.NewAddress(nil)
 			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", time.Now().Unix())
