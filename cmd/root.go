@@ -17,7 +17,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"path"
+	"syscall"
 
 	"github.com/ellcrys/druid/crypto"
 	homedir "github.com/mitchellh/go-homedir"
@@ -30,10 +32,13 @@ import (
 )
 
 var (
-	cfg     *configdir.Config
-	log     logger.Logger
-	seed    int64
-	devMode bool
+	cfg         *configdir.Config
+	log         logger.Logger
+	seed        int64
+	devMode     bool
+	sigs        chan os.Signal
+	done        chan bool
+	onTerminate func()
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -56,6 +61,18 @@ func Execute() {
 }
 
 func init() {
+	sigs = make(chan os.Signal, 1)
+	done = make(chan bool, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		if onTerminate != nil {
+			onTerminate()
+		}
+		done <- true
+	}()
+
 	rootCmd.PersistentFlags().String("cfgdir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")

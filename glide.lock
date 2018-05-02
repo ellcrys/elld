@@ -1,8 +1,8 @@
-hash: 3d27f4041776a361d5e8f2b2730b1a537cfd32a8c3d254eff12532702ae3f3a8
-updated: 2018-05-01T17:35:01.716147+01:00
+hash: cfdfbf9c944a02aeaf1c35527accea943dda8a8365ad510edc397d1eb8bd62ba
+updated: 2018-05-02T12:47:11.029997+01:00
 imports:
 - name: cloud.google.com/go
-  version: 8d80f298d61ea6fa7dfe5e6011d2cfb33f617a3a
+  version: eb0079f598a6640ecbb7a4d2d9dcb0278a320b61
   subpackages:
   - storage
 - name: github.com/agl/ed25519
@@ -21,6 +21,8 @@ imports:
   - base85
 - name: github.com/BurntSushi/toml
   version: a368813c5e648fee92e5f6c30e3944ff9d5e8895
+- name: github.com/c-bata/go-prompt
+  version: 15992ed45e46edd6168d7c8bfda14b700f6b756a
 - name: github.com/coreos/go-semver
   version: e214231b295a8ea9479f11b70b35d5acf3556d9b
   subpackages:
@@ -206,7 +208,7 @@ imports:
 - name: github.com/multiformats/go-multistream
   version: 612ce31c03aebe1d5adbd3c850ee89e05a82b16d
 - name: github.com/onsi/ginkgo
-  version: 6d8be987c536ebd84576a5a46208e7b7a3c796b0
+  version: e5e551c38ce87c5b68ee6d93b8dfb576fe590dc3
   subpackages:
   - config
   - ginkgo/convert
@@ -270,7 +272,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: github.com/syndtr/goleveldb
-  version: 714f901b98fdb3aa954b4193d8cbd64a28d80cad
+  version: ae970a0732be3a1f5311da86118d37b9f4bd2a5a
   subpackages:
   - leveldb
   - leveldb/cache
@@ -334,7 +336,7 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: ccab5db2df419fe797781299604a9fd53eba3b36
+  version: 06d8ad25db4724416e523e7b861c88dbad30fb20
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
@@ -421,7 +423,7 @@ imports:
   - unicode/norm
   - width
 - name: golang.org/x/tools
-  version: 836e0f611e69f12657ca7b4ff1d5747865308e2d
+  version: 5c8013c5617234a9515f1b1379aba7e03e846479
   subpackages:
   - go/buildutil
   - go/callgraph
@@ -430,7 +432,7 @@ imports:
   - go/ssa
   - go/ssa/ssautil
 - name: google.golang.org/api
-  version: d066d1c525da4ed9aea2d03ccc7edbf05728c948
+  version: ce90db2c36a2cb8c9c06779ed8bb96f92ea6e3b8
   subpackages:
   - compute/v1
 - name: gopkg.in/oleiade/lane.v1
@@ -443,7 +445,7 @@ testImports:
   subpackages:
   - handlers/json
 - name: github.com/go-kit/kit
-  version: 9e37b1b59570a6e44620b7d4ea94292c75ea9059
+  version: 828ac175f5d2a008e9eea3a36f474f19a774a3a3
   subpackages:
   - log
 - name: github.com/ipfs/go-detect-race
