@@ -26,6 +26,8 @@ func (e *Executor) OnInput(in string) {
 	switch in {
 	case ".exit":
 		e.exitProgram(true)
+	case ".help":
+		e.help()
 	default:
 		e.execJs(in)
 	}
@@ -47,4 +49,10 @@ func (e *Executor) execJs(in string) {
 		return
 	}
 	fmt.Println(v)
+}
+
+func (e *Executor) help() {
+	for _, f := range commonFunc {
+		fmt.Println(fmt.Sprintf("%s\t\t%s", f[0], f[1]))
+	}
 }
