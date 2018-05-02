@@ -1,5 +1,5 @@
-hash: cfdfbf9c944a02aeaf1c35527accea943dda8a8365ad510edc397d1eb8bd62ba
-updated: 2018-05-02T12:47:11.029997+01:00
+hash: d0b90059b25e0fd37e3479ef681f63e95ef12d473cd31659e42262160433b230
+updated: 2018-05-02T14:12:41.038543+01:00
 imports:
 - name: cloud.google.com/go
   version: eb0079f598a6640ecbb7a4d2d9dcb0278a320b61
@@ -176,6 +176,8 @@ imports:
   version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
 - name: github.com/mattn/go-isatty
   version: 6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c
+- name: github.com/mattn/go-tty
+  version: 931426f7535ac39720c8909d70ece5a41a2502a6
 - name: github.com/minio/blake2b-simd
   version: 3f5f724cb5b182a5c278d6d3d55b40e7f8c2efb4
 - name: github.com/minio/sha256-simd
@@ -255,6 +257,12 @@ imports:
   subpackages:
   - ext
   - log
+- name: github.com/pkg/term
+  version: cda20d4ac917ad418d86e151eff439648b06185b
+  subpackages:
+  - termios
+- name: github.com/robertkrimen/otto
+  version: 6c383dd335ef8dcccef05e651ce1eccfe4d0f011
 - name: github.com/satori/go.uuid
   version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
 - name: github.com/shopspring/decimal
@@ -340,7 +348,7 @@ imports:
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
-  version: 613d6eafa307c6881a737a3c35c0e312e8d3a8c5
+  version: 2c241ca3045ddc354463c376a9515d9f1f1390a4
   subpackages:
   - acme/autocert
   - blake2s

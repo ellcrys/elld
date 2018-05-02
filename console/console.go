@@ -20,7 +20,21 @@ type Console struct {
 func New() *Console {
 	c := new(Console)
 	c.executor = NewExecutor()
-	c.prompt = prompt.New(c.executor.OnInput, completer)
+
+	exitKeyBind := prompt.KeyBind{
+		Key: prompt.ControlC,
+		Fn: func(*prompt.Buffer) {
+			c.executor.exitProgram(false)
+		},
+	}
+
+	options := []prompt.Option{
+		prompt.OptionPrefixTextColor(prompt.White),
+		prompt.OptionAddKeyBind(exitKeyBind),
+	}
+
+	c.prompt = prompt.New(c.executor.OnInput, completer, options...)
+
 	return c
 }
 
@@ -33,6 +47,6 @@ func (c *Console) Run() {
 func (c *Console) about() {
 	fmt.Println("Welcome to Druid Javascript console!")
 	fmt.Println(fmt.Sprintf("Client Version:%s, Protocol Version:%s", util.ClientVersion, util.ProtocolVersion))
-	fmt.Println(" type 'exit' to exit console")
+	fmt.Println(" type '.exit' to exit console")
 	fmt.Println("")
 }

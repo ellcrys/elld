@@ -3,15 +3,20 @@ package console
 import (
 	"fmt"
 	"os"
+
+	"github.com/robertkrimen/otto"
 )
 
 // Executor is responsible for interpreting and executing console inputs
 type Executor struct {
+	vm   *otto.Otto
+	exit bool
 }
 
 // NewExecutor creates a new executor
 func NewExecutor() *Executor {
 	e := new(Executor)
+	e.vm = otto.New()
 	return e
 }
 
@@ -19,12 +24,27 @@ func NewExecutor() *Executor {
 func (e *Executor) OnInput(in string) {
 
 	switch in {
-	case "exit":
-		e.exitProgram()
+	case ".exit":
+		e.exitProgram(true)
+	default:
+		e.execJs(in)
 	}
 }
 
-func (e *Executor) exitProgram() {
-	fmt.Println("exited")
+func (e *Executor) exitProgram(immediately bool) {
+	if !immediately && !e.exit {
+		fmt.Println("(To exit, press ^C again or type .exit)")
+		e.exit = true
+		return
+	}
 	os.Exit(0)
+}
+
+func (e *Executor) execJs(in string) {
+	v, err := e.vm.Run(in)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	fmt.Println(v)
 }
