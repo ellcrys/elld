@@ -17,7 +17,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ellcrys/druid/addressmgr"
+	"github.com/ellcrys/druid/crypto"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +44,7 @@ var addressNewCmd = &cobra.Command{
 			seed = &_seed
 		}
 
-		addr, _ := addressmgr.NewAddress(seed)
+		addr, _ := crypto.NewAddress(seed)
 		newAddr := addr.Addr()
 
 		fmt.Println(fmt.Sprintf("Address:     %s", newAddr))

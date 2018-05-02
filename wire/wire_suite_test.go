@@ -1,4 +1,4 @@
-package addressmgr
+package wire_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestAddressmgr(t *testing.T) {
+func TestWire(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Addressmgr Suite")
+	RunSpecs(t, "Wire Suite")
 }

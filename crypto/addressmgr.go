@@ -1,4 +1,4 @@
-package addressmgr
+package crypto
 
 import (
 	"encoding/hex"
@@ -126,6 +126,11 @@ func (p *PubKey) Base58() string {
 	return base58.CheckEncode(bs[:], PublicKeyVersion)
 }
 
+// Verify verifies a signature
+func (p *PubKey) Verify(data, sig []byte) (bool, error) {
+	return p.pubKey.Verify(data, sig)
+}
+
 // Bytes returns the byte equivalent of the public key
 func (p *PrivKey) Bytes() ([]byte, error) {
 	if p.privKey == nil {
@@ -139,6 +144,11 @@ func (p *PrivKey) Bytes() ([]byte, error) {
 func (p *PrivKey) Base58() string {
 	bs, _ := p.Bytes()
 	return base58.CheckEncode(bs, PrivateKeyVersion)
+}
+
+// Sign signs a message
+func (p *PrivKey) Sign(data []byte) ([]byte, error) {
+	return p.privKey.Sign(data)
 }
 
 // IsValidAddr checks whether an address is valid
@@ -157,4 +167,77 @@ func IsValidAddr(addr string) error {
 	}
 
 	return nil
+}
+
+// IsValidPubKey checks whether a public key is valid
+func IsValidPubKey(pubKey string) error {
+
+	if pubKey == "" {
+		return fmt.Errorf("empty pub key")
+	}
+
+	_, v, err := base58.CheckDecode(pubKey)
+	if err != nil {
+		return err
+	}
+
+	if v != PublicKeyVersion {
+		return fmt.Errorf("invalid version")
+	}
+
+	return nil
+}
+
+// IsValidPrivKey checks whether a private key is valid
+func IsValidPrivKey(privKey string) error {
+
+	if privKey == "" {
+		return fmt.Errorf("empty priv key")
+	}
+
+	_, v, err := base58.CheckDecode(privKey)
+	if err != nil {
+		return err
+	}
+
+	if v != PrivateKeyVersion {
+		return fmt.Errorf("invalid version")
+	}
+
+	return nil
+}
+
+// PubKeyFromBase58 decodes a base58 encoded public key
+func PubKeyFromBase58(pk string) (*PubKey, error) {
+
+	if err := IsValidPubKey(pk); err != nil {
+		return nil, err
+	}
+
+	decPubKey, _, _ := base58.CheckDecode(pk)
+	pubKey, err := crypto.UnmarshalEd25519PublicKey(decPubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PubKey{
+		pubKey: pubKey,
+	}, nil
+}
+
+// PrivKeyFromBase58 decodes a base58 encoded private key
+func PrivKeyFromBase58(pk string) (*PrivKey, error) {
+
+	if err := IsValidPrivKey(pk); err != nil {
+		return nil, err
+	}
+
+	decPrivKey, _, _ := base58.CheckDecode(pk)
+	var sk [64]byte
+	copy(sk[:], decPrivKey)
+	privKey := crypto.Ed25519PrivateKeyFromPrivKey(sk)
+
+	return &PrivKey{
+		privKey: privKey,
+	}, nil
 }

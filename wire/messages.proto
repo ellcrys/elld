@@ -36,3 +36,14 @@ message Reject {
     string reason = 3;
     bytes extraData = 4;
 }
+
+// Transaction represents a transaction
+message Transaction {
+    int64 type = 1;
+    int64 nonce = 2;
+    string to = 3;
+    string senderPubKey = 4;
+    int64 Timestamp = 5;
+    string Fee = 6;
+    bytes sig = 7;
+}

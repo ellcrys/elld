@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/druid/configdir"
+	"github.com/shopspring/decimal"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -107,4 +108,14 @@ func LoadCfg(cfgDirPath string) (*configdir.Config, error) {
 	cfg.SetConfigDir(cfgDir.Path())
 
 	return cfg, nil
+}
+
+// StrToDec converts a numeric string to decimal.
+// Panics if val could not be converted to decimal.
+func StrToDec(val string) decimal.Decimal {
+	d, err := decimal.NewFromString(val)
+	if err != nil {
+		panic(err)
+	}
+	return d
 }
