@@ -231,7 +231,7 @@ import:
 - package: github.com/btcsuite/btcutil
   subpackages:
   - base85
-- package: github.com/sirupsen/logrus
+- package: github.com/Sirupsen/logrus
 testImport:
 - package: github.com/apex/log
   subpackages:
