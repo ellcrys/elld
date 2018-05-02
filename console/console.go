@@ -46,7 +46,7 @@ func (c *Console) Run() {
 
 func (c *Console) about() {
 	fmt.Println("Welcome to Druid Javascript console!")
-	fmt.Println(fmt.Sprintf("Client Version:%s, Protocol Version:%s", util.ClientVersion, util.ProtocolVersion))
+	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s", util.ClientVersion, util.ProtocolVersion))
 	fmt.Println(" type '.exit' to exit console")
 	fmt.Println("")
 }
