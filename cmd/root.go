@@ -19,7 +19,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/ellcrys/druid/addressmgr"
+	"github.com/ellcrys/druid/crypto"
 	homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/ellcrys/druid/util"
@@ -74,7 +74,7 @@ func initConfig() {
 	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
 
 	if devMode && cfgDirPath == "" {
-		addr, _ := addressmgr.NewAddress(&seed)
+		addr, _ := crypto.NewAddress(&seed)
 		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev_"+addr.PeerID()[42:]))
 		os.MkdirAll(cfgDirPath, 0700)
 	}
