@@ -3,8 +3,12 @@ package vm
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 
 	"github.com/ybbus/jsonrpc"
+
+	"net/http"
+	netrpc "net/rpc"
 
 	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/mholt/archiver"
@@ -44,6 +48,15 @@ type InvokeResponseData struct {
 		Message   string `json:"message"`
 		ReturnVal string `json:"returnVal"` //Json string or a string value
 	}
+}
+
+//RequestHandler for VM rpc connection
+type RequestHandler struct{}
+
+//Terminate a contract
+func (t *RequestHandler) Terminate(val string, reply *string) error {
+
+	return nil
 }
 
 //TempPath where contracts are stored
@@ -160,8 +173,31 @@ func (vm *VM) Terminate(contractID string) (ID string, err error) {
 //It is responsible for creating and managing contract containers
 func NewVM() *VM {
 	containers := make(map[string]*Container)
+
+	//Register request handler
+	netrpc.Register(new(RequestHandler))
+
+	netrpc.HandleHTTP()
+
+	l, e := net.Listen("tcp", ":4000")
+	if e != nil {
+		vmLog.Fatal("listen error: %s", e)
+	}
+
+	startServer(l)
+
 	return &VM{
 		log:        vmLog,
 		containers: containers,
 	}
+}
+
+func startServer(l net.Listener) {
+	vmLog.Info("VM Server listening at 4000")
+	err := http.Serve(l, nil)
+
+	if err != nil {
+		vmLog.Fatal("Error serving: %s", err)
+	}
+
 }
