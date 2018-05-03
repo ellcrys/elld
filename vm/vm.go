@@ -3,7 +3,6 @@ package vm
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/ybbus/jsonrpc"
 
@@ -43,7 +42,7 @@ type InvokeResponseData struct {
 	Code   int    `json:"code"`
 	Data   struct {
 		Message   string `json:"message"`
-		ReturnVal string `json:"returnVal"`
+		ReturnVal string `json:"returnVal"` //Json string or a string value
 	}
 }
 
@@ -76,17 +75,6 @@ func spawn(contractID string) (*Container, jsonrpc.RPCClient) {
 
 //Deploy a new contract project
 func (vm *VM) Deploy(config *DeployConfig) error {
-	//verify if archive is valid
-	// vmLog.Infof("Verifying archive")
-	// signer := NewSigner()
-	// err := signer.Verify(config.archive)
-	// if err != nil {
-	// 	vmLog.Errorf("Verification Failed: Invalid archive %s", err)
-	// 	return fmt.Errorf("Verification Failed: Invalid archive %s", err)
-	// }
-
-	// vmLog.Infof("Contract verification passed %s %s", config.contractID, "√")
-
 	//Unzip archive to tmp path
 	usrdir, err := homedir.Dir()
 	if err != nil {
@@ -107,7 +95,7 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 }
 
 //Invoke a smart contract
-func (vm *VM) Invoke(config *InvokeConfig) error {
+func (vm *VM) Invoke(config *InvokeConfig) (*Container, error) {
 	container, rpc := spawn(config.ContractID)
 
 	//add spawned container to list of running containers
@@ -120,7 +108,7 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 
 	if err != nil {
 		vmLog.Error(fmt.Sprintf("Could not invoke function %s : %s", config.Function, err))
-		return fmt.Errorf("Could not invoke function %s : %s", config.Function, err)
+		return nil, fmt.Errorf("Could not invoke function %s : %s", config.Function, err)
 	}
 
 	var res *InvokeResponseData
@@ -131,7 +119,8 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 	//Pass results unto res pointer
 	err = json.Unmarshal(details, &res)
 	if err != nil {
-		log.Fatal(err)
+		vmLog.Error(fmt.Sprintf("Could not retrieve response from %s : %s", config.Function, err))
+		return nil, fmt.Errorf("Could not retrieve response from %s : %s", config.Function, err)
 	}
 	//response status
 	status := res.Status
@@ -140,13 +129,13 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 
 	if err != nil {
 		vmLog.Error("Error reading response %s", err)
-		return fmt.Errorf("Error reading response %s", err)
+		return nil, fmt.Errorf("Error reading response %s", err)
 	}
 
 	//Handle error response from function
 	if status != "" && status == "error" {
 		vmLog.Error("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
-		return fmt.Errorf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
+		return nil, fmt.Errorf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
 	}
 
 	//Handle success response from function
@@ -154,7 +143,17 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 		vmLog.Info("Code: %d %s", res.Code, "√")
 	}
 
-	return nil
+	return container, nil
+}
+
+//Terminate a running contract
+func (vm *VM) Terminate(contractID string) (ID string, err error) {
+	//Find contract in list of running containers and terminate it
+	ID, err = vm.containers[contractID].Destroy()
+	if err != nil {
+		return "", err
+	}
+	return ID, nil
 }
 
 //NewVM create a new instance VM

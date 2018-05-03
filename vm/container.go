@@ -40,6 +40,7 @@ func NewContainer(contractID string) (*Container, error) {
 		return nil, err
 	}
 
+	//assign executable path
 	execpath = fmt.Sprintf("%s/%s", usrdir+TempPath, contractID)
 
 	//Check if docker is installed
@@ -50,27 +51,33 @@ func NewContainer(contractID string) (*Container, error) {
 	}
 
 	vmLog.Info("Initializing contract execution container")
+
 	ctx := context.Background()
+	//new docker client
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		return nil, err
 	}
 
+	//Setup container config
 	config := docker.Config{
 		Image: "ellcrys-contract",
 	}
 
+	//find available port on OS
 	availablePort, err := freeport.GetFreePort()
 	if err != nil {
 		return nil, err
 	}
 
+	//bind port to container config
 	ports := map[docker.Port][]docker.PortBinding{}
 	ports["4000/tcp"] = []docker.PortBinding{{
 		HostIP:   "0.0.0.0",
 		HostPort: strconv.Itoa(availablePort),
 	}}
 
+	//mount executable path to container contracts path
 	contractsDir := fmt.Sprintf("/contracts/%s", contractID)
 	mounts := []docker.HostMount{{
 		Target: contractsDir,
@@ -106,7 +113,7 @@ func NewContainer(contractID string) (*Container, error) {
 	case "ts", "typescript":
 		config.Cmd = []string{"npm", "start", "--prefix", "." + contractsDir}
 	case "go", "golang":
-		config.Cmd = []string{"go", "run", "." + contractsDir + "main.go"}
+		config.Cmd = []string{"go", "run", "." + contractsDir + "/main.go"}
 	}
 
 	//Create the container
