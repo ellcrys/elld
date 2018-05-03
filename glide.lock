@@ -1,5 +1,5 @@
-hash: d0b90059b25e0fd37e3479ef681f63e95ef12d473cd31659e42262160433b230
-updated: 2018-05-02T14:12:41.038543+01:00
+hash: 3960b5244597ec5f5881ad964806a74bdfe48524f3cdd5f6b54777e7aa90ccc2
+updated: 2018-05-02T15:21:59.147382+01:00
 imports:
 - name: cloud.google.com/go
   version: eb0079f598a6640ecbb7a4d2d9dcb0278a320b61
@@ -33,6 +33,8 @@ imports:
   - spdy
 - name: github.com/ellcrys/go-libp2p-crypto
   version: 08bc4ca6778916abbeb103712423416289bb4c8d
+- name: github.com/fatih/color
+  version: 507f6050b8568533fb3f5504de8e5205fa62a114
 - name: github.com/fd/go-nat
   version: dcaf50131e4810440bed2cbb6f7f32c4f4cc95dd
 - name: github.com/gogo/protobuf
@@ -263,6 +265,13 @@ imports:
   - termios
 - name: github.com/robertkrimen/otto
   version: 6c383dd335ef8dcccef05e651ce1eccfe4d0f011
+  subpackages:
+  - ast
+  - dbg
+  - file
+  - parser
+  - registry
+  - token
 - name: github.com/satori/go.uuid
   version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
 - name: github.com/shopspring/decimal
@@ -445,6 +454,10 @@ imports:
   - compute/v1
 - name: gopkg.in/oleiade/lane.v1
   version: 28f7c3f09254f12b51e620fa4db136ba58804762
+- name: gopkg.in/sourcemap.v1
+  version: 6e83acea0053641eff084973fee085f0c193c61a
+  subpackages:
+  - base64vlq
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 testImports:
