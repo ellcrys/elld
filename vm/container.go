@@ -1,37 +1,46 @@
 package vm
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"os/user"
+	"io/ioutil"
+	"log"
+	"strconv"
+
+	docker "github.com/fsouza/go-dockerclient"
+	homedir "github.com/mitchellh/go-homedir"
+	"github.com/phayes/freeport"
 )
 
 //Container struct for managing docker containers
 type Container struct {
-	port        int
-	targetPort  int
-	execpath    string
-	containerID string
+	port     int
+	execpath string
+	ID       string
+	client   *docker.Client
+}
+
+//ContractManifest defines the project metadata
+type ContractManifest struct {
+	Name     string `json:"name"`
+	Language string `json:"language"`
+	Version  string `json:"version"`
 }
 
 const imgTag = "ellcrys-contract"
 const registry = "localhost:5000" //ellcrys image registry
 
 //NewContainer creates a new docker container for executing smart contracts
-func NewContainer(port int, targetPort int, mountPath string, contractID string) (*Container, error) {
+func NewContainer(contractID string) (*Container, error) {
 	var execpath string
-	usr, err := user.Current()
+	usrdir, err := homedir.Dir()
 	if err != nil {
 		return nil, err
 	}
 
-	if mountPath != "" {
-		execpath = mountPath + "/" + contractID
-	} else {
-		execpath = usr.HomeDir + TempPath + "/" + contractID
-	}
+	execpath = fmt.Sprintf("%s/%s", usrdir+TempPath, contractID)
 
 	//Check if docker is installed
 	hasDocker := HasDocker()
@@ -40,120 +49,105 @@ func NewContainer(port int, targetPort int, mountPath string, contractID string)
 		return nil, errors.New("Please install docker")
 	}
 
-	
-	vmLog.Infof("Initializing contract execution container")
-	//pull the image
-	err := pullImg()
+	vmLog.Info("Initializing contract execution container")
+	ctx := context.Background()
+	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		return nil, err
 	}
 
-	//run the container
-	containerID, err := runContainer(port, targetPort, execpath, containerID)
+	config := docker.Config{
+		Image: "ellcrys-contract",
+	}
+
+	availablePort, err := freeport.GetFreePort()
 	if err != nil {
 		return nil, err
 	}
 
+	ports := map[docker.Port][]docker.PortBinding{}
+	ports["4000/tcp"] = []docker.PortBinding{{
+		HostIP:   "0.0.0.0",
+		HostPort: strconv.Itoa(availablePort),
+	}}
+
+	contractsDir := fmt.Sprintf("/contracts/%s", contractID)
+	mounts := []docker.HostMount{{
+		Target: contractsDir,
+		Source: execpath,
+		Type:   "bind",
+	}}
+
+	config.Mounts = []docker.Mount{{
+		Name:        "project-path",
+		Source:      execpath,
+		Destination: contractsDir,
+		RW:          true,
+		Mode:        "",
+		Driver:      "bind",
+	}}
+
+	//Read manifest of contract
+	manifest, err := ioutil.ReadFile(fmt.Sprintf("%s/manifest.json", execpath))
+
+	if err != nil {
+		return nil, fmt.Errorf("Cannot Read Manifest :%s", err)
+	}
+
+	var contractManifest *ContractManifest
+
+	json.Unmarshal(manifest, &contractManifest)
+
+	if contractManifest.Language != "" {
+		return nil, fmt.Errorf("Language undefined :%s", err)
+	}
+
+	switch contractManifest.Language {
+	case "ts", "typescript":
+		config.Cmd = []string{"npm", "start", "--prefix", "." + contractsDir}
+	case "go", "golang":
+		config.Cmd = []string{"go", "run", "." + contractsDir + "main.go"}
+	}
+
+	//Create the container
+	container, err := client.CreateContainer(docker.CreateContainerOptions{
+		Config: &config,
+		HostConfig: &docker.HostConfig{
+			PortBindings: ports,
+			Mounts:       mounts,
+		},
+		Context: ctx,
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//Start the container
+	err = client.StartContainer(container.ID, &docker.HostConfig{
+		PortBindings: ports,
+		Mounts:       mounts,
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Container{
-		port:       port,
-		targetPort: targetPort,
-		execpath:   execpath,
-		containerID : containerID
+		port:     availablePort,
+		execpath: execpath,
+		ID:       container.ID,
+		client:   client,
 	}, nil
 }
 
-//pull container image
-func pullImg() error {
-	vmLog.Debugf("Pull image %s", imgTag)
-	containerPullCmd := exec.Command("docker", "pull", fmt.Sprintf("%s/%s", registry, imgTag))
-	var stdout, stderr []byte
-	var errStdout, errStderr error
-	stdoutIn, _ := containerPullCmd.StdoutPipe()
-	stderrIn, _ := containerPullCmd.StderrPipe()
-
-	containerPullCmd.Start()
-
-
-	//Capture stdout
-	go func() {
-		stdout, errStdout = Capture(os.Stdout, stdoutIn)
-	}()
-
-	//Capture stderr
-	go func() {
-		stderr, errStderr = Capture(os.Stderr, stderrIn)
-	}()
-
-	//Wait for outputs from command
-	err := containerCmd.Wait()
-	if err != nil {
-		return nil, err
-	}
-
-	if errStdout != nil || errStderr != nil {
-		vmLog.Errorf("failed to pull %s", imgTag)
-		return fmt.Errorf("failed to pull %s", imgTag)
-	}
-
-	outStr, errStr := string(stdout), string(stderr)
-	var containerID string
-	if outStr != "" {
-		vmLog.Infof("%s", outStr)
-	}
-	if errStr != "" {
-		return errors.New("failed to capture stdout or stderr")
-	}	
-
-	return nil
-}
-
-
-func runContainer(port int, targetPort int, execpath string, contractID string) (containerID string, err error) {
-	vmLog.Debugf("Create and run container with image %s", imgTag)
-	containerCmd := exec.Command("docker", "run", "-d", "--volume", fmt.Sprintf("%s:%s", execpath, "/contracts"), "-p", fmt.Sprintf("%s:%s", port, targetPort), imgTag, "npm",  "start", "--prefix", "./contracts/"+contractID)
-	var stdout, stderr []byte
-	var errStdout, errStderr error
-	stdoutIn, _ := containerCmd.StdoutPipe()
-	stderrIn, _ := containerCmd.StderrPipe()
-
-	//Run command
-	containerCmd.Start()
-
-	//Capture stdout
-	go func() {
-		stdout, errStdout = Capture(os.Stdout, stdoutIn)
-	}()
-
-	//Capture stderr
-	go func() {
-		stderr, errStderr = Capture(os.Stderr, stderrIn)
-	}()
-
-	//Wait for outputs from command
-	err := containerCmd.Wait()
-	if err != nil {
-		return nil, err
-	}
-
-	if errStdout != nil || errStderr != nil {
-		vmLog.Errorf("failed to capture stdout or stderr\n")
-		return nil, errors.New("failed to capture stdout or stderr")
-	}
-
-	outStr, errStr := string(stdout), string(stderr)
-	var containerID string
-	if outStr != "" {
-		containerID = outStr
-	}
-	if errStr != "" {
-		return nil, errors.New("failed to capture stdout or stderr")
-	}
-
-	return containerID, nil
-}
-
 //Destroy this container
-func (container *Container) Destroy() error {
+func (container *Container) Destroy() (string, error) {
 
-	return nil
+	err := container.client.StopContainer(container.ID, 1000)
+
+	if err != nil {
+		return "", err
+	}
+
+	return container.ID, nil
 }

@@ -39,7 +39,7 @@ func HasDocker() bool {
 	}
 
 	if errStdout != nil || errStderr != nil {
-		vmLog.Fatalf("failed to capture stdout or stderr\n")
+		vmLog.Fatal("failed to capture stdout or stderr\n")
 	}
 
 	outStr, errStr := string(stdout), string(stderr)
