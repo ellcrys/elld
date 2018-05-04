@@ -15,27 +15,31 @@
 package cmd
 
 import (
-	"github.com/ellcrys/druid/console"
 	"github.com/spf13/cobra"
 )
 
 // consoleCmd represents the console command
 var consoleCmd = &cobra.Command{
 	Use:   "console",
-	Short: "Starts an interactive Javascript console",
-	Long:  `Starts an interactive Javascript console`,
+	Short: "Starts the node and an interactive Javascript console",
+	Long:  `Starts the node and an interactive Javascript console`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cs := console.New()
+
+		node, rpcServer, _ := start(cmd, args, true)
 
 		onTerminate = func() {
-			done <- true
+			node.Stop()
+			rpcServer.Stop()
+
 		}
 
-		cs.Run()
-		<-done
+		node.Wait()
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(consoleCmd)
+	consoleCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
+	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
+	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
 }

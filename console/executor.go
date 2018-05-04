@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/c-bata/go-prompt"
+	"github.com/ellcrys/druid/console/spell"
 	"github.com/fatih/color"
 	"github.com/robertkrimen/otto"
 )
@@ -14,6 +15,7 @@ type Executor struct {
 	vm                   *otto.Otto
 	suggestionUpdateFunc func([]prompt.Suggest)
 	exit                 bool
+	spell                *spell.Spell
 }
 
 // NewExecutor creates a new executor
@@ -21,6 +23,18 @@ func NewExecutor() *Executor {
 	e := new(Executor)
 	e.vm = otto.New()
 	return e
+}
+
+// Init adds objects and functions into the VM's contexts
+func (e *Executor) Init() {
+
+	var EllSpellObj = map[string]interface{}{
+		"send": e.spell.EllService.Send,
+	}
+
+	e.vm.Set("spell", map[string]interface{}{
+		"ell": EllSpellObj,
+	})
 }
 
 // OnInput receives inputs and executes
@@ -34,7 +48,7 @@ func (e *Executor) OnInput(in string) {
 	case ".help":
 		e.help()
 	default:
-		e.execJs(in)
+		e.exec(in)
 	}
 }
 
@@ -59,7 +73,7 @@ func (e *Executor) extendSuggestionsFromVM() {
 	}
 }
 
-func (e *Executor) execJs(in string) {
+func (e *Executor) exec(in string) {
 
 	v, err := e.vm.Run(in)
 	if err != nil {
