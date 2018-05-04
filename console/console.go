@@ -2,6 +2,7 @@ package console
 
 import (
 	"fmt"
+	"net/rpc"
 	"runtime"
 
 	"github.com/ellcrys/druid/console/spell"
@@ -17,23 +18,18 @@ type Console struct {
 	prompt     *prompt.Prompt
 	executor   *Executor
 	suggestMgr *SuggestionManager
+	rpcClient  *rpc.Client
 }
 
-// New creates a new Console instance
-func New(rpcAddr string) (*Console, error) {
-
-	var err error
+// New creates a new Console instance.
+// If connectToRPC is true, the
+func New() *Console {
 
 	c := new(Console)
 	c.executor = NewExecutor()
 	c.suggestMgr = NewSuggestionManager(initialSuggestions)
 	c.executor.setSuggestionUpdateFunc(c.suggestMgr.extend)
-
-	c.executor.spell, err = spell.NewSpell(rpcAddr)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to rpc server. %s", err)
-	}
-
+	c.executor.spell = spell.NewSpell()
 	c.executor.Init()
 
 	exitKeyBind := prompt.KeyBind{
@@ -54,7 +50,18 @@ func New(rpcAddr string) (*Console, error) {
 
 	c.prompt = prompt.New(c.executor.OnInput, c.suggestMgr.completer, options...)
 
-	return c, nil
+	return c
+}
+
+// ConnectToRPCServer dials the RPC server
+func (c *Console) ConnectToRPCServer(rpcAddr string) error {
+	var err error
+	c.rpcClient, err = rpc.DialHTTP("tcp", rpcAddr)
+	if err != nil {
+		return err
+	}
+	c.executor.spell.SetClient(c.rpcClient)
+	return nil
 }
 
 // Run the console

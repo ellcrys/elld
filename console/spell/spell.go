@@ -11,16 +11,14 @@ type Spell struct {
 
 // NewSpell creates a new Spell instance
 // Returns error if unable to dial RPC server.
-func NewSpell(rpcAddr string) (*Spell, error) {
-
-	client, err := rpc.DialHTTP("tcp", rpcAddr)
-	if err != nil {
-		return nil, err
-	}
-
+func NewSpell() *Spell {
 	spell := new(Spell)
 	spell.EllService = new(ELLService)
-	spell.EllService.client = client
+	return spell
+}
 
-	return spell, nil
+// SetClient sets the rpc client
+func (spell *Spell) SetClient(c *rpc.Client) {
+	spell.client = c
+	spell.EllService.client = c
 }

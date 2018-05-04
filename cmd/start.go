@@ -93,9 +93,13 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 
 	var cs *console.Console
 	if startConsole {
-		cs, err = console.New(":4500")
-		if err != nil {
-			log.Fatal("unable to start console", "Err", err)
+		cs = console.New()
+
+		if startRPC {
+			cs.ConnectToRPCServer(":4500")
+			if err != nil {
+				log.Fatal("unable to start console", "Err", err)
+			}
 		}
 
 		fmt.Println("")
