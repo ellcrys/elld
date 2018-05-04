@@ -30,6 +30,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 	bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 	addressToListenOn, _ := cmd.Flags().GetString("address")
 	startRPC, _ := cmd.Flags().GetBool("rpc")
+	rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
 
 	if devMode {
 		cfg.Node.Dev = devMode
@@ -87,7 +88,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 
 	var rpcServer *node.RPCServer
 	if startRPC {
-		rpcServer = node.NewRPCServer(4500, log)
+		rpcServer = node.NewRPCServer(rpcAddress, log)
 		go rpcServer.Serve()
 	}
 
@@ -96,9 +97,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 		cs = console.New()
 
 		if startRPC {
-			cs.ConnectToRPCServer(":4500")
+			err = cs.ConnectToRPCServer(rpcAddress)
 			if err != nil {
-				log.Fatal("unable to start console", "Err", err)
+				log.Fatal("unable to start RPC server", "Err", err)
 			}
 		}
 
@@ -130,6 +131,7 @@ var startCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(startCmd)
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
-	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
+	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on")
 	startCmd.Flags().Bool("rpc", false, "Launch RPC server")
+	startCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
 }

@@ -42,4 +42,5 @@ func init() {
 	consoleCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
+	consoleCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
 }
