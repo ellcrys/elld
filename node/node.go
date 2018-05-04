@@ -356,6 +356,8 @@ func (n *Node) Stop() {
 		n.db = nil
 		n.db.Close()
 	}
+
+	n.log.Info("Local node has stopped")
 }
 
 // NodeFromAddr creates a Node from a multiaddr
