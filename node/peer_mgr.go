@@ -438,7 +438,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 // serializeActivePeers returns a json encoded list of active
 // peers. This is needed to persist peer addresses along with other
-// state information. Hardcoded peers and peers that are less than 
+// state information. Hardcoded peers and peers that are less than
 // 20 minutes old are not saved.
 func (m *Manager) serializeActivePeers() [][]byte {
 
@@ -527,6 +527,12 @@ func (m *Manager) loadPeers() error {
 // Stop gracefully stops running routines managed by the manager
 func (m *Manager) Stop() {
 	m.stop = true
-	m.getAddrTicker.Stop()
-	m.pingTicker.Stop()
+
+	if m.getAddrTicker != nil {
+		m.getAddrTicker.Stop()
+	}
+
+	if m.pingTicker != nil {
+		m.pingTicker.Stop()
+	}
 }
