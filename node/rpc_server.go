@@ -15,15 +15,15 @@ type Service struct {
 
 // RPCServer represents a rpc server
 type RPCServer struct {
-	port int
+	addr string
 	log  logger.Logger
 	conn net.Listener
 }
 
 // NewRPCServer creates a new server
-func NewRPCServer(port int, log logger.Logger) *RPCServer {
+func NewRPCServer(addr string, log logger.Logger) *RPCServer {
 	s := new(RPCServer)
-	s.port = port
+	s.addr = addr
 	s.log = log
 	return s
 }
@@ -39,12 +39,12 @@ func (s *RPCServer) Serve() error {
 
 	rpc.HandleHTTP()
 
-	s.conn, err = net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	s.conn, err = net.Listen("tcp", s.addr)
 	if err != nil {
-		return fmt.Errorf(fmt.Sprintf("failed to start listening on port %d", s.port))
+		return fmt.Errorf(fmt.Sprintf("failed to start listening on port %s", s.addr))
 	}
 
-	s.log.Info("RPC service started", "Port", s.port)
+	s.log.Info("RPC service started", "Address", s.addr)
 
 	if err = http.Serve(s.conn, nil); err != nil {
 		if err != http.ErrServerClosed {
