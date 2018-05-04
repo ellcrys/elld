@@ -348,16 +348,20 @@ func (n *Node) Stop() {
 		pm.Stop()
 	}
 
-	if n.wg != (sync.WaitGroup{}) {
-		n.wg.Done()
-	}
-
 	if n.db != nil {
-		n.db = nil
-		n.db.Close()
+		err := n.db.Close()
+		if err == nil {
+			n.log.Info("Database has been closed")
+		} else {
+			n.log.Error("failed to close database", "Err", err)
+		}
 	}
 
 	n.log.Info("Local node has stopped")
+
+	if n.wg != (sync.WaitGroup{}) {
+		n.wg.Done()
+	}
 }
 
 // NodeFromAddr creates a Node from a multiaddr
