@@ -535,4 +535,6 @@ func (m *Manager) Stop() {
 	if m.pingTicker != nil {
 		m.pingTicker.Stop()
 	}
+
+	m.log.Info("Peer manager has stopped")
 }
