@@ -61,7 +61,9 @@ func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 	}
 	defer cfg.Close()
 
-	if err := json.NewEncoder(cfg).Encode(defaultConfig); err != nil {
+	jsonEnc := json.NewEncoder(cfg)
+	jsonEnc.SetIndent("", "\t")
+	if err := jsonEnc.Encode(defaultConfig); err != nil {
 		return false, fmt.Errorf("failed to encode default config -> %s", err)
 	}
 
