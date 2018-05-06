@@ -18,13 +18,12 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"path"
+	path "path/filepath"
 	"syscall"
 
 	"github.com/ellcrys/druid/crypto"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 
 	"github.com/ellcrys/druid/configdir"
@@ -96,7 +95,7 @@ func initConfig() {
 		os.MkdirAll(cfgDirPath, 0700)
 	}
 
-	cfg, err = util.LoadCfg(cfgDirPath)
+	cfg, err = configdir.LoadCfg(cfgDirPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

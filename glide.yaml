@@ -241,6 +241,7 @@ import:
 - package: github.com/c-bata/go-prompt
 - package: github.com/robertkrimen/otto
 - package: github.com/fatih/color
+- package: github.com/segmentio/go-prompt
 testImport:
 - package: github.com/apex/log
   subpackages:

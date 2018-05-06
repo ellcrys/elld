@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	path "path/filepath"
 
 	"github.com/mitchellh/go-homedir"
 

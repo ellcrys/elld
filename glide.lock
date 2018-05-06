@@ -1,8 +1,8 @@
-hash: 3960b5244597ec5f5881ad964806a74bdfe48524f3cdd5f6b54777e7aa90ccc2
-updated: 2018-05-02T15:21:59.147382+01:00
+hash: c00b4df08e85e4c09a417625bcc50acb4688a45a81510d30b46647352eef4404
+updated: 2018-05-05T17:37:38.684477+01:00
 imports:
 - name: cloud.google.com/go
-  version: eb0079f598a6640ecbb7a4d2d9dcb0278a320b61
+  version: bdefed94861a12abb9c2286a929e74834f0babf6
   subpackages:
   - storage
 - name: github.com/agl/ed25519
@@ -212,7 +212,7 @@ imports:
 - name: github.com/multiformats/go-multistream
   version: 612ce31c03aebe1d5adbd3c850ee89e05a82b16d
 - name: github.com/onsi/ginkgo
-  version: e5e551c38ce87c5b68ee6d93b8dfb576fe590dc3
+  version: a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee
   subpackages:
   - config
   - ginkgo/convert
@@ -274,6 +274,8 @@ imports:
   - token
 - name: github.com/satori/go.uuid
   version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+- name: github.com/segmentio/go-prompt
+  version: f0d19b6901ade831d5a3204edc0d6a7d6457fbb2
 - name: github.com/shopspring/decimal
   version: 2df3e6ddaf6e9531dd02d7b6337f2d310f5e4f22
 - name: github.com/sirupsen/logrus
@@ -316,7 +318,7 @@ imports:
 - name: github.com/whyrusleeping/go-logging
   version: 0457bb6b88fc1973573aaf6b5145d8d3ae972390
 - name: github.com/whyrusleeping/go-multiplex
-  version: 8b25da2b10bfcccbe3bf8aec22019cb50c8e2b97
+  version: 5df09a13ea25dfa553aaf2ecfe23bd4a7c9d5ca0
 - name: github.com/whyrusleeping/go-notifier
   version: 097c5d47330ff6a823f67e3515faa13566a62c6f
 - name: github.com/whyrusleeping/go-smux-multiplex
@@ -336,11 +338,11 @@ imports:
 - name: github.com/whyrusleeping/yamux
   version: 63d22127b261bf7014885d25fabe034bed14f04b
 - name: go.uber.org/atomic
-  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
 - name: go.uber.org/multierr
   version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: go.uber.org/zap
-  version: eeedf312bc6c57391d84767a4cd413f02a917974
+  version: 2dc8d10634f473f4dc678e48391a9dc8cf6ae6f9
   subpackages:
   - buffer
   - internal/bufferpool
@@ -353,11 +355,11 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: 06d8ad25db4724416e523e7b861c88dbad30fb20
+  version: dc1f665c0665c1c499fea6c2951df8578c5ff968
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
-  version: 2c241ca3045ddc354463c376a9515d9f1f1390a4
+  version: 4ec37c66abab2c7e02ae775328b2ff001c3f025a
   subpackages:
   - acme/autocert
   - blake2s
@@ -366,7 +368,7 @@ imports:
   - sha3
   - ssh/terminal
 - name: golang.org/x/net
-  version: 5f9ae10d9af5b1c89ae6904293b14b064d4ada23
+  version: 640f4622ab692b87c2f3a94265e6f579fe38263d
   subpackages:
   - bpf
   - context
@@ -385,11 +387,11 @@ imports:
   - lex/httplex
   - webdav/internal/xml
 - name: golang.org/x/oauth2
-  version: 6881fee410a5daf86371371f9ad451b95e168b71
+  version: cdc340f7c179dbbfa4afd43b7614e8fcadde4269
   subpackages:
   - google
 - name: golang.org/x/sys
-  version: 78d5f264b493f125018180c204871ecf58a2dce1
+  version: 6f686a352de66814cdd080d970febae7767857a3
   subpackages:
   - cpu
   - unix
@@ -440,7 +442,7 @@ imports:
   - unicode/norm
   - width
 - name: golang.org/x/tools
-  version: 5c8013c5617234a9515f1b1379aba7e03e846479
+  version: 87723262609ca8fd55d449c027454c29cadefd68
   subpackages:
   - go/buildutil
   - go/callgraph
@@ -449,7 +451,7 @@ imports:
   - go/ssa
   - go/ssa/ssautil
 - name: google.golang.org/api
-  version: ce90db2c36a2cb8c9c06779ed8bb96f92ea6e3b8
+  version: bb395b674c9930450ea7243b3e3c8f43150f4c11
   subpackages:
   - compute/v1
 - name: gopkg.in/oleiade/lane.v1

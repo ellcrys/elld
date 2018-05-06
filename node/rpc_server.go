@@ -15,16 +15,18 @@ type Service struct {
 
 // RPCServer represents a rpc server
 type RPCServer struct {
-	addr string
-	log  logger.Logger
-	conn net.Listener
+	addr      string
+	log       logger.Logger
+	conn      net.Listener
+	localNode *Node
 }
 
 // NewRPCServer creates a new server
-func NewRPCServer(addr string, log logger.Logger) *RPCServer {
+func NewRPCServer(addr string, node *Node, log logger.Logger) *RPCServer {
 	s := new(RPCServer)
 	s.addr = addr
 	s.log = log
+	s.localNode = node
 	return s
 }
 
