@@ -78,8 +78,26 @@ Always backup your keeps regularly.`,
 	},
 }
 
+var accountListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all accounts",
+	Long: `NAME:
+druid account list -
+
+This command lists all accounts existing under <CONFIGDIR>/` + configdir.AccountDirName + `.
+
+Given that an account in the directory begins with a timestamp of its creation time and the 
+list is lexicographically ordered, the most recently created account will the last on the list.
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+		am.List()
+	},
+}
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
+	accountCmd.AddCommand(accountListCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	rootCmd.AddCommand(accountCmd)
 }

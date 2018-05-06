@@ -1,5 +1,5 @@
-hash: c00b4df08e85e4c09a417625bcc50acb4688a45a81510d30b46647352eef4404
-updated: 2018-05-05T17:37:38.684477+01:00
+hash: 19516fe5132694362cff41182cafe546a75599d59eed191dae87d3164687d8e8
+updated: 2018-05-06T14:36:53.471314+01:00
 imports:
 - name: cloud.google.com/go
   version: bdefed94861a12abb9c2286a929e74834f0babf6
@@ -31,6 +31,8 @@ imports:
   version: bc6354cbbc295e925e4c611ffe90c1f287ee54db
   subpackages:
   - spdy
+- name: github.com/dustin/go-humanize
+  version: 02af3965c54e8cacf948b97fef38925c4120652c
 - name: github.com/ellcrys/go-libp2p-crypto
   version: 08bc4ca6778916abbeb103712423416289bb4c8d
 - name: github.com/fatih/color
@@ -58,6 +60,8 @@ imports:
   version: d9f6b97f8db22dd1e090fd0bbbe98f09cc7dd0a8
   subpackages:
   - keccakpg
+- name: github.com/howeyc/gopass
+  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/huin/goupnp
   version: 1395d1447324cbea88d249fbfcfd70ea878fdfca
   subpackages:
@@ -264,7 +268,7 @@ imports:
   subpackages:
   - termios
 - name: github.com/robertkrimen/otto
-  version: 6c383dd335ef8dcccef05e651ce1eccfe4d0f011
+  version: 03d472dc43abece8691e609a23d295ab732abba6
   subpackages:
   - ast
   - dbg
@@ -306,7 +310,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/thoas/go-funk
-  version: 640836bf5ed4a4733afb821dda7116cd2df47dbb
+  version: d2deeb5709c1da54d5da8c76b2f65421f5ff8de4
 - name: github.com/ugorji/go
   version: f3cacc17c85ecb7f1b6a9e373ee85d1480919868
   subpackages:
@@ -355,7 +359,7 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: dc1f665c0665c1c499fea6c2951df8578c5ff968
+  version: 23fc7515b0012078ee4625f209931e7e95cb80bc
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
@@ -451,7 +455,7 @@ imports:
   - go/ssa
   - go/ssa/ssautil
 - name: google.golang.org/api
-  version: bb395b674c9930450ea7243b3e3c8f43150f4c11
+  version: 20530fd5d65ad2caee87891f9896d7547cb400c9
   subpackages:
   - compute/v1
 - name: gopkg.in/oleiade/lane.v1

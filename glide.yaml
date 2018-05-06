@@ -242,6 +242,7 @@ import:
 - package: github.com/robertkrimen/otto
 - package: github.com/fatih/color
 - package: github.com/segmentio/go-prompt
+- package: github.com/dustin/go-humanize
 testImport:
 - package: github.com/apex/log
   subpackages:
