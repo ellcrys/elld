@@ -2,11 +2,10 @@ package node
 
 import (
 	"os"
-	"path"
+	path "path/filepath"
 	"testing"
 
 	"github.com/ellcrys/druid/configdir"
-	"github.com/ellcrys/druid/util"
 	homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/ellcrys/druid/util/logger"
@@ -23,7 +22,7 @@ func setTestCfg() error {
 	dir, _ := homedir.Dir()
 	cfgDir := path.Join(dir, ".ellcrys_test")
 	os.MkdirAll(cfgDir, 0700)
-	cfg, err = util.LoadCfg(cfgDir)
+	cfg, err = configdir.LoadCfg(cfgDir)
 	cfg.Node.Dev = true
 	cfg.Node.MaxAddrsExpected = 5
 	cfg.Node.Test = true

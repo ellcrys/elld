@@ -395,6 +395,7 @@ func (n *Node) ip() net.IP {
 // It is bad when:
 // - It has no timestamp
 // - The timestamp is 10 minutes in the future or over 3 hours ago
+// TODO: Also check of history of failed connection attempts
 func (n *Node) IsBadTimestamp() bool {
 	if n.Timestamp.IsZero() {
 		return true
@@ -406,4 +407,10 @@ func (n *Node) IsBadTimestamp() bool {
 	}
 
 	return false
+}
+
+func (n *Node) createTx() error {
+	// tx := &wire.NewTransaction(wire.TxTypeRepoCreate, 1, "somebody", n.)
+	// return n.txPool.Put()
+	return nil
 }
