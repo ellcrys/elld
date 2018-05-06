@@ -1,17 +1,22 @@
 package vm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"strconv"
+	"strings"
+	"sync"
 
 	docker "github.com/fsouza/go-dockerclient"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/phayes/freeport"
+	"github.com/ybbus/jsonrpc"
 )
 
 //Container struct for managing docker containers
@@ -20,6 +25,7 @@ type Container struct {
 	execpath string
 	ID       string
 	client   *docker.Client
+	service  jsonrpc.RPCClient
 }
 
 //ContractManifest defines the project metadata
@@ -54,6 +60,7 @@ func NewContainer(contractID string) (*Container, error) {
 
 	ctx := context.Background()
 	//new docker client
+	//endpoint := "unix:///var/run/docker.sock"
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		return nil, err
@@ -105,7 +112,7 @@ func NewContainer(contractID string) (*Container, error) {
 
 	json.Unmarshal(manifest, &contractManifest)
 
-	if contractManifest.Language != "" {
+	if contractManifest.Language == "" {
 		return nil, fmt.Errorf("Language undefined :%s", err)
 	}
 
@@ -135,16 +142,57 @@ func NewContainer(contractID string) (*Container, error) {
 		PortBindings: ports,
 		Mounts:       mounts,
 	})
-
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &Container{
-		port:     availablePort,
-		execpath: execpath,
-		ID:       container.ID,
-		client:   client,
-	}, nil
+
+	// show log
+	var stdoutBuffer bytes.Buffer
+
+	opts := docker.LogsOptions{
+		Container:    container.ID,
+		OutputStream: &stdoutBuffer,
+		Follow:       true,
+		Stdout:       true,
+	}
+
+	exit := make(chan bool)
+	go func() {
+		client.Logs(opts)
+		close(exit)
+	}()
+	stdoutCh := readerToChan(&stdoutBuffer, exit)
+
+	ret := make(chan *Container)
+
+	// print log
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+
+		for value := range <-stdoutCh {
+
+			select {
+			case msg1 := <-stdoutCh:
+				//println("out", value)
+				if value == 1 {
+					vmLog.Info(fmt.Sprintf("vm:Container => %s", msg1))
+					wg.Done()
+					ret <- &Container{
+						port:     availablePort,
+						execpath: execpath,
+						ID:       container.ID,
+						client:   client,
+					}
+					//println(ret)
+				}
+			}
+		}
+
+	}()
+	wg.Wait()
+
+	return <-ret, nil
 }
 
 //Destroy this container
@@ -157,4 +205,31 @@ func (container *Container) Destroy() (string, error) {
 	}
 
 	return container.ID, nil
+}
+
+func readerToChan(reader *bytes.Buffer, exit <-chan bool) <-chan string {
+	c := make(chan string)
+
+	go func() {
+		for {
+			select {
+			case <-exit:
+				close(c)
+				return
+			default:
+				line, err := reader.ReadString('\n')
+
+				if err != nil && err != io.EOF {
+					close(c)
+					return
+				}
+
+				line = strings.TrimSpace(line)
+				if line != "" {
+					c <- line
+				}
+			}
+		}
+	}()
+	return c
 }

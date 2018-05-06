@@ -23,7 +23,7 @@ func init() {
 
 //VM struct for Deploying and Invoking smart contracts
 type VM struct {
-	containers map[string]*Container
+	Containers map[string]*Container
 	log        logger.Logger
 }
 
@@ -36,7 +36,7 @@ type DeployConfig struct {
 //InvokeConfig invoke configuration struct
 type InvokeConfig struct {
 	ContractID string `json:"ContractID"`
-	Function   string `json:"FuncName"`
+	Function   string `json:"Function"`
 	Data       interface{}
 }
 
@@ -45,8 +45,8 @@ type InvokeResponseData struct {
 	Status string `json:"status"`
 	Code   int    `json:"code"`
 	Data   struct {
-		Message   string `json:"message"`
-		ReturnVal string `json:"returnVal"` //Json string or a string value
+		Message   string      `json:"message"`
+		ReturnVal interface{} `json:"returnVal"` //Json string or a string value
 	}
 }
 
@@ -63,7 +63,7 @@ func (t *RequestHandler) Terminate(val string, reply *string) error {
 const TempPath = "/.ellcrys/tmp/"
 
 //spawn
-func spawn(contractID string) (*Container, jsonrpc.RPCClient) {
+func spawn(contractID string) *Container {
 
 	//Create new container instance
 
@@ -83,7 +83,9 @@ func spawn(contractID string) (*Container, jsonrpc.RPCClient) {
 		vmLog.Fatal("Dial failed err: %v", err)
 	}
 
-	return container, conn
+	container.service = conn
+
+	return container
 }
 
 //Deploy a new contract project
@@ -98,30 +100,33 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 
 	err = archiver.Zip.Open(config.Archive, outputDir)
 	if err != nil {
-		vmLog.Error("Could not decompress archive %s", err)
+		vmLog.Error(fmt.Sprintf("Could not decompress archive %s", err))
 		return fmt.Errorf("Could not decompress archive %s", err)
 	}
 
-	vmLog.Info("Contract Deployed %s %s", config.ContractID, "√")
+	vmLog.Info(fmt.Sprintf("Contract Deployed %s %s", config.ContractID, "√"))
+
+	//Spawn the container
+	container := spawn(config.ContractID)
+
+	//add spawned container to list of running containers
+	vm.Containers[config.ContractID] = container
 
 	return nil
 }
 
 //Invoke a smart contract
-func (vm *VM) Invoke(config *InvokeConfig) (*Container, error) {
-	container, rpc := spawn(config.ContractID)
-
-	//add spawned container to list of running containers
-	vm.containers[config.ContractID] = container
-
+func (vm *VM) Invoke(config *InvokeConfig) error {
 	var args [1]*InvokeConfig
 	args[0] = config
 
-	resp, err := rpc.Call("invoke", args)
+	//Fetch contract container and invoke
+	container := vm.Containers[config.ContractID]
+	resp, err := container.service.Call("invoke", args)
 
 	if err != nil {
 		vmLog.Error(fmt.Sprintf("Could not invoke function %s : %s", config.Function, err))
-		return nil, fmt.Errorf("Could not invoke function %s : %s", config.Function, err)
+		return fmt.Errorf("Could not invoke function %s : %s", config.Function, err)
 	}
 
 	var res *InvokeResponseData
@@ -133,7 +138,7 @@ func (vm *VM) Invoke(config *InvokeConfig) (*Container, error) {
 	err = json.Unmarshal(details, &res)
 	if err != nil {
 		vmLog.Error(fmt.Sprintf("Could not retrieve response from %s : %s", config.Function, err))
-		return nil, fmt.Errorf("Could not retrieve response from %s : %s", config.Function, err)
+		return fmt.Errorf("Could not retrieve response from %s : %s", config.Function, err)
 	}
 	//response status
 	status := res.Status
@@ -141,28 +146,29 @@ func (vm *VM) Invoke(config *InvokeConfig) (*Container, error) {
 	data := res.Data
 
 	if err != nil {
-		vmLog.Error("Error reading response %s", err)
-		return nil, fmt.Errorf("Error reading response %s", err)
+		vmLog.Error(fmt.Sprintf("Error reading response %s", err))
+		return fmt.Errorf("Error reading response %s", err)
 	}
 
 	//Handle error response from function
 	if status != "" && status == "error" {
-		vmLog.Error("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
-		return nil, fmt.Errorf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
+		vmLog.Error(fmt.Sprintf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function))
+		return fmt.Errorf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
 	}
 
 	//Handle success response from function
 	if status != "" && status == "success" {
-		vmLog.Info("Code: %d %s", res.Code, "√")
+		vmLog.Info(fmt.Sprintf("Code: %d function %s invoked at Contract:%s %s", res.Code, config.Function, config.ContractID, "√"))
+		vmLog.Info(fmt.Sprintf("Returned response from Contract: %s => %v", config.ContractID, res))
 	}
 
-	return container, nil
+	return nil
 }
 
 //Terminate a running contract
 func (vm *VM) Terminate(contractID string) (ID string, err error) {
 	//Find contract in list of running containers and terminate it
-	ID, err = vm.containers[contractID].Destroy()
+	ID, err = vm.Containers[contractID].Destroy()
 	if err != nil {
 		return "", err
 	}
@@ -184,11 +190,11 @@ func NewVM() *VM {
 		vmLog.Fatal("listen error: %s", e)
 	}
 
-	startServer(l)
+	go startServer(l)
 
 	return &VM{
 		log:        vmLog,
-		containers: containers,
+		Containers: containers,
 	}
 }
 
@@ -197,7 +203,7 @@ func startServer(l net.Listener) {
 	err := http.Serve(l, nil)
 
 	if err != nil {
-		vmLog.Fatal("Error serving: %s", err)
+		vmLog.Fatal(fmt.Sprintf("Error serving: %s", err))
 	}
 
 }
