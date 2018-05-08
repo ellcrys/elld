@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/cenkalti/rpc2"
+	"github.com/cenkalti/rpc2/jsonrpc"
 	logger "github.com/ellcrys/druid/util/logger"
-	"github.com/ellcrys/rpc2"
 	"github.com/mholt/archiver"
 	homedir "github.com/mitchellh/go-homedir"
 )
@@ -74,12 +75,12 @@ func (vm *VM) spawn(contractID string) *Container {
 
 	//container address
 	addr := "127.0.0.1:" + strconv.Itoa(container.port)
-	conn, err := net.Dial("tcp", addr)
+	conn, err := net.Dial("tcp4", addr)
 	if err != nil {
 		vmLog.Fatal("Dial failed err: %v", err)
 	}
 	//Dial container
-	client := rpc2.NewClient(conn)
+	client := rpc2.NewClientWithCodec(jsonrpc.NewJSONCodec(conn))
 	if err != nil {
 		vmLog.Fatal("Dial failed err: %v", err)
 	}
@@ -111,7 +112,7 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	defer wg.Wait()
+
 	go func() {
 		err = archiver.Zip.Open(config.Archive, outputDir)
 		if err != nil {
@@ -120,8 +121,8 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 		}
 		wg.Done()
 	}()
-
-	vmLog.Debug(fmt.Sprintf("Contract Deployed %s %s", config.ContractID, "√"))
+	wg.Wait()
+	vmLog.Info(fmt.Sprintf("Contract Deployed %s %s", config.ContractID, "√"))
 
 	//Spawn the container
 	container := vm.spawn(config.ContractID)
@@ -139,6 +140,8 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 
 	//Fetch contract container and invoke
 	container := vm.Containers[config.ContractID]
+
+	go container.service.Run()
 
 	//Handle response to container
 
@@ -176,13 +179,17 @@ func (vm *VM) Invoke(config *InvokeConfig) error {
 		if status != "" && status == "success" {
 			vmLog.Info(fmt.Sprintf("Returned response from Contract: %s => %v", config.ContractID, res))
 		}
-		client.Close()
+		//client.Close()
 		return nil
 	})
 
-	go container.service.Run()
+	invokedata, err := json.Marshal(&args)
+	if err != nil {
+		fmt.Printf("%s", err)
+		return err
+	}
 
-	_ = container.service.Call("invoke", args, nil)
+	_ = container.service.Call("invoke", invokedata, nil)
 
 	return nil
 }

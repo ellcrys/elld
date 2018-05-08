@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/ellcrys/rpc2"
+	"github.com/cenkalti/rpc2"
 	docker "github.com/fsouza/go-dockerclient"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/phayes/freeport"
@@ -46,7 +46,7 @@ func NewContainer(contractID string) (*Container, error) {
 	}
 
 	//assign executable path
-	execpath = fmt.Sprintf("%s/%s", usrdir+TempPath, contractID)
+	execpath = fmt.Sprintf("%s%s", usrdir+TempPath, contractID)
 
 	//Check if docker is installed
 	// hasDocker := HasDocker()
@@ -55,7 +55,7 @@ func NewContainer(contractID string) (*Container, error) {
 	// 	return nil, errors.New("Please install docker")
 	// }
 
-	vmLog.Debug("Initializing contract execution container")
+	vmLog.Info("Initializing contract execution container")
 
 	ctx := context.Background()
 	//new docker client
@@ -171,7 +171,7 @@ func NewContainer(contractID string) (*Container, error) {
 	loop:
 		for value := range <-stdoutCh {
 			select {
-			case <-stdoutCh:
+			case msg := <-stdoutCh:
 				if value == 2 {
 					wg.Done()
 					ret <- &Container{
@@ -180,7 +180,7 @@ func NewContainer(contractID string) (*Container, error) {
 						ID:       container.ID,
 						client:   client,
 					}
-					vmLog.Debug(fmt.Sprintf("vm:Container => %s", "done"))
+					vmLog.Info(fmt.Sprintf("vm:Container => %s", msg))
 					break loop
 				}
 			}
