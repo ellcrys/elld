@@ -95,6 +95,21 @@ list is lexicographically ordered, the most recently created account will the la
 	},
 }
 
+// var accountUpdateCmd = &cobra.Command{
+// 	Use:   "update",
+// 	Short: "Update an account",
+// 	Long: `NAME:
+// druid account update [options] <address>
+
+// This command allows you to update the password of an account and to
+// convert an account encrypted in an old format to a new one.
+// `,
+// 	Run: func(cmd *cobra.Command, args []string) {
+// 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+// 		am.List()
+// 	},
+// }
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)

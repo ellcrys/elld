@@ -10,12 +10,8 @@ import (
 	"io/ioutil"
 	"os"
 	path "path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
-
-	"github.com/dustin/go-humanize"
 
 	"github.com/fatih/color"
 
@@ -24,6 +20,8 @@ import (
 	"github.com/ellcrys/druid/crypto"
 	"github.com/segmentio/go-prompt"
 )
+
+var accountEncryptionVersion = "0.0.1"
 
 // AccountManager defines functionalities to create,
 // update, fetch and import accounts. An account encapsulates
@@ -111,6 +109,7 @@ func (am *AccountManager) Create(pwd string) error {
 		"addr": address.Addr(),
 		"sk":   address.PrivKey().Base58(),
 		"pk":   address.PubKey().Base58(),
+		"v":    accountEncryptionVersion,
 	})
 	ct, err := util.Encrypt(acctDataBs, passphraseSha256[:])
 	if err != nil {
@@ -133,31 +132,6 @@ func (am *AccountManager) Create(pwd string) error {
 
 	fmt.Println("New account created, encrypted and stored")
 	fmt.Println("Address:", color.CyanString(address.Addr()))
-
-	return nil
-}
-
-// List fetches and lists all accounts
-func (am *AccountManager) List() error {
-
-	files, err := ioutil.ReadDir(am.accountDir)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(fmt.Sprintf("%s                                %s", color.HiBlackString("Address"), color.HiBlackString("Date Created")))
-
-	for _, f := range files {
-		if !f.IsDir() {
-			m, _ := regexp.Match("[0-9]{10}_[a-zA-Z0-9]{34,}", []byte(f.Name()))
-			if m {
-				nameParts := strings.Split(f.Name(), "_")
-				unixTime, _ := strconv.ParseInt(nameParts[0], 10, 64)
-				timeCreated := time.Unix(unixTime, 0)
-				fmt.Println(fmt.Sprintf("%s     %s", color.CyanString(nameParts[1]), humanize.Time(timeCreated)))
-			}
-		}
-	}
 
 	return nil
 }
