@@ -13,26 +13,6 @@ message HandshakeResponse {
     bytes sig = 2;                      // message signature
 }
 
-
-//Contract rpc Service
-service ContractService {
-    rpc ContractInvoke(ContractInvokeRequest) returns (ContractInvokeResponse) {};
-}
-
-//ContractInvokeRequest represents a request to invoke a smart contract
-message ContractInvokeRequest {
-    string function = 1;    // smart contract function
-    string contractID = 2; // contract id
-    bytes data = 3;         // payload
-}
-
-//ContractInvokeResponse is a response to the ContractService message
-message ContractInvokeResponse {
-    string status = 1;  // status of the request
-    bytes data = 2;     // payload
-
-}
-
 // GetAddr is used to request for addresses from other peers
 message GetAddr {
 }
