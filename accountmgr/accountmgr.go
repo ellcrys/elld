@@ -9,15 +9,16 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	path "path/filepath"
+	"path"
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcutil/base58"
+
 	"github.com/fatih/color"
 
-	"github.com/ellcrys/druid/util"
-
 	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/util"
 	"github.com/segmentio/go-prompt"
 )
 
@@ -61,6 +62,67 @@ func (am *AccountManager) askForPassword() (string, error) {
 	}
 }
 
+// askForPasswordOnce is like askForPassword but it does not
+// ask to confirm password.
+func (am *AccountManager) askForPasswordOnce() (string, error) {
+	for {
+
+		passphrase := prompt.Password("Passphrase")
+		if len(passphrase) == 0 {
+			continue
+		}
+
+		return passphrase, nil
+	}
+}
+
+// createAccount creates a new account
+func (am *AccountManager) createAccount(address *crypto.Address, passphrase string) error {
+
+	if address == nil {
+		return fmt.Errorf("address is required")
+	}
+
+	if passphrase == "" {
+		return fmt.Errorf("passphrase is required")
+	}
+
+	// hash passphrase to get 32 bit encryption key
+	passphraseHardened := hardenPassword([]byte(passphrase))
+
+	// construct, json encode and encrypt account data
+	acctDataBs, _ := json.Marshal(map[string]string{
+		"addr": address.Addr(),
+		"sk":   address.PrivKey().Base58(),
+		"pk":   address.PubKey().Base58(),
+		"v":    accountEncryptionVersion,
+	})
+
+	// base58 check encode
+	b58AcctBs := base58.CheckEncode(acctDataBs, 1)
+
+	ct, err := util.Encrypt([]byte(b58AcctBs), passphraseHardened[:])
+	if err != nil {
+		return err
+	}
+
+	// persist encrypted account data
+	now := time.Now().Unix()
+	fileName := path.Join(am.accountDir, fmt.Sprintf("%d_%s", now, address.Addr()))
+	f, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.Write(ct)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Create creates a new account and interactively obtains
 // encryption passphrase.
 // If pwd is provide and it is not a file path, it is used as
@@ -92,9 +154,6 @@ func (am *AccountManager) Create(pwd string) error {
 		passphrase = pwd
 	}
 
-	// hash passphrase to get 32 bit encryption key
-	passphraseSha256 := sha256.Sum256([]byte(passphrase))
-
 	// create address using random seed
 	seed := make([]byte, 32)
 	io.ReadFull(rand.Reader, seed)
@@ -104,29 +163,7 @@ func (am *AccountManager) Create(pwd string) error {
 		return err
 	}
 
-	// construct, json encode and encrypt account data
-	acctDataBs, _ := json.Marshal(map[string]string{
-		"addr": address.Addr(),
-		"sk":   address.PrivKey().Base58(),
-		"pk":   address.PubKey().Base58(),
-		"v":    accountEncryptionVersion,
-	})
-	ct, err := util.Encrypt(acctDataBs, passphraseSha256[:])
-	if err != nil {
-		return err
-	}
-
-	// persist encrypted account data
-	now := time.Now().Unix()
-	fileName := path.Join(am.accountDir, fmt.Sprintf("%d_%s", now, address.Addr()))
-	f, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	_, err = f.Write(ct)
-	if err != nil {
+	if err := am.createAccount(address, passphrase); err != nil {
 		return err
 	}
 
@@ -134,4 +171,14 @@ func (am *AccountManager) Create(pwd string) error {
 	fmt.Println("Address:", color.CyanString(address.Addr()))
 
 	return nil
+}
+
+func printErr(msg string, args ...interface{}) {
+	fmt.Println(color.RedString("Error:"), fmt.Sprintf(msg, args...))
+}
+
+// harden improves a password passed by a user.
+// TODO: use a proper KDF
+func hardenPassword(pass []byte) [32]byte {
+	return sha256.Sum256(pass)
 }
