@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
+	"golang.org/x/crypto/scrypt"
 
 	"github.com/fatih/color"
 
@@ -22,7 +23,9 @@ import (
 	"github.com/segmentio/go-prompt"
 )
 
-var accountEncryptionVersion = "0.0.1"
+var (
+	accountEncryptionVersion = "0.0.1"
+)
 
 // AccountManager defines functionalities to create,
 // update, fetch and import accounts. An account encapsulates
@@ -177,8 +180,17 @@ func printErr(msg string, args ...interface{}) {
 	fmt.Println(color.RedString("Error:"), fmt.Sprintf(msg, args...))
 }
 
-// harden improves a password passed by a user.
-// TODO: use a proper KDF
-func hardenPassword(pass []byte) [32]byte {
-	return sha256.Sum256(pass)
+// harden improves a password's security and hardens it against
+// bruteforce attacks by passing it to an RDF like scrypt.
+func hardenPassword(pass []byte) []byte {
+
+	passHash := sha256.Sum256(pass)
+	var salt = passHash[16:]
+
+	newPass, err := scrypt.Key(pass, salt, 32768, 8, 1, 32)
+	if err != nil {
+		panic(err)
+	}
+
+	return newPass
 }
