@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-
-	"github.com/ybbus/jsonrpc"
-
-	"net/http"
-	netrpc "net/rpc"
+	"strconv"
+	"sync"
 
 	logger "github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/rpc2"
 	"github.com/mholt/archiver"
 	homedir "github.com/mitchellh/go-homedir"
 )
@@ -63,7 +61,7 @@ func (t *RequestHandler) Terminate(val string, reply *string) error {
 const TempPath = "/.ellcrys/tmp/"
 
 //spawn
-func spawn(contractID string) *Container {
+func (vm *VM) spawn(contractID string) *Container {
 
 	//Create new container instance
 
@@ -75,15 +73,28 @@ func spawn(contractID string) *Container {
 	}
 
 	//container address
-	addr := fmt.Sprintf("http://127.0.0.1:%d", container.port)
-
+	addr := "127.0.0.1:" + strconv.Itoa(container.port)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		vmLog.Fatal("Dial failed err: %v", err)
+	}
 	//Dial container
-	conn := jsonrpc.NewClient(addr)
+	client := rpc2.NewClient(conn)
 	if err != nil {
 		vmLog.Fatal("Dial failed err: %v", err)
 	}
 
-	container.service = conn
+	container.service = client
+
+	//Handle terminate request from container
+	container.service.Handle("terminate", func(client *rpc2.Client, args interface{}, resp *interface{}) error {
+		ID, err := vm.Terminate(contractID)
+		if err != nil {
+			return fmt.Errorf("Could not terminate Contract %s : %s", contractID, err)
+		}
+		vmLog.Info(fmt.Sprintf("Contract %s terminated successfully", ID))
+		return nil
+	})
 
 	return container
 }
@@ -98,16 +109,22 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 	//Save contrtact at temp path with folder named after it's ID. E.g: /usr/home/.ellcrys/tmp/83545762936
 	outputDir := fmt.Sprintf("%s%s%s", usrdir, TempPath, config.ContractID)
 
-	err = archiver.Zip.Open(config.Archive, outputDir)
-	if err != nil {
-		vmLog.Error(fmt.Sprintf("Could not decompress archive %s", err))
-		return fmt.Errorf("Could not decompress archive %s", err)
-	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	defer wg.Wait()
+	go func() {
+		err = archiver.Zip.Open(config.Archive, outputDir)
+		if err != nil {
+			vmLog.Error(fmt.Sprintf("Could not decompress archive %s", err))
 
-	vmLog.Info(fmt.Sprintf("Contract Deployed %s %s", config.ContractID, "√"))
+		}
+		wg.Done()
+	}()
+
+	vmLog.Debug(fmt.Sprintf("Contract Deployed %s %s", config.ContractID, "√"))
 
 	//Spawn the container
-	container := spawn(config.ContractID)
+	container := vm.spawn(config.ContractID)
 
 	//add spawned container to list of running containers
 	vm.Containers[config.ContractID] = container
@@ -117,56 +134,63 @@ func (vm *VM) Deploy(config *DeployConfig) error {
 
 //Invoke a smart contract
 func (vm *VM) Invoke(config *InvokeConfig) error {
-	var args [1]*InvokeConfig
-	args[0] = config
+	var args *InvokeConfig
+	args = config
 
 	//Fetch contract container and invoke
 	container := vm.Containers[config.ContractID]
-	resp, err := container.service.Call("invoke", args)
 
-	if err != nil {
-		vmLog.Error(fmt.Sprintf("Could not invoke function %s : %s", config.Function, err))
-		return fmt.Errorf("Could not invoke function %s : %s", config.Function, err)
-	}
+	//Handle response to container
 
-	var res *InvokeResponseData
+	container.service.Handle("response", func(client *rpc2.Client, args interface{}, resp *interface{}) error {
 
-	//Get RPC results
-	details, _ := json.Marshal(resp.Result)
+		buf, err := json.Marshal(args)
+		if err != nil {
+			panic(err)
+		}
+		var res *InvokeResponseData
 
-	//Pass results unto res pointer
-	err = json.Unmarshal(details, &res)
-	if err != nil {
-		vmLog.Error(fmt.Sprintf("Could not retrieve response from %s : %s", config.Function, err))
-		return fmt.Errorf("Could not retrieve response from %s : %s", config.Function, err)
-	}
-	//response status
-	status := res.Status
-	//response data
-	data := res.Data
+		//Pass results unto res pointer
+		err = json.Unmarshal(buf, &res)
+		if err != nil {
+			vmLog.Error(fmt.Sprintf("Could not retrieve response from contract %s : %s", config.ContractID, err))
+			return fmt.Errorf("Could not retrieve response from contract %s : %s", config.ContractID, err)
+		}
+		//response status
+		status := res.Status
+		//response data
+		data := res.Data
 
-	if err != nil {
-		vmLog.Error(fmt.Sprintf("Error reading response %s", err))
-		return fmt.Errorf("Error reading response %s", err)
-	}
+		if err != nil {
+			vmLog.Error(fmt.Sprintf("Error reading response %s", err))
+			return fmt.Errorf("Error reading response %s", err)
+		}
 
-	//Handle error response from function
-	if status != "" && status == "error" {
-		vmLog.Error(fmt.Sprintf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function))
-		return fmt.Errorf("Code: %d => function %s returned an error %s", res.Code, data.Message, config.Function)
-	}
+		//Handle error response from function
+		if status != "" && status == "error" {
+			vmLog.Error(fmt.Sprintf("Code: %d => Contract %s returned an error %s", res.Code, config.ContractID, data.Message))
+			return fmt.Errorf("Code: %d => Contract %s returned an error %s", res.Code, config.ContractID, data.Message)
+		}
 
-	//Handle success response from function
-	if status != "" && status == "success" {
-		vmLog.Info(fmt.Sprintf("Code: %d function %s invoked at Contract:%s %s", res.Code, config.Function, config.ContractID, "√"))
-		vmLog.Info(fmt.Sprintf("Returned response from Contract: %s => %v", config.ContractID, res))
-	}
+		//Handle success response from function
+		if status != "" && status == "success" {
+			vmLog.Info(fmt.Sprintf("Returned response from Contract: %s => %v", config.ContractID, res))
+		}
+		client.Close()
+		return nil
+	})
+
+	go container.service.Run()
+
+	_ = container.service.Call("invoke", args, nil)
 
 	return nil
 }
 
 //Terminate a running contract
 func (vm *VM) Terminate(contractID string) (ID string, err error) {
+	defer vm.Containers[contractID].service.Close()
+
 	//Find contract in list of running containers and terminate it
 	ID, err = vm.Containers[contractID].Destroy()
 	if err != nil {
@@ -180,30 +204,8 @@ func (vm *VM) Terminate(contractID string) (ID string, err error) {
 func NewVM() *VM {
 	containers := make(map[string]*Container)
 
-	//Register request handler
-	netrpc.Register(new(RequestHandler))
-
-	netrpc.HandleHTTP()
-
-	l, e := net.Listen("tcp", ":4000")
-	if e != nil {
-		vmLog.Fatal("listen error: %s", e)
-	}
-
-	go startServer(l)
-
 	return &VM{
 		log:        vmLog,
 		Containers: containers,
 	}
-}
-
-func startServer(l net.Listener) {
-	vmLog.Info("VM Server listening at 4000")
-	err := http.Serve(l, nil)
-
-	if err != nil {
-		vmLog.Fatal(fmt.Sprintf("Error serving: %s", err))
-	}
-
 }

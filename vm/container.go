@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,10 +12,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ellcrys/rpc2"
 	docker "github.com/fsouza/go-dockerclient"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/phayes/freeport"
-	"github.com/ybbus/jsonrpc"
 )
 
 //Container struct for managing docker containers
@@ -25,7 +24,7 @@ type Container struct {
 	execpath string
 	ID       string
 	client   *docker.Client
-	service  jsonrpc.RPCClient
+	service  *rpc2.Client
 }
 
 //ContractManifest defines the project metadata
@@ -50,13 +49,13 @@ func NewContainer(contractID string) (*Container, error) {
 	execpath = fmt.Sprintf("%s/%s", usrdir+TempPath, contractID)
 
 	//Check if docker is installed
-	hasDocker := HasDocker()
-	if !hasDocker {
-		vmLog.Error("Please install docker")
-		return nil, errors.New("Please install docker")
-	}
+	// hasDocker := HasDocker()
+	// if !hasDocker {
+	// 	vmLog.Error("Please install docker")
+	// 	return nil, errors.New("Please install docker")
+	// }
 
-	vmLog.Info("Initializing contract execution container")
+	vmLog.Debug("Initializing contract execution container")
 
 	ctx := context.Background()
 	//new docker client
@@ -169,14 +168,11 @@ func NewContainer(contractID string) (*Container, error) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-
+	loop:
 		for value := range <-stdoutCh {
-
 			select {
-			case msg1 := <-stdoutCh:
-				//println("out", value)
-				if value == 1 {
-					vmLog.Info(fmt.Sprintf("vm:Container => %s", msg1))
+			case <-stdoutCh:
+				if value == 2 {
 					wg.Done()
 					ret <- &Container{
 						port:     availablePort,
@@ -184,7 +180,8 @@ func NewContainer(contractID string) (*Container, error) {
 						ID:       container.ID,
 						client:   client,
 					}
-					//println(ret)
+					vmLog.Debug(fmt.Sprintf("vm:Container => %s", "done"))
+					break loop
 				}
 			}
 		}
@@ -199,7 +196,12 @@ func NewContainer(contractID string) (*Container, error) {
 func (container *Container) Destroy() (string, error) {
 
 	err := container.client.StopContainer(container.ID, 1000)
-
+	if err != nil {
+		return "", err
+	}
+	container.client.RemoveContainer(docker.RemoveContainerOptions{
+		ID: container.ID,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -209,8 +211,8 @@ func (container *Container) Destroy() (string, error) {
 
 func readerToChan(reader *bytes.Buffer, exit <-chan bool) <-chan string {
 	c := make(chan string)
-
 	go func() {
+
 		for {
 			select {
 			case <-exit:
@@ -231,5 +233,6 @@ func readerToChan(reader *bytes.Buffer, exit <-chan bool) <-chan string {
 			}
 		}
 	}()
+
 	return c
 }
