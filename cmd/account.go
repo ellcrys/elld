@@ -95,24 +95,22 @@ list is lexicographically ordered, the most recently created account will the la
 	},
 }
 
-// var accountUpdateCmd = &cobra.Command{
-// 	Use:   "update",
-// 	Short: "Update an account",
-// 	Long: `NAME:
-// druid account update [options] <address>
-
-// This command allows you to update the password of an account and to
-// convert an account encrypted in an old format to a new one.
-// `,
-// 	Run: func(cmd *cobra.Command, args []string) {
-// 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-// 		am.List()
-// 	},
-// }
+var accountUpdateCmd = &cobra.Command{
+	Use:   "update [flags] <address>",
+	Short: "Update an account",
+	Long: `This command allows you to update the password of an account and to
+convert an account encrypted in an old format to a new one.
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+		am.Update(args[0])
+	},
+}
 
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)
+	accountCmd.AddCommand(accountUpdateCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	rootCmd.AddCommand(accountCmd)
 }
