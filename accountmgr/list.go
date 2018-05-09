@@ -66,8 +66,8 @@ func (am *AccountManager) GetAccountsOnDisk() (accounts []*StoredAccount, err er
 	return
 }
 
-// List fetches and lists all accounts
-func (am *AccountManager) List() error {
+// ListCmd fetches and lists all accounts
+func (am *AccountManager) ListCmd() error {
 
 	fmt.Println(fmt.Sprintf("%s%s%s",
 		color.HiBlackString("Address"),

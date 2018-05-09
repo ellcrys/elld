@@ -28,12 +28,16 @@ var (
 	accountEncryptionVersion = "0.0.1"
 )
 
+// PasswordPrompt reprents a function that can collect user input
+type PasswordPrompt func(string, ...interface{}) string
+
 // AccountManager defines functionalities to create,
 // update, fetch and import accounts. An account encapsulates
 // an address and private key and are stored in an encrypted format
 // locally.
 type AccountManager struct {
-	accountDir string
+	accountDir  string
+	getPassword PasswordPrompt
 }
 
 // New creates an account manager.
@@ -42,6 +46,7 @@ type AccountManager struct {
 func New(accountDir string) *AccountManager {
 	am := new(AccountManager)
 	am.accountDir = accountDir
+	am.getPassword = prompt.Password
 	return am
 }
 
@@ -50,12 +55,12 @@ func New(accountDir string) *AccountManager {
 func (am *AccountManager) askForPassword() (string, error) {
 	for {
 
-		passphrase := prompt.Password("Passphrase")
+		passphrase := am.getPassword("Passphrase")
 		if len(passphrase) == 0 {
 			continue
 		}
 
-		passphraseRepeat := prompt.Password("Repeat Passphrase")
+		passphraseRepeat := am.getPassword("Repeat Passphrase")
 
 		if passphrase != passphraseRepeat {
 			fmt.Println("Passphrases did not match")
@@ -71,7 +76,7 @@ func (am *AccountManager) askForPassword() (string, error) {
 func (am *AccountManager) askForPasswordOnce() (string, error) {
 	for {
 
-		passphrase := prompt.Password("Passphrase")
+		passphrase := am.getPassword("Passphrase")
 		if len(passphrase) == 0 {
 			continue
 		}
@@ -136,13 +141,13 @@ func (am *AccountManager) createAccount(address *crypto.Address, passphrase stri
 	return nil
 }
 
-// Create creates a new account and interactively obtains
+// CreateCmd creates a new account and interactively obtains
 // encryption passphrase.
 // If pwd is provide and it is not a file path, it is used as
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
 // is set, interactive password collection is not used.
-func (am *AccountManager) Create(pwd string) error {
+func (am *AccountManager) CreateCmd(pwd string) error {
 
 	var passphrase string
 	var err error
