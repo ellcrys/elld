@@ -64,6 +64,13 @@ func NewAddress(seed *int64) (*Address, error) {
 	return addr, nil
 }
 
+// NewAddressFromPrivKey creates a new address from a private key
+func NewAddressFromPrivKey(sk *PrivKey) *Address {
+	return &Address{
+		privKey: sk,
+	}
+}
+
 func idFromPublicKey(pk crypto.PubKey) (string, error) {
 	b, err := pk.Bytes()
 	if err != nil {
