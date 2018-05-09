@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
+	funk "github.com/thoas/go-funk"
 	"golang.org/x/crypto/scrypt"
 
 	"github.com/fatih/color"
@@ -83,11 +84,20 @@ func (am *AccountManager) askForPasswordOnce() (string, error) {
 func (am *AccountManager) createAccount(address *crypto.Address, passphrase string) error {
 
 	if address == nil {
-		return fmt.Errorf("address is required")
+		return fmt.Errorf("Address is required")
 	}
 
 	if passphrase == "" {
-		return fmt.Errorf("passphrase is required")
+		return fmt.Errorf("Passphrase is required")
+	}
+
+	exist, err := am.AccountExist(address.Addr())
+	if err != nil {
+		return err
+	}
+
+	if exist {
+		return fmt.Errorf("Account already exist")
 	}
 
 	// hash passphrase to get 32 bit encryption key
@@ -149,6 +159,12 @@ func (am *AccountManager) Create(pwd string) error {
 	if len(pwd) > 0 && (os.IsPathSeparator(pwd[0]) || pwd[:2] == "./") {
 		content, err := ioutil.ReadFile(pwd)
 		if err != nil {
+			if funk.Contains(err.Error(), "no such file") {
+				printErr("Password file {%s} not found.", pwd)
+			}
+			if funk.Contains(err.Error(), "is a directory") {
+				printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+			}
 			return err
 		}
 		passphrase = string(content)
@@ -167,6 +183,7 @@ func (am *AccountManager) Create(pwd string) error {
 	}
 
 	if err := am.createAccount(address, passphrase); err != nil {
+		printErr(err.Error())
 		return err
 	}
 

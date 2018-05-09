@@ -15,6 +15,11 @@ import (
 // Update fetches and lists all accounts
 func (am *AccountManager) Update(address string) error {
 
+	if len(address) == 0 {
+		printErr("Address is required")
+		return fmt.Errorf("Address is required")
+	}
+
 	// find the account with a matching address
 	accounts, err := am.GetAccountsOnDisk()
 	if err != nil {
