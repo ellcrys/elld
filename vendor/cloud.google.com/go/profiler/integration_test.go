@@ -78,7 +78,7 @@ git clone https://code.googlesource.com/gocloud $GOCLOUD_HOME >/dev/null
 
 cd $GOCLOUD_HOME/profiler/busybench
 git reset --hard {{.Commit}}
-go get -v >/dev/null
+go get >/dev/null
 
 # Run benchmark with agent
 go run busybench.go --service="{{.Service}}" --mutex_profiling="{{.MutexProfiling}}"
@@ -245,7 +245,7 @@ func TestAgentIntegration(t *testing.T) {
 			timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*25)
 			defer cancel()
 			if err := gceTr.PollForSerialOutput(timeoutCtx, &tc.InstanceConfig, benchFinishString); err != nil {
-				t.Fatal(err)
+				t.Fatalf("PollForSerialOutput() got error: %v", err)
 			}
 
 			timeNow := time.Now()

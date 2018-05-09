@@ -26,6 +26,8 @@ type Protocol interface {
 	OnAddr(net.Stream)
 	RelayAddr([]*wire.Address) error
 	SelfAdvertise([]*Node) int
+	OnTx(net.Stream)
+	RelayTx(*wire.Transaction) error
 }
 
 // Inception represents the peer protocol

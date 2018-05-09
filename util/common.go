@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"math/big"
 	r "math/rand"
+	"os"
 	"sort"
 	"time"
 
-	"github.com/ellcrys/druid/configdir"
+	"github.com/shopspring/decimal"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -83,28 +84,31 @@ func NonZeroOrDefIn64(v int64, def int64) int64 {
 	return v
 }
 
-// LoadCfg loads the config file
-func LoadCfg(cfgDirPath string) (*configdir.Config, error) {
-
-	cfgDir, err := configdir.NewConfigDir(cfgDirPath)
+// StrToDec converts a numeric string to decimal.
+// Panics if val could not be converted to decimal.
+func StrToDec(val string) decimal.Decimal {
+	d, err := decimal.NewFromString(val)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
+	return d
+}
 
-	if err := cfgDir.Init(); err != nil {
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, err
+// IsPathOk checks if a path exist and whether
+// there are no permission errors
+func IsPathOk(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		return false
 	}
+	return true
+}
 
-	cfg, err := cfgDir.Load()
-	if err != nil {
-		return nil, err
+// IsFileOk checks if a path exists and it is a file
+func IsFileOk(path string) bool {
+	s, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		return false
 	}
-
-	cfg.SetConfigDir(cfgDir.Path())
-
-	return cfg, nil
+	return !s.IsDir()
 }

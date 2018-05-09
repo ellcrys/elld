@@ -1196,16 +1196,22 @@ type GoogleCloudDialogflowV2InputAudioConfig struct {
 	// PhraseHints: Optional. The collection of phrase hints which are used
 	// to boost accuracy
 	// of speech recognition.
-	// Refer to [Cloud Speech API
-	// documentation](/speech/docs/basics#phrase-hints)
+	// Refer to
+	// [Cloud Speech
+	// API
+	// documentation](https://cloud.google.com/speech-to-text/docs/basics
+	// #phrase-hints)
 	// for more details.
 	PhraseHints []string `json:"phraseHints,omitempty"`
 
 	// SampleRateHertz: Required. Sample rate (in Hertz) of the audio
 	// content sent in the query.
-	// Refer to [Cloud Speech API documentation](/speech/docs/basics) for
-	// more
-	// details.
+	// Refer to
+	// [Cloud Speech
+	// API
+	// documentation](https://cloud.google.com/speech-to-text/docs/basics
+	// ) for
+	// more details.
 	SampleRateHertz int64 `json:"sampleRateHertz,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "AudioEncoding") to
@@ -2835,13 +2841,13 @@ type GoogleCloudDialogflowV2QueryResult struct {
 	// confidence
 	// was not set.
 	//
-	// You should not rely on this field as it isn't guaranteed to be
-	// accurate, or
-	// even set. In particular this field isn't set in Webhook calls and
-	// for
-	// StreamingDetectIntent since the streaming endpoint has separate
-	// confidence
-	// estimates per portion of the audio in StreamingRecognitionResult.
+	// This field is not guaranteed to be accurate or set. In particular
+	// this
+	// field isn't set for StreamingDetectIntent since the streaming
+	// endpoint has
+	// separate confidence estimates per portion of the audio
+	// in
+	// StreamingRecognitionResult.
 	SpeechRecognitionConfidence float64 `json:"speechRecognitionConfidence,omitempty"`
 
 	// WebhookPayload: If the query was fulfilled by a webhook call, this
@@ -4921,13 +4927,13 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 	// confidence
 	// was not set.
 	//
-	// You should not rely on this field as it isn't guaranteed to be
-	// accurate, or
-	// even set. In particular this field isn't set in Webhook calls and
-	// for
-	// StreamingDetectIntent since the streaming endpoint has separate
-	// confidence
-	// estimates per portion of the audio in StreamingRecognitionResult.
+	// This field is not guaranteed to be accurate or set. In particular
+	// this
+	// field isn't set for StreamingDetectIntent since the streaming
+	// endpoint has
+	// separate confidence estimates per portion of the audio
+	// in
+	// StreamingRecognitionResult.
 	SpeechRecognitionConfidence float64 `json:"speechRecognitionConfidence,omitempty"`
 
 	// WebhookPayload: If the query was fulfilled by a webhook call, this

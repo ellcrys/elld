@@ -22,7 +22,6 @@ import (
 	"golang.org/x/build/dashboard"
 	"golang.org/x/build/internal/buildgo"
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
 )
 
@@ -65,23 +64,25 @@ func main() {
 	if !ok {
 		log.Fatalf("unknown host type %q", *hostType)
 	}
-	if !hconf.IsGCE() {
+	if !hconf.IsVM() {
 		log.Fatalf("host type %q is not a GCE host type", *hostType)
 	}
 	if *vmImage != "" {
 		hconf.VMImage = *vmImage
 	}
 
-	ts, err := google.DefaultTokenSource(context.Background())
+	env = buildenv.FromFlags()
+	ctx := context.Background()
+
+	creds, err := env.Credentials(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	env = buildenv.FromFlags()
-	computeSvc, _ = compute.New(oauth2.NewClient(context.TODO(), ts))
+	computeSvc, _ = compute.New(oauth2.NewClient(ctx, creds.TokenSource))
 
 	name := fmt.Sprintf("debug-temp-%d", time.Now().Unix())
 	log.Printf("Creating %s (with VM image %q)", name, hconf.VMImage)
-	bc, err := buildlet.StartNewVM(ts, name, *hostType, buildlet.VMOpts{
+	bc, err := buildlet.StartNewVM(creds, name, *hostType, buildlet.VMOpts{
 		Zone:                env.Zone,
 		ProjectID:           env.ProjectName,
 		DeleteIn:            15 * time.Minute,

@@ -105,28 +105,12 @@ func initIntegrationTest() func() {
 	}
 	testTableExpiration = time.Now().Add(10 * time.Minute).Round(time.Second)
 	return func() {
-		if err := deleteDataset(ctx, dataset); err != nil {
+		if err := dataset.DeleteWithContents(ctx); err != nil {
 			log.Printf("could not delete %s", dataset.DatasetID)
 		}
 	}
 }
 
-func deleteDataset(ctx context.Context, ds *Dataset) error {
-	it := ds.Tables(ctx)
-	for {
-		tbl, err := it.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		if err := tbl.Delete(ctx); err != nil {
-			return err
-		}
-	}
-	return ds.Delete(ctx)
-}
 func TestIntegration_TableCreate(t *testing.T) {
 	// Check that creating a record field with an empty schema is an error.
 	if client == nil {
@@ -167,7 +151,9 @@ func TestIntegration_TableCreateView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("table.create: Did not expect an error, got: %v", err)
 	}
-	view.Delete(ctx)
+	if err := view.Delete(ctx); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestIntegration_TableMetadata(t *testing.T) {
@@ -309,6 +295,28 @@ func TestIntegration_DatasetDelete(t *testing.T) {
 	}
 	if err := ds.Delete(ctx); err != nil {
 		t.Fatalf("deleting dataset %s: %v", ds.DatasetID, err)
+	}
+}
+
+func TestIntegration_DatasetDeleteWithContents(t *testing.T) {
+	if client == nil {
+		t.Skip("Integration tests skipped")
+	}
+	ctx := context.Background()
+	ds := client.Dataset(datasetIDs.New())
+	if err := ds.Create(ctx, nil); err != nil {
+		t.Fatalf("creating dataset %s: %v", ds.DatasetID, err)
+	}
+	table := ds.Table(tableIDs.New())
+	if err := table.Create(ctx, nil); err != nil {
+		t.Fatalf("creating table %s in dataset %s: %v", table.TableID, table.DatasetID, err)
+	}
+	// We expect failure here
+	if err := ds.Delete(ctx); err == nil {
+		t.Fatalf("non-recursive delete of dataset %s succeeded unexpectedly.", ds.DatasetID)
+	}
+	if err := ds.DeleteWithContents(ctx); err != nil {
+		t.Fatalf("deleting recursively dataset %s: %v", ds.DatasetID, err)
 	}
 }
 
@@ -1570,7 +1578,7 @@ func TestIntegration_TableUseLegacySQL(t *testing.T) {
 		} else if !gotErr && test.err {
 			t.Errorf("%+v:\nsucceeded, but want error", test)
 		}
-		view.Delete(ctx)
+		_ = view.Delete(ctx)
 	}
 }
 

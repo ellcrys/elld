@@ -14,9 +14,15 @@ type PeerConfig struct {
 	MaxConnections   int64    `json:"maxConnections"`
 }
 
+// TxPoolConfig defines configuration for the transaction pool
+type TxPoolConfig struct {
+	Capacity int64 `json:"cap"`
+}
+
 // Config represents the client's configuration
 type Config struct {
-	Node      *PeerConfig `json:"peer"`
+	Node      *PeerConfig   `json:"peer"`
+	TxPool    *TxPoolConfig `json:"txPool"`
 	configDir string
 }
 
@@ -33,5 +39,18 @@ func (c *Config) ConfigDir() string {
 var defaultConfig = Config{}
 
 func init() {
-	defaultConfig.Node = &PeerConfig{}
+
+	defaultConfig.Node = &PeerConfig{
+		GetAddrInterval:  1800,
+		PingInterval:     1800,
+		SelfAdvInterval:  1800,
+		CleanUpInterval:  600,
+		ConnEstInterval:  600,
+		MaxAddrsExpected: 1000,
+		MaxConnections:   100,
+	}
+
+	defaultConfig.TxPool = &TxPoolConfig{
+		Capacity: 1000,
+	}
 }

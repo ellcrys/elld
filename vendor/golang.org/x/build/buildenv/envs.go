@@ -7,9 +7,17 @@
 package buildenv
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"golang.org/x/oauth2/google"
+	compute "google.golang.org/api/compute/v1"
+	oauth2api "google.golang.org/api/oauth2/v2"
 )
 
 const (
@@ -42,6 +50,11 @@ type Environment struct {
 	// The GCP project name that the build infrastructure will be provisioned in.
 	// This field may be overridden as necessary without impacting other fields.
 	ProjectName string
+
+	// ProjectNumber is the GCP project's number, as visible in the admin console.
+	// This is used for things such as constructing the "email" of the default
+	// service account.
+	ProjectNumber int64
 
 	// The IsProd flag indicates whether production functionality should be
 	// enabled. When true, GCE and Kubernetes builders are enabled and the
@@ -142,6 +155,41 @@ func (e Environment) DashBase() string {
 	return Production.DashURL
 }
 
+// Credentials returns the credentials required to access the GCP environment.
+func (e Environment) Credentials(ctx context.Context) (*google.Credentials, error) {
+	scopes := []string{
+		// Cloud Platform should include all others, but the
+		// old code duplicated compute and the storage full
+		// control scopes, so I leave them here for now. They
+		// predated the all-encompassing "cloud platform"
+		// scope anyway.
+		// TODO: remove compute and DevstorageFullControlScope once verified to work
+		// without.
+		compute.CloudPlatformScope,
+		compute.ComputeScope,
+		compute.DevstorageFullControlScope,
+
+		// The coordinator needed the userinfo email scope for
+		// reporting to the perf dashboard running on App
+		// Engine at one point. The perf dashboard is down at
+		// the moment, but when it's back up we'll need this,
+		// and if we do other authenticated requests to App
+		// Engine apps, this would be useful.
+		oauth2api.UserinfoEmailScope,
+	}
+
+	// Prefer any "$HOME/keys/$PROJECT.key.json" file first.
+	keyFile := filepath.Join(os.Getenv("HOME"), "keys", e.ProjectName+".key.json")
+	if _, err := os.Stat(keyFile); err == nil {
+		jcred, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			return nil, err
+		}
+		return google.CredentialsFromJSON(ctx, jcred, scopes...)
+	}
+	return google.FindDefaultCredentials(ctx, scopes...)
+}
+
 // ByProjectID returns an Environment for the specified
 // project ID. It is currently limited to the symbolic-datum-552
 // and go-dashboard-dev projects.
@@ -167,12 +215,13 @@ func ByProjectID(projectID string) *Environment {
 // For local dev, override the project with the program's flag to set
 // a custom project.
 var Staging = &Environment{
-	ProjectName:  "go-dashboard-dev",
-	IsProd:       true,
-	Zone:         "us-central1-f",
-	ZonesToClean: []string{"us-central1-a", "us-central1-b", "us-central1-f"},
-	StaticIP:     "104.154.113.235",
-	MachineType:  "n1-standard-1",
+	ProjectName:   "go-dashboard-dev",
+	ProjectNumber: 302018677728,
+	IsProd:        true,
+	Zone:          "us-central1-f",
+	ZonesToClean:  []string{"us-central1-a", "us-central1-b", "us-central1-f"},
+	StaticIP:      "104.154.113.235",
+	MachineType:   "n1-standard-1",
 	KubeBuild: KubeConfig{
 		MinNodes:    1,
 		MaxNodes:    2,
@@ -197,12 +246,13 @@ var Staging = &Environment{
 // Production defines the environment that the coordinator and build
 // infrastructure is deployed to for production usage at build.golang.org.
 var Production = &Environment{
-	ProjectName:  "symbolic-datum-552",
-	IsProd:       true,
-	Zone:         "us-central1-f",
-	ZonesToClean: []string{"us-central1-f"},
-	StaticIP:     "107.178.219.46",
-	MachineType:  "n1-standard-4",
+	ProjectName:   "symbolic-datum-552",
+	ProjectNumber: 872405196845,
+	IsProd:        true,
+	Zone:          "us-central1-f",
+	ZonesToClean:  []string{"us-central1-f"},
+	StaticIP:      "107.178.219.46",
+	MachineType:   "n1-standard-4",
 	KubeBuild: KubeConfig{
 		MinNodes:    5,
 		MaxNodes:    5, // auto-scaling disabled

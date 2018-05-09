@@ -537,7 +537,7 @@ type Binding struct {
 	//
 	// * `user:{emailid}`: An email address that represents a specific
 	// Google
-	//    account. For example, `alice@gmail.com` or `joe@example.com`.
+	//    account. For example, `alice@gmail.com` .
 	//
 	//
 	// * `serviceAccount:{emailid}`: An email address that represents a
@@ -921,6 +921,22 @@ type ContainerStoppedEvent struct {
 
 	// ExitStatus: The exit status of the container.
 	ExitStatus int64 `json:"exitStatus,omitempty"`
+
+	// Stderr: The tail end of any content written to standard error by the
+	// container.
+	// To prevent this from being recorded if the action is known to
+	// emit
+	// large amounts of debugging noise or sensitive information, set
+	// the
+	// DISABLE_STANDARD_ERROR_CAPTURE flag.
+	//
+	// Note that only a small amount of the end of the stream is captured
+	// here.
+	// The entire stream is stored in the /google/logs directory mounted
+	// into
+	// each action, and may be copied off the machine as described
+	// elsewhere.
+	Stderr string `json:"stderr,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "ActionId") to
 	// unconditionally include in API requests. By default, fields with
@@ -2232,7 +2248,7 @@ func (s *OperationMetadata) MarshalJSON() ([]byte, error) {
 // specify access control policies for Cloud Platform resources.
 //
 //
-// A `Policy` consists of a list of `bindings`. A `Binding` binds a list
+// A `Policy` consists of a list of `bindings`. A `binding` binds a list
 // of
 // `members` to a `role`, where the members can be user accounts, Google
 // groups,
@@ -2240,7 +2256,7 @@ func (s *OperationMetadata) MarshalJSON() ([]byte, error) {
 // permissions
 // defined by IAM.
 //
-// **Example**
+// **JSON Example**
 //
 //     {
 //       "bindings": [
@@ -2251,7 +2267,7 @@ func (s *OperationMetadata) MarshalJSON() ([]byte, error) {
 //             "group:admins@example.com",
 //             "domain:google.com",
 //
-// "serviceAccount:my-other-app@appspot.gserviceaccount.com",
+// "serviceAccount:my-other-app@appspot.gserviceaccount.com"
 //           ]
 //         },
 //         {
@@ -2260,6 +2276,20 @@ func (s *OperationMetadata) MarshalJSON() ([]byte, error) {
 //         }
 //       ]
 //     }
+//
+// **YAML Example**
+//
+//     bindings:
+//     - members:
+//       - user:mike@example.com
+//       - group:admins@example.com
+//       - domain:google.com
+//       - serviceAccount:my-other-app@appspot.gserviceaccount.com
+//       role: roles/owner
+//     - members:
+//       - user:sean@example.com
+//       role: roles/viewer
+//
 //
 // For a description of IAM and its features, see the
 // [IAM developer's guide](https://cloud.google.com/iam/docs).

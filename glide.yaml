@@ -232,6 +232,17 @@ import:
   subpackages:
   - base85
 - package: github.com/sirupsen/logrus
+  version: master
+  repo: git@github.com:/sirupsen/logrus
+  vcs: git
+- package: gopkg.in/oleiade/lane.v1
+  version: ^1.0.0
+- package: github.com/shopspring/decimal
+- package: github.com/c-bata/go-prompt
+- package: github.com/robertkrimen/otto
+- package: github.com/fatih/color
+- package: github.com/segmentio/go-prompt
+- package: github.com/dustin/go-humanize
 testImport:
 - package: github.com/apex/log
   subpackages:

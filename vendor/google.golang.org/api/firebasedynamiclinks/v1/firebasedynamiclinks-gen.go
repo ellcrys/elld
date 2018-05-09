@@ -43,7 +43,7 @@ var _ = ctxhttp.Do
 const apiId = "firebasedynamiclinks:v1"
 const apiName = "firebasedynamiclinks"
 const apiVersion = "v1"
-const basePath = "https://firebasedynamiclinks-ipv6.googleapis.com/"
+const basePath = "https://firebasedynamiclinks.googleapis.com/"
 
 // OAuth2 scopes used by this API.
 const (
@@ -480,9 +480,8 @@ type DynamicLinkEventStat struct {
 	//   "IOS" - Represents iOS platform.
 	// All apps and browsers on iOS are classfied in this category.
 	//   "DESKTOP" - Represents desktop.
-	// Note: other platforms like Windows, Blackberry, Amazon fall into
-	// this
-	// category.
+	//   "OTHER" - Platforms are not categorized as Android/iOS/Destop fall
+	// into here.
 	Platform string `json:"platform,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "Count") to
