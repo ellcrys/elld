@@ -12,8 +12,8 @@ import (
 	"github.com/thoas/go-funk"
 )
 
-// Update fetches and lists all accounts
-func (am *AccountManager) Update(address string) error {
+// UpdateCmd fetches and lists all accounts
+func (am *AccountManager) UpdateCmd(address string) error {
 
 	if len(address) == 0 {
 		printErr("Address is required")
