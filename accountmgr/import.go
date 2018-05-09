@@ -12,13 +12,13 @@ import (
 	funk "github.com/thoas/go-funk"
 )
 
-// Import takes a keyfile containing unencrypted password to create
+// ImportCmd takes a keyfile containing unencrypted password to create
 // a new account. Keyfile must be a path to a file that exists.
 // If pwd is provide and it is not a file path, it is used as
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
 // is set, interactive password collection is not used.
-func (am *AccountManager) Import(keyfile, pwd string) error {
+func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 
 	var passphrase string
 

@@ -67,7 +67,7 @@ var accountCreateCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-		am.Create(pwd)
+		am.CreateCmd(pwd)
 	},
 }
 
@@ -82,7 +82,7 @@ var accountListCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-		am.List()
+		am.ListCmd()
 	},
 }
 
@@ -101,7 +101,7 @@ var accountUpdateCmd = &cobra.Command{
 		}
 
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-		am.Update(address)
+		am.UpdateCmd(address)
 	},
 }
 
@@ -130,7 +130,7 @@ var accountImportCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-		am.Import(keyfile, pwd)
+		am.ImportCmd(keyfile, pwd)
 	},
 }
 
