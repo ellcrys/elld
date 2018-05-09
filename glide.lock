@@ -1,8 +1,8 @@
-hash: 40e6ad858f75005f299617f8550f74fe7372a35987e879aec1996f2f5b076dc8
-updated: 2018-04-24T22:13:26.179893+01:00
+hash: 19516fe5132694362cff41182cafe546a75599d59eed191dae87d3164687d8e8
+updated: 2018-05-06T14:36:53.471314+01:00
 imports:
 - name: cloud.google.com/go
-  version: 34d27c6512f8a8ca6893882bcd81a0e4c294ee35
+  version: bdefed94861a12abb9c2286a929e74834f0babf6
   subpackages:
   - storage
 - name: github.com/agl/ed25519
@@ -21,6 +21,8 @@ imports:
   - base85
 - name: github.com/BurntSushi/toml
   version: a368813c5e648fee92e5f6c30e3944ff9d5e8895
+- name: github.com/c-bata/go-prompt
+  version: 15992ed45e46edd6168d7c8bfda14b700f6b756a
 - name: github.com/coreos/go-semver
   version: e214231b295a8ea9479f11b70b35d5acf3556d9b
   subpackages:
@@ -29,8 +31,12 @@ imports:
   version: bc6354cbbc295e925e4c611ffe90c1f287ee54db
   subpackages:
   - spdy
+- name: github.com/dustin/go-humanize
+  version: 02af3965c54e8cacf948b97fef38925c4120652c
 - name: github.com/ellcrys/go-libp2p-crypto
-  version: b0b52efb772dc560aba29a3ff8a0afa9eff6c9c0
+  version: 08bc4ca6778916abbeb103712423416289bb4c8d
+- name: github.com/fatih/color
+  version: 507f6050b8568533fb3f5504de8e5205fa62a114
 - name: github.com/fd/go-nat
   version: dcaf50131e4810440bed2cbb6f7f32c4f4cc95dd
 - name: github.com/gogo/protobuf
@@ -39,9 +45,11 @@ imports:
   - io
   - proto
 - name: github.com/golang/protobuf
-  version: e09c5db296004fbe3f74490e84dcd62c3c5ddb1b
+  version: b4deda0973fb4c70b50d226b1af49f3da59f5265
   subpackages:
   - proto
+- name: github.com/golang/snappy
+  version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/gorilla/websocket
   version: 21ab95fa12b9bdd8fecf5fa3586aad941cc98785
 - name: github.com/gxed/eventfd
@@ -52,6 +60,8 @@ imports:
   version: d9f6b97f8db22dd1e090fd0bbbe98f09cc7dd0a8
   subpackages:
   - keccakpg
+- name: github.com/howeyc/gopass
+  version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/huin/goupnp
   version: 1395d1447324cbea88d249fbfcfd70ea878fdfca
   subpackages:
@@ -66,7 +76,11 @@ imports:
 - name: github.com/ipfs/go-ipfs-util
   version: 9ed527918c2f20abdf0adfab0553cd87db34f656
 - name: github.com/ipfs/go-log
-  version: 7ecd3df29a4a648fd3ecd1e78d19d1bfcaacee0f
+  version: 0ef81702b797a2ecef05f45dcc82b15298f54355
+  subpackages:
+  - tracer
+  - tracer/wire
+  - writer
 - name: github.com/jackpal/gateway
   version: cbcf4e3f3baee7952fc386c8b2534af4d267c875
 - name: github.com/jackpal/go-nat-pmp
@@ -168,6 +182,8 @@ imports:
   version: efa589957cd060542a26d2dd7832fd6a6c6c3ade
 - name: github.com/mattn/go-isatty
   version: 6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c
+- name: github.com/mattn/go-tty
+  version: 931426f7535ac39720c8909d70ece5a41a2502a6
 - name: github.com/minio/blake2b-simd
   version: 3f5f724cb5b182a5c278d6d3d55b40e7f8c2efb4
 - name: github.com/minio/sha256-simd
@@ -200,7 +216,7 @@ imports:
 - name: github.com/multiformats/go-multistream
   version: 612ce31c03aebe1d5adbd3c850ee89e05a82b16d
 - name: github.com/onsi/ginkgo
-  version: 6d8be987c536ebd84576a5a46208e7b7a3c796b0
+  version: a3b6351eb1ff8e1bfa30b2f55d7e282186ed8fee
   subpackages:
   - config
   - ginkgo/convert
@@ -247,18 +263,54 @@ imports:
   subpackages:
   - ext
   - log
+- name: github.com/pkg/term
+  version: cda20d4ac917ad418d86e151eff439648b06185b
+  subpackages:
+  - termios
+- name: github.com/robertkrimen/otto
+  version: 03d472dc43abece8691e609a23d295ab732abba6
+  subpackages:
+  - ast
+  - dbg
+  - file
+  - parser
+  - registry
+  - token
 - name: github.com/satori/go.uuid
   version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+- name: github.com/segmentio/go-prompt
+  version: f0d19b6901ade831d5a3204edc0d6a7d6457fbb2
+- name: github.com/shopspring/decimal
+  version: 2df3e6ddaf6e9531dd02d7b6337f2d310f5e4f22
 - name: github.com/sirupsen/logrus
+  version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
+  repo: git@github.com:/sirupsen/logrus
+  vcs: git
+- name: github.com/Sirupsen/logrus
   version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
 - name: github.com/spaolacci/murmur3
   version: f09979ecbc725b9e6d41a297405f65e7e8804acc
 - name: github.com/spf13/cobra
-  version: 0ab5b6bcfcde193577634059f6f211c850a456ec
+  version: ef82de70bb3f60c65fb8eebacbb2d122ef517385
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
+- name: github.com/syndtr/goleveldb
+  version: ae970a0732be3a1f5311da86118d37b9f4bd2a5a
+  subpackages:
+  - leveldb
+  - leveldb/cache
+  - leveldb/comparer
+  - leveldb/errors
+  - leveldb/filter
+  - leveldb/iterator
+  - leveldb/journal
+  - leveldb/memdb
+  - leveldb/opt
+  - leveldb/storage
+  - leveldb/table
+  - leveldb/util
 - name: github.com/thoas/go-funk
-  version: 54489e5ff3900f4618607d32d680f8cf112bcb18
+  version: d2deeb5709c1da54d5da8c76b2f65421f5ff8de4
 - name: github.com/ugorji/go
   version: f3cacc17c85ecb7f1b6a9e373ee85d1480919868
   subpackages:
@@ -270,7 +322,7 @@ imports:
 - name: github.com/whyrusleeping/go-logging
   version: 0457bb6b88fc1973573aaf6b5145d8d3ae972390
 - name: github.com/whyrusleeping/go-multiplex
-  version: 8b25da2b10bfcccbe3bf8aec22019cb50c8e2b97
+  version: 5df09a13ea25dfa553aaf2ecfe23bd4a7c9d5ca0
 - name: github.com/whyrusleeping/go-notifier
   version: 097c5d47330ff6a823f67e3515faa13566a62c6f
 - name: github.com/whyrusleeping/go-smux-multiplex
@@ -290,11 +342,11 @@ imports:
 - name: github.com/whyrusleeping/yamux
   version: 63d22127b261bf7014885d25fabe034bed14f04b
 - name: go.uber.org/atomic
-  version: 8474b86a5a6f79c443ce4b2992817ff32cf208b8
+  version: 1ea20fb1cbb1cc08cbd0d913a96dead89aa18289
 - name: go.uber.org/multierr
   version: 3c4937480c32f4c13a875a1829af76c98ca3d40a
 - name: go.uber.org/zap
-  version: eeedf312bc6c57391d84767a4cd413f02a917974
+  version: 2dc8d10634f473f4dc678e48391a9dc8cf6ae6f9
   subpackages:
   - buffer
   - internal/bufferpool
@@ -307,11 +359,11 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: 58ba60d65fdebb279bcf7990e5b51beeb62e5b89
+  version: 23fc7515b0012078ee4625f209931e7e95cb80bc
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
-  version: 2b6c08872f4b66da917bb4ce98df4f0307330f78
+  version: 4ec37c66abab2c7e02ae775328b2ff001c3f025a
   subpackages:
   - acme/autocert
   - blake2s
@@ -320,7 +372,7 @@ imports:
   - sha3
   - ssh/terminal
 - name: golang.org/x/net
-  version: 5f9ae10d9af5b1c89ae6904293b14b064d4ada23
+  version: 640f4622ab692b87c2f3a94265e6f579fe38263d
   subpackages:
   - bpf
   - context
@@ -339,12 +391,13 @@ imports:
   - lex/httplex
   - webdav/internal/xml
 - name: golang.org/x/oauth2
-  version: 6881fee410a5daf86371371f9ad451b95e168b71
+  version: cdc340f7c179dbbfa4afd43b7614e8fcadde4269
   subpackages:
   - google
 - name: golang.org/x/sys
-  version: 79b0c6888797020a994db17c8510466c72fe75d9
+  version: 6f686a352de66814cdd080d970febae7767857a3
   subpackages:
+  - cpu
   - unix
   - windows
   - windows/registry
@@ -393,7 +446,7 @@ imports:
   - unicode/norm
   - width
 - name: golang.org/x/tools
-  version: c1def519f03ddf76f16b3e444ee1095d73afa01b
+  version: 87723262609ca8fd55d449c027454c29cadefd68
   subpackages:
   - go/buildutil
   - go/callgraph
@@ -402,9 +455,15 @@ imports:
   - go/ssa
   - go/ssa/ssautil
 - name: google.golang.org/api
-  version: 8b8c1d4168b3aa7d5fbdb9eb159a1a7ac0cc146d
+  version: 20530fd5d65ad2caee87891f9896d7547cb400c9
   subpackages:
   - compute/v1
+- name: gopkg.in/oleiade/lane.v1
+  version: 28f7c3f09254f12b51e620fa4db136ba58804762
+- name: gopkg.in/sourcemap.v1
+  version: 6e83acea0053641eff084973fee085f0c193c61a
+  subpackages:
+  - base64vlq
 - name: gopkg.in/yaml.v2
   version: 5420a8b6744d3b0345ab293f6fcba19c978f1183
 testImports:
@@ -413,7 +472,7 @@ testImports:
   subpackages:
   - handlers/json
 - name: github.com/go-kit/kit
-  version: 91c58cc7d6d770b0285fdd69949a23d817a57d13
+  version: 828ac175f5d2a008e9eea3a36f474f19a774a3a3
   subpackages:
   - log
 - name: github.com/ipfs/go-detect-race
@@ -423,7 +482,7 @@ testImports:
 - name: github.com/pkg/errors
   version: 816c9085562cd7ee03e7f8188a1cfd942858cded
 - name: github.com/rs/zerolog
-  version: d2b7a51951c626ef9e7ca5ba8fe1cf1c4adefdba
+  version: 57da509ee1873ad420b56633989c17bebc94e321
 - name: github.com/stretchr/testify
   version: c679ae2cc0cb27ec3293fea7e254e47386f05d69
   subpackages:

@@ -2,7 +2,7 @@ package database
 
 import (
 	"fmt"
-	"path"
+	path "path/filepath"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"

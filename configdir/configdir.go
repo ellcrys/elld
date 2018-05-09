@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	path "path/filepath"
 	"strings"
 
+	"github.com/ellcrys/druid/util"
 	"github.com/jinzhu/configor"
 
 	"github.com/mitchellh/go-homedir"
 )
+
+// AccountDirName is the name of the directory for storing accounts
+var AccountDirName = "accounts"
 
 // ConfigDir represents the clients configuration director and
 // provides methods for creating, accessing and manipulating its content
@@ -22,7 +26,7 @@ type ConfigDir struct {
 func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
 
 	// check if dirPath exists
-	if len(strings.TrimSpace(dirPath)) > 0 && !isPathOk(dirPath) {
+	if len(strings.TrimSpace(dirPath)) > 0 && !util.IsPathOk(dirPath) {
 		return nil, fmt.Errorf("config directory is not ok; may not exist or we don't have enough permission")
 	}
 
@@ -51,7 +55,7 @@ func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 
 	cfgFile := path.Join(cd.path, "ellcrys.json")
 
-	if isPathOk(cfgFile) {
+	if util.IsPathOk(cfgFile) {
 		return true, nil
 	}
 
@@ -61,20 +65,27 @@ func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 	}
 	defer cfg.Close()
 
-	if err := json.NewEncoder(cfg).Encode(defaultConfig); err != nil {
+	jsonEnc := json.NewEncoder(cfg)
+	jsonEnc.SetIndent("", "\t")
+	if err := jsonEnc.Encode(defaultConfig); err != nil {
 		return false, fmt.Errorf("failed to encode default config -> %s", err)
 	}
 
 	return false, nil
 }
 
-// Init creates the ~./ellcrys directory if it does not exists.
-// It will include necessary config files, database if they are missing.
+// Init creates required files and directories
 func (cd *ConfigDir) Init() error {
+
 	var err error
 	if _, err = cd.createConfigFileInNotExist(); err != nil {
 		return err
 	}
+
+	if fullAccountDir := path.Join(cd.path, AccountDirName); !util.IsPathOk(fullAccountDir) {
+		os.MkdirAll(fullAccountDir, 0700)
+	}
+
 	return nil
 }
 
@@ -87,12 +98,28 @@ func (cd *ConfigDir) Load() (*Config, error) {
 	return &cfg, nil
 }
 
-// isPathOk checks if a directory exist and whether
-// there are no permission errors
-func isPathOk(path string) bool {
-	_, err := os.Stat(path)
-	if err != nil && os.IsNotExist(err) {
-		return false
+// LoadCfg loads the config file
+func LoadCfg(cfgDirPath string) (*Config, error) {
+
+	cfgDir, err := NewConfigDir(cfgDirPath)
+	if err != nil {
+		return nil, err
 	}
-	return true
+
+	if err := cfgDir.Init(); err != nil {
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, err
+	}
+
+	cfg, err := cfgDir.Load()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg.SetConfigDir(cfgDir.Path())
+
+	return cfg, nil
 }
