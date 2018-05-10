@@ -69,7 +69,7 @@ func (am *AccountManager) GetAccountsOnDisk() (accounts []*StoredAccount, err er
 // ListCmd fetches and lists all accounts
 func (am *AccountManager) ListCmd() error {
 
-	fmt.Println(fmt.Sprintf("%s%s%s",
+	fmt.Println(fmt.Sprintf("\t%s%s%s",
 		color.HiBlackString("Address"),
 		strings.Repeat(" ", 32),
 		color.HiBlackString("Date Created")),
@@ -80,8 +80,12 @@ func (am *AccountManager) ListCmd() error {
 		return err
 	}
 
-	for _, a := range accts {
-		fmt.Println(fmt.Sprintf("%s     %s", color.CyanString(a.Address), humanize.Time(a.CreatedAt)))
+	for i, a := range accts {
+		defStr := "[default]"
+		if i != 0 {
+			defStr = ""
+		}
+		fmt.Println(fmt.Sprintf("[%d]\t%s     %s\t%s", i, color.CyanString(a.Address), humanize.Time(a.CreatedAt), defStr))
 	}
 
 	return nil
