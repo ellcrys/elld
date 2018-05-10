@@ -40,4 +40,13 @@ var _ = Describe("Common", func() {
 			Expect(NonZeroOrDefIn64(2, 3)).To(Equal(int64(2)))
 		})
 	})
+
+	Describe(".StrToDec", func() {
+		It("should panic if value is not numeric", func() {
+			val := "129.1a"
+			Expect(func() {
+				StrToDec(val)
+			}).To(Panic())
+		})
+	})
 })

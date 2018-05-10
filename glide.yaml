@@ -1,6 +1,5 @@
 package: github.com/ellcrys/druid
 import:
-- package: github.com/sirupsen/logrus
 - package: github.com/btcsuite/btcutil
   subpackages:
   - base58
@@ -45,8 +44,100 @@ import:
 - package: golang.org/x/net
   subpackages:
   - context
-- package: google.golang.org/grpc
-  version: v1.11.3
+  - html
+  - html/atom
+  - html/charset
+  - http2
+  - http2/hpack
+  - idna
+  - internal/iana
+  - internal/socket
+  - internal/socks
+  - internal/timeseries
+  - ipv4
+  - ipv6
+  - lex/httplex
+  - webdav/internal/xml
+- package: golang.org/x/oauth2
+  subpackages:
+  - google
+- package: golang.org/x/sys
+  subpackages:
+  - unix
+  - windows
+  - windows/registry
+  - windows/svc
+  - windows/svc/debug
+  - windows/svc/eventlog
+  - windows/svc/mgr
+- package: golang.org/x/text
+  subpackages:
+  - cases
+  - cmd/gotext/examples/extract_http/pkg
+  - collate
+  - encoding
+  - encoding/charmap
+  - encoding/htmlindex
+  - encoding/internal
+  - encoding/internal/identifier
+  - encoding/japanese
+  - encoding/korean
+  - encoding/simplifiedchinese
+  - encoding/traditionalchinese
+  - encoding/unicode
+  - feature/plural
+  - internal
+  - internal/catmsg
+  - internal/cldrtree
+  - internal/colltab
+  - internal/format
+  - internal/gen
+  - internal/language
+  - internal/language/compact
+  - internal/number
+  - internal/stringset
+  - internal/tag
+  - internal/utf8internal
+  - language
+  - message
+  - message/catalog
+  - message/pipeline
+  - runes
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/cldr
+  - unicode/norm
+  - width
+- package: golang.org/x/tools
+  subpackages:
+  - go/buildutil
+  - go/callgraph
+  - go/callgraph/cha
+  - go/loader
+  - go/ssa
+  - go/ssa/ssautil
+- package: google.golang.org/api
+  subpackages:
+  - compute/v1
+- package: gopkg.in/yaml.v2
+- package: github.com/jinzhu/configor
+- package: github.com/ellcrys/go-libp2p-crypto
+- package: github.com/btcsuite/btcutil
+  subpackages:
+  - base85
+- package: github.com/sirupsen/logrus
+  version: master
+  repo: git@github.com:/sirupsen/logrus
+  vcs: git
+- package: gopkg.in/oleiade/lane.v1
+  version: ^1.0.0
+- package: github.com/shopspring/decimal
+- package: github.com/c-bata/go-prompt
+- package: github.com/robertkrimen/otto
+- package: github.com/fatih/color
+- package: github.com/segmentio/go-prompt
+- package: github.com/dustin/go-humanize
 testImport:
 - package: github.com/onsi/ginkgo
   version: v1.4.0

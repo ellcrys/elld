@@ -1,4 +1,4 @@
-package addressmgr
+package accountmgr
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestAddressmgr(t *testing.T) {
+func TestAccountmgr(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Addressmgr Suite")
+	RunSpecs(t, "Accountmgr Suite")
 }
