@@ -6,7 +6,6 @@ import (
 	"hash"
 	"math"
 	"math/big"
-	"os"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -41,7 +40,7 @@ func (ethash *Ethash) CalculateDifficulty(parentDifficulty int, parentTimeStamp 
 }
 
 //CalculateDifficulty2 recalculates the dificulty level for a block
-func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeStamp string, blockNumber big.Int) *big.Int {
+func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeStamp string, blockNumber big.Int) {
 
 	currentUTCTime := time.Now()
 	parentParsedTime, err := time.Parse("2006-01-02 15:04:00 MST", parentTimeStamp)
@@ -63,27 +62,36 @@ func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeS
 
 	timeDiffFloatDiv := new(big.Int).Div(timeDiffBigInt, big.NewInt(10))
 
-	var maxValue big.Int
+	var maxValue big.Float
 
 	fmt.Println(">> timeDiffFloatDiv is   :", timeDiffFloatDiv)
 
 	bigInt2048 := big.NewInt(2048)
 
-	var pDifficulty, pPower, pSub, blockDiff0, blockDiff1, blockDiff2 *big.Int
+	var pDifficulty, pPower, pSub *big.Int
+	var blockDiff0, blockDiff1, blockDiff2 big.Float
 
 	fmt.Println("Reach end of file, Parent Difficulty", &parentDifficulty)
 	fmt.Println("Reach end of file, Block Number", &blockNumber)
 
-	//
-
 	//firstP := pDifficulty.Div(big.NewInt(50000), bigInt2048)
-	firstP := pDifficulty.Div(&parentDifficulty, bigInt2048)
-	os.Exit(0)
+	// firstP := pDifficulty.Div(&parentDifficulty, bigInt2048)
+	//firstP := new(big.Int).Quo(&parentDifficulty, bigInt2048)
+
+	//firstP1 := 500000 / 2048
+	// fmt.Println("firstP", firstPfirstP)
+
+	//firstP := new(big.Int)
+
+	firstP := new(big.Float).Quo(new(big.Float).SetInt(&parentDifficulty), new(big.Float).SetInt(bigInt2048))
+	//fmt.Println("+++++++", firstP1)
+	fmt.Println("+++++++", pDifficulty)
+
 	timeDiffFloatDiv = timeDiffFloatDiv.Sub(big.NewInt(1), timeDiffFloatDiv)
 	if timeDiffFloatDiv.Cmp(big.NewInt(-99)) == -1 {
-		maxValue = *timeDiffFloatDiv
+		maxValue = *new(big.Float).SetInt(timeDiffFloatDiv)
 	} else {
-		maxValue = *big.NewInt(-99)
+		maxValue = *big.NewFloat(-99)
 	}
 	fmt.Println(">> Parent Difficulty :", parentDifficulty)
 
@@ -97,16 +105,16 @@ func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeS
 
 	thirdP := math.Pow(2, pSubFloat)
 
-	blockDiff0.Add(&parentDifficulty, firstP)
-	blockDiff1.Mul(blockDiff0, &secondP)
+	blockDiff0.Add(new(big.Float).SetInt(&parentDifficulty), firstP)
+	blockDiff1.Mul(&blockDiff0, &secondP)
 
-	thirdPString := strconv.FormatFloat(thirdP, 'f', -1, 64)
+	//thirdPString := strconv.FormatFloat(thirdP, 'f', -1, 64)
 
-	thirdStringBigInt := new(big.Int)
+	//thirdStringBigInt := new(big.Int)
 
-	thirdStringBigInt.SetString(thirdPString, 10)
+	//thirdStringBigInt.SetString(thirdPString, 10)
 
-	b2 := blockDiff2.Add(blockDiff1, thirdStringBigInt)
+	b2 := blockDiff2.Add(&blockDiff1, new(big.Float).SetFloat64(thirdP))
 	// blockDifficulty := parentDifficulty + parentDifficulty/2048*math.Max(1-(blockTimeStamp-parentTimeStamp)/10, -99) + int(2**((blockNumber / 100000) - 2))
 
 	//blockDifficulty :=
@@ -119,7 +127,7 @@ func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeS
 
 	fmt.Println("Block Difficulty is Custom Function is >> : ", b2)
 
-	return b2
+	//return b2
 }
 
 // cacheSize returns the size of the ethash verification cache that belongs to a certain

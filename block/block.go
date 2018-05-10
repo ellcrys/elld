@@ -61,11 +61,6 @@ func rlpHash(x interface{}) (h common.Hash) {
 }
 
 // GetTotalBlocks get total block in the blockchain
-func GetTotalBlocks2() uint64 {
-	return 5
-}
-
-// GetTotalBlocks2 get total block in the blockchain
 func GetTotalBlocks() uint64 {
 	db, err := scribble.New("scribleDB/", nil)
 	if err != nil {
@@ -80,15 +75,22 @@ func GetTotalBlocks() uint64 {
 	return uint64(recordLength)
 }
 
-//get the genesis block difficulty
+//AddBlockToChain Add blocks to the Chain
+func (h *FullBlock) AddBlockToChain(blockNumber string, mapData map[string]interface{}) {
+
+	db, err := scribble.New("scribleDB/", nil)
+	if err != nil {
+		fmt.Println("there is error in the db")
+	}
+
+	db.Write("block", blockNumber, mapData)
+}
+
+//GetGenesisDifficulty get the genesis block difficulty
 func GetGenesisDifficulty() *big.Int {
 	return big.NewInt(500000)
 }
 
-func CheckBlock() {
+func CheckBlockInBlockChain() {
 	fmt.Println("This is a very good block")
-}
-
-func New() {
-
 }

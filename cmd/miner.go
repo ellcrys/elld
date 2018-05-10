@@ -137,11 +137,14 @@ var minerCmd = &cobra.Command{
 			bigstr := bigint.String()
 
 			mapD := map[string]interface{}{"Number": strconv.Itoa(int(block.Number)), "Version": block.Version, "HashPrevBlock": block.HashPrevBlock, "HashMerkleRoot": block.HashMerkleRoot, "Time": block.Time, "Nounce": strconv.Itoa(int(block.Nounce)), "Difficulty": bigstr, "PowHash": block.PowHash, "PowResult": block.PowResult, "TX": block.TX}
+
+			//ADD block to block chain
+			block.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
 			// mapB, _ := json.Marshal(mapD)
 
-			db.Write("block", strconv.Itoa(int(block.Number)), mapD)
-			//fmt.Println(mapD)
-			// fmt.Println(db)
+			// db.Write("block", strconv.Itoa(int(block.Number)), mapD)
+
+			block.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
 
 			fmt.Println("Block ", block.Number, " Successfully Mined")
 
