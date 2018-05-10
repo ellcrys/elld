@@ -103,12 +103,12 @@ var minerCmd = &cobra.Command{
 		minerID := 67927
 
 		//check if block is a genesuis block
-		totalBlockNumber := ellBlock.GetTotalBlocks()
+		totalBlockNumber := block.GetTotalBlocks()
 
 		//if the block is a genesis bloc
 		if totalBlockNumber == 0 {
 			block.HashPrevBlock = ""
-			block.Difficulty = ellBlock.GetGenesisDifficulty()
+			block.Difficulty = block.GetGenesisDifficulty()
 		} else {
 
 			var jsonBlock ellBlock.JsonBlock
