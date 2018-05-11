@@ -8,7 +8,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-var dbfile = "data.db"
+var dbfile = "data_%s.db"
 
 // GeneralDB provides local data storage and access for various purpose.
 // It implements DB interface
@@ -26,9 +26,10 @@ func NewGeneralDB(cfgDir string) DB {
 	return db
 }
 
-// Open opens the database
-func (db *GeneralDB) Open() error {
-	ldb, err := leveldb.OpenFile(path.Join(db.cfgDir, dbfile), nil)
+// Open opens the database.
+// namespace is used as a suffix on the database name
+func (db *GeneralDB) Open(namespace string) error {
+	ldb, err := leveldb.OpenFile(path.Join(db.cfgDir, fmt.Sprintf(dbfile, namespace)), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create database. %s", err)
 	}

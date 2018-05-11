@@ -16,7 +16,7 @@ var _ = Describe("AddressStore", func() {
 		err := os.Mkdir(testCfgDir, 0700)
 		Expect(err).To(BeNil())
 		db = NewGeneralDB(testCfgDir)
-		err = db.Open()
+		err = db.Open("")
 		Expect(err).To(BeNil())
 	})
 

@@ -122,7 +122,7 @@ func (n *Node) OpenDB() error {
 		return fmt.Errorf("db already open")
 	}
 	n.db = database.NewGeneralDB(n.cfg.ConfigDir())
-	return n.db.Open()
+	return n.db.Open(n.StringID())
 }
 
 // PM returns the peer manager

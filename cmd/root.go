@@ -23,7 +23,6 @@ import (
 
 	"github.com/ellcrys/druid/accountmgr"
 
-	"github.com/ellcrys/druid/crypto"
 	homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/ellcrys/druid/util/logger"
@@ -35,7 +34,6 @@ import (
 var (
 	cfg         *configdir.Config
 	log         logger.Logger
-	seed        int64
 	devMode     bool
 	sigs        chan os.Signal
 	done        chan bool
@@ -76,7 +74,6 @@ func init() {
 	}()
 
 	rootCmd.PersistentFlags().String("cfgdir", "", "Set configuration directory")
-	rootCmd.PersistentFlags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	cobra.OnInitialize(initConfig)
 }
@@ -89,12 +86,10 @@ func initConfig() {
 	log = logger.NewLogrus()
 
 	devMode, _ = rootCmd.Flags().GetBool("dev")
-	seed, _ = rootCmd.Flags().GetInt64("seed")
 	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
 
 	if devMode && cfgDirPath == "" {
-		addr, _ := crypto.NewAddress(&seed)
-		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev_"+addr.PeerID()[42:]))
+		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev"))
 		os.MkdirAll(cfgDirPath, 0700)
 	}
 
