@@ -50,9 +50,9 @@ func New(accountDir string) *AccountManager {
 	return am
 }
 
-// askForPassword starts an interactive prompt to collect password.
+// AskForPassword starts an interactive prompt to collect password.
 // Returns error if password and repeated passwords do not match
-func (am *AccountManager) askForPassword() (string, error) {
+func (am *AccountManager) AskForPassword() (string, error) {
 	for {
 
 		passphrase := am.getPassword("Passphrase")
@@ -63,7 +63,6 @@ func (am *AccountManager) askForPassword() (string, error) {
 		passphraseRepeat := am.getPassword("Repeat Passphrase")
 
 		if passphrase != passphraseRepeat {
-			fmt.Println("Passphrases did not match")
 			return "", fmt.Errorf("Passphrases did not match")
 		}
 
@@ -71,9 +70,9 @@ func (am *AccountManager) askForPassword() (string, error) {
 	}
 }
 
-// askForPasswordOnce is like askForPassword but it does not
+// AskForPasswordOnce is like askForPassword but it does not
 // ask to confirm password.
-func (am *AccountManager) askForPasswordOnce() (string, error) {
+func (am *AccountManager) AskForPasswordOnce() (string, error) {
 	for {
 
 		passphrase := am.getPassword("Passphrase")
@@ -147,16 +146,17 @@ func (am *AccountManager) createAccount(address *crypto.Address, passphrase stri
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
 // is set, interactive password collection is not used.
-func (am *AccountManager) CreateCmd(pwd string) error {
+func (am *AccountManager) CreateCmd(pwd string) (*crypto.Address, error) {
 
 	var passphrase string
 	var err error
 
 	if len(pwd) == 0 {
 		fmt.Println("Your new account needs to be locked with a password. Please enter a password.")
-		passphrase, err = am.askForPassword()
+		passphrase, err = am.AskForPassword()
 		if err != nil {
-			return err
+			printErr(err.Error())
+			return nil, err
 		}
 	}
 
@@ -170,7 +170,7 @@ func (am *AccountManager) CreateCmd(pwd string) error {
 			if funk.Contains(err.Error(), "is a directory") {
 				printErr("Password file path {%s} is a directory. Expects a file.", pwd)
 			}
-			return err
+			return nil, err
 		}
 		passphrase = string(content)
 		passphrase = strings.TrimSpace(strings.Trim(passphrase, "/n"))
@@ -184,18 +184,18 @@ func (am *AccountManager) CreateCmd(pwd string) error {
 	var seedUint64 = int64(binary.BigEndian.Uint64(seed))
 	address, err := crypto.NewAddress(&seedUint64)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := am.createAccount(address, passphrase); err != nil {
 		printErr(err.Error())
-		return err
+		return nil, err
 	}
 
 	fmt.Println("New account created, encrypted and stored")
 	fmt.Println("Address:", color.CyanString(address.Addr()))
 
-	return nil
+	return address, nil
 }
 
 func printErr(msg string, args ...interface{}) {

@@ -37,7 +37,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 
 	// collect account password
 	fmt.Println(fmt.Sprintf("Enter your current password for the account {%s}", address))
-	passphrase, err := am.askForPasswordOnce()
+	passphrase, err := am.AskForPasswordOnce()
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,9 @@ func (am *AccountManager) UpdateCmd(address string) error {
 
 	// collect new password
 	fmt.Println("Enter your new password")
-	newPassphrase, err := am.askForPassword()
+	newPassphrase, err := am.AskForPassword()
 	if err != nil {
+		printErr(err.Error())
 		return err
 	}
 

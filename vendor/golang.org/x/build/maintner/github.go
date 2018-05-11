@@ -67,7 +67,7 @@ func (g *GitHub) ForeachRepo(fn func(*GitHubRepo) error) error {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool {
-		if ids[i].Owner < ids[i].Owner {
+		if ids[i].Owner < ids[j].Owner {
 			return true
 		}
 		return ids[i].Owner == ids[j].Owner && ids[i].Repo < ids[j].Repo
@@ -1281,7 +1281,7 @@ func (c *Corpus) processGithubIssueMutation(m *maintpb.GithubIssueMutation) {
 		}
 		if cmut.Updated != nil {
 			gc.Updated, _ = ptypes.Timestamp(cmut.Updated)
-			gc.Created = gc.Created.UTC()
+			gc.Updated = gc.Updated.UTC()
 		}
 		if cmut.Body != "" {
 			gc.Body = cmut.Body

@@ -243,6 +243,7 @@ import:
 - package: github.com/fatih/color
 - package: github.com/segmentio/go-prompt
 - package: github.com/dustin/go-humanize
+- package: gopkg.in/asaskevich/govalidator.v4
 testImport:
 - package: github.com/apex/log
   subpackages:

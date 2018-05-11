@@ -49,8 +49,9 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 	// if no password or password file is provided, ask for password
 	if len(pwd) == 0 {
 		fmt.Println("Your new account needs to be locked with a password. Please enter a password.")
-		passphrase, err = am.askForPassword()
+		passphrase, err = am.AskForPassword()
 		if err != nil {
+			printErr(err.Error())
 			return err
 		}
 	}

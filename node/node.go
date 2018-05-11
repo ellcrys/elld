@@ -3,11 +3,12 @@ package node
 import (
 	"context"
 	"fmt"
-	mrand "math/rand"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	d_crypto "github.com/ellcrys/druid/crypto"
 
 	"github.com/ellcrys/druid/txpool"
 
@@ -45,17 +46,22 @@ type Node struct {
 	isHardcodedSeed bool              // whether the node was hardcoded as a seed
 	log             logger.Logger     // node logger
 	rSeed           []byte            // random 256 bit seed to be used for seed random operations
-	db              database.DB
-	txPool          *txpool.TxPool
+	db              database.DB       // used to access and modify local database
+	txPool          *txpool.TxPool    // the transaction pool
+	signatory       *d_crypto.Address // signatory address used to get node ID and for signing
 }
 
 // NewNode creates a node instance at the specified port
-func NewNode(config *configdir.Config, address string, idSeed int64, log logger.Logger) (*Node, error) {
+func NewNode(config *configdir.Config, address string, signatory *d_crypto.Address, log logger.Logger) (*Node, error) {
 
-	// generate node identity
-	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
+	if signatory == nil {
+		return nil, fmt.Errorf("signatory address required")
+	}
+
+	sk, _ := signatory.PrivKey().Marshal()
+	priv, err := crypto.UnmarshalPrivateKey(sk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create keypair")
+		return nil, err
 	}
 
 	h, port, err := net.SplitHostPort(address)
@@ -80,13 +86,14 @@ func NewNode(config *configdir.Config, address string, idSeed int64, log logger.
 	}
 
 	node := &Node{
-		cfg:     config,
-		address: util.FullAddressFromHost(host),
-		host:    host,
-		wg:      sync.WaitGroup{},
-		log:     log,
-		rSeed:   util.RandBytes(64),
-		txPool:  txpool.NewTxPool(config.TxPool.Capacity),
+		cfg:       config,
+		address:   util.FullAddressFromHost(host),
+		host:      host,
+		wg:        sync.WaitGroup{},
+		log:       log,
+		rSeed:     util.RandBytes(64),
+		txPool:    txpool.NewTxPool(config.TxPool.Capacity),
+		signatory: signatory,
 	}
 
 	node.localNode = node

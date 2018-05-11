@@ -21,6 +21,8 @@ import (
 	path "path/filepath"
 	"syscall"
 
+	"github.com/ellcrys/druid/accountmgr"
+
 	"github.com/ellcrys/druid/crypto"
 	homedir "github.com/mitchellh/go-homedir"
 
@@ -37,6 +39,7 @@ var (
 	devMode     bool
 	sigs        chan os.Signal
 	done        chan bool
+	accountMgr  *accountmgr.AccountManager
 	onTerminate func()
 )
 
@@ -102,4 +105,5 @@ func initConfig() {
 
 	cfg.Node.Test = false
 	cfg.TxPool = new(configdir.TxPoolConfig)
+	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
 }

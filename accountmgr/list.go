@@ -13,30 +13,6 @@ import (
 	"github.com/fatih/color"
 )
 
-// StoredAccount represents an encrypted account stored on disk
-type StoredAccount struct {
-	Address   string
-	Cipher    []byte
-	CreatedAt time.Time
-}
-
-// AccountExist checks if an account with a matching address exists
-func (am *AccountManager) AccountExist(address string) (bool, error) {
-
-	accounts, err := am.GetAccountsOnDisk()
-	if err != nil {
-		return false, err
-	}
-
-	for _, acct := range accounts {
-		if acct.Address == address {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
 // GetAccountsOnDisk returns the accounts stored on disk.
 func (am *AccountManager) GetAccountsOnDisk() (accounts []*StoredAccount, err error) {
 

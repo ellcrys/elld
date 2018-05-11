@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"github.com/ellcrys/druid/configdir"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,22 @@ import (
 var consoleCmd = &cobra.Command{
 	Use:   "console",
 	Short: "Starts the node and an interactive Javascript console",
-	Long:  `Starts the node and an interactive Javascript console`,
+	Long: `Description:
+  Starts the node and an interactive Javascript console.
+  
+  Set the listening address on the node using '--address' flag. 
+	
+  Use '--addnode' to provide a comma separated list of initial addresses of peers
+  to connect to. Addresses must be valid ipfs multiaddress. An account must be 
+  provided and unlocked to be used for signing transactions and blocks. Use '--account'
+  flag to provide the account. If account is not provided, the default account account 
+  (oldest account) in <CONFIGDIR>/` + configdir.AccountDirName + ` is used instead.
+	
+  If no account was found, an interactive session to create an account is started.   
+	
+  Account password will be interactively requested during account creation and unlock
+  operations. Use '--pwd' flag to provide the account password non-interactively. '--pwd'
+  can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		node, rpcServer, _ := start(cmd, args, true)
@@ -43,4 +59,6 @@ func init() {
 	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
 	consoleCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
+	consoleCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
+	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
 }

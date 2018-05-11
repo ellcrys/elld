@@ -2,9 +2,19 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strconv"
+	"strings"
+
+	"gopkg.in/asaskevich/govalidator.v4"
+
+	"github.com/ellcrys/druid/accountmgr"
+	funk "github.com/thoas/go-funk"
 
 	"github.com/ellcrys/druid/configdir"
 	"github.com/ellcrys/druid/console"
+	"github.com/ellcrys/druid/crypto"
 	"github.com/ellcrys/druid/node"
 	"github.com/ellcrys/druid/util"
 	"github.com/spf13/cobra"
@@ -23,14 +33,106 @@ func defaultConfig(cfg *configdir.Config) {
 	cfg.TxPool.Capacity = util.NonZeroOrDefIn64(cfg.TxPool.Capacity, 100)
 }
 
+// loadAccount unlocks an account and returns the underlying address.
+// - If account is provided, it is fetched and unlocked using the password provided.
+//	 If password is not provided, the is requested through an interactive prompt.
+// - If account is not provided, the default account is fetched and unlocked using
+// 	 the password provided. If password is not set, it is requested via a prompt.
+// - If account is not provided and no default account exists, an interactive account
+// 	 creation session begins.
+func loadAccount(account, password string) (*crypto.Address, error) {
+
+	var address *crypto.Address
+	var err error
+	var storedAccount *accountmgr.StoredAccount
+
+	if account != "" {
+		if govalidator.IsNumeric(account) {
+			aInt, err := strconv.Atoi(account)
+			if err != nil {
+				return nil, err
+			}
+			storedAccount, err = accountMgr.GetByIndex(aInt)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			storedAccount, err = accountMgr.GetByAddress(account)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if account == "" {
+		storedAccount, err = accountMgr.GetDefault()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get default account. %s", err)
+		}
+	}
+
+	if storedAccount == nil {
+		fmt.Println("No default account found. Create an account.")
+		address, err = accountMgr.CreateCmd(password)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// if address is unset, decrypt the account using the password provided.
+	// if password is unset, request password from user
+	// if password is set and is a path to a file, read the file and use its content as the password
+	if address == nil {
+
+		if password == "" {
+			fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.", storedAccount.Address))
+			password, err = accountMgr.AskForPasswordOnce()
+			if err != nil {
+				log.Error(err.Error())
+				return nil, err
+			}
+		}
+
+		if len(password) > 0 && (os.IsPathSeparator(password[0]) || password[:2] == "./") {
+			content, err := ioutil.ReadFile(password)
+			if err != nil {
+				if funk.Contains(err.Error(), "no such file") {
+					return nil, fmt.Errorf("Password file {%s} not found.", password)
+				}
+				if funk.Contains(err.Error(), "is a directory") {
+					return nil, fmt.Errorf("Password file path {%s} is a directory. Expects a file.", password)
+				}
+				return nil, err
+			}
+			password = string(content)
+			password = strings.TrimSpace(strings.Trim(password, "/n"))
+		}
+
+		if err = storedAccount.Decrypt(password); err != nil {
+			return nil, fmt.Errorf("account unlock failed. %s", err)
+		}
+
+		address = storedAccount.GetAddress()
+	}
+
+	return address, nil
+}
+
+// starts the node.
+// - Parse flags
+// - Set default configurations
+// - Validate node bind address
+// - Load an account
 func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *node.RPCServer, *console.Console) {
 
-	log.Info("Druid started", "Version", util.ClientVersion)
+	var err error
 
 	bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 	addressToListenOn, _ := cmd.Flags().GetString("address")
 	startRPC, _ := cmd.Flags().GetBool("rpc")
 	rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
+	account, _ := cmd.Flags().GetString("account")
+	password, _ := cmd.Flags().GetString("pwd")
 
 	if devMode {
 		cfg.Node.Dev = devMode
@@ -45,8 +147,15 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 		log.Fatal("invalid bind address provided")
 	}
 
+	loadedAddress, err := loadAccount(account, password)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	log.Info("Druid started", "Version", util.ClientVersion)
+
 	// create the local node
-	n, err := node.NewNode(cfg, addressToListenOn, seed, log)
+	n, err := node.NewNode(cfg, addressToListenOn, loadedAddress, log)
 	if err != nil {
 		log.Fatal("failed to create local node")
 	}
@@ -113,8 +222,23 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the node",
-	Long:  `Start the node`,
+	Short: "Starts the node",
+	Long: `Description:
+  Starts a node.
+  
+  Set the listening address on the node using '--address' flag. 
+  
+  Use '--addnode' to provide a comma separated list of initial addresses of peers
+  to connect to. Addresses must be valid ipfs multiaddress. An account must be 
+  provided and unlocked to be used for signing transactions and blocks. Use '--account'
+  flag to provide the account. If account is not provided, the default account (
+  oldest account) in <CONFIGDIR>/` + configdir.AccountDirName + ` is used instead.
+  
+  If no account was found, an interactive session to create an account is started.   
+  
+  Account password will be interactively requested during account creation and unlock
+  operations. Use '--pwd' flag to provide the account password non-interactively. '--pwd'
+  can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		n, rpcServer, _ := start(cmd, args, false)
@@ -134,4 +258,6 @@ func init() {
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on")
 	startCmd.Flags().Bool("rpc", false, "Launch RPC server")
 	startCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
+	startCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
+	startCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
 }

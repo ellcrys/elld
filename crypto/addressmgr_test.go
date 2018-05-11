@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"github.com/ellcrys/go-libp2p-crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -114,6 +115,21 @@ var _ = Describe("Addressmgr", func() {
 			Expect(err).To(BeNil())
 			Expect(sig).ToNot(BeEmpty())
 			Expect(sig).To(Equal([]byte{158, 13, 68, 26, 41, 83, 26, 181, 43, 77, 192, 150, 115, 117, 175, 47, 207, 26, 118, 217, 101, 179, 49, 206, 126, 203, 37, 152, 3, 68, 75, 1, 141, 65, 141, 7, 87, 247, 160, 35, 94, 34, 137, 101, 185, 75, 228, 85, 240, 182, 166, 71, 94, 88, 208, 108, 189, 55, 174, 220, 119, 184, 128, 15}))
+		})
+	})
+
+	Describe("Priv.Marshal", func() {
+		It("should marshal and unmarshal correctly", func() {
+			seed := int64(1)
+			a, err := NewAddress(&seed)
+			Expect(err).To(BeNil())
+
+			bs, err := a.PrivKey().Marshal()
+			Expect(err).To(BeNil())
+			Expect(bs).ToNot(BeEmpty())
+
+			_, err = crypto.UnmarshalPrivateKey(bs)
+			Expect(err).To(BeNil())
 		})
 	})
 

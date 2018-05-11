@@ -51,7 +51,7 @@ var _ = Describe("Accountmgr", func() {
 		It("should return err = 'Passphrases did not match' when passphrase and repeat passphrase don't match", func() {
 			count := 0
 			am.getPassword = testPrompt2(&count, []string{"passAbc", "passAb"})
-			_, err := am.askForPassword()
+			_, err := am.AskForPassword()
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("Passphrases did not match"))
 		})
@@ -59,7 +59,7 @@ var _ = Describe("Accountmgr", func() {
 		It("should return input even when no password is provided the first time", func() {
 			count := 0
 			am.getPassword = testPrompt2(&count, []string{"", "passAb", "passAb"})
-			password, err := am.askForPassword()
+			password, err := am.AskForPassword()
 			Expect(err).To(BeNil())
 			Expect(password).To(Equal("passAb"))
 		})

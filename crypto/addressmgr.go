@@ -6,6 +6,9 @@ import (
 	mrand "math/rand"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	pb "github.com/libp2p/go-libp2p-crypto/pb"
+
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/btcsuite/btcutil/base58"
@@ -62,6 +65,15 @@ func NewAddress(seed *int64) (*Address, error) {
 	}
 
 	return addr, nil
+}
+
+// NewAddressFromIntSeed is like NewAddress but accepts seed of type Int and casts to Int64
+// Error is not returned.
+// Intended to be used in test
+func NewAddressFromIntSeed(seed int) *Address {
+	int64Seed := int64(seed)
+	addr, _ := NewAddress(&int64Seed)
+	return addr
 }
 
 // NewAddressFromPrivKey creates a new address from a private key
@@ -145,6 +157,22 @@ func (p *PrivKey) Bytes() ([]byte, error) {
 	}
 	bs := p.privKey.(*crypto.Ed25519PrivateKey).BytesU()
 	return bs[:], nil
+}
+
+// Marshal encodes the private key using protocol buffer
+func (p *PrivKey) Marshal() ([]byte, error) {
+	pbmes := new(pb.PrivateKey)
+	typ := pb.KeyType_Ed25519
+	pbmes.Type = &typ
+
+	sk, _ := p.Bytes()
+	pk := p.privKey.GetPublic().(*crypto.Ed25519PublicKey).BytesU()
+
+	buf := make([]byte, 96)
+	copy(buf, sk[:])
+	copy(buf[64:], pk[:])
+	pbmes.Data = buf
+	return proto.Marshal(pbmes)
 }
 
 // Base58 returns the public key in base58 encoding

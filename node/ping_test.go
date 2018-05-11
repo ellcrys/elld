@@ -3,6 +3,8 @@ package node
 import (
 	"time"
 
+	"github.com/ellcrys/druid/crypto"
+
 	"github.com/ellcrys/druid/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,7 +22,7 @@ var _ = Describe("Ping", func() {
 
 	Describe(".sendPing", func() {
 		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
-			rp, err := NewNode(cfg, "127.0.0.1:30000", 0, log)
+			rp, err := NewNode(cfg, "127.0.0.1:30000", crypto.NewAddressFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.Host().Close()
@@ -30,11 +32,11 @@ var _ = Describe("Ping", func() {
 		})
 
 		It("should return nil and update remote peer timestamp locally", func() {
-			lp, err := NewNode(cfg, "127.0.0.1:30001", 1, log)
+			lp, err := NewNode(cfg, "127.0.0.1:30001", crypto.NewAddressFromIntSeed(1), log)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp, log)
 
-			rp, err := NewNode(cfg, "127.0.0.1:30002", 2, log)
+			rp, err := NewNode(cfg, "127.0.0.1:30002", crypto.NewAddressFromIntSeed(2), log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.SetProtocolHandler(util.PingVersion, rpProtoc.OnPing)
