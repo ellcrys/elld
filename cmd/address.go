@@ -24,8 +24,13 @@ import (
 // addressCmd represents the address command
 var addressCmd = &cobra.Command{
 	Use:   "address",
-	Short: "Create & manage addresses",
-	Long:  `Create & manage addresses`,
+	Short: "Create an address",
+	Long: `Description:
+  Create an address. The address, peer ID, public and private keys are
+  displayed. 
+  
+  Use '--seed' set your own Int64 random number to be used as the seed.
+  It '--seed' is not provided or set to -1, a random seed is used.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
