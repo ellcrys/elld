@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/ellcrys/druid/console/spell"
+	"github.com/ellcrys/druid/crypto"
 	"github.com/ellcrys/druid/util"
 
 	prompt "github.com/c-bata/go-prompt"
@@ -19,6 +20,8 @@ type Console struct {
 	executor   *Executor
 	suggestMgr *SuggestionManager
 	rpcClient  *rpc.Client
+	signatory  *crypto.Address
+	signRPCReq bool
 }
 
 // New creates a new Console instance.
@@ -62,6 +65,16 @@ func (c *Console) ConnectToRPCServer(rpcAddr string) error {
 	}
 	c.executor.spell.SetClient(c.rpcClient)
 	return nil
+}
+
+// SetSignatory sets the address that signs RPC calls
+func (c *Console) SetSignatory(addr *crypto.Address) {
+	c.signatory = addr
+}
+
+// EnableRPCSigning causes RPC requests to be signed
+func (c *Console) EnableRPCSigning() {
+	c.signRPCReq = true
 }
 
 // Run the console

@@ -204,6 +204,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 	var cs *console.Console
 	if startConsole {
 		cs = console.New()
+		cs.SetSignatory(loadedAddress)
 
 		if startRPC {
 			err = cs.ConnectToRPCServer(rpcAddress)
