@@ -17,6 +17,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/fatih/color"
+
 	"github.com/ellcrys/druid/crypto"
 	"github.com/spf13/cobra"
 )
@@ -52,7 +54,7 @@ var addressNewCmd = &cobra.Command{
 		addr, _ := crypto.NewAddress(seed)
 		newAddr := addr.Addr()
 
-		fmt.Println(fmt.Sprintf("Address:     %s", newAddr))
+		fmt.Println(fmt.Sprintf("Address:     %s", color.HiCyanString(newAddr)))
 		fmt.Println(fmt.Sprintf("Public Key:  %s", addr.PubKey().Base58()))
 		fmt.Println(fmt.Sprintf("Private Key: %s", addr.PrivKey().Base58()))
 		fmt.Println(fmt.Sprintf("Peer ID:     %s", addr.PeerID()))

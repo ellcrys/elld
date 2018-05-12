@@ -116,13 +116,20 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	return node
 }
 
-// OpenDB opens the database
+// OpenDB opens the database.
+// In dev mode, the database is namespaced by the node id. 
 func (n *Node) OpenDB() error {
 	if n.db != nil {
 		return fmt.Errorf("db already open")
 	}
 	n.db = database.NewGeneralDB(n.cfg.ConfigDir())
-	return n.db.Open(n.StringID())
+
+	namespace := ""
+	if n.DevMode() {
+		namespace = n.StringID()
+	}
+
+	return n.db.Open(namespace)
 }
 
 // PM returns the peer manager
