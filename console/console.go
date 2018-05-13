@@ -21,7 +21,6 @@ type Console struct {
 	suggestMgr *SuggestionManager
 	rpcClient  *rpc.Client
 	signatory  *crypto.Address
-	signRPCReq bool
 }
 
 // New creates a new Console instance.
@@ -31,9 +30,7 @@ func New() *Console {
 	c := new(Console)
 	c.executor = NewExecutor()
 	c.suggestMgr = NewSuggestionManager(initialSuggestions)
-	c.executor.setSuggestionUpdateFunc(c.suggestMgr.extend)
 	c.executor.spell = spell.NewSpell()
-	c.executor.Init()
 
 	exitKeyBind := prompt.KeyBind{
 		Key: prompt.ControlC,
@@ -56,8 +53,8 @@ func New() *Console {
 	return c
 }
 
-// ConnectToRPCServer dials the RPC server
-func (c *Console) ConnectToRPCServer(rpcAddr string) error {
+// DialRPCServer dials the RPC server
+func (c *Console) DialRPCServer(rpcAddr string) error {
 	var err error
 	c.rpcClient, err = rpc.DialHTTP("tcp", rpcAddr)
 	if err != nil {
@@ -67,14 +64,14 @@ func (c *Console) ConnectToRPCServer(rpcAddr string) error {
 	return nil
 }
 
+// PrepareVM sets up the VM executors context
+func (c *Console) PrepareVM() error {
+	return c.executor.PrepareContext()
+}
+
 // SetSignatory sets the address that signs RPC calls
 func (c *Console) SetSignatory(addr *crypto.Address) {
 	c.signatory = addr
-}
-
-// EnableRPCSigning causes RPC requests to be signed
-func (c *Console) EnableRPCSigning() {
-	c.signRPCReq = true
 }
 
 // Run the console

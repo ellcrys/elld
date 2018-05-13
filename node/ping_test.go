@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/testutil"
 
 	"github.com/ellcrys/druid/util"
 	. "github.com/onsi/ginkgo"
@@ -13,11 +14,13 @@ import (
 var _ = Describe("Ping", func() {
 
 	BeforeEach(func() {
-		Expect(setTestCfg()).To(BeNil())
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		Expect(removeTestCfgDir()).To(BeNil())
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
 	Describe(".sendPing", func() {

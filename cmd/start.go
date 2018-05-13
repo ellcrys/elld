@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ellcrys/druid/rpc"
+
 	"gopkg.in/asaskevich/govalidator.v4"
 
 	"github.com/ellcrys/druid/accountmgr"
@@ -97,10 +99,10 @@ func loadAccount(account, password string) (*crypto.Address, error) {
 			content, err := ioutil.ReadFile(password)
 			if err != nil {
 				if funk.Contains(err.Error(), "no such file") {
-					return nil, fmt.Errorf("Password file {%s} not found.", password)
+					return nil, fmt.Errorf("password file {%s} not found", password)
 				}
 				if funk.Contains(err.Error(), "is a directory") {
-					return nil, fmt.Errorf("Password file path {%s} is a directory. Expects a file.", password)
+					return nil, fmt.Errorf("password file path {%s} is a directory. Expects a file", password)
 				}
 				return nil, err
 			}
@@ -123,7 +125,15 @@ func loadAccount(account, password string) (*crypto.Address, error) {
 // - Set default configurations
 // - Validate node bind address
 // - Load an account
-func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *node.RPCServer, *console.Console) {
+// - create local node
+// - add hardcoded node as bootstrap node if any
+// - add bootstrap node from config file if any
+// - open database
+// - initialize protocol instance along with message handlers
+// - start RPC server if enabled
+// - start console if enabled
+// - connect console to rpc server and prepare console vm if rpc server is enabled
+func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console) {
 
 	var err error
 
@@ -154,7 +164,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 
 	log.Info("Druid started", "Version", util.ClientVersion)
 
-	// create the local node
 	n, err := node.NewNode(cfg, addressToListenOn, loadedAddress, log)
 	if err != nil {
 		log.Fatal("failed to create local node")
@@ -164,14 +173,12 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 		log.SetToDebug()
 	}
 
-	// add hardcoded nodes
 	if len(hardcodedBootstrapNodes) > 0 {
 		if err := n.AddBootstrapNodes(hardcodedBootstrapNodes, true); err != nil {
 			log.Fatal("%s", err)
 		}
 	}
 
-	// add bootstrap nodes
 	if len(cfg.Node.BootstrapNodes) > 0 {
 		if err := n.AddBootstrapNodes(cfg.Node.BootstrapNodes, false); err != nil {
 			log.Fatal("%s", err)
@@ -185,8 +192,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 	log.Info("Waiting patiently to interact on", "Addr", n.GetMultiAddr(), "Dev", devMode)
 
 	protocol := node.NewInception(n, log)
-
-	// set protocol and handlers
 	n.SetProtocol(protocol)
 	n.SetProtocolHandler(util.HandshakeVersion, protocol.OnHandshake)
 	n.SetProtocolHandler(util.PingVersion, protocol.OnPing)
@@ -195,21 +200,28 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *n
 
 	n.Start()
 
-	var rpcServer *node.RPCServer
+	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = node.NewRPCServer(rpcAddress, n, log)
+		rpcServer = rpc.NewServer(rpcAddress, n, log)
 		go rpcServer.Serve()
 	}
 
 	var cs *console.Console
 	if startConsole {
+
 		cs = console.New()
 		cs.SetSignatory(loadedAddress)
 
 		if startRPC {
-			err = cs.ConnectToRPCServer(rpcAddress)
+
+			err = cs.DialRPCServer(rpcAddress)
 			if err != nil {
 				log.Fatal("unable to start RPC server", "Err", err)
+			}
+
+			cs.PrepareVM()
+			if err != nil {
+				log.Fatal("unable to prepare console VM", "Err", err)
 			}
 		}
 

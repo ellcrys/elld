@@ -17,11 +17,13 @@ import (
 var _ = Describe("Node", func() {
 
 	BeforeEach(func() {
-		Expect(setTestCfg()).To(BeNil())
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		Expect(removeTestCfgDir()).To(BeNil())
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
 	Describe(".NewNode", func() {

@@ -31,11 +31,13 @@ func NewMgr(cfg *configdir.Config) *Manager {
 var _ = Describe("PeerManager", func() {
 
 	BeforeEach(func() {
-		Expect(setTestCfg()).To(BeNil())
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		Expect(removeTestCfgDir()).To(BeNil())
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
 	Describe(".AddOrUpdatePeer", func() {

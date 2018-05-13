@@ -1,12 +1,10 @@
-package node
+package rpc
 
 import (
 	"testing"
 
 	"github.com/ellcrys/druid/configdir"
-
 	"github.com/ellcrys/druid/util/logger"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -14,7 +12,7 @@ import (
 var log = logger.NewLogrusNoOp()
 var cfg *configdir.Config
 
-func TestPeer(t *testing.T) {
+func TestRpc(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Peer Suite")
+	RunSpecs(t, "Rpc Suite")
 }

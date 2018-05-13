@@ -2,6 +2,7 @@ package node
 
 import (
 	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/testutil"
 	"github.com/ellcrys/druid/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,11 +11,13 @@ import (
 var _ = Describe("Handshake", func() {
 
 	BeforeEach(func() {
-		Expect(setTestCfg()).To(BeNil())
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		Expect(removeTestCfgDir()).To(BeNil())
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
 	Describe(".SendHandshake", func() {

@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/c-bata/go-prompt"
 	"github.com/ellcrys/druid/console/spell"
 	"github.com/fatih/color"
 	"github.com/robertkrimen/otto"
 )
 
-// Executor is responsible for interpreting and executing console inputs
+func recoverFunc(rpcMethod string) {
+	if r := recover(); r != nil {
+		color.Red("%s: %s", rpcMethod, r)
+	}
+}
+
+// Executor is responsible for executing operations inside a
+// javascript VM.
 type Executor struct {
-	vm                   *otto.Otto
-	suggestionUpdateFunc func([]prompt.Suggest)
-	exit                 bool
-	spell                *spell.Spell
+	vm    *otto.Otto
+	exit  bool
+	spell *spell.Spell
 }
 
 // NewExecutor creates a new executor
@@ -25,16 +30,27 @@ func NewExecutor() *Executor {
 	return e
 }
 
-// Init adds objects and functions into the VM's contexts
-func (e *Executor) Init() {
+// PrepareContext adds objects and functions into the VM's global
+// contexts allowing users to have access to pre-defined values and objects
+func (e *Executor) PrepareContext() error {
 
-	var EllSpellObj = map[string]interface{}{
-		"send": e.spell.EllService.Send,
+	var spell = map[string]interface{}{
+		"ell": map[string]interface{}{
+			"send": e.spell.Ell.Send,
+		},
+		"account": map[string]interface{}{
+			"getAccounts": e.spell.Account.GetAccounts,
+		},
 	}
 
-	e.vm.Set("spell", map[string]interface{}{
-		"ell": EllSpellObj,
-	})
+	go func() {
+		defer recoverFunc("spell.GetAccounts")
+		spell["accounts"] = e.spell.Account.GetAccounts()
+	}()
+
+	e.vm.Set("spell", spell)
+
+	return nil
 }
 
 // OnInput receives inputs and executes
@@ -61,18 +77,6 @@ func (e *Executor) exitProgram(immediately bool) {
 	os.Exit(0)
 }
 
-func (e *Executor) extendSuggestionsFromVM() {
-
-	var symbolSuggestions []prompt.Suggest
-	for name, v := range e.vm.Context().Symbols {
-		symbolSuggestions = append(symbolSuggestions, prompt.Suggest{Text: name, Description: getType(v)})
-	}
-
-	if e.suggestionUpdateFunc != nil {
-		e.suggestionUpdateFunc(symbolSuggestions)
-	}
-}
-
 func (e *Executor) exec(in string) {
 
 	v, err := e.vm.Run(in)
@@ -80,8 +84,6 @@ func (e *Executor) exec(in string) {
 		color.Red("%s", err.Error())
 		return
 	}
-
-	go e.extendSuggestionsFromVM()
 
 	if v.IsNull() || v.IsUndefined() {
 		color.Magenta("%s", v)
@@ -101,33 +103,4 @@ func (e *Executor) help() {
 	for _, f := range commonFunc {
 		fmt.Println(fmt.Sprintf("%s\t\t%s", f[0], f[1]))
 	}
-}
-
-func (e *Executor) setSuggestionUpdateFunc(f func([]prompt.Suggest)) {
-	e.suggestionUpdateFunc = f
-}
-
-func getType(v otto.Value) string {
-
-	if v.IsBoolean() {
-		return "Boolean"
-	}
-
-	if v.IsFunction() {
-		return "Function"
-	}
-
-	if v.IsNumber() {
-		return "Number"
-	}
-
-	if v.IsObject() {
-		return "Object"
-	}
-
-	if v.IsString() {
-		return "String"
-	}
-
-	return ""
 }
