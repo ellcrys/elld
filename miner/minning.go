@@ -124,8 +124,10 @@ func (miner *Ethash) Mine(block *ellBlock.FullBlock, minerID int) (string, strin
 
 	var (
 		// Mheader = block
-		Mhash   = block.HashNoNonce().Bytes()
-		Mtarget = new(big.Int).Div(maxUint256, block.Difficulty)
+		Mhash = block.HashNoNonce().Bytes()
+
+		blockDifficulty, _ = new(big.Int).SetString(block.Difficulty, 10)
+		Mtarget            = new(big.Int).Div(maxUint256, blockDifficulty)
 		// Mnumber  = Mheader.Number.Uint64()
 		Mdataset = current
 	)

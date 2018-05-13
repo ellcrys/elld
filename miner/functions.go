@@ -4,11 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash"
-	"math"
 	"math/big"
 	"reflect"
 	"runtime"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,96 +37,96 @@ func (ethash *Ethash) CalculateDifficulty(parentDifficulty int, parentTimeStamp 
 	return big.NewInt(1234)
 }
 
-//CalculateDifficulty2 recalculates the dificulty level for a block
-func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeStamp string, blockNumber big.Int) {
+// //CalculateDifficulty2 recalculates the dificulty level for a block
+// func (ethash *Ethash) CalculateDifficulty2(parentDifficulty big.Int, parentTimeStamp string, blockNumber big.Int) {
 
-	currentUTCTime := time.Now()
-	parentParsedTime, err := time.Parse("2006-01-02 15:04:00 MST", parentTimeStamp)
+// 	currentUTCTime := time.Now()
+// 	parentParsedTime, err := time.Parse("2006-01-02 15:04:00 MST", parentTimeStamp)
 
-	if err != nil {
-		fmt.Println(err)
-	}
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
 
-	fmt.Println(">> Parent Parsed Time :", parentParsedTime.Format("2006-01-01 15:05:05"))
+// 	fmt.Println(">> Parent Parsed Time :", parentParsedTime.Format("2006-01-01 15:05:05"))
 
-	timeDiff := currentUTCTime.Sub(parentParsedTime)
+// 	timeDiff := currentUTCTime.Sub(parentParsedTime)
 
-	out := time.Time{}.Add(timeDiff)
+// 	out := time.Time{}.Add(timeDiff)
 
-	timeDiffString := string(out.Format("20060102150405"))
+// 	timeDiffString := string(out.Format("20060102150405"))
 
-	bigIntData, err := strconv.ParseInt(timeDiffString, 10, 64)
-	timeDiffBigInt := big.NewInt(bigIntData)
+// 	bigIntData, err := strconv.ParseInt(timeDiffString, 10, 64)
+// 	timeDiffBigInt := big.NewInt(bigIntData)
 
-	timeDiffFloatDiv := new(big.Int).Div(timeDiffBigInt, big.NewInt(10))
+// 	timeDiffFloatDiv := new(big.Int).Div(timeDiffBigInt, big.NewInt(10))
 
-	var maxValue big.Float
+// 	var maxValue big.Float
 
-	fmt.Println(">> timeDiffFloatDiv is   :", timeDiffFloatDiv)
+// 	fmt.Println(">> timeDiffFloatDiv is   :", timeDiffFloatDiv)
 
-	bigInt2048 := big.NewInt(2048)
+// 	bigInt2048 := big.NewInt(2048)
 
-	var pDifficulty, pPower, pSub *big.Int
-	var blockDiff0, blockDiff1, blockDiff2 big.Float
+// 	var pDifficulty, pPower, pSub *big.Int
+// 	var blockDiff0, blockDiff1, blockDiff2 big.Float
 
-	fmt.Println("Reach end of file, Parent Difficulty", &parentDifficulty)
-	fmt.Println("Reach end of file, Block Number", &blockNumber)
+// 	fmt.Println("Reach end of file, Parent Difficulty", &parentDifficulty)
+// 	fmt.Println("Reach end of file, Block Number", &blockNumber)
 
-	//firstP := pDifficulty.Div(big.NewInt(50000), bigInt2048)
-	// firstP := pDifficulty.Div(&parentDifficulty, bigInt2048)
-	//firstP := new(big.Int).Quo(&parentDifficulty, bigInt2048)
+// 	//firstP := pDifficulty.Div(big.NewInt(50000), bigInt2048)
+// 	// firstP := pDifficulty.Div(&parentDifficulty, bigInt2048)
+// 	//firstP := new(big.Int).Quo(&parentDifficulty, bigInt2048)
 
-	//firstP1 := 500000 / 2048
-	// fmt.Println("firstP", firstPfirstP)
+// 	//firstP1 := 500000 / 2048
+// 	// fmt.Println("firstP", firstPfirstP)
 
-	//firstP := new(big.Int)
+// 	//firstP := new(big.Int)
 
-	firstP := new(big.Float).Quo(new(big.Float).SetInt(&parentDifficulty), new(big.Float).SetInt(bigInt2048))
-	//fmt.Println("+++++++", firstP1)
-	fmt.Println("+++++++", pDifficulty)
+// 	firstP := new(big.Float).Quo(new(big.Float).SetInt(&parentDifficulty), new(big.Float).SetInt(bigInt2048))
+// 	//fmt.Println("+++++++", firstP1)
+// 	fmt.Println("+++++++", pDifficulty)
 
-	timeDiffFloatDiv = timeDiffFloatDiv.Sub(big.NewInt(1), timeDiffFloatDiv)
-	if timeDiffFloatDiv.Cmp(big.NewInt(-99)) == -1 {
-		maxValue = *new(big.Float).SetInt(timeDiffFloatDiv)
-	} else {
-		maxValue = *big.NewFloat(-99)
-	}
-	fmt.Println(">> Parent Difficulty :", parentDifficulty)
+// 	timeDiffFloatDiv = timeDiffFloatDiv.Sub(big.NewInt(1), timeDiffFloatDiv)
+// 	if timeDiffFloatDiv.Cmp(big.NewInt(-99)) == -1 {
+// 		maxValue = *new(big.Float).SetInt(timeDiffFloatDiv)
+// 	} else {
+// 		maxValue = *big.NewFloat(-99)
+// 	}
+// 	fmt.Println(">> Parent Difficulty :", parentDifficulty)
 
-	secondP := maxValue
+// 	secondP := maxValue
 
-	//pP := pPower.Div(&blockNumber, big.NewInt(100000))
+// 	//pP := pPower.Div(&blockNumber, big.NewInt(100000))
 
-	pSub = pSub.Sub(pPower.Div(&blockNumber, big.NewInt(100000)), big.NewInt(2))
-	pSubString := pSub.String()
-	pSubFloat, _ := strconv.ParseFloat(pSubString, 64)
+// 	pSub = pSub.Sub(pPower.Div(&blockNumber, big.NewInt(100000)), big.NewInt(2))
+// 	pSubString := pSub.String()
+// 	pSubFloat, _ := strconv.ParseFloat(pSubString, 64)
 
-	thirdP := math.Pow(2, pSubFloat)
+// 	thirdP := math.Pow(2, pSubFloat)
 
-	blockDiff0.Add(new(big.Float).SetInt(&parentDifficulty), firstP)
-	blockDiff1.Mul(&blockDiff0, &secondP)
+// 	blockDiff0.Add(new(big.Float).SetInt(&parentDifficulty), firstP)
+// 	blockDiff1.Mul(&blockDiff0, &secondP)
 
-	//thirdPString := strconv.FormatFloat(thirdP, 'f', -1, 64)
+// 	//thirdPString := strconv.FormatFloat(thirdP, 'f', -1, 64)
 
-	//thirdStringBigInt := new(big.Int)
+// 	//thirdStringBigInt := new(big.Int)
 
-	//thirdStringBigInt.SetString(thirdPString, 10)
+// 	//thirdStringBigInt.SetString(thirdPString, 10)
 
-	b2 := blockDiff2.Add(&blockDiff1, new(big.Float).SetFloat64(thirdP))
-	// blockDifficulty := parentDifficulty + parentDifficulty/2048*math.Max(1-(blockTimeStamp-parentTimeStamp)/10, -99) + int(2**((blockNumber / 100000) - 2))
+// 	b2 := blockDiff2.Add(&blockDiff1, new(big.Float).SetFloat64(thirdP))
+// 	// blockDifficulty := parentDifficulty + parentDifficulty/2048*math.Max(1-(blockTimeStamp-parentTimeStamp)/10, -99) + int(2**((blockNumber / 100000) - 2))
 
-	//blockDifficulty :=
-	// parentDifficulty +
-	//parentDifficulty/2048
-	//*
-	//Max(1-(blockTimeStamp-parentTimeStamp)/10, -99)
-	//+
-	//int(2**((blockNumber / 100000) - 2))
+// 	//blockDifficulty :=
+// 	// parentDifficulty +
+// 	//parentDifficulty/2048
+// 	//*
+// 	//Max(1-(blockTimeStamp-parentTimeStamp)/10, -99)
+// 	//+
+// 	//int(2**((blockNumber / 100000) - 2))
 
-	fmt.Println("Block Difficulty is Custom Function is >> : ", b2)
+// 	fmt.Println("Block Difficulty is Custom Function is >> : ", b2)
 
-	//return b2
-}
+// 	//return b2
+// }
 
 // cacheSize returns the size of the ethash verification cache that belongs to a certain
 // block number.

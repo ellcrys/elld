@@ -24,6 +24,7 @@ import (
 	merkletree "github.com/cbergoon/merkletree"
 	ellBlock "github.com/ellcrys/druid/block"
 	"github.com/ellcrys/druid/miner"
+	ellParams "github.com/ellcrys/druid/params"
 
 	"github.com/spf13/cobra"
 	//"encoding/json"
@@ -53,7 +54,12 @@ var minerCmd = &cobra.Command{
 		// fmt.Println(Mtarget)
 		// os.Exit(0)
 
-		currentUTCTime := time.Now()
+		//get current time stamp
+		currentUTCTime := time.Now().Format("20060102150405")
+		currentUTCTimeUint, _ := strconv.ParseUint(currentUTCTime, 10, 64)
+
+		// convert current time to utc string then to big.Int
+		//bigIntTCurrentTime, _ := new(big.Int).SetString(currentUTCTime, 10)
 
 		db, err := scribleDB.New("scribleDB/", nil)
 
@@ -79,21 +85,17 @@ var minerCmd = &cobra.Command{
 		// currentBlockNumber to get total blocks and add 1 to it
 		currentProcessingBlockNumber := ellBlock.GetTotalBlocks() + 1
 
-		//blockDifficulty := parentDifficulty + parentDifficulty/2048*math.Max(1-(blockTimeStamp-parentTimeStamp)/10, -99) + int(2**((blockNumber / 100000) - 2))
-
-		// math.Max()
 		block := ellBlock.FullBlock{
-			Version: "1.0",
-			// HashPrevBlock:  "5367",
+			Version:        "1.0",
 			HashMerkleRoot: merkleRootString,
-			Time:           string(currentUTCTime.Format("2006-01-01 15:05:05")),
-			Difficulty:     big.NewInt(10),
-			Number:         currentProcessingBlockNumber,
-			TX:             selectedTransaction,
+			Time:           currentUTCTime,
+			// Difficulty:     "10",
+			Number: uint64(currentProcessingBlockNumber),
+			TX:     selectedTransaction,
 		}
 
 		config := miner.Config{
-			CacheDir: "", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: miner.ModeFake,
+			CacheDir: "CacheFile", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "DagFile", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: miner.ModeFake,
 		}
 
 		// Create a New Ethash Constructor
@@ -103,25 +105,64 @@ var minerCmd = &cobra.Command{
 		minerID := 67927
 
 		//check if block is a genesuis block
-		totalBlockNumber := block.GetTotalBlocks()
+		totalBlockNumber := ellBlock.GetTotalBlocks()
 
 		//if the block is a genesis bloc
 		if totalBlockNumber == 0 {
 			block.HashPrevBlock = ""
-			block.Difficulty = block.GetGenesisDifficulty()
+
+			bd := block.GetGenesisDifficulty().String()
+
+			block.Difficulty = bd
 		} else {
 
 			var jsonBlock ellBlock.JsonBlock
 			db.Read("block", strconv.Itoa(int(totalBlockNumber)), &jsonBlock)
 			block.HashPrevBlock = jsonBlock.PowHash
-			parentDifficulty, _ := strconv.ParseInt(jsonBlock.Difficulty, 10, 64)
+			// parentDifficulty, _ := strconv.ParseInt(jsonBlock.Difficulty, 10, 64)
+			//parentDifficulty := jsonBlock.Difficulty
 
 			// fmt.Printf("It's a Block! %#v\n", jsonBlock.PowHash)
-			BlockDifficulty := newEllMiner.CalculateDifficulty(int(parentDifficulty), jsonBlock.Time, int(currentProcessingBlockNumber))
+			// BlockDifficulty := newEllMiner.CalculateDifficulty(int(parentDifficulty), jsonBlock.Time, int(currentProcessingBlockNumber))
 
-			fmt.Println("Miner , Parent Diificulty : ", big.NewInt(parentDifficulty))
+			//fmt.Println("Miner , Parent Diificulty : ", jsonBlock.PowHash)
 
-			block.Difficulty = BlockDifficulty
+			// block.Difficulty = BlockDifficulty
+
+			// comnvert currentUTCTime TO uint64
+			// uintCurrentUTCTime, _ := strconv.ParseUint(currentUTCTime, 10, 10)
+			//uintCurrentUTCTime := uint64(20180511023740)
+			// diffo := newEllMiner.CalcDifficulty("Homestead", uintCurrentUTCTime, &jsonBlock)
+
+			parentBlockTime, err1 := new(big.Int).SetString(jsonBlock.Time, 10)
+
+			if err1 == false {
+				fmt.Println("Error converting parent blockTime to string")
+			}
+
+			ParentDifficulty, err2 := new(big.Int).SetString(jsonBlock.Difficulty, 10)
+			if err2 == false {
+				fmt.Println("Error converting ParentDifficulty to string")
+			}
+
+			parentBlockNumber, err3 := new(big.Int).SetString(jsonBlock.Number, 10)
+			if err3 == false {
+				fmt.Println("Error converting pparentBlockNumber to string")
+			}
+
+			fmt.Println("<<<>>>> ", ellParams.GenesisDifficulty)
+
+			// fmt.Println("$$$$: ", jsonBlock.Time, parentBlockTime)
+			// fmt.Println("$$$$: ", jsonBlock.Difficulty, ParentDifficulty)
+			// fmt.Println("$$$$: ", jsonBlock.Number, parentBlockNumber)
+
+			BlockDifficulty := newEllMiner.CalcDifficulty("Homestead", currentUTCTimeUint, parentBlockTime, ParentDifficulty, parentBlockNumber)
+			// fmt.Println(">>><<<<", BlockDifficulty)
+
+			// convert homestead block difficulty to string
+			BlockDifficultyString := BlockDifficulty.String()
+			block.Difficulty = BlockDifficultyString
+			// os.Exit(0)
 		}
 
 		outputDigest, outputResult, outputNonce := newEllMiner.Mine(&block, minerID)
@@ -133,8 +174,10 @@ var minerCmd = &cobra.Command{
 
 			// store block into Database
 
-			bigint := block.Difficulty
-			bigstr := bigint.String()
+			// bigint := block.Difficulty
+			// bigstr := bigint.String()
+
+			bigstr := block.Difficulty
 
 			mapD := map[string]interface{}{"Number": strconv.Itoa(int(block.Number)), "Version": block.Version, "HashPrevBlock": block.HashPrevBlock, "HashMerkleRoot": block.HashMerkleRoot, "Time": block.Time, "Nounce": strconv.Itoa(int(block.Nounce)), "Difficulty": bigstr, "PowHash": block.PowHash, "PowResult": block.PowResult, "TX": block.TX}
 
@@ -156,7 +199,7 @@ var minerCmd = &cobra.Command{
 	},
 }
 
-// MeemPool generates random transactions based on max parameter
+// MemPool generates random transactions based on max parameter
 func MemPool(maxTx int) []string {
 
 	var tx_array []string
