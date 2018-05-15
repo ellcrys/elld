@@ -24,7 +24,6 @@ import (
 	merkletree "github.com/cbergoon/merkletree"
 	ellBlock "github.com/ellcrys/druid/block"
 	"github.com/ellcrys/druid/miner"
-	ellParams "github.com/ellcrys/druid/params"
 
 	"github.com/spf13/cobra"
 	//"encoding/json"
@@ -112,8 +111,8 @@ var minerCmd = &cobra.Command{
 			block.HashPrevBlock = ""
 
 			bd := block.GetGenesisDifficulty().String()
-
 			block.Difficulty = bd
+
 		} else {
 
 			var jsonBlock ellBlock.JsonBlock
@@ -150,7 +149,7 @@ var minerCmd = &cobra.Command{
 				fmt.Println("Error converting pparentBlockNumber to string")
 			}
 
-			fmt.Println("<<<>>>> ", ellParams.GenesisDifficulty)
+			// fmt.Println("<<<>>>> ", ellParams.GenesisDifficulty)
 
 			// fmt.Println("$$$$: ", jsonBlock.Time, parentBlockTime)
 			// fmt.Println("$$$$: ", jsonBlock.Difficulty, ParentDifficulty)
@@ -187,7 +186,7 @@ var minerCmd = &cobra.Command{
 
 			// db.Write("block", strconv.Itoa(int(block.Number)), mapD)
 
-			block.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
+			//block.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
 
 			fmt.Println("Block ", block.Number, " Successfully Mined")
 

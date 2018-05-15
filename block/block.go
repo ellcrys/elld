@@ -99,7 +99,7 @@ func (h *FullBlock) AddBlockToChain(blockNumber string, mapData map[string]inter
 	}
 
 	db.Write("block", blockNumber, mapData)
-	fmt.Println(blockNumber, " Added to Chain")
+	//fmt.Println(blockNumber, " Added to Chain")
 }
 
 // DeleteAllBlock should delete all block in blockchain
@@ -112,16 +112,10 @@ func DeleteAllBlock() {
 
 	if err := db.Delete("block", ""); err != nil {
 		fmt.Println("Error", err)
-	} else {
-		fmt.Println("All blocks successfully Deleted")
 	}
 }
 
 //GetGenesisDifficulty get the genesis block difficulty
 func (h *FullBlock) GetGenesisDifficulty() *big.Int {
 	return big.NewInt(500000)
-}
-
-func CheckBlockInBlockChain() {
-	fmt.Println("This is a very good block")
 }

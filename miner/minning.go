@@ -1,19 +1,3 @@
-// Copyright 2017 The go-ethereum Authors
-// This file is part of the go-ethereum library.
-//
-// The go-ethereum library is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// The go-ethereum library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
-
 // Package miner implements the ethash proof-of-work consensus engine.
 package miner
 
@@ -105,15 +89,7 @@ type Ethash struct {
 func (miner *Ethash) Mine(block *ellBlock.FullBlock, minerID int) (string, string, uint64) {
 
 	const ModeFake = iota
-	// var blockNumber uint64 = 43
 	blockNumber := block.Number
-
-	// config := Config{
-	// 	CacheDir: "cache", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "dagFile", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: ModeFake,
-	// }
-
-	// newEthash := New(config)
-
 	epoch := blockNumber / epochLength
 	currentI, _ := miner.datasets.get(epoch)
 	current := currentI.(*dataset)
@@ -196,8 +172,6 @@ search:
 			nonce++
 		}
 	}
-
-	// fmt.Println("Reach end of file ")
 
 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
 	// during sealing so it's not unmapped while being read.
