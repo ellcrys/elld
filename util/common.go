@@ -1,11 +1,13 @@
 package util
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	r "math/rand"
 	"os"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -111,4 +113,37 @@ func IsFileOk(path string) bool {
 		return false
 	}
 	return !s.IsDir()
+}
+
+// Int64ToHex converts an Int64 value to hex string.
+// The resulting hex is prefixed by '0x'
+func Int64ToHex(intVal int64) string {
+	intValStr := strconv.FormatInt(intVal, 10)
+	return "0x" + hex.EncodeToString([]byte(intValStr))
+}
+
+// HexToInt64 attempts to convert an hex string to Int64.
+// Expects the hex string to begin with '0x'.
+func HexToInt64(hexVal string) (int64, error) {
+	hexStr, err := hex.DecodeString(hexVal[2:])
+	if err != nil {
+		return 0, err
+	}
+	return strconv.ParseInt(string(hexStr), 10, 64)
+}
+
+// StrToHex converts a string to hex. T
+// The resulting hex is prefixed by '0x'
+func StrToHex(str string) string {
+	return "0x" + hex.EncodeToString([]byte(str))
+}
+
+// HexToStr decodes an hex string to string.
+// Expects hexStr to begin with '0x'
+func HexToStr(hexStr string) (string, error) {
+	bs, err := hex.DecodeString(hexStr[2:])
+	if err != nil {
+		return "", err
+	}
+	return string(bs), nil
 }

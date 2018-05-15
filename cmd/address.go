@@ -51,7 +51,7 @@ var addressNewCmd = &cobra.Command{
 			seed = &_seed
 		}
 
-		addr, _ := crypto.NewAddress(seed)
+		addr, _ := crypto.NewKey(seed)
 		newAddr := addr.Addr()
 
 		fmt.Println(fmt.Sprintf("Address:     %s", color.HiCyanString(newAddr)))

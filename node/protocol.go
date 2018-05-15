@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/druid/constants"
 	"github.com/ellcrys/druid/util/logger"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 
@@ -106,7 +107,7 @@ func (protoc *Inception) isRejected(s net.Stream) (*wire.Reject, error) {
 	}
 
 	if msg.Code != 0 {
-		return &msg, wire.ErrRejected
+		return &msg, constants.ErrRejected
 	}
 
 	return nil, nil

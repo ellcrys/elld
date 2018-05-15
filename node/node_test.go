@@ -29,30 +29,30 @@ var _ = Describe("Node", func() {
 	Describe(".NewNode", func() {
 		Context("address", func() {
 			It("return err.Error('failed to parse address. Expects 'ip:port' format') when only port is provided", func() {
-				_, err := NewNode(cfg, "40100", crypto.NewAddressFromIntSeed(1), log)
+				_, err := NewNode(cfg, "40100", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
 			})
 
 			It("return err.Error('failed to parse address. Expects 'ip:port' format') when only ip is provided", func() {
-				_, err := NewNode(cfg, "127.0.0.1", crypto.NewAddressFromIntSeed(1), log)
+				_, err := NewNode(cfg, "127.0.0.1", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
 			})
 
 			It("return err.Error('failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0') when address is invalid and port is valid", func() {
-				_, err := NewNode(cfg, "127.0.0:40000", crypto.NewAddressFromIntSeed(1), log)
+				_, err := NewNode(cfg, "127.0.0:40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0"))
 			})
 
 			It("return nil if address is ':40000'", func() {
-				_, err := NewNode(cfg, ":40000", crypto.NewAddressFromIntSeed(1), log)
+				_, err := NewNode(cfg, ":40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
 			})
 
 			It("return nil if address is '127.0.0.1:40000'", func() {
-				_, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(1), log)
+				_, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -65,7 +65,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.ID().Pretty()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			n.Host().Close()
@@ -79,7 +79,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.StringID()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			n.Host().Close()
@@ -93,7 +93,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return '12D3KooWL3XJ..JiXkSj7333Jw'", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.ShortID()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
 			n.Host().Close()
@@ -102,7 +102,7 @@ var _ = Describe("Node", func() {
 
 	Describe(".PrivKey", func() {
 		It("should return private key", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.PrivKey()).NotTo(BeNil())
 			n.Host().Close()
@@ -116,7 +116,7 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return '/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.GetMultiAddr()).To(Equal("/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
 			n.Host().Close()
@@ -125,7 +125,7 @@ var _ = Describe("Node", func() {
 
 	Describe(".GetAddr", func() {
 		It("should return '127.0.0.1:40000'", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.GetAddr()).To(Equal("127.0.0.1:40000"))
 			n.Host().Close()
@@ -134,7 +134,7 @@ var _ = Describe("Node", func() {
 
 	Describe(".NodeFromAddr", func() {
 		It("should return error if address is not valid", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			_, err = n.NodeFromAddr("/invalid", false)
 			Expect(err).ToNot(BeNil())
@@ -144,21 +144,21 @@ var _ = Describe("Node", func() {
 
 	Describe(".IsBadTimestamp", func() {
 		It("should return false when time is zero", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			n.Timestamp = time.Time{}
 			Expect(err).To(BeNil())
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 10 minutes, 1 second in the future", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			n.Timestamp = time.Now().Add(10*time.Minute + 1*time.Second)
 			Expect(err).To(BeNil())
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 3 hours, 1 second in the past", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			n.Timestamp = time.Now().Add(-3 * time.Hour)
 			Expect(err).To(BeNil())
 			Expect(n.IsBadTimestamp()).To(BeTrue())
@@ -167,7 +167,7 @@ var _ = Describe("Node", func() {
 
 	Describe(".GetIP4TCPAddr", func() {
 		It("should return '/ip4/127.0.0.1/tcp/40000'", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+			n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			Expect(n.GetIP4TCPAddr().String()).To(Equal("/ip4/127.0.0.1/tcp/40000"))
 			n.Host().Close()
@@ -177,7 +177,7 @@ var _ = Describe("Node", func() {
 	Describe(".AddBootstrapNodes", func() {
 		Context("with empty address", func() {
 			It("peer manager's bootstrap list should be empty", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				n.AddBootstrapNodes(nil, false)
 				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
@@ -187,7 +187,7 @@ var _ = Describe("Node", func() {
 
 		Context("with invalid address", func() {
 			It("peer manager's bootstrap list should not contain invalid address", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				n.AddBootstrapNodes([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
 				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
@@ -195,7 +195,7 @@ var _ = Describe("Node", func() {
 			})
 
 			It("peer manager's bootstrap list contain only one valid address", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				n.AddBootstrapNodes([]string{
 					"/ip4/127.0.0.1/tcp/40000",
@@ -215,7 +215,7 @@ var _ = Describe("Node", func() {
 		var err error
 
 		BeforeEach(func() {
-			n, err = NewNode(cfg, "127.0.0.1:40105", crypto.NewAddressFromIntSeed(5), log)
+			n, err = NewNode(cfg, "127.0.0.1:40105", crypto.NewKeyFromIntSeed(5), log)
 			Expect(err).To(BeNil())
 			host = n.Host()
 			Expect(err).To(BeNil())
@@ -266,9 +266,9 @@ var _ = Describe("Node", func() {
 		var err error
 
 		BeforeEach(func() {
-			n, err = NewNode(cfg, "127.0.0.1:40106", crypto.NewAddressFromIntSeed(6), log)
+			n, err = NewNode(cfg, "127.0.0.1:40106", crypto.NewKeyFromIntSeed(6), log)
 			Expect(err).To(BeNil())
-			n2, err = NewNode(cfg, "127.0.0.1:40107", crypto.NewAddressFromIntSeed(7), log)
+			n2, err = NewNode(cfg, "127.0.0.1:40107", crypto.NewKeyFromIntSeed(7), log)
 			Expect(err).To(BeNil())
 			n2.SetLocalNode(n)
 			host = n.Host()
@@ -287,12 +287,12 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return true when peer is connected", func() {
-			ln, err := NewNode(cfg, "127.0.0.1:40108", crypto.NewAddressFromIntSeed(8), log)
+			ln, err := NewNode(cfg, "127.0.0.1:40108", crypto.NewKeyFromIntSeed(8), log)
 			Expect(err).To(BeNil())
 			defer ln.host.Close()
 			lpProtoc := NewInception(ln, log)
 
-			rn, err := NewNode(cfg, "127.0.0.1:40109", crypto.NewAddressFromIntSeed(9), log)
+			rn, err := NewNode(cfg, "127.0.0.1:40109", crypto.NewKeyFromIntSeed(9), log)
 			Expect(err).To(BeNil())
 			defer rn.host.Close()
 			rnProtoc := NewInception(rn, log)
@@ -314,7 +314,7 @@ var _ = Describe("Node", func() {
 
 	Describe(".ip", func() {
 		It("should return ip as 127.0.0.1", func() {
-			n, err := NewNode(cfg, "127.0.0.1:40106", crypto.NewAddressFromIntSeed(6), log)
+			n, err := NewNode(cfg, "127.0.0.1:40106", crypto.NewKeyFromIntSeed(6), log)
 			Expect(err).To(BeNil())
 			ip := n.ip()
 			Expect(ip).ToNot(BeNil())

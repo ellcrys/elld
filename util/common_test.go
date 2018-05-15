@@ -49,4 +49,32 @@ var _ = Describe("Common", func() {
 			}).To(Panic())
 		})
 	})
+
+	Describe(".Int64ToHex", func() {
+		It("should return 0x3130", func() {
+			Expect(Int64ToHex(10)).To(Equal("0x3130"))
+		})
+	})
+
+	Describe(".HexToInt64", func() {
+		It("should return 0x3130", func() {
+			str, err := HexToInt64("0x3130")
+			Expect(err).To(BeNil())
+			Expect(str).To(Equal(int64(10)))
+		})
+	})
+
+	Describe(".StrToHex", func() {
+		It("should return 0x3130", func() {
+			Expect(StrToHex("10")).To(Equal("0x3130"))
+		})
+	})
+
+	Describe(".HexToStr", func() {
+		It("should return '10'", func() {
+			str, err := HexToStr("0x3130")
+			Expect(err).To(BeNil())
+			Expect(str).To(Equal("10"))
+		})
+	})
 })

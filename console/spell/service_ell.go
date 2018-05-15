@@ -1,43 +1,73 @@
 package spell
 
 import (
-	"fmt"
-
 	net_rpc "net/rpc"
+	"time"
+
+	"github.com/jinzhu/copier"
+
+	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/wire"
 
 	"github.com/ellcrys/druid/rpc"
-	"github.com/fatih/color"
 )
 
 // ELLService provides implementation of actions
 // that attempts to alter the state of the blockchain.
 type ELLService struct {
 	client *net_rpc.Client
+	key    *crypto.Key
 }
 
 // NewELL creates a new ELL service instance
-func NewELL(client *net_rpc.Client) *ELLService {
+func NewELL(client *net_rpc.Client, key *crypto.Key) *ELLService {
 	es := new(ELLService)
 	es.client = client
+	es.key = key
 	return es
 }
 
 // Send sends ELL from one account to another
-func (es *ELLService) Send() {
+func (es *ELLService) Send(params map[string]interface{}) interface{} {
 
 	if es.client == nil {
-		color.Red("rpc: rpc mode not enabled")
-		return
+		return ConsoleErr("rpc client not initialized", nil)
 	}
 
-	args := &rpc.Args{A: 3, B: 4}
-	var result rpc.Result
-	err := es.client.Call("Service.Plus", args, &result)
+	tx := &wire.Transaction{
+		Type:         wire.TxTypeA2A,
+		Nonce:        1, // TODO: fetch current nonce
+		SenderPubKey: es.key.PubKey().Base58(),
+		To:           params["to"].(string),
+		Value:        params["value"].(string),
+		Fee:          "1", // TODO: if params["fee"] is null, use a default
+		Timestamp:    time.Now().Unix(),
+	}
+
+	sig, err := wire.TxSign(tx, es.key.PrivKey().Base58())
 	if err != nil {
-		color.Red("%s", err)
-		return
+		return ConsoleErr(err.Error(), nil)
 	}
 
-	fmt.Println(err, result)
-	return
+	var sendTxArgs rpc.SendTxArgs
+	copier.Copy(&sendTxArgs, tx)
+
+	var result rpc.Result
+	var payload = rpc.SendTxPayload{
+		Args: sendTxArgs,
+		Sig:  sig,
+	}
+
+	err = es.client.Call("Service.Send", payload, &result)
+	if err != nil {
+		return ConsoleErr(err.Error(), nil)
+	}
+
+	if result.Status != 200 {
+		return ConsoleErr(result.Error, map[string]interface{}{
+			"code": result.ErrCode,
+		})
+	}
+
+	return result.Data
 }

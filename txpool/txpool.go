@@ -3,7 +3,6 @@ package txpool
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/ellcrys/druid/wire"
 )
@@ -38,20 +37,12 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 		return fmt.Errorf("capacity reached")
 	}
 
-	if err := wire.TxVerify(tx); err != nil {
-		return err
-	}
-
 	if tp.Has(tx) {
 		return fmt.Errorf("exact transaction already in pool")
 	}
 
-	if time.Unix(tx.Timestamp, 0).After(time.Now()) {
-		return fmt.Errorf("future time not allowed")
-	}
-
 	switch tx.Type {
-	case wire.TxTypeRepoCreate:
+	case wire.TxTypeA2A:
 		tp.addTx(tx)
 	}
 
@@ -66,7 +57,6 @@ func (tp *TxPool) addTx(tx *wire.Transaction) bool {
 		tp.gmx.Unlock()
 		return false
 	}
-
 	tp.queueMap[string(tx.Hash())] = struct{}{}
 
 	if tp.onQueuedCB != nil {

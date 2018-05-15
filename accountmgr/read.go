@@ -20,7 +20,7 @@ var (
 type StoredAccount struct {
 	Address   string
 	Cipher    []byte
-	address   *crypto.Address
+	address   *crypto.Key
 	CreatedAt time.Time
 }
 
@@ -94,7 +94,7 @@ func (am *AccountManager) GetByAddress(addr string) (*StoredAccount, error) {
 
 // GetAddress returns the address object which contains the private
 // key and public key. Must call Decrypt() first.
-func (sa *StoredAccount) GetAddress() *crypto.Address {
+func (sa *StoredAccount) GetAddress() *crypto.Key {
 	return sa.address
 }
 
@@ -127,6 +127,6 @@ func (sa *StoredAccount) Decrypt(passphrase string) error {
 		return err
 	}
 
-	sa.address = crypto.NewAddressFromPrivKey(privKey)
+	sa.address = crypto.NewKeyFromPrivKey(privKey)
 	return nil
 }

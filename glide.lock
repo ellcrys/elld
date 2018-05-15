@@ -1,8 +1,8 @@
-hash: a28c09d1a193f98a7d8c17a290ce13d0c58c3eb2c83e97443b0e3d1bb497b320
-updated: 2018-05-11T09:44:08.655826+01:00
+hash: a4e6cb8a44cf0f9fa196c1d44a6791fbe5a45f9463977ba0c24d57420971c6d2
+updated: 2018-05-15T10:59:30.114014+01:00
 imports:
 - name: cloud.google.com/go
-  version: 08a1906e0e6b21972c99025386ff7e0e87037814
+  version: 90f2606161ee6a14efe2ca79fc05ac2b8efe250b
   subpackages:
   - storage
 - name: github.com/agl/ed25519
@@ -15,7 +15,7 @@ imports:
   subpackages:
   - btcec
 - name: github.com/btcsuite/btcutil
-  version: 501929d3d046174c3d39f0ea54ece471aa17238c
+  version: 06f32abe079c0670ea6adf08f41754ef36063a72
   subpackages:
   - base58
   - base85
@@ -45,7 +45,7 @@ imports:
   - io
   - proto
 - name: github.com/golang/protobuf
-  version: b4deda0973fb4c70b50d226b1af49f3da59f5265
+  version: 927b65914520a8b7d44f5c9057611cfec6b2e2d0
   subpackages:
   - proto
 - name: github.com/golang/snappy
@@ -95,10 +95,8 @@ imports:
   - ratelimit
 - name: github.com/jinzhu/configor
   version: ec34f328956f53dfbd06e9f5306e37e6943443c3
-- name: github.com/kr/pretty
-  version: 73f6ac0b30a98e433b289500d779f50c1a6f0712
-- name: github.com/kr/text
-  version: e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f
+- name: github.com/jinzhu/copier
+  version: 7e38e58719c33e0d44d585c4ab477a30f8cb82dd
 - name: github.com/libp2p/go-addr-util
   version: 3bd34419494fb7f15182ddd19a5d92ac017a27c6
 - name: github.com/libp2p/go-flow-metrics
@@ -246,7 +244,7 @@ imports:
   - reporters/stenographer/support/go-isatty
   - types
 - name: github.com/onsi/gomega
-  version: b7d1a52235cc433a76c556aa3f4229e63b95e7da
+  version: 62bff4df71bdbc266561a0caee19f0594b17c240
   subpackages:
   - '...'
   - format
@@ -286,12 +284,12 @@ imports:
   version: f0d19b6901ade831d5a3204edc0d6a7d6457fbb2
 - name: github.com/shopspring/decimal
   version: 2df3e6ddaf6e9531dd02d7b6337f2d310f5e4f22
+- name: github.com/Sirupsen/logrus
+  version: bde08903c767a7f835dfbe69f769f4b3225f8b1b
 - name: github.com/sirupsen/logrus
-  version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
+  version: bde08903c767a7f835dfbe69f769f4b3225f8b1b
   repo: git@github.com:/sirupsen/logrus
   vcs: git
-- name: github.com/Sirupsen/logrus
-  version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
 - name: github.com/spaolacci/murmur3
   version: f09979ecbc725b9e6d41a297405f65e7e8804acc
 - name: github.com/spf13/cobra
@@ -299,7 +297,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 583c0c0531f06d5278b7d917446061adc344b5cd
 - name: github.com/syndtr/goleveldb
-  version: ae970a0732be3a1f5311da86118d37b9f4bd2a5a
+  version: 9637fa0b2f0db13c99d899b91007edb7df4610b7
   subpackages:
   - leveldb
   - leveldb/cache
@@ -363,11 +361,11 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: 6ae8750e84562e2fdecac47982792033cc49a3e4
+  version: 191ab29b993d4b3ae107a1cf5952f99fc6914731
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto
-  version: 2d027ae1dddd4694d54f7a8b6cbe78dca8720226
+  version: 1a580b3eff7814fc9b40602fd35256c63b50f491
   subpackages:
   - acme/autocert
   - blake2s
@@ -378,7 +376,7 @@ imports:
   - sha3
   - ssh/terminal
 - name: golang.org/x/net
-  version: f73e4c9ed3b7ebdd5f699a16a880c2b1994e50dd
+  version: 2491c5de3490fced2f6cff376127c667efeed857
   subpackages:
   - bpf
   - context
@@ -401,7 +399,7 @@ imports:
   subpackages:
   - google
 - name: golang.org/x/sys
-  version: 7dfd1290c7917b7ba22824b9d24954ab3002fe24
+  version: 7c87d13f8e835d2fb3a70a2912c811ed0c1d241b
   subpackages:
   - cpu
   - unix
@@ -412,7 +410,7 @@ imports:
   - windows/svc/eventlog
   - windows/svc/mgr
 - name: golang.org/x/text
-  version: 7922cc490dd5a7dbaa7fd5d6196b49db59ac042f
+  version: 5c1cf69b5978e5a34c5f9ba09a83e56acc4b7877
   subpackages:
   - cases
   - cmd/gotext/examples/extract_http/pkg
@@ -461,7 +459,7 @@ imports:
   - go/ssa
   - go/ssa/ssautil
 - name: google.golang.org/api
-  version: 4bd7f4beb291148443ed4553071c4e0697ff4afb
+  version: d7aa31fbd7da4467a8056610e654315a4c1f068e
   subpackages:
   - compute/v1
 - name: gopkg.in/asaskevich/govalidator.v4
@@ -490,7 +488,7 @@ testImports:
 - name: github.com/pkg/errors
   version: 816c9085562cd7ee03e7f8188a1cfd942858cded
 - name: github.com/rs/zerolog
-  version: 533ee32d5daba4d267593e79581afac50b57773c
+  version: b5207c012d2c2d73bec68f517ef281fdad38114b
 - name: github.com/stretchr/testify
   version: c679ae2cc0cb27ec3293fea7e254e47386f05d69
   subpackages:

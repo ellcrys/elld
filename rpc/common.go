@@ -1,7 +1,9 @@
 package rpc
 
 var (
-	accountErrStoredAccount = 0x1
+	errCodeAccountStoredAccount   = 0x1
+	errCodeTransaction            = 0x100
+	errCodeUnknownTransactionType = 0x101
 )
 
 // NewErrorResult creates a result describing an error

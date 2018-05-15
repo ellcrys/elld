@@ -25,7 +25,7 @@ var _ = Describe("Getaddr", func() {
 
 	Describe(".sendGetAddr", func() {
 		It("should return error.Error('getaddr failed. failed to connect to peer. dial to self attempted')", func() {
-			rp, err := NewNode(cfg, "127.0.0.1:30010", crypto.NewAddressFromIntSeed(0), log)
+			rp, err := NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.Host().Close()
@@ -35,18 +35,18 @@ var _ = Describe("Getaddr", func() {
 		})
 
 		It("when rp2 timestamp is 3 hours ago, it should not be returned", func() {
-			lp, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewAddressFromIntSeed(4), log)
+			lp, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(4), log)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp, log)
 			defer lp.Host().Close()
 
-			rp, err := NewNode(cfg, "127.0.0.1:30012", crypto.NewAddressFromIntSeed(5), log)
+			rp, err := NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(5), log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
 			defer rp.Host().Close()
 
-			rp2, err := NewNode(cfg, "127.0.0.1:30013", crypto.NewAddressFromIntSeed(5), log)
+			rp2, err := NewNode(cfg, "127.0.0.1:30013", crypto.NewKeyFromIntSeed(5), log)
 			Expect(err).To(BeNil())
 			rp2.Timestamp = time.Now().Add(-3 * time.Hour)
 			rp.PM().AddOrUpdatePeer(rp2)
@@ -58,18 +58,18 @@ var _ = Describe("Getaddr", func() {
 		})
 
 		It("hardcoded seed peer should not be returned", func() {
-			lp, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewAddressFromIntSeed(4), log)
+			lp, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(4), log)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp, log)
 			defer lp.Host().Close()
 
-			rp, err := NewNode(cfg, "127.0.0.1:30012", crypto.NewAddressFromIntSeed(5), log)
+			rp, err := NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(5), log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
 			defer rp.Host().Close()
 
-			rp2, _ := NewNode(cfg, "127.0.0.1:30013", crypto.NewAddressFromIntSeed(6), log)
+			rp2, _ := NewNode(cfg, "127.0.0.1:30013", crypto.NewKeyFromIntSeed(6), log)
 			rp2.isHardcodedSeed = true
 			err = rp.PM().AddOrUpdatePeer(rp2)
 			Expect(err).To(BeNil())
@@ -83,24 +83,24 @@ var _ = Describe("Getaddr", func() {
 
 			cfg.Node.MaxAddrsExpected = 1
 
-			lp, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewAddressFromIntSeed(4), log)
+			lp, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(4), log)
 			Expect(err).To(BeNil())
 			lpProtoc := NewInception(lp, log)
 			defer lp.Host().Close()
 
-			rp, err := NewNode(cfg, "127.0.0.1:30012", crypto.NewAddressFromIntSeed(5), log)
+			rp, err := NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(5), log)
 			Expect(err).To(BeNil())
 			rpProtoc := NewInception(rp, log)
 			rp.SetProtocolHandler(util.GetAddrVersion, rpProtoc.OnGetAddr)
 			defer rp.Host().Close()
 
-			rp2, err := NewNode(cfg, "127.0.0.1:30013", crypto.NewAddressFromIntSeed(6), log)
+			rp2, err := NewNode(cfg, "127.0.0.1:30013", crypto.NewKeyFromIntSeed(6), log)
 			Expect(err).To(BeNil())
 			err = rp.PM().AddOrUpdatePeer(rp2)
 			Expect(err).To(BeNil())
 			defer rp2.Host().Close()
 
-			rp3, err := NewNode(cfg, "127.0.0.1:30014", crypto.NewAddressFromIntSeed(7), log)
+			rp3, err := NewNode(cfg, "127.0.0.1:30014", crypto.NewKeyFromIntSeed(7), log)
 			Expect(err).To(BeNil())
 			rp.PM().AddOrUpdatePeer(rp3)
 

@@ -42,9 +42,9 @@ func defaultConfig(cfg *configdir.Config) {
 // 	 the password provided. If password is not set, it is requested via a prompt.
 // - If account is not provided and no default account exists, an interactive account
 // 	 creation session begins.
-func loadAccount(account, password string) (*crypto.Address, error) {
+func loadAccount(account, password string) (*crypto.Key, error) {
 
-	var address *crypto.Address
+	var address *crypto.Key
 	var err error
 	var storedAccount *accountmgr.StoredAccount
 
@@ -209,8 +209,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	var cs *console.Console
 	if startConsole {
 
-		cs = console.New()
-		cs.SetSignatory(loadedAddress)
+		cs = console.New(loadedAddress)
 
 		if startRPC {
 

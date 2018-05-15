@@ -84,8 +84,8 @@ func (am *AccountManager) AskForPasswordOnce() (string, error) {
 	}
 }
 
-// createAccount creates a new account
-func (am *AccountManager) createAccount(address *crypto.Address, passphrase string) error {
+// CreateAccount creates a new account
+func (am *AccountManager) CreateAccount(address *crypto.Key, passphrase string) error {
 
 	if address == nil {
 		return fmt.Errorf("Address is required")
@@ -146,7 +146,7 @@ func (am *AccountManager) createAccount(address *crypto.Address, passphrase stri
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
 // is set, interactive password collection is not used.
-func (am *AccountManager) CreateCmd(pwd string) (*crypto.Address, error) {
+func (am *AccountManager) CreateCmd(pwd string) (*crypto.Key, error) {
 
 	var passphrase string
 	var err error
@@ -182,12 +182,12 @@ func (am *AccountManager) CreateCmd(pwd string) (*crypto.Address, error) {
 	seed := make([]byte, 32)
 	io.ReadFull(rand.Reader, seed)
 	var seedUint64 = int64(binary.BigEndian.Uint64(seed))
-	address, err := crypto.NewAddress(&seedUint64)
+	address, err := crypto.NewKey(&seedUint64)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := am.createAccount(address, passphrase); err != nil {
+	if err := am.CreateAccount(address, passphrase); err != nil {
 		printErr(err.Error())
 		return nil, err
 	}

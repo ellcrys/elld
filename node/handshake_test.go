@@ -25,7 +25,7 @@ var _ = Describe("Handshake", func() {
 		Context("With 0 addresses in local and remote peers", func() {
 
 			It("should return error.Error('handshake failed. failed to connect to peer. dial to self attempted')", func() {
-				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewAddressFromIntSeed(1), log)
+				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
 				rpProtoc := NewInception(rp, log)
 				rp.Host().Close()
@@ -35,12 +35,12 @@ var _ = Describe("Handshake", func() {
 			})
 
 			It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
-				lp, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewAddressFromIntSeed(0), log)
+				lp, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				lpProtoc := NewInception(lp, log)
 				lp.SetProtocol(lpProtoc)
 
-				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewAddressFromIntSeed(1), log)
+				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
 				rpProtoc := NewInception(rp, log)
 				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)

@@ -1,21 +1,21 @@
 package rpc
 
-// AccountsGetArgs represents arguments for method AccountsGet
-type AccountsGetArgs struct {
+// GetAccountsArgs represents arguments for method AccountsGet
+type GetAccountsArgs struct {
 }
 
-// AccountsGetPayload is used to define method arguments
-type AccountsGetPayload struct {
-	Args AccountsGetArgs `json:"args"`
+// GetAccountsPayload is used to define payload for AccountsGet
+type GetAccountsPayload struct {
+	Args GetAccountsArgs `json:"args"`
 	Sig  []byte          `json:"sig"`
 }
 
 // GetAccounts returns accounts known to the node
-func (s *Service) GetAccounts(payload AccountsGetPayload, result *Result) error {
+func (s *Service) GetAccounts(payload GetAccountsPayload, result *Result) error {
 
 	storedAccounts, err := s.node.GetAccounts()
 	if err != nil {
-		return NewErrorResult(result, err.Error(), accountErrStoredAccount, 500)
+		return NewErrorResult(result, err.Error(), errCodeAccountStoredAccount, 500)
 	}
 
 	resp := map[string]interface{}{

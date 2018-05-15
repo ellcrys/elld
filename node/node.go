@@ -48,11 +48,11 @@ type Node struct {
 	rSeed           []byte            // random 256 bit seed to be used for seed random operations
 	db              database.DB       // used to access and modify local database
 	txPool          *txpool.TxPool    // the transaction pool
-	signatory       *d_crypto.Address // signatory address used to get node ID and for signing
+	signatory       *d_crypto.Key     // signatory address used to get node ID and for signing
 }
 
 // NewNode creates a node instance at the specified port
-func NewNode(config *configdir.Config, address string, signatory *d_crypto.Address, log logger.Logger) (*Node, error) {
+func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 
 	if signatory == nil {
 		return nil, fmt.Errorf("signatory address required")
@@ -117,7 +117,7 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 }
 
 // OpenDB opens the database.
-// In dev mode, the database is namespaced by the node id. 
+// In dev mode, the database is namespaced by the node id.
 func (n *Node) OpenDB() error {
 	if n.db != nil {
 		return fmt.Errorf("db already open")
@@ -334,6 +334,11 @@ func (n *Node) connectToNode(remote *Node) error {
 		return n.protoc.SendGetAddr([]*Node{remote})
 	}
 	return nil
+}
+
+// GetTxPool returns the transaction pool
+func (n *Node) GetTxPool() *txpool.TxPool {
+	return n.txPool
 }
 
 // Start starts the node.

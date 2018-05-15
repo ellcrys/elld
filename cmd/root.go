@@ -99,6 +99,5 @@ func initConfig() {
 	}
 
 	cfg.Node.Test = false
-	cfg.TxPool = new(configdir.TxPoolConfig)
 	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
 }

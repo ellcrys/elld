@@ -30,7 +30,7 @@ var _ = Describe("SelfAdv", func() {
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewAddressFromIntSeed(0), log)
+			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
@@ -38,7 +38,7 @@ var _ = Describe("SelfAdv", func() {
 		})
 
 		It("should successfully self advertise peer; remote peer must add the advertised peer", func() {
-			p2, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewAddressFromIntSeed(1), log)
+			p2, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
 			p2.Timestamp = time.Now()
 			pt := NewInception(p2, log)

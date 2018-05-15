@@ -20,17 +20,17 @@ type Console struct {
 	executor   *Executor
 	suggestMgr *SuggestionManager
 	rpcClient  *rpc.Client
-	signatory  *crypto.Address
+	signatory  *crypto.Key
 }
 
 // New creates a new Console instance.
-// If connectToRPC is true, the
-func New() *Console {
+// signatory is the address
+func New(signatory *crypto.Key) *Console {
 
 	c := new(Console)
 	c.executor = NewExecutor()
 	c.suggestMgr = NewSuggestionManager(initialSuggestions)
-	c.executor.spell = spell.NewSpell()
+	c.executor.spell = spell.NewSpell(signatory)
 
 	exitKeyBind := prompt.KeyBind{
 		Key: prompt.ControlC,
@@ -67,11 +67,6 @@ func (c *Console) DialRPCServer(rpcAddr string) error {
 // PrepareVM sets up the VM executors context
 func (c *Console) PrepareVM() error {
 	return c.executor.PrepareContext()
-}
-
-// SetSignatory sets the address that signs RPC calls
-func (c *Console) SetSignatory(addr *crypto.Address) {
-	c.signatory = addr
 }
 
 // Run the console

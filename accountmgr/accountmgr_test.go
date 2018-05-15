@@ -71,7 +71,7 @@ var _ = Describe("Accountmgr", func() {
 		It("should return the first input received", func() {
 			count := 0
 			am.getPassword = testPrompt2(&count, []string{"", "", "passAb"})
-			password, err := am.askForPasswordOnce()
+			password, err := am.AskForPasswordOnce()
 			Expect(err).To(BeNil())
 			Expect(password).To(Equal("passAb"))
 		})
@@ -81,36 +81,36 @@ var _ = Describe("Accountmgr", func() {
 		am := New(accountPath)
 
 		It("should return err = 'Address is required' when address is nil", func() {
-			err := am.createAccount(nil, "")
+			err := am.CreateAccount(nil, "")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("Address is required"))
 		})
 
 		It("should return err = 'Passphrase is required' when passphrase is empty", func() {
 			seed := int64(1)
-			address, _ := crypto.NewAddress(&seed)
-			err := am.createAccount(address, "")
+			address, _ := crypto.NewKey(&seed)
+			err := am.CreateAccount(address, "")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("Passphrase is required"))
 		})
 
 		It("should return nil when account has been created", func() {
 			seed := int64(1)
-			address, _ := crypto.NewAddress(&seed)
+			address, _ := crypto.NewKey(&seed)
 			passphrase := "edge123"
-			err := am.createAccount(address, passphrase)
+			err := am.CreateAccount(address, passphrase)
 			Expect(err).To(BeNil())
 		})
 
 		When("account has been created", func() {
 
-			var address *crypto.Address
+			var address *crypto.Key
 
 			BeforeEach(func() {
 				seed := int64(1)
-				address, _ = crypto.NewAddress(&seed)
+				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.createAccount(address, passphrase)
+				err := am.CreateAccount(address, passphrase)
 				Expect(err).To(BeNil())
 			})
 
@@ -125,9 +125,9 @@ var _ = Describe("Accountmgr", func() {
 
 			It("should return err = 'Account already exist' when account with same address already exist", func() {
 				seed := int64(1)
-				address, _ = crypto.NewAddress(&seed)
+				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.createAccount(address, passphrase)
+				err := am.CreateAccount(address, passphrase)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("Account already exist"))
 			})

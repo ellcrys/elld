@@ -9,12 +9,6 @@ import (
 	"github.com/robertkrimen/otto"
 )
 
-func recoverFunc(rpcMethod string) {
-	if r := recover(); r != nil {
-		color.Red("%s: %s", rpcMethod, r)
-	}
-}
-
 // Executor is responsible for executing operations inside a
 // javascript VM.
 type Executor struct {
@@ -34,7 +28,7 @@ func NewExecutor() *Executor {
 // contexts allowing users to have access to pre-defined values and objects
 func (e *Executor) PrepareContext() error {
 
-	var spell = map[string]interface{}{
+	var spellObj = map[string]interface{}{
 		"ell": map[string]interface{}{
 			"send": e.spell.Ell.Send,
 		},
@@ -44,11 +38,11 @@ func (e *Executor) PrepareContext() error {
 	}
 
 	go func() {
-		defer recoverFunc("spell.GetAccounts")
-		spell["accounts"] = e.spell.Account.GetAccounts()
+		defer spell.RecoverFunc()
+		spellObj["accounts"] = e.spell.Account.GetAccounts()
 	}()
 
-	e.vm.Set("spell", spell)
+	e.vm.Set("spell", spellObj)
 
 	return nil
 }
@@ -78,6 +72,8 @@ func (e *Executor) exitProgram(immediately bool) {
 }
 
 func (e *Executor) exec(in string) {
+
+	defer spell.RecoverFunc()
 
 	v, err := e.vm.Run(in)
 	if err != nil {

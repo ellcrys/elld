@@ -9,6 +9,7 @@ var initialSuggestions = []prompt.Suggest{
 	{Text: ".help", Description: "Print the help message"},
 	{Text: "spell", Description: "Ellcrys console services"},
 	{Text: "spell.ell", Description: "Blockchain interaction module"},
+	{Text: "spell.ell.send", Description: "Send ELL to a non-contract account"},
 	{Text: "spell.accounts", Description: "List all accounts"},
 	{Text: "spell.account", Description: "Object"},
 	{Text: "spell.account.getAccounts", Description: "List all accounts"},

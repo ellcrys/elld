@@ -74,8 +74,8 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 		passphrase = pwd
 	}
 
-	address := crypto.NewAddressFromPrivKey(sk)
-	if err := am.createAccount(address, passphrase); err != nil {
+	address := crypto.NewKeyFromPrivKey(sk)
+	if err := am.CreateAccount(address, passphrase); err != nil {
 		printErr(err.Error())
 		return err
 	}

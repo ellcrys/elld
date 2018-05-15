@@ -28,7 +28,7 @@ var _ = Describe("Accounts", func() {
 	})
 
 	BeforeEach(func() {
-		p, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewAddressFromIntSeed(1), log)
+		p, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 		Expect(err).To(BeNil())
 	})
 
@@ -44,7 +44,7 @@ var _ = Describe("Accounts", func() {
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {
-			payload := AccountsGetPayload{}
+			payload := GetAccountsPayload{}
 			var result Result
 			err := service.GetAccounts(payload, &result)
 			Expect(err).To(BeNil())
@@ -55,10 +55,11 @@ var _ = Describe("Accounts", func() {
 
 		It("should return 1 address", func() {
 			am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-			address, err := am.CreateCmd("mypassword")
+			address, _ := crypto.NewKey(nil)
+			err := am.CreateAccount(address, "pass123")
 			Expect(err).To(BeNil())
 
-			payload := AccountsGetPayload{}
+			payload := GetAccountsPayload{}
 			var result Result
 			err = service.GetAccounts(payload, &result)
 			Expect(err).To(BeNil())
