@@ -20,14 +20,14 @@ func GetTotalBlocks() int {
 }
 
 //AddBlockToChain Add blocks to the Chain
-func AddBlockToChain(blockNumber string, mapData map[string]interface{}) {
+func AddBlockToChain(blockNumber string, block ellBlock.Block) {
 
 	db, err := scribble.New("scribleDB/", nil)
 	if err != nil {
 		fmt.Println("there is error in the db")
 	}
 
-	db.Write("block", blockNumber, mapData)
+	db.Write("block", blockNumber, block)
 }
 
 // DeleteAllBlock should delete all block in blockchain

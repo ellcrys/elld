@@ -114,11 +114,7 @@ var minerCmd = &cobra.Command{
 		} else {
 
 			parentBlock := DB.GetSingleBlock(strconv.Itoa(int(totalBlockNumber)))
-			// fmt.Println(">>>><<<<", parentBlock.Time, currentUTCTimeUint)
-			// os.Exit(0)
 
-			// //var parentBlock ellBlock.parentBlock
-			// //db.Read("block", strconv.Itoa(int(totalBlockNumber)), &parentBlock)
 			block.HashPrevBlock = parentBlock.PowHash
 
 			parentBlockTime, err1 := new(big.Int).SetString(parentBlock.Time, 10)
@@ -134,14 +130,7 @@ var minerCmd = &cobra.Command{
 
 			parentBlockNumber := new(big.Int).SetUint64(parentBlock.Number)
 
-			// fmt.Println("<<<>>>> ", ellParams.GenesisDifficulty)
-
-			// fmt.Println("$$$$: ", parentBlock.Time, parentBlockTime)
-			// fmt.Println("$$$$: ", parentBlock.Difficulty, ParentDifficulty)
-			// fmt.Println("$$$$: ", parentBlock.Number, parentBlockNumber)
-
 			BlockDifficulty := newEllMiner.CalcDifficulty("Homestead", currentUTCTimeUint, parentBlockTime, ParentDifficulty, parentBlockNumber)
-			// fmt.Println(">>><<<<", BlockDifficulty)
 
 			// convert homestead block difficulty to string
 			BlockDifficultyString := BlockDifficulty.String()
@@ -156,16 +145,8 @@ var minerCmd = &cobra.Command{
 			block.PowResult = outputResult
 
 			// store block into Database
-
-			// bigint := block.Difficulty
-			// bigstr := bigint.String()
-
-			bigstr := block.Difficulty
-
-			mapD := map[string]interface{}{"Number": strconv.Itoa(int(block.Number)), "Version": block.Version, "HashPrevBlock": block.HashPrevBlock, "HashMerkleRoot": block.HashMerkleRoot, "Time": block.Time, "Nounce": strconv.Itoa(int(block.Nounce)), "Difficulty": bigstr, "PowHash": block.PowHash, "PowResult": block.PowResult, "TX": block.TX}
-
 			//ADD block to block chain
-			DB.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
+			DB.AddBlockToChain(strconv.Itoa(int(block.Number)), block)
 			fmt.Println("Block ", block.Number, " Successfully Mined")
 
 			fmt.Println("************************************************************************************************************************************************************ ")

@@ -8,11 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-type PartialBlock struct {
-	header            int
-	previousBlockHash common.Hash
-}
-
 //Block  Construct
 type Block struct {
 	Version        string
@@ -25,19 +20,6 @@ type Block struct {
 	Number         uint64
 	PowHash        string
 	PowResult      string
-}
-
-//JsonBlock consume previous block details
-type JsonBlock struct {
-	Version        string `json:"Version"`
-	HashPrevBlock  string `json:"HashPrevBlock"`
-	HashMerkleRoot string `json:"HashMerkleRoot"`
-	Time           string `json:"Time"`
-	Nounce         string `json:"Nounce"`
-	Difficulty     string `json:"Difficulty"`
-	Number         string `json:"Number"`
-	PowHash        string `json:"PowHash"`
-	PowResult      string `json:"PowResult"`
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
