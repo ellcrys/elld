@@ -86,7 +86,7 @@ type Ethash struct {
 }
 
 // Mine function mine a block and creates it
-func (miner *Ethash) Mine(block *ellBlock.FullBlock, minerID int) (string, string, uint64) {
+func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, uint64) {
 
 	const ModeFake = iota
 	blockNumber := block.Number

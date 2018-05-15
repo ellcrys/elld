@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 
+	ellBlock "github.com/ellcrys/druid/block"
 	scribble "github.com/nanobox-io/golang-scribble"
 )
 
@@ -16,7 +17,6 @@ func GetTotalBlocks() int {
 	records, _ := db.ReadAll("block")
 	recordLength := len(records)
 	return recordLength
-
 }
 
 //AddBlockToChain Add blocks to the Chain
@@ -41,4 +41,18 @@ func DeleteAllBlock() {
 	if err := db.Delete("block", ""); err != nil {
 		fmt.Println("Error", err)
 	}
+}
+
+// GetSingleBlock single block from database a
+func GetSingleBlock(blockNumber string) ellBlock.Block {
+	db, err := scribble.New("scribleDB/", nil)
+	if err != nil {
+		fmt.Println("there is error in the db")
+	}
+	var jsonBlock ellBlock.Block
+
+	db.Read("block", blockNumber, &jsonBlock)
+
+	return jsonBlock
+
 }

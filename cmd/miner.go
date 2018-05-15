@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 	//"encoding/json"
 	DB "github.com/ellcrys/druid/scribleDB"
-	scribleDB "github.com/nanobox-io/golang-scribble"
 )
 
 // minerCmd represents the miner command
@@ -61,11 +60,10 @@ var minerCmd = &cobra.Command{
 		// convert current time to utc string then to big.Int
 		//bigIntTCurrentTime, _ := new(big.Int).SetString(currentUTCTime, 10)
 
-		db, err := scribleDB.New("scribleDB/", nil)
-
-		if err != nil {
-			fmt.Println("there is error in the db")
-		}
+		// db, err := scribleDB.New("scribleDB/", nil)
+		// if err != nil {
+		// 	fmt.Println("there is error in the db")
+		// }
 
 		selectedTransaction := MemPool(15)
 
@@ -115,33 +113,32 @@ var minerCmd = &cobra.Command{
 
 		} else {
 
-			var jsonBlock ellBlock.JsonBlock
-			db.Read("block", strconv.Itoa(int(totalBlockNumber)), &jsonBlock)
-			block.HashPrevBlock = jsonBlock.PowHash
+			parentBlock := DB.GetSingleBlock(strconv.Itoa(int(totalBlockNumber)))
+			// fmt.Println(">>>><<<<", parentBlock.Time, currentUTCTimeUint)
+			// os.Exit(0)
 
-			fmt.Println(">>>><<<<", DB.GetTotalBlocks())
+			// //var parentBlock ellBlock.parentBlock
+			// //db.Read("block", strconv.Itoa(int(totalBlockNumber)), &parentBlock)
+			block.HashPrevBlock = parentBlock.PowHash
 
-			parentBlockTime, err1 := new(big.Int).SetString(jsonBlock.Time, 10)
+			parentBlockTime, err1 := new(big.Int).SetString(parentBlock.Time, 10)
 
 			if err1 == false {
 				fmt.Println("Error converting parent blockTime to string")
 			}
 
-			ParentDifficulty, err2 := new(big.Int).SetString(jsonBlock.Difficulty, 10)
+			ParentDifficulty, err2 := new(big.Int).SetString(parentBlock.Difficulty, 10)
 			if err2 == false {
 				fmt.Println("Error converting ParentDifficulty to string")
 			}
 
-			parentBlockNumber, err3 := new(big.Int).SetString(jsonBlock.Number, 10)
-			if err3 == false {
-				fmt.Println("Error converting pparentBlockNumber to string")
-			}
+			parentBlockNumber := new(big.Int).SetUint64(parentBlock.Number)
 
 			// fmt.Println("<<<>>>> ", ellParams.GenesisDifficulty)
 
-			// fmt.Println("$$$$: ", jsonBlock.Time, parentBlockTime)
-			// fmt.Println("$$$$: ", jsonBlock.Difficulty, ParentDifficulty)
-			// fmt.Println("$$$$: ", jsonBlock.Number, parentBlockNumber)
+			// fmt.Println("$$$$: ", parentBlock.Time, parentBlockTime)
+			// fmt.Println("$$$$: ", parentBlock.Difficulty, ParentDifficulty)
+			// fmt.Println("$$$$: ", parentBlock.Number, parentBlockNumber)
 
 			BlockDifficulty := newEllMiner.CalcDifficulty("Homestead", currentUTCTimeUint, parentBlockTime, ParentDifficulty, parentBlockNumber)
 			// fmt.Println(">>><<<<", BlockDifficulty)
@@ -149,7 +146,6 @@ var minerCmd = &cobra.Command{
 			// convert homestead block difficulty to string
 			BlockDifficultyString := BlockDifficulty.String()
 			block.Difficulty = BlockDifficultyString
-			// os.Exit(0)
 		}
 
 		outputDigest, outputResult, outputNonce := newEllMiner.Mine(&block, minerID)
