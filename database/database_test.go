@@ -20,7 +20,7 @@ var _ = Describe("Database", func() {
 
 		It("should successfully open and close database", func() {
 			db := NewGeneralDB(testCfgDir)
-			err := db.Open()
+			err := db.Open("")
 			Expect(err).To(BeNil())
 			err = db.Close()
 			Expect(err).To(BeNil())

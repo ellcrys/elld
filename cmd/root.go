@@ -17,12 +17,14 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path"
+	"os/signal"
+	path "path/filepath"
+	"syscall"
 
-	"github.com/ellcrys/druid/addressmgr"
+	"github.com/ellcrys/druid/accountmgr"
+
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 
 	"github.com/ellcrys/druid/configdir"
@@ -30,10 +32,13 @@ import (
 )
 
 var (
-	cfg     *configdir.Config
-	log     logger.Logger
-	seed    int64
-	devMode bool
+	cfg         *configdir.Config
+	log         logger.Logger
+	devMode     bool
+	sigs        chan os.Signal
+	done        chan bool
+	accountMgr  *accountmgr.AccountManager
+	onTerminate func()
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -56,8 +61,19 @@ func Execute() {
 }
 
 func init() {
+	sigs = make(chan os.Signal, 1)
+	done = make(chan bool, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		if onTerminate != nil {
+			onTerminate()
+		}
+		done <- true
+	}()
+
 	rootCmd.PersistentFlags().String("cfgdir", "", "Set configuration directory")
-	rootCmd.PersistentFlags().Int64P("seed", "s", 0, "Random seed to use for identity creation")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	cobra.OnInitialize(initConfig)
 }
@@ -70,19 +86,18 @@ func initConfig() {
 	log = logger.NewLogrus()
 
 	devMode, _ = rootCmd.Flags().GetBool("dev")
-	seed, _ = rootCmd.Flags().GetInt64("seed")
 	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
 
 	if devMode && cfgDirPath == "" {
-		addr, _ := addressmgr.NewAddress(&seed)
-		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev_"+addr.PeerID()[42:]))
+		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev"))
 		os.MkdirAll(cfgDirPath, 0700)
 	}
 
-	cfg, err = util.LoadCfg(cfgDirPath)
+	cfg, err = configdir.LoadCfg(cfgDirPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	cfg.Node.Test = false
+	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
 }

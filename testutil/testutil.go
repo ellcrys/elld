@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"io"
 	mrand "math/rand"
+	"os"
+	"path"
 	"time"
 
+	"github.com/ellcrys/druid/configdir"
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 // NoOpStreamHandler accepts a stream and does nothing
@@ -75,4 +79,24 @@ func RandBytes(n int) []byte {
 	}
 
 	return b
+}
+
+// SetTestCfg prepare a config directory for tests
+func SetTestCfg() (*configdir.Config, error) {
+	var err error
+	dir, _ := homedir.Dir()
+	cfgDir := path.Join(dir, ".ellcrys_test")
+	os.MkdirAll(cfgDir, 0700)
+	cfg, err := configdir.LoadCfg(cfgDir)
+	cfg.Node.Dev = true
+	cfg.Node.MaxAddrsExpected = 5
+	cfg.Node.Test = true
+	return cfg, err
+}
+
+// RemoveTestCfgDir removes test config directory
+func RemoveTestCfgDir() error {
+	dir, _ := homedir.Dir()
+	err := os.RemoveAll(path.Join(dir, ".ellcrys_test"))
+	return err
 }

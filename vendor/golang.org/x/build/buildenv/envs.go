@@ -7,9 +7,18 @@
 package buildenv
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"golang.org/x/oauth2/google"
+	compute "google.golang.org/api/compute/v1"
+	oauth2api "google.golang.org/api/oauth2/v2"
 )
 
 const (
@@ -43,6 +52,11 @@ type Environment struct {
 	// This field may be overridden as necessary without impacting other fields.
 	ProjectName string
 
+	// ProjectNumber is the GCP project's number, as visible in the admin console.
+	// This is used for things such as constructing the "email" of the default
+	// service account.
+	ProjectNumber int64
+
 	// The IsProd flag indicates whether production functionality should be
 	// enabled. When true, GCE and Kubernetes builders are enabled and the
 	// coordinator serves on 443. Otherwise, GCE and Kubernetes builders are
@@ -71,6 +85,14 @@ type Environment struct {
 	KubeBuild KubeConfig
 	// KubeTools is the Kubernetes config for the tools cluster.
 	KubeTools KubeConfig
+
+	// PreferContainersOnCOS controls whether we do most builds on
+	// Google's Container-Optimized OS Linux image running on a VM
+	// rather than using Kubernetes for builds. This does not
+	// affect cross-compiled builds just running make.bash. Those
+	// still use Kubernetes for now.
+	// See https://golang.org/issue/25108.
+	PreferContainersOnCOS bool
 
 	// DashURL is the base URL of the build dashboard, ending in a slash.
 	DashURL string
@@ -142,6 +164,84 @@ func (e Environment) DashBase() string {
 	return Production.DashURL
 }
 
+// Credentials returns the credentials required to access the GCP environment.
+//
+// It tries to use, in order:
+//
+//   - the file $HOME/keys/$PROJECT_NAME.key.json
+//   - the file $HOME/.config/gcloud/legacy_credentials/$ANYTHING@google.com/adc.json
+//   - the Application Default Credentials (i.e. GCE metadata service, etc)
+func (e Environment) Credentials(ctx context.Context) (*google.Credentials, error) {
+	scopes := []string{
+		// Cloud Platform should include all others, but the
+		// old code duplicated compute and the storage full
+		// control scopes, so I leave them here for now. They
+		// predated the all-encompassing "cloud platform"
+		// scope anyway.
+		// TODO: remove compute and DevstorageFullControlScope once verified to work
+		// without.
+		compute.CloudPlatformScope,
+		compute.ComputeScope,
+		compute.DevstorageFullControlScope,
+
+		// The coordinator needed the userinfo email scope for
+		// reporting to the perf dashboard running on App
+		// Engine at one point. The perf dashboard is down at
+		// the moment, but when it's back up we'll need this,
+		// and if we do other authenticated requests to App
+		// Engine apps, this would be useful.
+		oauth2api.UserinfoEmailScope,
+	}
+
+	// Prefer any "$HOME/keys/$PROJECT.key.json" file first.
+	keyFile := filepath.Join(os.Getenv("HOME"), "keys", e.ProjectName+".key.json")
+	if _, err := os.Stat(keyFile); err == nil {
+		log.Printf("Using credentials from %s", keyFile)
+		jcred, err := ioutil.ReadFile(keyFile)
+		if err != nil {
+			return nil, err
+		}
+		return google.CredentialsFromJSON(ctx, jcred, scopes...)
+	}
+
+	// Then prefer a gcloud @google.com user.
+	if n := findGoogUserJSON(); n != "" {
+		jsonData, err := ioutil.ReadFile(n)
+		if err != nil {
+			return nil, err
+		}
+		creds, err := google.CredentialsFromJSON(ctx, jsonData, scopes...)
+		if err != nil {
+			log.Printf("gobuild.NewClient: error loading google user credentials from %s: %v", n, err)
+			return nil, err
+		}
+		log.Printf("Using credentials from %s", n)
+		return creds, nil
+	}
+
+	creds, err := google.FindDefaultCredentials(ctx, scopes...)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("Using Application Default Credentials")
+	return creds, nil
+}
+
+// findGoogUserJSON walks the gcloud config directory and returns the filename of
+// $HOME/.config/gcloud/legacy_credentials/USER@google.com/adc.json
+// for the first USER found with such a file. On miss it returns the empty string.
+func findGoogUserJSON() (jsonFile string) {
+	gcloud := filepath.Join(os.Getenv("HOME"), ".config/gcloud")
+	filepath.Walk(gcloud, func(path string, fi os.FileInfo, err error) error {
+		if jsonFile == "" && err == nil && fi.Mode().IsRegular() && strings.HasSuffix(path, "@google.com/adc.json") &&
+			strings.HasPrefix(path, filepath.Join(gcloud, "legacy_credentials")+"/") {
+			jsonFile = path
+		}
+		return nil
+	})
+	return
+}
+
 // ByProjectID returns an Environment for the specified
 // project ID. It is currently limited to the symbolic-datum-552
 // and go-dashboard-dev projects.
@@ -167,17 +267,19 @@ func ByProjectID(projectID string) *Environment {
 // For local dev, override the project with the program's flag to set
 // a custom project.
 var Staging = &Environment{
-	ProjectName:  "go-dashboard-dev",
-	IsProd:       true,
-	Zone:         "us-central1-f",
-	ZonesToClean: []string{"us-central1-a", "us-central1-b", "us-central1-f"},
-	StaticIP:     "104.154.113.235",
-	MachineType:  "n1-standard-1",
+	ProjectName:           "go-dashboard-dev",
+	ProjectNumber:         302018677728,
+	IsProd:                true,
+	Zone:                  "us-central1-f",
+	ZonesToClean:          []string{"us-central1-a", "us-central1-b", "us-central1-f"},
+	StaticIP:              "104.154.113.235",
+	MachineType:           "n1-standard-1",
+	PreferContainersOnCOS: true,
 	KubeBuild: KubeConfig{
 		MinNodes:    1,
-		MaxNodes:    2,
+		MaxNodes:    1, // auto-scaling disabled
 		Name:        "buildlets",
-		MachineType: "n1-standard-8",
+		MachineType: "n1-standard-4", // only used for make.bash due to PreferContainersOnCOS
 	},
 	KubeTools: KubeConfig{
 		MinNodes:    3,
@@ -197,21 +299,23 @@ var Staging = &Environment{
 // Production defines the environment that the coordinator and build
 // infrastructure is deployed to for production usage at build.golang.org.
 var Production = &Environment{
-	ProjectName:  "symbolic-datum-552",
-	IsProd:       true,
-	Zone:         "us-central1-f",
-	ZonesToClean: []string{"us-central1-f"},
-	StaticIP:     "107.178.219.46",
-	MachineType:  "n1-standard-4",
+	ProjectName:           "symbolic-datum-552",
+	ProjectNumber:         872405196845,
+	IsProd:                true,
+	Zone:                  "us-central1-f",
+	ZonesToClean:          []string{"us-central1-f"},
+	StaticIP:              "107.178.219.46",
+	MachineType:           "n1-standard-4",
+	PreferContainersOnCOS: true,
 	KubeBuild: KubeConfig{
-		MinNodes:    5,
-		MaxNodes:    5, // auto-scaling disabled
+		MinNodes:    2,
+		MaxNodes:    2, // auto-scaling disabled
 		Name:        "buildlets",
-		MachineType: "n1-standard-32",
+		MachineType: "n1-standard-4", // only used for make.bash due to PreferContainersOnCOS
 	},
 	KubeTools: KubeConfig{
-		MinNodes:    3,
-		MaxNodes:    3,
+		MinNodes:    4,
+		MaxNodes:    4,
 		Name:        "go",
 		MachineType: "n1-standard-4",
 	},
@@ -238,21 +342,32 @@ var possibleEnvs = map[string]*Environment{
 }
 
 var (
-	registeredFlags bool
 	stagingFlag     bool
 	localDevFlag    bool
+	registeredFlags bool
 )
 
-// RegisterFlags registers the "staging" flag. It is required if FromFlags is used.
+// RegisterFlags registers the "staging" and "localdev" flags.
 func RegisterFlags() {
-	if !registeredFlags {
-		flag.BoolVar(&stagingFlag, "staging", false, "use the staging build coordinator and buildlets")
-		flag.BoolVar(&localDevFlag, "localdev", false, "use the localhost in-development coordinator")
-		registeredFlags = true
+	if registeredFlags {
+		panic("duplicate call to RegisterFlags or RegisterStagingFlag")
 	}
+	flag.BoolVar(&localDevFlag, "localdev", false, "use the localhost in-development coordinator")
+	RegisterStagingFlag()
+	registeredFlags = true
 }
 
-// FromFlags returns the build environment specified from flags.
+// RegisterStagingFlag registers the "staging" flag.
+func RegisterStagingFlag() {
+	if registeredFlags {
+		panic("duplicate call to RegisterFlags or RegisterStagingFlag")
+	}
+	flag.BoolVar(&stagingFlag, "staging", false, "use the staging build coordinator and buildlets")
+	registeredFlags = true
+}
+
+// FromFlags returns the build environment specified from flags,
+// as registered by RegisterFlags or RegisterStagingFlag.
 // By default it returns the production environment.
 func FromFlags() *Environment {
 	if !registeredFlags {

@@ -269,7 +269,7 @@ log.Info().
     Str("foo", "bar").
     Dict("dict", zerolog.Dict().
         Str("bar", "baz").
-        Int("n", 1)
+        Int("n", 1),
     ).Msg("hello world")
 
 // Output: {"level":"info","time":1494567715,"foo":"bar","dict":{"bar":"baz","n":1},"message":"hello world"}
@@ -476,6 +476,10 @@ go build -tags binary_log .
 
 To Decode binary encoded log files you can use any CBOR decoder. One has been tested to work
 with zerolog library is [CSD](https://github.com/toravir/csd/).
+
+## Related Projects
+
+* [grpc-zerolog](https://github.com/cheapRoc/grpc-zerolog): Implementation of `grpclog.LoggerV2` interface using `zerolog`
 
 ## Benchmarks
 

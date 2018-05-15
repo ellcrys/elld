@@ -1,9 +1,5 @@
 package wire
 
-import (
-	"fmt"
-)
-
 var (
 
 	// InvalidVersion means a node does not agree with a remote node version
@@ -11,11 +7,6 @@ var (
 
 	// TooManyAddresses means and `addr` message contained too many addresses
 	TooManyAddresses = 0x10
-)
-
-var (
-	// ErrRejected represents a rejected message error
-	ErrRejected = fmt.Errorf("rejected")
 )
 
 // NewRejectMsg creates a reject message

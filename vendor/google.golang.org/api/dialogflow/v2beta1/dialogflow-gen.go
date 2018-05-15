@@ -1862,13 +1862,13 @@ type GoogleCloudDialogflowV2QueryResult struct {
 	// confidence
 	// was not set.
 	//
-	// You should not rely on this field as it isn't guaranteed to be
-	// accurate, or
-	// even set. In particular this field isn't set in Webhook calls and
-	// for
-	// StreamingDetectIntent since the streaming endpoint has separate
-	// confidence
-	// estimates per portion of the audio in StreamingRecognitionResult.
+	// This field is not guaranteed to be accurate or set. In particular
+	// this
+	// field isn't set for StreamingDetectIntent since the streaming
+	// endpoint has
+	// separate confidence estimates per portion of the audio
+	// in
+	// StreamingRecognitionResult.
 	SpeechRecognitionConfidence float64 `json:"speechRecognitionConfidence,omitempty"`
 
 	// WebhookPayload: If the query was fulfilled by a webhook call, this
@@ -2879,11 +2879,11 @@ func (s *GoogleCloudDialogflowV2beta1EventInput) MarshalJSON() ([]byte, error) {
 // GoogleCloudDialogflowV2beta1ExportAgentRequest: The request message
 // for Agents.ExportAgent.
 type GoogleCloudDialogflowV2beta1ExportAgentRequest struct {
-	// AgentUri: Optional. The Google Cloud Storage URI to export the agent
-	// to.
-	// Note: The URI must start with
-	// "gs://". If left unspecified, the serialized agent is returned
-	// inline.
+	// AgentUri: Optional. The
+	// [Google Cloud Storage](https://cloud.google.com/storage/docs/)
+	// URI to export the agent to.
+	// The format of this URI must be `gs://<bucket-name>/<object-name>`.
+	// If left unspecified, the serialized agent is returned inline.
 	AgentUri string `json:"agentUri,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "AgentUri") to
@@ -3079,16 +3079,22 @@ type GoogleCloudDialogflowV2beta1InputAudioConfig struct {
 	// PhraseHints: Optional. The collection of phrase hints which are used
 	// to boost accuracy
 	// of speech recognition.
-	// Refer to [Cloud Speech API
-	// documentation](/speech/docs/basics#phrase-hints)
+	// Refer to
+	// [Cloud Speech
+	// API
+	// documentation](https://cloud.google.com/speech-to-text/docs/basics
+	// #phrase-hints)
 	// for more details.
 	PhraseHints []string `json:"phraseHints,omitempty"`
 
 	// SampleRateHertz: Required. Sample rate (in Hertz) of the audio
 	// content sent in the query.
-	// Refer to [Cloud Speech API documentation](/speech/docs/basics) for
-	// more
-	// details.
+	// Refer to
+	// [Cloud Speech
+	// API
+	// documentation](https://cloud.google.com/speech-to-text/docs/basics
+	// ) for
+	// more details.
 	SampleRateHertz int64 `json:"sampleRateHertz,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g. "AudioEncoding") to
@@ -3253,9 +3259,9 @@ type GoogleCloudDialogflowV2beta1Intent struct {
 	// Also,
 	// auto-markup in the UI is turned off.
 	// DEPRECATED! Please use `ml_disabled` field instead.
-	// NOTE: If neither `ml_enabled` nor `ml_disabled` field is set, then
-	// the
-	// default value is determined as follows:
+	// NOTE: If both `ml_enabled` and `ml_disabled` are either not set or
+	// false,
+	// then the default value is determined as follows:
 	// - Before April 15th, 2018 the default is:
 	//   ml_enabled = false / ml_disabled = true.
 	// - After April 15th, 2018 the default is:
@@ -3812,9 +3818,10 @@ func (s *GoogleCloudDialogflowV2beta1IntentMessageCarouselSelectItem) MarshalJSO
 // GoogleCloudDialogflowV2beta1IntentMessageImage: The image response
 // message.
 type GoogleCloudDialogflowV2beta1IntentMessageImage struct {
-	// AccessibilityText: Optional. A text description of the image to be
-	// used for accessibility,
-	// e.g., screen readers.
+	// AccessibilityText: A text description of the image to be used for
+	// accessibility,
+	// e.g., screen readers. Required if image_uri is set for
+	// CarouselSelect.
 	AccessibilityText string `json:"accessibilityText,omitempty"`
 
 	// ImageUri: Optional. The public URI to an image file.
@@ -4774,13 +4781,13 @@ type GoogleCloudDialogflowV2beta1QueryResult struct {
 	// confidence
 	// was not set.
 	//
-	// You should not rely on this field as it isn't guaranteed to be
-	// accurate, or
-	// even set. In particular this field isn't set in Webhook calls and
-	// for
-	// StreamingDetectIntent since the streaming endpoint has separate
-	// confidence
-	// estimates per portion of the audio in StreamingRecognitionResult.
+	// This field is not guaranteed to be accurate or set. In particular
+	// this
+	// field isn't set for StreamingDetectIntent since the streaming
+	// endpoint has
+	// separate confidence estimates per portion of the audio
+	// in
+	// StreamingRecognitionResult.
 	SpeechRecognitionConfidence float64 `json:"speechRecognitionConfidence,omitempty"`
 
 	// WebhookPayload: If the query was fulfilled by a webhook call, this

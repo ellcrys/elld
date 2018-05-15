@@ -3,6 +3,9 @@ package node
 import (
 	"time"
 
+	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/testutil"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -12,13 +15,14 @@ import (
 var _ = Describe("SelfAdv", func() {
 
 	BeforeEach(func() {
-		Expect(setTestCfg()).To(BeNil())
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		Expect(removeTestCfgDir()).To(BeNil())
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
-
 	Describe(".SelfAdvertise", func() {
 
 		var err error
@@ -26,7 +30,7 @@ var _ = Describe("SelfAdv", func() {
 		var lpProtoc *Inception
 
 		BeforeEach(func() {
-			lp, err = NewNode(cfg, "127.0.0.1:30010", 0, log)
+			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewInception(lp, log)
 			lp.SetProtocol(lpProtoc)
@@ -34,7 +38,7 @@ var _ = Describe("SelfAdv", func() {
 		})
 
 		It("should successfully self advertise peer; remote peer must add the advertised peer", func() {
-			p2, err := NewNode(cfg, "127.0.0.1:30011", 1, log)
+			p2, err := NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
 			p2.Timestamp = time.Now()
 			pt := NewInception(p2, log)

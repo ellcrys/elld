@@ -1,13 +1,16 @@
 package util
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	r "math/rand"
+	"os"
 	"sort"
+	"strconv"
 	"time"
 
-	"github.com/ellcrys/druid/configdir"
+	"github.com/shopspring/decimal"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -83,28 +86,64 @@ func NonZeroOrDefIn64(v int64, def int64) int64 {
 	return v
 }
 
-// LoadCfg loads the config file
-func LoadCfg(cfgDirPath string) (*configdir.Config, error) {
-
-	cfgDir, err := configdir.NewConfigDir(cfgDirPath)
+// StrToDec converts a numeric string to decimal.
+// Panics if val could not be converted to decimal.
+func StrToDec(val string) decimal.Decimal {
+	d, err := decimal.NewFromString(val)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
+	return d
+}
 
-	if err := cfgDir.Init(); err != nil {
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, err
+// IsPathOk checks if a path exist and whether
+// there are no permission errors
+func IsPathOk(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		return false
 	}
+	return true
+}
 
-	cfg, err := cfgDir.Load()
+// IsFileOk checks if a path exists and it is a file
+func IsFileOk(path string) bool {
+	s, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		return false
+	}
+	return !s.IsDir()
+}
+
+// Int64ToHex converts an Int64 value to hex string.
+// The resulting hex is prefixed by '0x'
+func Int64ToHex(intVal int64) string {
+	intValStr := strconv.FormatInt(intVal, 10)
+	return "0x" + hex.EncodeToString([]byte(intValStr))
+}
+
+// HexToInt64 attempts to convert an hex string to Int64.
+// Expects the hex string to begin with '0x'.
+func HexToInt64(hexVal string) (int64, error) {
+	hexStr, err := hex.DecodeString(hexVal[2:])
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
+	return strconv.ParseInt(string(hexStr), 10, 64)
+}
 
-	cfg.SetConfigDir(cfgDir.Path())
+// StrToHex converts a string to hex. T
+// The resulting hex is prefixed by '0x'
+func StrToHex(str string) string {
+	return "0x" + hex.EncodeToString([]byte(str))
+}
 
-	return cfg, nil
+// HexToStr decodes an hex string to string.
+// Expects hexStr to begin with '0x'
+func HexToStr(hexStr string) (string, error) {
+	bs, err := hex.DecodeString(hexStr[2:])
+	if err != nil {
+		return "", err
+	}
+	return string(bs), nil
 }

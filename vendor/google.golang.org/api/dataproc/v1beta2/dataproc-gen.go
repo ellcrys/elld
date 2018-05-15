@@ -218,8 +218,7 @@ type Binding struct {
 	// who is authenticated with a Google account or a service
 	// account.
 	// user:{emailid}: An email address that represents a specific Google
-	// account. For example, alice@gmail.com or
-	// joe@example.com.
+	// account. For example, alice@gmail.com .
 	// serviceAccount:{emailid}: An email address that represents a service
 	// account. For example,
 	// my-other-app@appspot.gserviceaccount.com.
@@ -862,6 +861,10 @@ func (s *GceClusterConfig) MarshalJSON() ([]byte, error) {
 	return gensupport.MarshalJSON(raw, s.ForceSendFields, s.NullFields)
 }
 
+// GetIamPolicyRequest: Request message for GetIamPolicy method.
+type GetIamPolicyRequest struct {
+}
+
 // HadoopJob: A Cloud Dataproc job for running Apache Hadoop MapReduce
 // (https://hadoop.apache.org/docs/current/hadoop-mapreduce-client/hadoop
 // -mapreduce-client-core/MapReduceTutorial.html) jobs on Apache Hadoop
@@ -1002,10 +1005,9 @@ type InstanceGroupConfig struct {
 	// cluster instances. Inferred from SoftwareConfig.image_version.
 	ImageUri string `json:"imageUri,omitempty"`
 
-	// InstanceNames: Optional. The list of instance names. Cloud Dataproc
-	// derives the names from cluster_name, num_instances, and the instance
-	// group if not set by user (recommended practice is to let Cloud
-	// Dataproc derive the name).
+	// InstanceNames: Output only. The list of instance names. Cloud
+	// Dataproc derives the names from cluster_name, num_instances, and the
+	// instance group.
 	InstanceNames []string `json:"instanceNames,omitempty"`
 
 	// IsPreemptible: Optional. Specifies that this instance group contains

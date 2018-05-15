@@ -3,11 +3,14 @@ package node
 import (
 	"context"
 	"fmt"
-	mrand "math/rand"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	d_crypto "github.com/ellcrys/druid/crypto"
+
+	"github.com/ellcrys/druid/txpool"
 
 	"github.com/ellcrys/druid/database"
 	"github.com/ellcrys/druid/util/logger"
@@ -43,16 +46,22 @@ type Node struct {
 	isHardcodedSeed bool              // whether the node was hardcoded as a seed
 	log             logger.Logger     // node logger
 	rSeed           []byte            // random 256 bit seed to be used for seed random operations
-	db              database.DB
+	db              database.DB       // used to access and modify local database
+	txPool          *txpool.TxPool    // the transaction pool
+	signatory       *d_crypto.Key     // signatory address used to get node ID and for signing
 }
 
 // NewNode creates a node instance at the specified port
-func NewNode(config *configdir.Config, address string, idSeed int64, log logger.Logger) (*Node, error) {
+func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 
-	// generate node identity
-	priv, _, err := util.GenerateKeyPair(mrand.New(mrand.NewSource(idSeed)))
+	if signatory == nil {
+		return nil, fmt.Errorf("signatory address required")
+	}
+
+	sk, _ := signatory.PrivKey().Marshal()
+	priv, err := crypto.UnmarshalPrivateKey(sk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create keypair")
+		return nil, err
 	}
 
 	h, port, err := net.SplitHostPort(address)
@@ -77,12 +86,14 @@ func NewNode(config *configdir.Config, address string, idSeed int64, log logger.
 	}
 
 	node := &Node{
-		cfg:     config,
-		address: util.FullAddressFromHost(host),
-		host:    host,
-		wg:      sync.WaitGroup{},
-		log:     log,
-		rSeed:   util.RandBytes(64),
+		cfg:       config,
+		address:   util.FullAddressFromHost(host),
+		host:      host,
+		wg:        sync.WaitGroup{},
+		log:       log,
+		rSeed:     util.RandBytes(64),
+		txPool:    txpool.NewTxPool(config.TxPool.Capacity),
+		signatory: signatory,
 	}
 
 	node.localNode = node
@@ -105,13 +116,20 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	return node
 }
 
-// OpenDB opens the database
+// OpenDB opens the database.
+// In dev mode, the database is namespaced by the node id.
 func (n *Node) OpenDB() error {
 	if n.db != nil {
 		return fmt.Errorf("db already open")
 	}
 	n.db = database.NewGeneralDB(n.cfg.ConfigDir())
-	return n.db.Open()
+
+	namespace := ""
+	if n.DevMode() {
+		namespace = n.StringID()
+	}
+
+	return n.db.Open(namespace)
 }
 
 // PM returns the peer manager
@@ -318,10 +336,18 @@ func (n *Node) connectToNode(remote *Node) error {
 	return nil
 }
 
+// GetTxPool returns the transaction pool
+func (n *Node) GetTxPool() *txpool.TxPool {
+	return n.txPool
+}
+
 // Start starts the node.
+// Set Tx Pool relay callback
 // Send handshake to each bootstrap node.
-// Then send GetAddr message if handshake is successful
 func (n *Node) Start() {
+
+	n.txPool.OnQueued(n.protoc.RelayTx)
+
 	n.PM().Manage()
 	for _, node := range n.PM().bootstrapNodes {
 		go n.connectToNode(node)
@@ -341,13 +367,19 @@ func (n *Node) Stop() {
 		pm.Stop()
 	}
 
-	if n.wg != (sync.WaitGroup{}) {
-		n.wg.Done()
+	if n.db != nil {
+		err := n.db.Close()
+		if err == nil {
+			n.log.Info("Database has been closed")
+		} else {
+			n.log.Error("failed to close database", "Err", err)
+		}
 	}
 
-	if n.db != nil {
-		n.db = nil
-		n.db.Close()
+	n.log.Info("Local node has stopped")
+
+	if n.wg != (sync.WaitGroup{}) {
+		n.wg.Done()
 	}
 }
 
@@ -382,6 +414,7 @@ func (n *Node) ip() net.IP {
 // It is bad when:
 // - It has no timestamp
 // - The timestamp is 10 minutes in the future or over 3 hours ago
+// TODO: Also check of history of failed connection attempts
 func (n *Node) IsBadTimestamp() bool {
 	if n.Timestamp.IsZero() {
 		return true
@@ -393,4 +426,10 @@ func (n *Node) IsBadTimestamp() bool {
 	}
 
 	return false
+}
+
+func (n *Node) createTx() error {
+	// tx := &wire.NewTransaction(wire.TxTypeRepoCreate, 1, "somebody", n.)
+	// return n.txPool.Put()
+	return nil
 }

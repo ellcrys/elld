@@ -40,4 +40,41 @@ var _ = Describe("Common", func() {
 			Expect(NonZeroOrDefIn64(2, 3)).To(Equal(int64(2)))
 		})
 	})
+
+	Describe(".StrToDec", func() {
+		It("should panic if value is not numeric", func() {
+			val := "129.1a"
+			Expect(func() {
+				StrToDec(val)
+			}).To(Panic())
+		})
+	})
+
+	Describe(".Int64ToHex", func() {
+		It("should return 0x3130", func() {
+			Expect(Int64ToHex(10)).To(Equal("0x3130"))
+		})
+	})
+
+	Describe(".HexToInt64", func() {
+		It("should return 0x3130", func() {
+			str, err := HexToInt64("0x3130")
+			Expect(err).To(BeNil())
+			Expect(str).To(Equal(int64(10)))
+		})
+	})
+
+	Describe(".StrToHex", func() {
+		It("should return 0x3130", func() {
+			Expect(StrToHex("10")).To(Equal("0x3130"))
+		})
+	})
+
+	Describe(".HexToStr", func() {
+		It("should return '10'", func() {
+			str, err := HexToStr("0x3130")
+			Expect(err).To(BeNil())
+			Expect(str).To(Equal("10"))
+		})
+	})
 })

@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 	//"encoding/json"
+	DB "github.com/ellcrys/druid/scribleDB"
 	scribleDB "github.com/nanobox-io/golang-scribble"
 )
 
@@ -82,15 +83,14 @@ var minerCmd = &cobra.Command{
 		merkleRootString := fmt.Sprintf("%x", merkleRoot)
 
 		// currentBlockNumber to get total blocks and add 1 to it
-		currentProcessingBlockNumber := ellBlock.GetTotalBlocks() + 1
+		currentProcessingBlockNumber := DB.GetTotalBlocks() + 1
 
-		block := ellBlock.FullBlock{
+		block := ellBlock.Block{
 			Version:        "1.0",
 			HashMerkleRoot: merkleRootString,
 			Time:           currentUTCTime,
-			// Difficulty:     "10",
-			Number: uint64(currentProcessingBlockNumber),
-			TX:     selectedTransaction,
+			Number:         uint64(currentProcessingBlockNumber),
+			TX:             selectedTransaction,
 		}
 
 		config := miner.Config{
@@ -104,7 +104,7 @@ var minerCmd = &cobra.Command{
 		minerID := 67927
 
 		//check if block is a genesuis block
-		totalBlockNumber := ellBlock.GetTotalBlocks()
+		totalBlockNumber := DB.GetTotalBlocks()
 
 		//if the block is a genesis bloc
 		if totalBlockNumber == 0 {
@@ -118,20 +118,8 @@ var minerCmd = &cobra.Command{
 			var jsonBlock ellBlock.JsonBlock
 			db.Read("block", strconv.Itoa(int(totalBlockNumber)), &jsonBlock)
 			block.HashPrevBlock = jsonBlock.PowHash
-			// parentDifficulty, _ := strconv.ParseInt(jsonBlock.Difficulty, 10, 64)
-			//parentDifficulty := jsonBlock.Difficulty
 
-			// fmt.Printf("It's a Block! %#v\n", jsonBlock.PowHash)
-			// BlockDifficulty := newEllMiner.CalculateDifficulty(int(parentDifficulty), jsonBlock.Time, int(currentProcessingBlockNumber))
-
-			//fmt.Println("Miner , Parent Diificulty : ", jsonBlock.PowHash)
-
-			// block.Difficulty = BlockDifficulty
-
-			// comnvert currentUTCTime TO uint64
-			// uintCurrentUTCTime, _ := strconv.ParseUint(currentUTCTime, 10, 10)
-			//uintCurrentUTCTime := uint64(20180511023740)
-			// diffo := newEllMiner.CalcDifficulty("Homestead", uintCurrentUTCTime, &jsonBlock)
+			fmt.Println(">>>><<<<", DB.GetTotalBlocks())
 
 			parentBlockTime, err1 := new(big.Int).SetString(jsonBlock.Time, 10)
 
@@ -181,13 +169,7 @@ var minerCmd = &cobra.Command{
 			mapD := map[string]interface{}{"Number": strconv.Itoa(int(block.Number)), "Version": block.Version, "HashPrevBlock": block.HashPrevBlock, "HashMerkleRoot": block.HashMerkleRoot, "Time": block.Time, "Nounce": strconv.Itoa(int(block.Nounce)), "Difficulty": bigstr, "PowHash": block.PowHash, "PowResult": block.PowResult, "TX": block.TX}
 
 			//ADD block to block chain
-			block.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
-			// mapB, _ := json.Marshal(mapD)
-
-			// db.Write("block", strconv.Itoa(int(block.Number)), mapD)
-
-			//block.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
-
+			DB.AddBlockToChain(strconv.Itoa(int(block.Number)), mapD)
 			fmt.Println("Block ", block.Number, " Successfully Mined")
 
 			fmt.Println("************************************************************************************************************************************************************ ")

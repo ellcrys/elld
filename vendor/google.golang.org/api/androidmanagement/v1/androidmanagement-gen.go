@@ -317,7 +317,8 @@ func (s *ApplicationPermission) MarshalJSON() ([]byte, error) {
 type ApplicationPolicy struct {
 	// DefaultPermissionPolicy: The default policy for all permissions
 	// requested by the app. If specified, this overrides the policy-level
-	// default_permission_policy which applies to all apps.
+	// default_permission_policy which applies to all apps. It does not
+	// override the permission_grants which applies to all apps.
 	//
 	// Possible values:
 	//   "PERMISSION_POLICY_UNSPECIFIED" - Policy not specified. If no
@@ -389,7 +390,8 @@ type ApplicationPolicy struct {
 	PackageName string `json:"packageName,omitempty"`
 
 	// PermissionGrants: Explicit permission grants or denials for the app.
-	// These values override the default_permission_policy.
+	// These values override the default_permission_policy and
+	// permission_grants which apply to all apps.
 	PermissionGrants []*PermissionGrant `json:"permissionGrants,omitempty"`
 
 	// ForceSendFields is a list of field names (e.g.
@@ -925,10 +927,7 @@ func (s *EnrollmentToken) MarshalJSON() ([]byte, error) {
 
 // Enterprise: The configuration applied to an enterprise.
 type Enterprise struct {
-	// AppAutoApprovalEnabled: Whether permissions for apps installed via
-	// policy are automatically approved. If enabled, you must display an
-	// app's permissions to the enterprise admin before setting the app to
-	// be installed in a policy.
+	// AppAutoApprovalEnabled: Deprecated and unused.
 	AppAutoApprovalEnabled bool `json:"appAutoApprovalEnabled,omitempty"`
 
 	// EnabledNotificationTypes: The types of Google Pub/Sub notifications
@@ -2286,7 +2285,7 @@ type Policy struct {
 	UsbFileTransferDisabled bool `json:"usbFileTransferDisabled,omitempty"`
 
 	// UsbMassStorageEnabled: Allows admins to toggle whether USB storge is
-	// enabled or disabled on user's devices. Next ID: 114
+	// enabled or disabled on user's devices.
 	UsbMassStorageEnabled bool `json:"usbMassStorageEnabled,omitempty"`
 
 	// Version: The version of the policy. This is a read-only field. The

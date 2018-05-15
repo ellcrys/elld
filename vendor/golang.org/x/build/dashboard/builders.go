@@ -25,22 +25,29 @@ var Builders = map[string]BuildConfig{}
 // Hosts contains the names and configs of all the types of
 // buildlets. They can be VMs, containers, or dedicated machines.
 var Hosts = map[string]*HostConfig{
-	"host-linux-kubestd": &HostConfig{
-		Notes:           "Kubernetes container on GKE.",
-		KubeImage:       "linux-x86-std-kube:latest",
+	"host-linux-jessie": &HostConfig{
+		Notes:           "Debian Jessie, our standard Linux container image.",
+		ContainerImage:  "linux-x86-jessie:latest",
+		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
+		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
+		SSHUsername:     "root",
+	},
+	"host-linux-stretch": &HostConfig{
+		Notes:           "Debian Stretch",
+		ContainerImage:  "linux-x86-stretch:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 		SSHUsername:     "root",
 	},
 	"host-linux-armhf-cross": &HostConfig{
-		Notes:           "Kubernetes container on GKE built from env/crosscompile/linux-armhf-jessie",
-		KubeImage:       "linux-armhf-jessie:latest",
+		Notes:           "Debian Jessie with armhf cross-compiler, built from env/crosscompile/linux-armhf-jessie",
+		ContainerImage:  "linux-armhf-jessie:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 	},
 	"host-linux-armel-cross": &HostConfig{
-		Notes:           "Kubernetes container on GKE built from env/crosscompile/linux-armel-stretch",
-		KubeImage:       "linux-armel-stretch:latest",
+		Notes:           "Debian Jessie with armel cross-compiler, from env/crosscompile/linux-armel-stretch",
+		ContainerImage:  "linux-armel-stretch:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 	},
@@ -57,32 +64,38 @@ var Hosts = map[string]*HostConfig{
 		OwnerGithub: "davecheney",
 	},
 	"host-nacl-kube": &HostConfig{
-		Notes:           "Kubernetes container on GKE.",
-		KubeImage:       "linux-x86-nacl:latest",
+		Notes:           "Container with Native Client binaries.",
+		ContainerImage:  "linux-x86-nacl:latest",
+		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
+		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
+	},
+	"host-js-wasm": &HostConfig{
+		Notes:           "Container with node.js for testing js/wasm.",
+		ContainerImage:  "js-wasm:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 	},
 	"host-s390x-cross-kube": &HostConfig{
-		Notes:           "Kubernetes container on GKE.",
-		KubeImage:       "linux-s390x-stretch:latest",
+		Notes:           "Container with s390x cross-compiler.",
+		ContainerImage:  "linux-s390x-stretch:latest",
 		buildletURLTmpl: "https://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 	},
 	"host-linux-x86-alpine": &HostConfig{
-		Notes:           "Kubernetes alpine container on GKE.",
-		KubeImage:       "linux-x86-alpine:latest",
+		Notes:           "Alpine container",
+		ContainerImage:  "linux-x86-alpine:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64-static",
 		env:             []string{"GOROOT_BOOTSTRAP=/usr/lib/go"},
 	},
 	"host-linux-clang": &HostConfig{
-		Notes:           "Kubernetes container on GKE with clang.",
-		KubeImage:       "linux-x86-clang:latest",
+		Notes:           "Container with clang.",
+		ContainerImage:  "linux-x86-clang:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 	},
 	"host-linux-sid": &HostConfig{
 		Notes:           "Debian sid, updated occasionally.",
-		KubeImage:       "linux-x86-sid:latest",
+		ContainerImage:  "linux-x86-sid:latest",
 		buildletURLTmpl: "http://storage.googleapis.com/$BUCKET/buildlet.linux-amd64",
 		env:             []string{"GOROOT_BOOTSTRAP=/go1.4"},
 	},
@@ -158,23 +171,23 @@ var Hosts = map[string]*HostConfig{
 		env:                []string{"CC=clang"},
 		SSHUsername:        "gopher",
 	},
-	"host-netbsd-amd64-8branch": &HostConfig{
-		VMImage:            "netbsd-amd64-8branch-b",
-		Notes:              "NetBSD 8.? from the netbsd-8 branch; GCE VM is built from script in build/env/netbsd-amd64",
+	"host-netbsd-amd64-8_0": &HostConfig{
+		VMImage:            "netbsd-amd64-8-0-2018q1",
+		Notes:              "NetBSD 8.0RC1; GCE VM is built from script in build/env/netbsd-amd64",
 		machineType:        "n1-highcpu-4",
 		buildletURLTmpl:    "http://storage.googleapis.com/$BUCKET/buildlet.netbsd-amd64",
 		goBootstrapURLTmpl: "https://storage.googleapis.com/$BUCKET/gobootstrap-netbsd-amd64-2da6b33.tar.gz",
 		SSHUsername:        "root",
 	},
-	// Note: the netbsd-386 host VM image never gets networking up. So we don't use this for now.
-	// See https://github.com/golang/go/issues/20852#issuecomment-347698956
-	"host-netbsd-386-8branch": &HostConfig{
-		VMImage:            "netbsd-386-8branch-c",
-		Notes:              "NetBSD 8.? from the netbsd-8 branch; GCE VM is built from script in build/env/netbsd-386",
+	// Note: the netbsd-386 host hangs during the ../test phase of all.bash,
+	// so we don't use this for now. (See the netbsd-386-8 BuildConfig below.)
+	"host-netbsd-386-8_0": &HostConfig{
+		VMImage:            "netbsd-386-8-0-2018q1",
+		Notes:              "NetBSD 8.0RC1; GCE VM is built from script in build/env/netbsd-386",
 		machineType:        "n1-highcpu-4",
 		buildletURLTmpl:    "http://storage.googleapis.com/$BUCKET/buildlet.netbsd-386",
 		goBootstrapURLTmpl: "https://storage.googleapis.com/$BUCKET/gobootstrap-netbsd-386-0b3b511.tar.gz",
-		SSHUsername:        "gopher",
+		SSHUsername:        "root",
 	},
 	"host-dragonfly-amd64-tdfbsd": &HostConfig{
 		IsReverse:      true,
@@ -451,16 +464,16 @@ func init() {
 		if c.VMImage != "" {
 			nSet++
 		}
-		if c.KubeImage != "" {
+		if c.ContainerImage != "" {
 			nSet++
 		}
 		if c.IsReverse {
 			nSet++
 		}
 		if nSet != 1 {
-			panic(fmt.Sprintf("exactly one of VMImage, KubeImage, IsReverse must be set for host %q; got %v", key, nSet))
+			panic(fmt.Sprintf("exactly one of VMImage, ContainerImage, IsReverse must be set for host %q; got %v", key, nSet))
 		}
-		if c.buildletURLTmpl == "" && (c.VMImage != "" || c.KubeImage != "") {
+		if c.buildletURLTmpl == "" && (c.VMImage != "" || c.ContainerImage != "") {
 			panic(fmt.Sprintf("missing buildletURLTmpl for host type %q", key))
 		}
 	}
@@ -468,7 +481,7 @@ func init() {
 
 // A HostConfig describes the available ways to obtain buildlets of
 // different types. Some host configs can server multiple
-// builders. For example, a host config of "host-linux-kube-std" can
+// builders. For example, a host config of "host-linux-jessie" can
 // serve linux-amd64, linux-amd64-race, linux-386, linux-386-387, etc.
 type HostConfig struct {
 	// HostType is the unique name of this host config. It is also
@@ -477,16 +490,16 @@ type HostConfig struct {
 
 	// buildletURLTmpl is the URL "template" ($BUCKET is auto-expanded)
 	// for the URL to the buildlet binary.
-	// This field is required for GCE and Kubernetes builders. It's not
+	// This field is required for VM and Container builders. It's not
 	// needed for reverse buildlets because in that case, the buildlets
 	// are already running and their stage0 should know how to update it
 	// it automatically.
 	buildletURLTmpl string
 
 	// Exactly 1 of these must be set:
-	VMImage   string // e.g. "openbsd-amd64-60"
-	KubeImage string // e.g. "linux-buildlet-std:latest" (suffix after "gcr.io/<PROJ>/")
-	IsReverse bool   // if true, only use the reverse buildlet pool
+	VMImage        string // e.g. "openbsd-amd64-60"
+	ContainerImage string // e.g. "linux-buildlet-std:latest" (suffix after "gcr.io/<PROJ>/")
+	IsReverse      bool   // if true, only use the reverse buildlet pool
 
 	// GCE options, if VMImage != ""
 	machineType string // optional GCE instance type
@@ -530,7 +543,7 @@ type BuildConfig struct {
 
 	// HostType is the required key into the Hosts map, describing
 	// the type of host this build will run on.
-	// For example, "host-linux-kube-std".
+	// For example, "host-linux-jessie".
 	HostType string
 
 	Notes string // notes for humans
@@ -606,11 +619,11 @@ func (c *BuildConfig) Env() []string {
 
 func (c *BuildConfig) IsReverse() bool { return c.hostConf().IsReverse }
 
-func (c *BuildConfig) IsKube() bool { return c.hostConf().IsKube() }
-func (c *HostConfig) IsKube() bool  { return c.KubeImage != "" }
+func (c *BuildConfig) IsContainer() bool { return c.hostConf().IsContainer() }
+func (c *HostConfig) IsContainer() bool  { return c.ContainerImage != "" }
 
-func (c *BuildConfig) IsGCE() bool { return c.hostConf().IsGCE() }
-func (c *HostConfig) IsGCE() bool  { return c.VMImage != "" }
+func (c *BuildConfig) IsVM() bool { return c.hostConf().IsVM() }
+func (c *HostConfig) IsVM() bool  { return c.VMImage != "" }
 
 func (c *BuildConfig) GOOS() string { return c.Name[:strings.Index(c.Name, "-")] }
 
@@ -715,7 +728,7 @@ func (c *BuildConfig) SplitMakeRun() bool {
 	}
 	// TODO(bradfitz): make androidtest.bash and iotest.bash work
 	// too. And buildall.bash should really just be N small
-	// Kubernetes jobs instead of a "buildall.bash". Then we can
+	// container jobs instead of a "buildall.bash". Then we can
 	// delete this whole method.
 	return false
 }
@@ -735,8 +748,8 @@ func (c *BuildConfig) BuildSubrepos() bool {
 		"linux-386", "linux-amd64", "linux-amd64-nocgo",
 		"openbsd-386-60", "openbsd-amd64-60",
 		"openbsd-386-62", "openbsd-amd64-62",
-		"netbsd-amd64-8branch",
-		"netbsd-386-8branch",
+		"netbsd-amd64-8_0",
+		"netbsd-386-8_0",
 		"plan9-386",
 		"freebsd-arm-paulzhol",
 		"windows-amd64-2016", "windows-386-2008":
@@ -810,6 +823,13 @@ func (c *HostConfig) MachineType() string {
 	if v := c.machineType; v != "" {
 		return v
 	}
+	if c.IsContainer() {
+		// Set a higher default machine size for containers,
+		// so their /workdir tmpfs can be larger. The COS
+		// image has no swap, so we want to make sure the
+		// /workdir fits completely in memory.
+		return "n1-standard-4" // 4 CPUs, 15GB RAM
+	}
 	return "n1-highcpu-2"
 }
 
@@ -833,10 +853,10 @@ func (c *HostConfig) PoolName() string {
 	switch {
 	case c.IsReverse:
 		return "Reverse (dedicated machine/VM)"
-	case c.IsGCE():
+	case c.IsVM():
 		return "GCE VM"
-	case c.IsKube():
-		return "Kubernetes container"
+	case c.IsContainer():
+		return "Container"
 	}
 	panic("unknown builder type")
 }
@@ -849,9 +869,9 @@ func (c *HostConfig) IsHermetic() bool {
 	switch {
 	case c.IsReverse:
 		return c.HermeticReverse
-	case c.IsGCE():
+	case c.IsVM():
 		return true
-	case c.IsKube():
+	case c.IsContainer():
 		return true
 	}
 	panic("unknown builder type")
@@ -912,7 +932,7 @@ func init() {
 	})
 	addBuilder(BuildConfig{
 		Name:              "linux-386",
-		HostType:          "host-linux-kubestd",
+		HostType:          "host-linux-jessie",
 		ShouldRunDistTest: fasterTrybots,
 		TryBot:            true,
 		env:               []string{"GOARCH=386", "GOHOSTARCH=386"},
@@ -922,15 +942,17 @@ func init() {
 	addBuilder(BuildConfig{
 		Name:     "linux-386-387",
 		Notes:    "GO386=387",
-		HostType: "host-linux-kubestd",
+		HostType: "host-linux-jessie",
 		env:      []string{"GOARCH=386", "GOHOSTARCH=386", "GO386=387"},
 	})
 	addBuilder(BuildConfig{
-		Name:           "linux-amd64",
-		HostType:       "host-linux-kubestd",
-		TryBot:         true,
-		numTestHelpers: 6, // As of 2017/05/16, 3 helpers are needed for tests and 3 more for benchmarks to complete in 5m.
-		RunBench:       true,
+		Name:              "linux-amd64",
+		HostType:          "host-linux-jessie",
+		TryBot:            true,
+		MaxAtOnce:         3,
+		numTestHelpers:    1,
+		numTryTestHelpers: 4,
+		RunBench:          true,
 	})
 
 	const testAlpine = false // Issue 22689 (hide all red builders), Issue 19938 (get Alpine passing)
@@ -945,7 +967,7 @@ func init() {
 	// to only run the "go vet std cmd" test and no others.
 	addBuilder(BuildConfig{
 		Name:           "misc-vet-vetall",
-		HostType:       "host-linux-kubestd",
+		HostType:       "host-linux-jessie",
 		Notes:          "Runs vet over the standard library.",
 		TryBot:         true,
 		numTestHelpers: 5,
@@ -954,7 +976,7 @@ func init() {
 	addMiscCompile := func(suffix, rx string) {
 		addBuilder(BuildConfig{
 			Name:        "misc-compile" + suffix,
-			HostType:    "host-linux-kubestd",
+			HostType:    "host-linux-jessie",
 			TryBot:      true,
 			TryOnly:     true,
 			CompileOnly: true,
@@ -974,9 +996,10 @@ func init() {
 	addMiscCompile("-openbsd", "^openbsd-")                                 // 3
 
 	addBuilder(BuildConfig{
-		Name:     "linux-amd64-nocgo",
-		HostType: "host-linux-kubestd",
-		Notes:    "cgo disabled",
+		Name:      "linux-amd64-nocgo",
+		HostType:  "host-linux-jessie",
+		MaxAtOnce: 1,
+		Notes:     "cgo disabled",
 		env: []string{
 			"CGO_ENABLED=0",
 			// This USER=root was required for Docker-based builds but probably isn't required
@@ -986,14 +1009,16 @@ func init() {
 		},
 	})
 	addBuilder(BuildConfig{
-		Name:     "linux-amd64-noopt",
-		Notes:    "optimizations and inlining disabled",
-		HostType: "host-linux-kubestd",
-		env:      []string{"GO_GCFLAGS=-N -l"},
+		Name:      "linux-amd64-noopt",
+		Notes:     "optimizations and inlining disabled",
+		HostType:  "host-linux-jessie",
+		env:       []string{"GO_GCFLAGS=-N -l"},
+		MaxAtOnce: 1,
 	})
 	addBuilder(BuildConfig{
 		Name:        "linux-amd64-ssacheck",
-		HostType:    "host-linux-kubestd",
+		HostType:    "host-linux-jessie",
+		MaxAtOnce:   1,
 		TryBot:      false, // TODO: add a func to conditionally run this trybot if compiler dirs are touched
 		CompileOnly: true,
 		Notes:       "SSA internal checks enabled",
@@ -1004,8 +1029,9 @@ func init() {
 	})
 	addBuilder(BuildConfig{
 		Name:                "linux-amd64-racecompile",
-		HostType:            "host-linux-kubestd",
+		HostType:            "host-linux-jessie",
 		TryBot:              false, // TODO: add a func to conditionally run this trybot if compiler dirs are touched
+		MaxAtOnce:           1,
 		CompileOnly:         true,
 		SkipSnapshot:        true,
 		StopAfterMake:       true,
@@ -1017,34 +1043,45 @@ func init() {
 	})
 	addBuilder(BuildConfig{
 		Name:              "linux-amd64-race",
-		HostType:          "host-linux-kubestd",
+		HostType:          "host-linux-jessie",
 		TryBot:            true,
+		MaxAtOnce:         1,
 		ShouldRunDistTest: fasterTrybots,
-		numTestHelpers:    2,
+		numTestHelpers:    1,
 		numTryTestHelpers: 5,
 	})
 	addBuilder(BuildConfig{
-		Name:     "linux-386-clang",
-		HostType: "host-linux-clang",
-		Notes:    "Debian jessie + clang 3.9 instead of gcc",
-		env:      []string{"CC=/usr/bin/clang", "GOHOSTARCH=386"},
+		Name:      "linux-386-clang",
+		HostType:  "host-linux-clang",
+		MaxAtOnce: 1,
+		Notes:     "Debian jessie + clang 3.9 instead of gcc",
+		env:       []string{"CC=/usr/bin/clang", "GOHOSTARCH=386"},
 	})
 	addBuilder(BuildConfig{
-		Name:     "linux-amd64-clang",
-		HostType: "host-linux-clang",
-		Notes:    "Debian jessie + clang 3.9 instead of gcc",
-		env:      []string{"CC=/usr/bin/clang"},
+		Name:      "linux-amd64-clang",
+		HostType:  "host-linux-clang",
+		MaxAtOnce: 1,
+		Notes:     "Debian jessie + clang 3.9 instead of gcc",
+		env:       []string{"CC=/usr/bin/clang"},
 	})
 	addBuilder(BuildConfig{
-		Name:     "linux-386-sid",
-		HostType: "host-linux-sid",
-		Notes:    "Debian sid (unstable)",
-		env:      []string{"GOHOSTARCH=386"},
+		Name:      "linux-386-sid",
+		HostType:  "host-linux-sid",
+		Notes:     "Debian sid (unstable)",
+		MaxAtOnce: 1,
+		env:       []string{"GOHOSTARCH=386"},
 	})
 	addBuilder(BuildConfig{
-		Name:     "linux-amd64-sid",
-		HostType: "host-linux-sid",
-		Notes:    "Debian sid (unstable)",
+		Name:      "linux-amd64-sid",
+		HostType:  "host-linux-sid",
+		MaxAtOnce: 1,
+		Notes:     "Debian sid (unstable)",
+	})
+	addBuilder(BuildConfig{
+		Name:      "linux-amd64-stretch",
+		HostType:  "host-linux-stretch",
+		MaxAtOnce: 1,
+		Notes:     "Debian Stretch",
 	})
 	addBuilder(BuildConfig{
 		Name:              "linux-arm",
@@ -1087,20 +1124,31 @@ func init() {
 		},
 	})
 	addBuilder(BuildConfig{
-		Name:           "nacl-386",
-		HostType:       "host-nacl-kube",
-		TryBot:         true,
-		MaxAtOnce:      2,
-		numTestHelpers: 3,
-		env:            []string{"GOOS=nacl", "GOARCH=386", "GOHOSTOS=linux", "GOHOSTARCH=amd64"},
+		Name:              "nacl-386",
+		HostType:          "host-nacl-kube",
+		TryBot:            true,
+		MaxAtOnce:         2,
+		numTryTestHelpers: 3,
+		env:               []string{"GOOS=nacl", "GOARCH=386", "GOHOSTOS=linux", "GOHOSTARCH=amd64"},
 	})
 	addBuilder(BuildConfig{
-		Name:           "nacl-amd64p32",
-		HostType:       "host-nacl-kube",
-		TryBot:         true,
-		MaxAtOnce:      2,
-		numTestHelpers: 3,
-		env:            []string{"GOOS=nacl", "GOARCH=amd64p32", "GOHOSTOS=linux", "GOHOSTARCH=amd64"},
+		Name:              "nacl-amd64p32",
+		HostType:          "host-nacl-kube",
+		TryBot:            true,
+		MaxAtOnce:         2,
+		numTryTestHelpers: 3,
+		env:               []string{"GOOS=nacl", "GOARCH=amd64p32", "GOHOSTOS=linux", "GOHOSTARCH=amd64"},
+	})
+	addBuilder(BuildConfig{
+		Name:              "js-wasm",
+		HostType:          "host-js-wasm",
+		TryBot:            false,
+		MaxAtOnce:         2,
+		numTryTestHelpers: 0,
+		env: []string{
+			"GOOS=js", "GOARCH=wasm", "GOHOSTOS=linux", "GOHOSTARCH=amd64",
+			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/workdir/go/misc/wasm",
+		},
 	})
 	addBuilder(BuildConfig{
 		Name:              "openbsd-amd64-60",
@@ -1150,18 +1198,21 @@ func init() {
 		MaxAtOnce:         1,
 	})
 	addBuilder(BuildConfig{
-		Name:              "netbsd-amd64-8branch",
-		HostType:          "host-netbsd-amd64-8branch",
+		Name:              "netbsd-amd64-8_0",
+		HostType:          "host-netbsd-amd64-8_0",
 		ShouldRunDistTest: noTestDir,
 		MaxAtOnce:         1,
 		TryBot:            false,
 	})
 	addBuilder(BuildConfig{
-		Name:              "netbsd-386-8branch",
-		HostType:          "host-netbsd-386-8branch",
+		Name:              "netbsd-386-8_0",
+		HostType:          "host-netbsd-386-8_0",
 		ShouldRunDistTest: noTestDir,
 		MaxAtOnce:         1,
-		TryBot:            false,
+		// This builder currently hangs in the “../test” phase of all.bash.
+		// (https://golang.org/issue/25206)
+		TryOnly: true,  // Disable regular builds.
+		TryBot:  false, // Disable trybots.
 	})
 	addBuilder(BuildConfig{
 		Name:           "plan9-386",
@@ -1173,7 +1224,15 @@ func init() {
 		Name:              "windows-amd64-2008",
 		HostType:          "host-windows-amd64-2008",
 		ShouldRunDistTest: noTestDir,
-		env:               []string{"GOARCH=amd64", "GOHOSTARCH=amd64"},
+		env: []string{
+			"GOARCH=amd64",
+			"GOHOSTARCH=amd64",
+			// cmd/go takes ~188 seconds on windows-amd64
+			// now, which is over the 180 second default
+			// dist test timeout. So, bump this builder
+			// up:
+			"GO_TEST_TIMEOUT_SCALE=2",
+		},
 	})
 	addBuilder(BuildConfig{
 		Name:              "windows-386-2008",
@@ -1188,14 +1247,30 @@ func init() {
 		Name:              "windows-amd64-2012",
 		HostType:          "host-windows-amd64-2012",
 		ShouldRunDistTest: noTestDir,
-		env:               []string{"GOARCH=amd64", "GOHOSTARCH=amd64"},
-		MaxAtOnce:         2,
+		env: []string{
+			"GOARCH=amd64",
+			"GOHOSTARCH=amd64",
+			// cmd/go takes ~188 seconds on windows-amd64
+			// now, which is over the 180 second default
+			// dist test timeout. So, bump this builder
+			// up:
+			"GO_TEST_TIMEOUT_SCALE=2",
+		},
+		MaxAtOnce: 2,
 	})
 	addBuilder(BuildConfig{
 		Name:              "windows-amd64-2016",
 		HostType:          "host-windows-amd64-2016",
 		ShouldRunDistTest: fasterTrybots,
-		env:               []string{"GOARCH=amd64", "GOHOSTARCH=amd64"},
+		env: []string{
+			"GOARCH=amd64",
+			"GOHOSTARCH=amd64",
+			// cmd/go takes ~188 seconds on windows-amd64
+			// now, which is over the 180 second default
+			// dist test timeout. So, bump this builder
+			// up:
+			"GO_TEST_TIMEOUT_SCALE=2",
+		},
 		TryBot:            true,
 		numTryTestHelpers: 5,
 	})
@@ -1203,7 +1278,14 @@ func init() {
 		Name:     "windows-amd64-race",
 		HostType: "host-windows-amd64-2008",
 		Notes:    "Only runs -race tests (./race.bat)",
-		env:      []string{"GOARCH=amd64", "GOHOSTARCH=amd64"},
+		env: []string{
+			"GOARCH=amd64",
+			"GOHOSTARCH=amd64",
+			// cmd/go takes ~188 seconds on windows-amd64
+			// now, which is over the 180 second default
+			// dist test timeout. So, bump this builder
+			// up:
+			"GO_TEST_TIMEOUT_SCALE=2"},
 	})
 	addBuilder(BuildConfig{
 		Name:              "darwin-amd64-10_8",
@@ -1425,13 +1507,13 @@ func addBuilder(c BuildConfig) {
 	}
 
 	types := 0
-	for _, fn := range []func() bool{c.IsReverse, c.IsKube, c.IsGCE} {
+	for _, fn := range []func() bool{c.IsReverse, c.IsContainer, c.IsVM} {
 		if fn() {
 			types++
 		}
 	}
 	if types != 1 {
-		panic(fmt.Sprintf("build config %q host type inconsistent (must be Reverse, Kube, or GCE)", c.Name))
+		panic(fmt.Sprintf("build config %q host type inconsistent (must be Reverse, Image, or VM)", c.Name))
 	}
 
 	Builders[c.Name] = c

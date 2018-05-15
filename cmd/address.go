@@ -17,15 +17,22 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ellcrys/druid/addressmgr"
+	"github.com/fatih/color"
+
+	"github.com/ellcrys/druid/crypto"
 	"github.com/spf13/cobra"
 )
 
 // addressCmd represents the address command
 var addressCmd = &cobra.Command{
 	Use:   "address",
-	Short: "Create & manage addresses",
-	Long:  `Create & manage addresses`,
+	Short: "Create an address",
+	Long: `Description:
+  Create an address. The address, peer ID, public and private keys are
+  displayed. 
+  
+  Use '--seed' set your own Int64 random number to be used as the seed.
+  It '--seed' is not provided or set to -1, a random seed is used.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
@@ -44,10 +51,10 @@ var addressNewCmd = &cobra.Command{
 			seed = &_seed
 		}
 
-		addr, _ := addressmgr.NewAddress(seed)
+		addr, _ := crypto.NewKey(seed)
 		newAddr := addr.Addr()
 
-		fmt.Println(fmt.Sprintf("Address:     %s", newAddr))
+		fmt.Println(fmt.Sprintf("Address:     %s", color.HiCyanString(newAddr)))
 		fmt.Println(fmt.Sprintf("Public Key:  %s", addr.PubKey().Base58()))
 		fmt.Println(fmt.Sprintf("Private Key: %s", addr.PrivKey().Base58()))
 		fmt.Println(fmt.Sprintf("Peer ID:     %s", addr.PeerID()))

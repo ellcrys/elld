@@ -20,6 +20,17 @@ type Ed25519PublicKey struct {
 	k *[32]byte
 }
 
+// Ed25519PrivateKeyFromPrivKey creates an Ed25519PrivateKey from a 64 bytes private key
+func Ed25519PrivateKeyFromPrivKey(sk [64]byte) *Ed25519PrivateKey {
+	var pk [32]byte
+
+	copy(pk[:], sk[32:])
+	return &Ed25519PrivateKey{
+		sk: &sk,
+		pk: &pk,
+	}
+}
+
 func GenerateEd25519Key(src io.Reader) (PrivKey, PubKey, error) {
 	pub, priv, err := ed25519.GenerateKey(src)
 	if err != nil {

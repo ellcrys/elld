@@ -32,7 +32,7 @@
   "description": "A data platform for customers to create, manage, share and query data.",
   "discoveryVersion": "v1",
   "documentationLink": "https://cloud.google.com/bigquery/",
-  "etag": "\"-iA1DTNe4s-I6JZXPt1t1Ypy8IU/EH1WrA9bmAKud9N8fBrRAX4nt90\"",
+  "etag": "\"Zkyw9ACJZUvcYmlFaKGChzhmtnE/cg_n3NWH4TV_fCgEGVaEaOZcGEA\"",
   "icons": {
     "x16": "https://www.google.com/images/icons/product/search-16.gif",
     "x32": "https://www.google.com/images/icons/product/search-32.gif"
@@ -77,12 +77,12 @@
       "type": "boolean"
     },
     "quotaUser": {
-      "description": "Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. Overrides userIp if both are provided.",
+      "description": "An opaque string that represents a user for quota purposes. Must not exceed 40 characters.",
       "location": "query",
       "type": "string"
     },
     "userIp": {
-      "description": "IP address of the site where the request originates. Use this if you want to enforce per-user limits.",
+      "description": "Deprecated. Please use quotaUser instead.",
       "location": "query",
       "type": "string"
     }
@@ -998,7 +998,7 @@
       }
     }
   },
-  "revision": "20180416",
+  "revision": "20180422",
   "rootUrl": "https://www.googleapis.com/",
   "schemas": {
     "BigtableColumn": {
@@ -1211,7 +1211,7 @@
           "type": "string"
         },
         "location": {
-          "description": "The geographic location where the dataset should reside. The default value is US.",
+          "description": "The geographic location where the dataset should reside. The default value is US. See details at https://cloud.google.com/bigquery/docs/dataset-locations.",
           "type": "string"
         },
         "selfLink": {
@@ -1376,7 +1376,7 @@
           "type": "number"
         },
         "endMs": {
-          "description": "Stage end time in milliseconds.",
+          "description": "Stage end time represented as milliseconds since epoch.",
           "format": "int64",
           "type": "string"
         },
@@ -1443,7 +1443,7 @@
           "type": "string"
         },
         "startMs": {
-          "description": "Stage start time in milliseconds.",
+          "description": "Stage start time represented as milliseconds since epoch.",
           "format": "int64",
           "type": "string"
         },

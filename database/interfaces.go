@@ -2,7 +2,7 @@ package database
 
 // DB describes the database access, model and available functionalities
 type DB interface {
-	Open() error
+	Open(namespace string) error
 	Close() error
 	Address() AddrStore
 	WriteBatch([][]byte, [][]byte) error

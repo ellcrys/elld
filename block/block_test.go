@@ -21,8 +21,6 @@ var _ = Describe("Block", func() {
 	// GetTotalBlocks Test
 	var _ = Describe(".GetTotalBlocks", func() {
 
-		//ellBlock := block.FullBlock{}
-
 		//Delete all existing block in the Chain
 		BeforeEach(func() {
 			block.DeleteAllBlock()
@@ -43,7 +41,7 @@ var _ = Describe("Block", func() {
 
 		Context("When a block is being added", func() {
 
-			ellBlock := block.FullBlock{
+			ellBlock := block.Block{
 				Difficulty:     "30212",
 				HashMerkleRoot: "8c4a16df5c399bb06a8752ff16f776901a714dfa3f4113be2c14be7c136ef582",
 				HashPrevBlock:  "efae6c6522095e57bf885756af7ccc38483e6582b83a80adf588126f03134b78",
@@ -81,7 +79,7 @@ var _ = Describe("Block", func() {
 	// GetTotalBlocks Test
 	var _ = Describe(".GetGenesisDifficulty", func() {
 
-		ellBlock := block.FullBlock{}
+		ellBlock := block.Block{}
 
 		//Delete all existing block in the Chain
 		BeforeEach(func() {
@@ -115,7 +113,7 @@ var _ = Describe("Block", func() {
 
 		Context("When a block proof of work is being calculated", func() {
 
-			ellBlock := block.FullBlock{
+			ellBlock := block.Block{
 				Difficulty:     "30212",
 				HashMerkleRoot: "8c4a16df5c399bb06a8752ff16f776901a714dfa3f4113be2c14be7c136ef582",
 				HashPrevBlock:  "efae6c6522095e57bf885756af7ccc38483e6582b83a80adf588126f03134b78",

@@ -15,7 +15,7 @@
   "description": "Lets Android application developers access their Google Play accounts.",
   "discoveryVersion": "v1",
   "documentationLink": "https://developers.google.com/android-publisher",
-  "etag": "\"-iA1DTNe4s-I6JZXPt1t1Ypy8IU/eJTlhAFjCoKr6Jd4MPFAfd8JyPA\"",
+  "etag": "\"Zkyw9ACJZUvcYmlFaKGChzhmtnE/LDFr6YaJ8-u0RqM_DYpFxlF3LR4\"",
   "icons": {
     "x16": "https://www.google.com/images/icons/product/android-16.png",
     "x32": "https://www.google.com/images/icons/product/android-32.png"
@@ -60,12 +60,12 @@
       "type": "boolean"
     },
     "quotaUser": {
-      "description": "Available to use for quota purposes for server-side applications. Can be any arbitrary string assigned to a user, but should not exceed 40 characters. Overrides userIp if both are provided.",
+      "description": "An opaque string that represents a user for quota purposes. Must not exceed 40 characters.",
       "location": "query",
       "type": "string"
     },
     "userIp": {
-      "description": "IP address of the site where the request originates. Use this if you want to enforce per-user limits.",
+      "description": "Deprecated. Please use quotaUser instead.",
       "location": "query",
       "type": "string"
     }
@@ -584,6 +584,85 @@
               "path": "{packageName}/edits/{editId}/apks",
               "response": {
                 "$ref": "Apk"
+              },
+              "scopes": [
+                "https://www.googleapis.com/auth/androidpublisher"
+              ],
+              "supportsMediaUpload": true
+            }
+          }
+        },
+        "bundles": {
+          "methods": {
+            "list": {
+              "httpMethod": "GET",
+              "id": "androidpublisher.edits.bundles.list",
+              "parameterOrder": [
+                "packageName",
+                "editId"
+              ],
+              "parameters": {
+                "editId": {
+                  "description": "Unique identifier for this edit.",
+                  "location": "path",
+                  "required": true,
+                  "type": "string"
+                },
+                "packageName": {
+                  "description": "Unique identifier for the Android app that is being updated; for example, \"com.spiffygame\".",
+                  "location": "path",
+                  "required": true,
+                  "type": "string"
+                }
+              },
+              "path": "{packageName}/edits/{editId}/bundles",
+              "response": {
+                "$ref": "BundlesListResponse"
+              },
+              "scopes": [
+                "https://www.googleapis.com/auth/androidpublisher"
+              ]
+            },
+            "upload": {
+              "httpMethod": "POST",
+              "id": "androidpublisher.edits.bundles.upload",
+              "mediaUpload": {
+                "accept": [
+                  "application/octet-stream"
+                ],
+                "maxSize": "2GB",
+                "protocols": {
+                  "resumable": {
+                    "multipart": true,
+                    "path": "/resumable/upload/androidpublisher/v2/applications/{packageName}/edits/{editId}/bundles"
+                  },
+                  "simple": {
+                    "multipart": true,
+                    "path": "/upload/androidpublisher/v2/applications/{packageName}/edits/{editId}/bundles"
+                  }
+                }
+              },
+              "parameterOrder": [
+                "packageName",
+                "editId"
+              ],
+              "parameters": {
+                "editId": {
+                  "description": "Unique identifier for this edit.",
+                  "location": "path",
+                  "required": true,
+                  "type": "string"
+                },
+                "packageName": {
+                  "description": "Unique identifier for the Android app that is being updated; for example, \"com.spiffygame\".",
+                  "location": "path",
+                  "required": true,
+                  "type": "string"
+                }
+              },
+              "path": "{packageName}/edits/{editId}/bundles",
+              "response": {
+                "$ref": "Bundle"
               },
               "scopes": [
                 "https://www.googleapis.com/auth/androidpublisher"
@@ -1641,9 +1720,8 @@
                   "type": "string"
                 },
                 "track": {
-                  "description": "The track to read or modify. Acceptable values are: \"alpha\", \"beta\", \"production\", \"rollout\" or \"internal\".",
+                  "description": "The track to read or modify.",
                   "location": "path",
-                  "pattern": "(alpha|beta|production|rollout|internal)",
                   "required": true,
                   "type": "string"
                 }
@@ -1709,9 +1787,8 @@
                   "type": "string"
                 },
                 "track": {
-                  "description": "The track to read or modify. Acceptable values are: \"alpha\", \"beta\", \"production\", \"rollout\" or \"internal\".",
+                  "description": "The track to read or modify.",
                   "location": "path",
-                  "pattern": "(alpha|beta|production|rollout|internal)",
                   "required": true,
                   "type": "string"
                 }
@@ -1750,9 +1827,8 @@
                   "type": "string"
                 },
                 "track": {
-                  "description": "The track to read or modify. Acceptable values are: \"alpha\", \"beta\", \"production\", \"rollout\" or \"internal\".",
+                  "description": "The track to read or modify.",
                   "location": "path",
-                  "pattern": "(alpha|beta|production|rollout|internal)",
                   "required": true,
                   "type": "string"
                 }
@@ -2368,7 +2444,7 @@
       }
     }
   },
-  "revision": "20180327",
+  "revision": "20180504",
   "rootUrl": "https://www.googleapis.com/",
   "schemas": {
     "Apk": {
@@ -2501,6 +2577,42 @@
         },
         "id": {
           "description": "The ID of the edit that can be used in subsequent API calls.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Bundle": {
+      "id": "Bundle",
+      "properties": {
+        "sha1": {
+          "description": "A sha1 hash of the upload payload, encoded as a hex string and matching the output of the sha1sum command.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "A sha256 hash of the upload payload, encoded as a hex string and matching the output of the sha256sum command.",
+          "type": "string"
+        },
+        "versionCode": {
+          "description": "The version code of the Android App Bundle. As specified in the Android App Bundle's base module APK manifest file.",
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "BundlesListResponse": {
+      "id": "BundlesListResponse",
+      "properties": {
+        "bundles": {
+          "items": {
+            "$ref": "Bundle"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "default": "androidpublisher#bundlesListResponse",
+          "description": "Identifies what kind of resource this is. Value: the fixed string \"androidpublisher#bundlesListResponse\".",
           "type": "string"
         }
       },
@@ -3114,6 +3226,22 @@
       },
       "type": "object"
     },
+    "SubscriptionCancelSurveyResult": {
+      "description": "Information provided by the user when they complete the subscription cancellation flow (cancellation reason survey).",
+      "id": "SubscriptionCancelSurveyResult",
+      "properties": {
+        "cancelSurveyReason": {
+          "description": "The cancellation reason the user chose in the survey. Possible values are:  \n- Other \n- I don't use this service enough \n- Technical issues \n- Cost-related reasons \n- I found a better app",
+          "format": "int32",
+          "type": "integer"
+        },
+        "userInputCancelReason": {
+          "description": "The customized input cancel reason from the user. Only present when cancelReason is 0.",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "SubscriptionDeferralInfo": {
       "description": "A SubscriptionDeferralInfo contains the data needed to defer a subscription purchase to a future expiry time.",
       "id": "SubscriptionDeferralInfo",
@@ -3143,6 +3271,10 @@
           "description": "The reason why a subscription was canceled or is not auto-renewing. Possible values are:  \n- User canceled the subscription \n- Subscription was canceled by the system, for example because of a billing problem \n- Subscription was replaced with a new subscription \n- Subscription was canceled by the developer",
           "format": "int32",
           "type": "integer"
+        },
+        "cancelSurveyResult": {
+          "$ref": "SubscriptionCancelSurveyResult",
+          "description": "Information provided by the user when they complete the subscription cancellation flow (cancellation reason survey)."
         },
         "countryCode": {
           "description": "ISO 3166-1 alpha-2 billing country/region code of the user at the time the subscription was granted.",
@@ -3299,6 +3431,7 @@
           "type": "number"
         },
         "versionCodes": {
+          "description": "Version codes to make active on this track. Note that this list should contain all versions you wish to be active, including those you wish to retain from previous releases.",
           "items": {
             "format": "int32",
             "type": "integer"
