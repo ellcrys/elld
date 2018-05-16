@@ -22,8 +22,8 @@ import (
 	"time"
 
 	merkletree "github.com/cbergoon/merkletree"
-	ellBlock "github.com/ellcrys/druid/block"
 	"github.com/ellcrys/druid/miner"
+	ellBlock "github.com/ellcrys/druid/wire"
 
 	"github.com/spf13/cobra"
 	//"encoding/json"
@@ -150,6 +150,17 @@ var minerCmd = &cobra.Command{
 			fmt.Println("Block ", block.Number, " Successfully Mined")
 
 			fmt.Println("************************************************************************************************************************************************************ ")
+
+			fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+			fmt.Println("Verifying the Proof of work")
+			errSeal := newEllMiner.VerifyPOW(&block)
+			if errSeal != nil {
+				fmt.Println("Invalid Proof of work verification")
+			} else {
+				fmt.Println("Proof of work verification Successful")
+			}
+			fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
 		} else {
 			fmt.Println("Error Mining Block ")
 		}
