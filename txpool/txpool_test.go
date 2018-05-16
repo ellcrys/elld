@@ -15,26 +15,16 @@ var _ = Describe("TxPool", func() {
 		It("should return err = 'capacity reached' when txpool capacity is reached", func() {
 			tp := NewTxPool(0)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeA2A, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("capacity reached"))
 		})
 
-		It("should return err = 'future time not allowed' when transaction timestamp is in the future", func() {
+		It("should return err = 'exact transaction already in pool' when transaction has already been added", func() {
 			tp := NewTxPool(10)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Add(10*time.Second).Unix())
-			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
-			err := tp.Put(tx)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("future time not allowed"))
-		})
-
-		It("should return err = 'exact transaction already in pool' when transaction timestamp is in the future", func() {
-			tp := NewTxPool(10)
-			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeA2A, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
@@ -42,10 +32,20 @@ var _ = Describe("TxPool", func() {
 			Expect(err.Error()).To(Equal("exact transaction already in pool"))
 		})
 
+		It("should return err = 'unknown transaction type' when tx type is unknown", func() {
+			tp := NewTxPool(1)
+			a, _ := crypto.NewKey(nil)
+			tx := wire.NewTransaction(10200, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
+			err := tp.Put(tx)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("unknown transaction type"))
+		})
+
 		It("should return nil and added to queue", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeA2A, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
@@ -60,7 +60,7 @@ var _ = Describe("TxPool", func() {
 				return nil
 			})
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeA2A, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
@@ -73,7 +73,7 @@ var _ = Describe("TxPool", func() {
 		It("should return true when transaction is not in the queue", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeA2A, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
@@ -86,7 +86,7 @@ var _ = Describe("TxPool", func() {
 		It("should return false when transaction is not in the queue", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeRepoCreate, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeA2A, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			tx.Sig, _ = wire.TxSign(tx, a.PrivKey().Base58())
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())

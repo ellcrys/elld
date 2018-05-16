@@ -44,6 +44,8 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 	switch tx.Type {
 	case wire.TxTypeA2A:
 		tp.addTx(tx)
+	default:
+		return wire.ErrTxTypeUnknown
 	}
 
 	return nil
@@ -57,7 +59,7 @@ func (tp *TxPool) addTx(tx *wire.Transaction) bool {
 		tp.gmx.Unlock()
 		return false
 	}
-	tp.queueMap[string(tx.Hash())] = struct{}{}
+	tp.queueMap[tx.ID()] = struct{}{}
 
 	if tp.onQueuedCB != nil {
 		tp.gmx.Unlock()
@@ -79,6 +81,6 @@ func (tp *TxPool) OnQueued(f func(tx *wire.Transaction) error) {
 func (tp *TxPool) Has(tx *wire.Transaction) bool {
 	tp.gmx.Lock()
 	defer tp.gmx.Unlock()
-	_, has := tp.queueMap[string(tx.Hash())]
+	_, has := tp.queueMap[tx.ID()]
 	return has
 }

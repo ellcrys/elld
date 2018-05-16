@@ -12,10 +12,11 @@ import (
 // First and Last operations sort the transactions by fees in descending order.
 // The queue is synchronized and thread-safe.
 type TxQueue struct {
-	container []*wire.Transaction
-	cap       int64
-	gmx       *sync.RWMutex
-	len       int64
+	container        []*wire.Transaction
+	cap              int64
+	gmx              *sync.RWMutex
+	len              int64
+	disabledAutoSort bool
 }
 
 // NewQueue creates a new queue
@@ -24,6 +25,17 @@ func NewQueue(cap int64) *TxQueue {
 	q.container = []*wire.Transaction{}
 	q.cap = cap
 	q.gmx = &sync.RWMutex{}
+	return q
+}
+
+// NewQueueNoSort creates a new queue with implicit sorting during
+// insertion turned off.
+func NewQueueNoSort(cap int64) *TxQueue {
+	q := new(TxQueue)
+	q.container = []*wire.Transaction{}
+	q.cap = cap
+	q.gmx = &sync.RWMutex{}
+	q.disabledAutoSort = true
 	return q
 }
 
@@ -54,7 +66,9 @@ func (q *TxQueue) Append(tx *wire.Transaction) bool {
 	q.len++
 	q.gmx.Unlock()
 
-	q.Sort(SortByTxFeeDesc)
+	if !q.disabledAutoSort {
+		q.Sort(SortByTxFeeDesc)
+	}
 
 	return true
 }
@@ -72,7 +86,9 @@ func (q *TxQueue) Prepend(tx *wire.Transaction) bool {
 	q.len++
 	q.gmx.Unlock()
 
-	q.Sort(SortByTxFeeDesc)
+	if !q.disabledAutoSort {
+		q.Sort(SortByTxFeeDesc)
+	}
 
 	return true
 }
