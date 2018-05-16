@@ -48,3 +48,16 @@ message Transaction {
     string Fee = 7;
     bytes sig = 8;
 }
+
+message Block{
+    string Version = 1;
+    string HashPrevBlock =2;
+    repeated string TX=3;
+    string HashMerkleRoot =4;
+    string Time =5;
+    uint64 Nounce =6;
+    string Difficulty =7;
+    uint64 Number =8;
+    string PowHash =9;
+    string PowResult =10;
+}
