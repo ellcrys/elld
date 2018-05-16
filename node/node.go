@@ -9,6 +9,7 @@ import (
 	"time"
 
 	d_crypto "github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/wire"
 
 	"github.com/ellcrys/druid/txpool"
 
@@ -49,6 +50,7 @@ type Node struct {
 	db              database.DB       // used to access and modify local database
 	txPool          *txpool.TxPool    // the transaction pool
 	signatory       *d_crypto.Key     // signatory address used to get node ID and for signing
+	historyCache    *HistoryCache     // Used to track objects and behaviours
 }
 
 // NewNode creates a node instance at the specified port
@@ -100,6 +102,13 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	node.peerManager = NewManager(config, node, node.log)
 	node.IP = node.ip()
 
+	hc, err := NewHistoryCache(5000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create history cache. %s", err)
+	}
+
+	node.historyCache = hc
+
 	log.Info("Opened local database", "Backend", "LevelDB")
 
 	return node, nil
@@ -135,6 +144,11 @@ func (n *Node) OpenDB() error {
 // PM returns the peer manager
 func (n *Node) PM() *Manager {
 	return n.peerManager
+}
+
+// History returns the cache holding items (messages etc) we have seen
+func (n *Node) History() *HistoryCache {
+	return n.historyCache
 }
 
 // IsSame checks if p is the same as node
@@ -346,9 +360,12 @@ func (n *Node) GetTxPool() *txpool.TxPool {
 // Send handshake to each bootstrap node.
 func (n *Node) Start() {
 
-	n.txPool.OnQueued(n.protoc.RelayTx)
+	n.txPool.OnQueued(func(tx *wire.Transaction) error {
+		return n.protoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+	})
 
 	n.PM().Manage()
+
 	for _, node := range n.PM().bootstrapNodes {
 		go n.connectToNode(node)
 	}

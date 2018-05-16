@@ -197,6 +197,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(util.PingVersion, protocol.OnPing)
 	n.SetProtocolHandler(util.GetAddrVersion, protocol.OnGetAddr)
 	n.SetProtocolHandler(util.AddrVersion, protocol.OnAddr)
+	n.SetProtocolHandler(util.TxVersion, protocol.OnTx)
 
 	n.Start()
 

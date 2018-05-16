@@ -178,14 +178,13 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 		return fmt.Errorf("no addr to relay")
 	}
 
-	// get the peers to relay address to
+	// get the peers to relay address to 
 	relayPeers := pt.getAddrRelayPeers(relayable)
 	numRelayPeers := len(relayPeers)
-	if relayPeers[0] == nil {
-		numRelayPeers--
-	}
-	if relayPeers[1] == nil {
-		numRelayPeers--
+	for _, p := range relayPeers {
+		if p == nil {
+			numRelayPeers--
+		}
 	}
 
 	pt.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", numRelayPeers)

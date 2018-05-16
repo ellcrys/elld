@@ -1,5 +1,5 @@
-hash: a4e6cb8a44cf0f9fa196c1d44a6791fbe5a45f9463977ba0c24d57420971c6d2
-updated: 2018-05-15T10:59:30.114014+01:00
+hash: c48cf891034b55de0adbfe38c4f5d94d455768034e5d4f93cb77219b64a4ceab
+updated: 2018-05-16T13:47:06.601094+01:00
 imports:
 - name: cloud.google.com/go
   version: 90f2606161ee6a14efe2ca79fc05ac2b8efe250b
@@ -11,11 +11,11 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/btcsuite/btcd
-  version: 675abc5df3c5531bc741b56a765e35623459da6d
+  version: 1432d294a5b055c297457c25434efbf13384cc46
   subpackages:
   - btcec
 - name: github.com/btcsuite/btcutil
-  version: 06f32abe079c0670ea6adf08f41754ef36063a72
+  version: b9afb0b9868a757e8fcc3c3adf5b129979f9b3e6
   subpackages:
   - base58
   - base85
@@ -36,7 +36,7 @@ imports:
 - name: github.com/ellcrys/go-libp2p-crypto
   version: 08bc4ca6778916abbeb103712423416289bb4c8d
 - name: github.com/fatih/color
-  version: 507f6050b8568533fb3f5504de8e5205fa62a114
+  version: 2d684516a8861da43017284349b7e303e809ac21
 - name: github.com/fd/go-nat
   version: dcaf50131e4810440bed2cbb6f7f32c4f4cc95dd
 - name: github.com/gogo/protobuf
@@ -60,6 +60,8 @@ imports:
   version: d9f6b97f8db22dd1e090fd0bbbe98f09cc7dd0a8
   subpackages:
   - keccakpg
+- name: github.com/hashicorp/golang-lru
+  version: 0fb14efe8c47ae851c0034ed7a448854d3d34cf3
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/huin/goupnp
@@ -285,9 +287,9 @@ imports:
 - name: github.com/shopspring/decimal
   version: 2df3e6ddaf6e9531dd02d7b6337f2d310f5e4f22
 - name: github.com/Sirupsen/logrus
-  version: bde08903c767a7f835dfbe69f769f4b3225f8b1b
+  version: 0dad3b6953e73d351ec8ebfd8a8c6b088d320381
 - name: github.com/sirupsen/logrus
-  version: bde08903c767a7f835dfbe69f769f4b3225f8b1b
+  version: 0dad3b6953e73d351ec8ebfd8a8c6b088d320381
   repo: git@github.com:/sirupsen/logrus
   vcs: git
 - name: github.com/spaolacci/murmur3
@@ -361,7 +363,7 @@ imports:
   subpackages:
   - syncutil/singleflight
 - name: golang.org/x/build
-  version: 191ab29b993d4b3ae107a1cf5952f99fc6914731
+  version: e8fa6c444fd942fdc518c45627e57e4ab94d2f82
   subpackages:
   - autocertcache
 - name: golang.org/x/crypto

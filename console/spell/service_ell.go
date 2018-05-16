@@ -4,12 +4,10 @@ import (
 	net_rpc "net/rpc"
 	"time"
 
-	"github.com/jinzhu/copier"
-
 	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/wire"
-
 	"github.com/ellcrys/druid/rpc"
+	"github.com/ellcrys/druid/wire"
+	"github.com/jinzhu/copier"
 )
 
 // ELLService provides implementation of actions
