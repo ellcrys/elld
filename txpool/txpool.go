@@ -11,10 +11,10 @@ import (
 // which is responsible for collecting, validating and providing processed
 // transactions for block inclusion and propagation.
 type TxPool struct {
-	gmx        *sync.Mutex                      // general mutex
-	queue      *TxQueue                         // transaction queue
-	queueMap   map[string]struct{}              // maps transactions present in queue by their hash
-	onQueuedCB func(tx *wire.Transaction) error // called each time a transaction is queued
+	gmx            *sync.Mutex                      // general mutex
+	queue          *TxQueue                         // transaction queue
+	queueMap       map[string]struct{}              // maps transactions present in queue by their hash
+	beforeAppendCB func(tx *wire.Transaction) error // called each time a transaction is queued
 }
 
 // NewTxPool creates a new instance of TxPool
@@ -43,38 +43,36 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 
 	switch tx.Type {
 	case wire.TxTypeA2A:
-		tp.addTx(tx)
+		return tp.addTx(tx)
 	default:
 		return wire.ErrTxTypeUnknown
 	}
-
-	return nil
 }
 
-func (tp *TxPool) addTx(tx *wire.Transaction) bool {
+func (tp *TxPool) addTx(tx *wire.Transaction) error {
 
 	tp.gmx.Lock()
+	tp.queueMap[tx.ID()] = struct{}{}
+
+	if tp.beforeAppendCB != nil {
+		if err := tp.beforeAppendCB(tx); err != nil {
+			tp.gmx.Unlock()
+			return err
+		}
+	}
 
 	if !tp.queue.Append(tx) {
 		tp.gmx.Unlock()
-		return false
-	}
-	tp.queueMap[tx.ID()] = struct{}{}
-
-	if tp.onQueuedCB != nil {
-		tp.gmx.Unlock()
-		tp.onQueuedCB(tx)
-		return true
+		return ErrQueueFull
 	}
 
 	tp.gmx.Unlock()
-	return true
+	return nil
 }
 
-// OnQueued sets the callback to be called each time a transaction has been
-// validated and queued.
-func (tp *TxPool) OnQueued(f func(tx *wire.Transaction) error) {
-	tp.onQueuedCB = f
+// BeforeAppend sets the callback to be called before a transaction is added to the queue
+func (tp *TxPool) BeforeAppend(f func(tx *wire.Transaction) error) {
+	tp.beforeAppendCB = f
 }
 
 // Has checks whether a transaction has been queued

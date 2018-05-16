@@ -45,12 +45,14 @@ type Node struct {
 	remote          bool              // remote indicates the node represents a remote peer
 	Timestamp       time.Time         // the last time this node was seen/active
 	isHardcodedSeed bool              // whether the node was hardcoded as a seed
+	stopped         bool              // flag to tell if node has stopped
 	log             logger.Logger     // node logger
 	rSeed           []byte            // random 256 bit seed to be used for seed random operations
 	db              database.DB       // used to access and modify local database
 	txPool          *txpool.TxPool    // the transaction pool
 	signatory       *d_crypto.Key     // signatory address used to get node ID and for signing
 	historyCache    *HistoryCache     // Used to track objects and behaviours
+	txsRelayQueue   *txpool.TxQueue   // stores transactions waiting to be relayed
 }
 
 // NewNode creates a node instance at the specified port
@@ -88,14 +90,15 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	}
 
 	node := &Node{
-		cfg:       config,
-		address:   util.FullAddressFromHost(host),
-		host:      host,
-		wg:        sync.WaitGroup{},
-		log:       log,
-		rSeed:     util.RandBytes(64),
-		txPool:    txpool.NewTxPool(config.TxPool.Capacity),
-		signatory: signatory,
+		cfg:           config,
+		address:       util.FullAddressFromHost(host),
+		host:          host,
+		wg:            sync.WaitGroup{},
+		log:           log,
+		rSeed:         util.RandBytes(64),
+		txPool:        txpool.NewTxPool(config.TxPool.Capacity),
+		signatory:     signatory,
+		txsRelayQueue: txpool.NewQueueNoSort(config.TxPool.Capacity),
 	}
 
 	node.localNode = node
@@ -355,20 +358,41 @@ func (n *Node) GetTxPool() *txpool.TxPool {
 	return n.txPool
 }
 
-// Start starts the node.
-// Set Tx Pool relay callback
-// Send handshake to each bootstrap node.
-func (n *Node) Start() {
+// relayTx continuously relays transactions in the tx relay queue
+func (n *Node) relayTx() {
+	for !n.stopped {
+		if n.txsRelayQueue.Size() == 0 {
+			time.Sleep(5 * time.Second)
+			continue
+		}
 
-	n.txPool.OnQueued(func(tx *wire.Transaction) error {
-		return n.protoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
-	})
+		tx := n.txsRelayQueue.First()
+		n.protoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+	}
+}
+
+// Start starts the node.
+// - Start the peer manager
+// - Send handshake to each bootstrap node.
+// - Set callback to queue transactions for relaying
+func (n *Node) Start() {
 
 	n.PM().Manage()
 
 	for _, node := range n.PM().bootstrapNodes {
 		go n.connectToNode(node)
 	}
+
+	// before a transaction is added to the tx pool, it must be successfully
+	// added to the Node's tx relay queue.
+	n.txPool.BeforeAppend(func(tx *wire.Transaction) error {
+		if !n.txsRelayQueue.Append(tx) {
+			return txpool.ErrQueueFull
+		}
+		return nil
+	})
+
+	go n.relayTx()
 }
 
 // Wait forces the current thread to wait for the node
@@ -379,6 +403,8 @@ func (n *Node) Wait() {
 
 // Stop stops the node and releases any held resources.
 func (n *Node) Stop() {
+
+	n.stopped = true
 
 	if pm := n.PM(); pm != nil {
 		pm.Stop()
@@ -398,6 +424,7 @@ func (n *Node) Stop() {
 	if n.wg != (sync.WaitGroup{}) {
 		n.wg.Done()
 	}
+
 }
 
 // NodeFromAddr creates a Node from a multiaddr

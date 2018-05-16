@@ -55,7 +55,7 @@ var _ = Describe("TxPool", func() {
 		It("should return nil and call onQueueCB function ", func() {
 			onQueueFuncCalled := false
 			tp := NewTxPool(1)
-			tp.OnQueued(func(tx *wire.Transaction) error {
+			tp.BeforeAppend(func(tx *wire.Transaction) error {
 				onQueueFuncCalled = true
 				return nil
 			})
