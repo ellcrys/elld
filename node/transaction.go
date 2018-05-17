@@ -3,9 +3,6 @@ package node
 import (
 	"bufio"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
 
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
@@ -13,15 +10,12 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-// txRelaySeenCacheKey is the name used to record a transaction relay in the seen cache
-func txRelaySeenCacheKey(tx *wire.Transaction, peerID string) string {
-	key := sha256.Sum256([]byte(fmt.Sprintf("%s_%s", tx.ID(), peerID)))
-	return hex.EncodeToString(key[:])
+func makeTxHistoryKey(tx *wire.Transaction, peer *Node) MultiKey {
+	return []interface{}{tx.ID(), peer.StringID()}
 }
 
 // OnTx handles incoming transaction message
 func (pt *Inception) OnTx(s net.Stream) {
-
 	defer s.Close()
 	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
@@ -35,11 +29,12 @@ func (pt *Inception) OnTx(s net.Stream) {
 		return
 	}
 
-	historyKey := []interface{}{msg.ID(), remotePeer.StringID()}
+	historyKey := makeTxHistoryKey(msg, remotePeer)
 
 	// check if we have a history about this transaction with the remote peer,
 	// if no, add the transaction.
 	if !pt.LocalPeer().History().Has(historyKey) {
+
 		if err := pt.LocalPeer().ActionAddTx(msg); err != nil {
 			s.Reset()
 			pt.log.Error("failed to add transaction to pool", "Err", err)
@@ -62,7 +57,7 @@ func (pt *Inception) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
 	sent := 0
 	for _, peer := range remotePeers {
 
-		historyKey := []interface{}{tx.ID(), peer.StringID()}
+		historyKey := makeTxHistoryKey(tx, peer)
 
 		// check if we have a history of transaction with this remote peer,
 		// if yes, do not relay
