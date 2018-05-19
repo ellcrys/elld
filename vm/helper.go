@@ -1,9 +1,11 @@
 package vm
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 var dockerCmd *exec.Cmd
@@ -76,4 +78,32 @@ func Capture(w io.Writer, r io.Reader) ([]byte, error) {
 			return out, err
 		}
 	}
+}
+
+func readerToChan(reader *bytes.Buffer, exit <-chan bool) <-chan string {
+	c := make(chan string)
+	go func() {
+
+		for {
+			select {
+			case <-exit:
+				close(c)
+				return
+			default:
+				line, err := reader.ReadString('\n')
+
+				if err != nil && err != io.EOF {
+					close(c)
+					return
+				}
+
+				line = strings.TrimSpace(line)
+				if line != "" {
+					c <- line
+				}
+			}
+		}
+	}()
+
+	return c
 }

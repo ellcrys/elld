@@ -1,30 +1,35 @@
 package vm
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"log"
 	"strconv"
-	"strings"
-	"sync"
+
+	"github.com/cenkalti/hub"
 
 	"github.com/cenkalti/rpc2"
-	docker "github.com/fsouza/go-dockerclient"
+	"github.com/docker/docker/api/types"
+	dockerContainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
+	docker "github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/phayes/freeport"
 )
 
 //Container struct for managing docker containers
 type Container struct {
-	port     int
-	execpath string
-	ID       string
-	client   *docker.Client
-	service  *rpc2.Client
+	port       int
+	execpath   string
+	ID         string
+	client     *docker.Client
+	service    *rpc2.Client
+	contractID string
+	eventHub   *hub.Hub
 }
 
 //ContractManifest defines the project metadata
@@ -32,6 +37,7 @@ type ContractManifest struct {
 	Name     string `json:"name"`
 	Language string `json:"language"`
 	Version  string `json:"version"`
+	Port     int    `json:"port"`
 }
 
 const imgTag = "ellcrys-contract"
@@ -39,6 +45,8 @@ const registry = "localhost:5000" //ellcrys image registry
 
 //NewContainer creates a new docker container for executing smart contracts
 func NewContainer(contractID string) (*Container, error) {
+
+	ctx := context.Background()
 	var execpath string
 	usrdir, err := homedir.Dir()
 	if err != nil {
@@ -49,56 +57,22 @@ func NewContainer(contractID string) (*Container, error) {
 	execpath = fmt.Sprintf("%s%s", usrdir+TempPath, contractID)
 
 	//Check if docker is installed
-	// hasDocker := HasDocker()
-	// if !hasDocker {
-	// 	vmLog.Error("Please install docker")
-	// 	return nil, errors.New("Please install docker")
-	// }
+	hasDocker := HasDocker()
+	if !hasDocker {
+		return nil, errors.New("docker is not installed")
+	}
 
 	vmLog.Info("Initializing contract execution container")
 
-	ctx := context.Background()
+	//ctx := context.Background()
 	//new docker client
-	//endpoint := "unix:///var/run/docker.sock"
-	client, err := docker.NewClientFromEnv()
+	client, err := docker.NewEnvClient()
 	if err != nil {
 		return nil, err
 	}
-
-	//Setup container config
-	config := docker.Config{
-		Image: "ellcrys-contract",
-	}
-
-	//find available port on OS
-	availablePort, err := freeport.GetFreePort()
-	if err != nil {
-		return nil, err
-	}
-
-	//bind port to container config
-	ports := map[docker.Port][]docker.PortBinding{}
-	ports["4000/tcp"] = []docker.PortBinding{{
-		HostIP:   "0.0.0.0",
-		HostPort: strconv.Itoa(availablePort),
-	}}
 
 	//mount executable path to container contracts path
 	contractsDir := fmt.Sprintf("/contracts/%s", contractID)
-	mounts := []docker.HostMount{{
-		Target: contractsDir,
-		Source: execpath,
-		Type:   "bind",
-	}}
-
-	config.Mounts = []docker.Mount{{
-		Name:        "project-path",
-		Source:      execpath,
-		Destination: contractsDir,
-		RW:          true,
-		Mode:        "",
-		Driver:      "bind",
-	}}
 
 	//Read manifest of contract
 	manifest, err := ioutil.ReadFile(fmt.Sprintf("%s/manifest.json", execpath))
@@ -111,6 +85,28 @@ func NewContainer(contractID string) (*Container, error) {
 
 	json.Unmarshal(manifest, &contractManifest)
 
+	//find available port on OS
+	availablePort, err := freeport.GetFreePort()
+	if err != nil {
+		return nil, err
+	}
+
+	//get port from manifest
+	port := contractManifest.Port
+
+	nPort, err := nat.NewPort("tcp", strconv.Itoa(port))
+	if err != nil {
+		return nil, err
+	}
+
+	//Setup container config
+	config := dockerContainer.Config{
+		Image: "ellcrys-contract:latest",
+		ExposedPorts: nat.PortSet{
+			nPort: struct{}{},
+		},
+	}
+
 	if contractManifest.Language == "" {
 		return nil, fmt.Errorf("Language undefined :%s", err)
 	}
@@ -122,117 +118,52 @@ func NewContainer(contractID string) (*Container, error) {
 		config.Cmd = []string{"go", "run", "." + contractsDir + "/main.go"}
 	}
 
-	//Create the container
-	container, err := client.CreateContainer(docker.CreateContainerOptions{
-		Config: &config,
-		HostConfig: &docker.HostConfig{
-			PortBindings: ports,
-			Mounts:       mounts,
+	hostConfig := dockerContainer.HostConfig{
+		Binds: []string{
+			"/var/run/docker.sock:/var/run/docker.sock",
 		},
-		Context: ctx,
-	})
+		PortBindings: nat.PortMap{
+			nPort: []nat.PortBinding{{
+				HostIP:   "0.0.0.0",
+				HostPort: strconv.Itoa(availablePort),
+			}},
+		},
+		PublishAllPorts: true,
+		Mounts: []mount.Mount{{
+			Type:     "bind",
+			Source:   execpath,
+			Target:   contractsDir,
+			ReadOnly: false,
+		}},
+	}
 
+	//Create the container
+	container, err := client.ContainerCreate(ctx, &config, &hostConfig, &network.NetworkingConfig{}, "")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	//Start the container
-	err = client.StartContainer(container.ID, &docker.HostConfig{
-		PortBindings: ports,
-		Mounts:       mounts,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// show log
-	var stdoutBuffer bytes.Buffer
-
-	opts := docker.LogsOptions{
-		Container:    container.ID,
-		OutputStream: &stdoutBuffer,
-		Follow:       true,
-		Stdout:       true,
-	}
-
-	exit := make(chan bool)
-	go func() {
-		client.Logs(opts)
-		close(exit)
-	}()
-	stdoutCh := readerToChan(&stdoutBuffer, exit)
-
-	ret := make(chan *Container)
-
-	// print log
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-	loop:
-		for value := range <-stdoutCh {
-			select {
-			case msg := <-stdoutCh:
-				if value == 2 {
-					wg.Done()
-					ret <- &Container{
-						port:     availablePort,
-						execpath: execpath,
-						ID:       container.ID,
-						client:   client,
-					}
-					vmLog.Info(fmt.Sprintf("vm:Container => %s", msg))
-					break loop
-				}
-			}
-		}
-
-	}()
-	wg.Wait()
-
-	return <-ret, nil
+	return &Container{
+		port:       availablePort,
+		execpath:   execpath,
+		ID:         container.ID,
+		client:     client,
+		contractID: contractID,
+	}, nil
 }
 
 //Destroy this container
 func (container *Container) Destroy() (string, error) {
-
-	err := container.client.StopContainer(container.ID, 1000)
+	ctx := context.Background()
+	err := container.client.ContainerStop(ctx, container.ID, nil)
 	if err != nil {
 		return "", err
 	}
-	container.client.RemoveContainer(docker.RemoveContainerOptions{
-		ID: container.ID,
-	})
+
+	err = container.client.ContainerRemove(ctx, container.ID, types.ContainerRemoveOptions{})
 	if err != nil {
 		return "", err
 	}
 
 	return container.ID, nil
-}
-
-func readerToChan(reader *bytes.Buffer, exit <-chan bool) <-chan string {
-	c := make(chan string)
-	go func() {
-
-		for {
-			select {
-			case <-exit:
-				close(c)
-				return
-			default:
-				line, err := reader.ReadString('\n')
-
-				if err != nil && err != io.EOF {
-					close(c)
-					return
-				}
-
-				line = strings.TrimSpace(line)
-				if line != "" {
-					c <- line
-				}
-			}
-		}
-	}()
-
-	return c
 }

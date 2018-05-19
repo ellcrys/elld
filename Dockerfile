@@ -16,3 +16,4 @@ ARG seed
 ENV seed ${seed}
 
 CMD ./druid start --dev -a 0.0.0.0:9000 -s ${seed} ${addnode}
+

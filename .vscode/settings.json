@@ -21,5 +21,6 @@
         "mrand",
         "notif",
         "protoc"
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }

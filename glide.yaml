@@ -3,6 +3,7 @@ import:
 - package: github.com/btcsuite/btcutil
   subpackages:
   - base58
+  - base85
 - package: github.com/ellcrys/go-libp2p-crypto
 - package: github.com/golang/protobuf
   version: v1.1.0
@@ -121,11 +122,6 @@ import:
   subpackages:
   - compute/v1
 - package: gopkg.in/yaml.v2
-- package: github.com/jinzhu/configor
-- package: github.com/ellcrys/go-libp2p-crypto
-- package: github.com/btcsuite/btcutil
-  subpackages:
-  - base85
 - package: github.com/sirupsen/logrus
   version: master
   repo: git@github.com:/sirupsen/logrus
