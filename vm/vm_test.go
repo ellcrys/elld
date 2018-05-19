@@ -1,11 +1,17 @@
 package vm
 
 import (
+	"github.com/ellcrys/druid/util/logger"
+	"github.com/kr/pretty"
 	. "github.com/onsi/ginkgo"
 	// . "github.com/onsi/gomega"
 )
 
 var _ = Describe("Vm", func() {
+
+	log := logger.NewLogrus()
+	vm := New(log)
+	pretty.Println(vm)
 
 	// var contractBlock *Contract
 	// var v *VM

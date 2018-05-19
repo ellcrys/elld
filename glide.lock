@@ -44,8 +44,6 @@ imports:
   version: 4dd9766b3ba78ea1a9807f0cd199d6c383a7ae5f
   subpackages:
   - protobuf
-- name: github.com/multiformats/go-multihash
-  version: 265e72146e710ff649c6982e3699d01d4e9a18bb
 - name: github.com/multiformats/go-multistream
   version: 612ce31c03aebe1d5adbd3c850ee89e05a82b16d
 - name: github.com/onsi/ginkgo

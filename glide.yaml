@@ -25,8 +25,6 @@ import:
 - package: github.com/multiformats/go-multicodec
   subpackages:
   - protobuf
-- package: github.com/multiformats/go-multihash
-  version: v1.0.6
 - package: github.com/spf13/cobra
   version: v0.0.2
 - package: github.com/syndtr/goleveldb
