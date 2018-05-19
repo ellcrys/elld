@@ -1,10 +1,39 @@
 package vm
 
 import (
+	"context"
 	"os/exec"
+
+	"github.com/thoas/go-funk"
+
+	"github.com/docker/docker/client"
 )
 
 var dockerCmd *exec.Cmd
+
+// dockerAlive checks whether docker server is alive
+func dockerAlive() error {
+
+	cli, err := client.NewClientWithOpts()
+	if err != nil {
+		return err
+	}
+
+	_, err = cli.Info(context.Background())
+	if err != nil {
+		if funk.Contains(err.Error(), "Cannot connect to the Docker") {
+			return err
+		}
+		panic(err)
+	}
+
+	return cli.Close()
+}
+
+// getDockerFile downloads a DockerFile
+func getDockerFile(version string) {
+	// https://raw.githubusercontent.com/ellcrys/vm-dockerfile/c0879257e8136bf13b4fceb5651f751b806782a7/Dockerfile	
+}
 
 //HasDocker checks if system has docker installed
 // func HasDocker() bool {
