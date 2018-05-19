@@ -32,7 +32,7 @@ func New(log logger.Logger, containerMountDir string) *VM {
 // Init sets up the environment for execution of contracts.
 // - Check if docker daemon is accessible
 // - Check if container mount directory exists, otherwise create it
-// - Check if docker image exists
+// - Check if docker image exists, if not, fetch and build the image
 func (vm *VM) Init() error {
 
 	if err := dockerAlive(); err != nil {
