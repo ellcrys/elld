@@ -45,17 +45,63 @@ imports:
   subpackages:
   - protobuf
 - name: github.com/multiformats/go-multihash
-  version: f85ddc806c2042548789544758350d503ad36b6d
-- name: github.com/robertkrimen/otto
-  version: 03d472dc43abece8691e609a23d295ab732abba6
-- name: github.com/segmentio/go-prompt
-  version: f0d19b6901ade831d5a3204edc0d6a7d6457fbb2
-- name: github.com/shopspring/decimal
-  version: 2df3e6ddaf6e9531dd02d7b6337f2d310f5e4f22
-- name: github.com/sirupsen/logrus
-  version: 0dad3b6953e73d351ec8ebfd8a8c6b088d320381
-  repo: git@github.com:/sirupsen/logrus
-  vcs: git
+  version: 265e72146e710ff649c6982e3699d01d4e9a18bb
+- name: github.com/multiformats/go-multistream
+  version: 612ce31c03aebe1d5adbd3c850ee89e05a82b16d
+- name: github.com/onsi/ginkgo
+  version: 6d8be987c536ebd84576a5a46208e7b7a3c796b0
+  subpackages:
+  - config
+  - ginkgo/convert
+  - ginkgo/interrupthandler
+  - ginkgo/nodot
+  - ginkgo/testrunner
+  - ginkgo/testsuite
+  - ginkgo/watch
+  - internal/codelocation
+  - internal/containernode
+  - internal/failer
+  - internal/leafnodes
+  - internal/remote
+  - internal/spec
+  - internal/spec_iterator
+  - internal/specrunner
+  - internal/suite
+  - internal/testingtproxy
+  - internal/writer
+  - reporters
+  - reporters/stenographer
+  - reporters/stenographer/support/go-colorable
+  - reporters/stenographer/support/go-isatty
+  - types
+- name: github.com/onsi/gomega
+  version: b7d1a52235cc433a76c556aa3f4229e63b95e7da
+  subpackages:
+  - '...'
+  - format
+  - gbytes
+  - gstruct/errors
+  - internal/assertion
+  - internal/asyncassertion
+  - internal/oraclematcher
+  - internal/testingtsupport
+  - matchers
+  - matchers/support/goraph/bipartitegraph
+  - matchers/support/goraph/edge
+  - matchers/support/goraph/node
+  - matchers/support/goraph/util
+  - types
+- name: github.com/opentracing/opentracing-go
+  version: 6c572c00d1830223701e155de97408483dfcd14a
+  subpackages:
+  - ext
+  - log
+- name: github.com/satori/go.uuid
+  version: 36e9d2ebbde5e3f13ab2e25625fd453271d6522e
+- name: github.com/Sirupsen/logrus
+  version: 778f2e774c725116edbc3d039dc0dfc1cc62aae8
+- name: github.com/spaolacci/murmur3
+  version: f09979ecbc725b9e6d41a297405f65e7e8804acc
 - name: github.com/spf13/cobra
   version: a1f051bc3eba734da4772d60e2d677f47cf93ef4
 - name: github.com/syndtr/goleveldb

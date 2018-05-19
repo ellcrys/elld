@@ -122,18 +122,12 @@ import:
   subpackages:
   - compute/v1
 - package: gopkg.in/yaml.v2
-- package: github.com/sirupsen/logrus
-  version: master
-  repo: git@github.com:/sirupsen/logrus
-  vcs: git
-- package: gopkg.in/oleiade/lane.v1
-  version: ^1.0.0
-- package: github.com/shopspring/decimal
-- package: github.com/c-bata/go-prompt
-- package: github.com/robertkrimen/otto
-- package: github.com/fatih/color
-- package: github.com/segmentio/go-prompt
-- package: github.com/dustin/go-humanize
+- package: github.com/jinzhu/configor
+- package: github.com/ellcrys/go-libp2p-crypto
+- package: github.com/btcsuite/btcutil
+  subpackages:
+  - base85
+- package: github.com/Sirupsen/logrus
 testImport:
 - package: github.com/onsi/ginkgo
   version: v1.4.0
