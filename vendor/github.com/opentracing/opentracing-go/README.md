@@ -166,6 +166,6 @@ For the time being, "mild" backwards-incompatible changes may be made without ch
 
 A test suite is available in the [harness](https://godoc.org/github.com/opentracing/opentracing-go/harness) package that can assist Tracer implementors to assert that their Tracer is working correctly.
 
-## Licensing
+## License
 
-[Apache 2.0 License](./LICENSE).
+[MIT License](./LICENSE).

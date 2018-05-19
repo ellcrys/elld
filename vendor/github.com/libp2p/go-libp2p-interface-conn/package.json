@@ -9,9 +9,9 @@
   "gxDependencies": [
     {
       "author": "whyrusleeping",
-      "hash": "Qme1knMqwt1hKZbc1BmQFmnm9f36nyQGwXxPGVpVJ9rMK5",
+      "hash": "QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo",
       "name": "go-libp2p-crypto",
-      "version": "1.6.2"
+      "version": "1.5.0"
     },
     {
       "author": "whyrusleeping",
@@ -21,9 +21,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmcJukH2sAFjY3HdBKq35WDzWoL3UUu2gt9wdfqZTUyM74",
+      "hash": "QmZoWKhxUmZ2seW4BzX6fJkNR8hh9PsGModr7q171yq2SS",
       "name": "go-libp2p-peer",
-      "version": "2.3.2"
+      "version": "2.2.3"
     },
     {
       "author": "whyrusleeping",
@@ -33,9 +33,9 @@
     },
     {
       "author": "whyrusleeping",
-      "hash": "QmPUHzTLPZFYqv8WqcBTuMFYTgeom4uHHEaxzk7bd5GYZB",
+      "hash": "QmVxtCwKFMmwcjhQXsGj6m4JAW7nGb9hRoErH9jpgqcLxA",
       "name": "go-libp2p-transport",
-      "version": "2.2.14"
+      "version": "2.2.13"
     },
     {
       "author": "whyrusleeping",
@@ -49,6 +49,6 @@
   "license": "",
   "name": "go-libp2p-interface-conn",
   "releaseCmd": "git commit -a -m \"gx publish $VERSION\"",
-  "version": "0.4.13"
+  "version": "0.4.12"
 }
 

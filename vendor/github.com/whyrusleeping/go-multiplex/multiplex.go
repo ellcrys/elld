@@ -35,10 +35,10 @@ var ErrInvalidState = errors.New("received an unexpected message from the peer")
 
 // +1 for initiator
 const (
-	newStreamTag = 0
-	messageTag   = 2
-	closeTag     = 4
-	resetTag     = 6
+	NewStream = 0
+	Message   = 1
+	Close     = 3
+	Reset     = 5
 )
 
 type Multiplex struct {
@@ -57,7 +57,7 @@ type Multiplex struct {
 	nstreams chan *Stream
 	hdrBuf   []byte
 
-	channels map[streamID]*Stream
+	channels map[uint64]*Stream
 	chLock   sync.Mutex
 }
 
@@ -66,7 +66,7 @@ func NewMultiplex(con net.Conn, initiator bool) *Multiplex {
 		con:       con,
 		initiator: initiator,
 		buf:       bufio.NewReader(con),
-		channels:  make(map[streamID]*Stream),
+		channels:  make(map[uint64]*Stream),
 		closed:    make(chan struct{}),
 		shutdown:  make(chan struct{}),
 		nstreams:  make(chan *Stream, 16),
@@ -78,13 +78,18 @@ func NewMultiplex(con net.Conn, initiator bool) *Multiplex {
 	return mp
 }
 
-func (mp *Multiplex) newStream(id streamID, name string) *Stream {
+func (mp *Multiplex) newStream(id uint64, name string, initiator bool) *Stream {
+	var i uint64
+	if initiator {
+		i = 1
+	}
 	return &Stream{
-		id:     id,
-		name:   name,
-		dataIn: make(chan []byte, 8),
-		reset:  make(chan struct{}),
-		mp:     mp,
+		id:        id,
+		name:      name,
+		initiator: i,
+		dataIn:    make(chan []byte, 8),
+		reset:     make(chan struct{}),
+		mp:        mp,
 	}
 }
 
@@ -159,10 +164,14 @@ func (mp *Multiplex) sendMsg(header uint64, data []byte, dl time.Time) error {
 	return nil
 }
 
-func (mp *Multiplex) nextChanID() uint64 {
-	out := mp.nextID
-	mp.nextID++
-	return out
+func (mp *Multiplex) nextChanID() (out uint64) {
+	if mp.initiator {
+		out = mp.nextID + 1
+	} else {
+		out = mp.nextID
+	}
+	mp.nextID += 2
+	return
 }
 
 func (mp *Multiplex) NewStream() (*Stream, error) {
@@ -179,16 +188,13 @@ func (mp *Multiplex) NewNamedStream(name string) (*Stream, error) {
 	}
 
 	sid := mp.nextChanID()
-	header := (sid << 3) | newStreamTag
+	header := (sid << 3) | NewStream
 
 	if name == "" {
 		name = fmt.Sprint(sid)
 	}
-	s := mp.newStream(streamID{
-		id:        sid,
-		initiator: true,
-	}, name)
-	mp.channels[s.id] = s
+	s := mp.newStream(sid, name, true)
+	mp.channels[sid] = s
 	mp.chLock.Unlock()
 
 	err := mp.sendMsg(header, []byte(name), time.Time{})
@@ -234,25 +240,11 @@ func (mp *Multiplex) handleIncoming() {
 	}
 
 	for {
-		chID, tag, err := mp.readNextHeader()
+		ch, tag, err := mp.readNextHeader()
 		if err != nil {
 			mp.shutdownErr = err
 			return
 		}
-
-		remoteIsInitiator := tag&1 == 0
-		ch := streamID{
-			// true if *I'm* the initiator.
-			initiator: !remoteIsInitiator,
-			id:        chID,
-		}
-		// Rounds up the tag:
-		// 0 -> 0
-		// 1 -> 2
-		// 2 -> 2
-		// 3 -> 4
-		// etc...
-		tag += (tag & 1)
 
 		b, err := mp.readNext()
 		if err != nil {
@@ -264,8 +256,16 @@ func (mp *Multiplex) handleIncoming() {
 		msch, ok := mp.channels[ch]
 		mp.chLock.Unlock()
 
+		// Why the +1s? 1 is added to the tag if the message is sent by an initiator.
+		// While we don't actually care about which side is the
+		// initiator (why should we?) it's the spec...
 		switch tag {
-		case newStreamTag:
+		case NewStream:
+			if mp.initiator == ((ch & 0x1) == 1) {
+				mp.shutdownErr = ErrTwoInitiators
+				return
+			}
+
 			if ok {
 				log.Debugf("received NewStream message for existing stream: %d", ch)
 				mp.shutdownErr = ErrInvalidState
@@ -273,7 +273,7 @@ func (mp *Multiplex) handleIncoming() {
 			}
 
 			name := string(b)
-			msch = mp.newStream(ch, name)
+			msch = mp.newStream(ch, name, false)
 			mp.chLock.Lock()
 			mp.channels[ch] = msch
 			mp.chLock.Unlock()
@@ -283,7 +283,7 @@ func (mp *Multiplex) handleIncoming() {
 				return
 			}
 
-		case resetTag:
+		case Reset, Reset + 1:
 			if !ok {
 				// This is *ok*. We forget the stream on reset.
 				continue
@@ -308,7 +308,7 @@ func (mp *Multiplex) handleIncoming() {
 			mp.chLock.Lock()
 			delete(mp.channels, ch)
 			mp.chLock.Unlock()
-		case closeTag:
+		case Close, Close + 1:
 			if !ok {
 				continue
 			}
@@ -334,12 +334,17 @@ func (mp *Multiplex) handleIncoming() {
 				delete(mp.channels, ch)
 				mp.chLock.Unlock()
 			}
-		case messageTag:
+		case Message, Message + 1:
 			if !ok {
 				// This is a perfectly valid case when we reset
 				// and forget about the stream.
 				log.Debugf("message for non-existant stream, dropping data: %d", ch)
-				go mp.sendMsg(ch.header(resetTag), nil, time.Time{})
+				// Guess initiator status based on the tag.
+				var initiator uint64
+				if tag == Message {
+					initiator = 1
+				}
+				go mp.sendMsg(ch<<3|Reset+initiator, nil, time.Time{})
 				continue
 			}
 
@@ -348,7 +353,7 @@ func (mp *Multiplex) handleIncoming() {
 			msch.clLock.Unlock()
 			if remoteClosed {
 				log.Errorf("Received data from remote after stream was closed by them. (len = %d)", len(b))
-				go mp.sendMsg(msch.id.header(resetTag), nil, time.Time{})
+				go mp.sendMsg(ch<<3|Reset+msch.initiator, nil, time.Time{})
 				continue
 			}
 

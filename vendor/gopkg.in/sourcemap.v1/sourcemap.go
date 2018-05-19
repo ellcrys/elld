@@ -1,4 +1,4 @@
-package sourcemap // import "gopkg.in/sourcemap.v1"
+package sourcemap
 
 import (
 	"io"

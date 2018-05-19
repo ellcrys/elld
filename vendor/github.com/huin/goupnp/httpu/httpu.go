@@ -128,7 +128,5 @@ func (httpu *HTTPUClient) Do(req *http.Request, timeout time.Duration, numSends 
 
 		responses = append(responses, response)
 	}
-
-	// Timeout reached - return discovered responses.
-	return responses, nil
+	return responses, err
 }
