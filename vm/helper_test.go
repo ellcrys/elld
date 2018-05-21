@@ -29,14 +29,14 @@ var _ = Describe("Helper", func() {
 			expectedResult := strings.TrimSpace(expectedBody)
 
 			res, err := getDockerFile(commitHash)
-			if err != nil {
-				panic(err)
-			}
+			Expect(err).To(BeNil())
+
 			result, _ := res.Body.ToString()
 			body := strings.TrimSpace(result)
 
 			Expect(res.Body).NotTo(BeNil())
 			Expect(body).To(Equal(expectedResult))
+
 		})
 
 		It("should fail to fetch docker file if commit hash is invalid", func() {
@@ -44,7 +44,17 @@ var _ = Describe("Helper", func() {
 			_, err := getDockerFile(commitHash)
 			Expect(err.Error()).To(Equal("Docker file not found"))
 		})
+	})
 
+	Describe(".buildImage", func() {
+		It("should build image from  docker file", func() {
+			commitHash := "c0879257e8136bf13b4fceb5651f751b806782a7"
+			res, _ := getDockerFile(commitHash)
+			image, err := buildImage(res)
+			Expect(err).To(BeNil())
+			Expect(image).NotTo(BeNil())
+			Expect(image.ID).NotTo(BeNil())
+		})
 	})
 
 })
