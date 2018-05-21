@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const expectedBody = `FROM golang:1.10-stretch
+var expectedBody = `FROM golang:1.10-stretch
 
 # Set work directory
 WORKDIR /go
