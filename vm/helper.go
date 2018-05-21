@@ -1,105 +1,27 @@
 package vm
 
 import (
-	"os/exec"
+	"fmt"
+
+	"github.com/franela/goreq"
 )
 
-var dockerCmd *exec.Cmd
+const gitURL = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile"
 
-//HasDocker checks if system has docker installed
-// func HasDocker() bool {
+//getDockerFile fetches Dockerfile from github.
+func getDockerFile(version string) (*goreq.Response, error) {
+	commitURI := fmt.Sprintf("%s/%s/Dockerfile", gitURL, version)
 
-// 	//docker -v command
-// 	dockerCmd = exec.Command("docker", "-v")
+	res, err := goreq.Request{
+		Uri: commitURI,
+	}.Do()
+	if err != nil {
+		return nil, err
+	}
 
-// 	var stdout, stderr []byte
-// 	var errStdout, errStderr error
-// 	stdoutIn, _ := dockerCmd.StdoutPipe()
-// 	stderrIn, _ := dockerCmd.StderrPipe()
+	if res.Status == "404 Not Found" {
+		return nil, fmt.Errorf("%s", "Docker file not found")
+	}
 
-// 	//exec command
-// 	dockerCmd.Start()
-
-// 	//Capture stdout
-// 	go func() {
-// 		stdout, errStdout = Capture(os.Stdout, stdoutIn)
-// 	}()
-
-// 	//Capture stderr
-// 	go func() {
-// 		stderr, errStderr = Capture(os.Stderr, stderrIn)
-// 	}()
-
-// 	//Wait for outputs from command
-// 	err := dockerCmd.Wait()
-// 	if err != nil {
-// 		return false
-// 	}
-
-// 	if errStdout != nil || errStderr != nil {
-// 		vmLog.Fatal("failed to capture stdout or stderr\n")
-// 	}
-
-// 	outStr, errStr := string(stdout), string(stderr)
-
-// 	if outStr != "" {
-// 		return true
-// 	}
-// 	if errStr != "" {
-// 		return false
-// 	}
-
-// 	return false
-// }
-
-// //Capture commandline outputs
-// func Capture(w io.Writer, r io.Reader) ([]byte, error) {
-// 	var out []byte
-// 	buf := make([]byte, 1024, 1024)
-// 	for {
-// 		n, err := r.Read(buf[:])
-// 		if n > 0 {
-// 			d := buf[:n]
-// 			out = append(out, d...)
-// 			_, err := w.Write(d)
-// 			if err != nil {
-// 				return out, err
-// 			}
-// 		}
-// 		if err != nil {
-// 			// Read returns io.EOF at the end of file, which is not an error for us
-// 			if err == io.EOF {
-// 				err = nil
-// 			}
-// 			return out, err
-// 		}
-// 	}
-// }
-
-// func readerToChan(reader *bytes.Buffer, exit <-chan bool) <-chan string {
-// 	c := make(chan string)
-// 	go func() {
-
-// 		for {
-// 			select {
-// 			case <-exit:
-// 				close(c)
-// 				return
-// 			default:
-// 				line, err := reader.ReadString('\n')
-
-// 				if err != nil && err != io.EOF {
-// 					close(c)
-// 					return
-// 				}
-
-// 				line = strings.TrimSpace(line)
-// 				if line != "" {
-// 					c <- line
-// 				}
-// 			}
-// 		}
-// 	}()
-
-// 	return c
-// }
+	return res, nil
+}

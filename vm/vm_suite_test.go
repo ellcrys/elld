@@ -1,10 +1,13 @@
 package vm
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
-	// . "github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Container Tests", func() {
-
-})
+func TestVm(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Vm Suite")
+}
