@@ -1,8 +1,14 @@
 package vm
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 
+	homedir "github.com/mitchellh/go-homedir"
+
+	"github.com/docker/docker/client"
+	"github.com/franela/goreq"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -47,13 +53,54 @@ var _ = Describe("Helper", func() {
 	})
 
 	Describe(".buildImage", func() {
+		var commitHash string
+		var imageRes *goreq.Response
+		BeforeEach(func() {
+			commitHash = "c0879257e8136bf13b4fceb5651f751b806782a7"
+			imageRes, _ = getDockerFile(commitHash)
+		})
 		It("should build image from  docker file", func() {
-			commitHash := "c0879257e8136bf13b4fceb5651f751b806782a7"
-			res, _ := getDockerFile(commitHash)
-			image, err := buildImage(res)
+			image, err := buildImage(imageRes)
 			Expect(err).To(BeNil())
 			Expect(image).NotTo(BeNil())
 			Expect(image.ID).NotTo(BeNil())
+		})
+
+		Describe(".getImage", func() {
+			It("should get image if it exists", func() {
+				cli, _ := client.NewEnvClient()
+				image := getImage(cli)
+
+				Expect(image).NotTo(BeNil())
+				Expect(reflect.ValueOf(image.ID).Type()).To(Equal(reflect.TypeOf((string)(""))))
+			})
+		})
+
+		Describe("BuildContext", func() {
+			var buildCtx *BuildContext
+			var err error
+			BeforeEach(func() {
+				homeDir, _ := homedir.Dir()
+				dir := fmt.Sprintf("%s/.ellcrys/test-hello", homeDir)
+				buildCtx, err = newBuildCtx(dir, "hellofile", "hello world")
+				Expect(err).To(BeNil())
+				Expect(buildCtx).NotTo(BeNil())
+			})
+
+			AfterEach(func() {
+				buildCtx.Close()
+			})
+
+			Describe(".Reader", func() {
+				It("should create a stream from buildCtx", func() {
+					reader, err := buildCtx.Reader()
+					if err != nil {
+						panic(err)
+					}
+					Expect(err).To(BeNil())
+					Expect(reader).NotTo(BeNil())
+				})
+			})
 		})
 	})
 

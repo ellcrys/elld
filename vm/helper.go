@@ -83,30 +83,47 @@ func getDockerFile(version string) (*goreq.Response, error) {
 
 // buildImage builds an image from a docker file gotten from the getDockerFile func
 // - it creates a build context for the docker image build command
+// - builds an image if it doesn't already exists
 // - returns the Image & ID if build is successful
 func buildImage(dockerFile *goreq.Response) (*Image, error) {
 	ctx := context.Background()
 
 	body, err := dockerFile.Body.ToString()
-
-	buildCtx, err := newBuildCtx(body)
 	if err != nil {
 		return nil, err
 	}
 
-	defer buildCtx.Close()
 	cli, err := client.NewEnvClient()
 	if err != nil {
 		return nil, err
 	}
 
-	source, err := buildCtx.Reader()
+	// get image if it exists
+	image := getImage(cli)
+	if image != nil {
+		return image, nil
+	}
+
+	homeDir, _ := homedir.Dir()
+	dir := fmt.Sprintf("%s/.ellcrys/vm-build-context", homeDir)
+
+	buildCtx, err := newBuildCtx(dir, "Dockerfile", body)
 	if err != nil {
 		return nil, err
 	}
 
+	defer buildCtx.Close()
+
+	source, err := buildCtx.Reader()
+	if err != nil {
+		return nil, err
+	}
+	defer source.Close()
 	img, err := cli.ImageBuild(ctx, source, types.ImageBuildOptions{
 		Tags: []string{"ellcrys-vm"},
+		Labels: map[string]string{
+			"maintainer": "ellcrys",
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -134,6 +151,29 @@ func buildImage(dockerFile *goreq.Response) (*Image, error) {
 	}
 	fmt.Print(".100%\n")
 	return &Image{ID}, nil
+}
+
+// getImage
+func getImage(cli *client.Client) *Image {
+	ctx := context.Background()
+	summaries, _ := cli.ImageList(ctx, types.ImageListOptions{})
+
+	// check images if maintainer : ellcrys already exist
+	for i := range summaries {
+		summary := summaries[i]
+		// Todo: check version of image
+		for k, v := range summary.Labels {
+			if k != "" || v != "" {
+				if k == "maintainer" && v == "ellcrys" {
+					return &Image{
+						ID: summary.ID,
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 // addFile stores the dockerfile temporarily on the system
@@ -164,11 +204,8 @@ func (b *BuildContext) Reader() (io.ReadCloser, error) {
 }
 
 // newBuildCtx creates a build context for the docker image build
-func newBuildCtx(content string) (*BuildContext, error) {
+func newBuildCtx(dir string, name string, content string) (*BuildContext, error) {
 	buildContext := new(BuildContext)
-	homeDir, _ := homedir.Dir()
-
-	dir := fmt.Sprintf("%s/.ellcrys/vm-build-context", homeDir)
 
 	err := os.Mkdir(dir, 0700)
 	if err != nil {
@@ -182,7 +219,7 @@ func newBuildCtx(content string) (*BuildContext, error) {
 
 	buildContext.Dir = cfdir.Path()
 
-	err = buildContext.addFile("Dockerfile", []byte(content))
+	err = buildContext.addFile(name, []byte(content))
 	if err != nil {
 		return nil, err
 	}
