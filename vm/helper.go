@@ -24,18 +24,22 @@ import (
 
 const gitURL = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile"
 
+// BuildContext for building a docker image
 type BuildContext struct {
 	Dir string
 }
 
+// BuildResponse that respresents a stream from docker build progression
 type BuildResponse struct {
 	Stream string `json:"stream"`
 }
 
+// Aux represents the aux structure in a docker image build response
 type Aux struct {
 	Image Image `json:"aux"`
 }
 
+// Image defines the structure of the final output of the image build
 type Image struct {
 	ID string `json:"ID"`
 }
@@ -77,6 +81,9 @@ func getDockerFile(version string) (*goreq.Response, error) {
 	return res, nil
 }
 
+// buildImage builds an image from a docker file gotten from the getDockerFile func
+// - it creates a build context for the docker image build command
+// - returns the Image & ID if build is successful
 func buildImage(dockerFile *goreq.Response) (*Image, error) {
 	ctx := context.Background()
 
@@ -129,6 +136,7 @@ func buildImage(dockerFile *goreq.Response) (*Image, error) {
 	return &Image{ID}, nil
 }
 
+// addFile stores the dockerfile temporarily on the system
 func (b *BuildContext) addFile(file string, content []byte) error {
 	fp := filepath.Join(b.Dir, filepath.FromSlash(file))
 	dirpath := filepath.Dir(fp)
@@ -145,7 +153,7 @@ func (b *BuildContext) Close() error {
 	return os.RemoveAll(b.Dir)
 }
 
-// Reader outputs a
+// Reader outputs a tar stream of the docker file
 func (b *BuildContext) Reader() (io.ReadCloser, error) {
 	reader, err := archive.TarWithOptions(b.Dir, &archive.TarOptions{})
 	if err != nil {
