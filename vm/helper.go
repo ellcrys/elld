@@ -103,10 +103,10 @@ func buildImage(dockerFile string) (*Image, error) {
 		return nil, err
 	}
 
-	// image := getImage(cli)
-	// if image != nil {
-	// 	return image, nil
-	// }
+	image := getImage(cli)
+	if image != nil {
+		return image, nil
+	}
 
 	dir := "vm-build-context"
 
