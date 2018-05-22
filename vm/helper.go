@@ -86,6 +86,7 @@ func getDockerFile() (string, error) {
 
 // buildImage builds an image from a docker file gotten from the getDockerFile func
 // - it creates a build context for the docker image build command
+// - get image if it exists
 // - builds an image if it doesn't already exists
 // - returns the Image & ID if build is successful
 func buildImage(dockerFile string) (*Image, error) {
@@ -96,7 +97,6 @@ func buildImage(dockerFile string) (*Image, error) {
 		return nil, err
 	}
 
-	// get image if it exists
 	image := getImage(cli)
 	if image != nil {
 		return image, nil
@@ -115,7 +115,9 @@ func buildImage(dockerFile string) (*Image, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer source.Close()
+
 	img, err := cli.ImageBuild(ctx, source, types.ImageBuildOptions{
 		Tags: []string{dockerFileHash},
 		Labels: map[string]string{
@@ -157,20 +159,20 @@ func getImage(cli *client.Client) *Image {
 	summaries, _ := cli.ImageList(ctx, types.ImageListOptions{})
 
 	// check images if version already exist
-	for i := range summaries {
-		summary := summaries[i]
-		for k, v := range summary.Labels {
-			if k != "" || v != "" {
-				if k == "version" && v == dockerFileHash {
-					return &Image{
-						ID: summary.ID,
-					}
-				}
-			}
+	image := funk.Find(summaries, func(x types.ImageSummary) bool {
+		if x.Labels["version"] == dockerFileHash && x.Labels["maintainer"] == "ellcrys" {
+			return true
 		}
+		return false
+	})
+
+	if image == nil {
+		return nil
 	}
 
-	return nil
+	return &Image{
+		ID: image.(types.ImageSummary).ID,
+	}
 }
 
 // addFile stores the dockerfile temporarily on the system
