@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/crypto/sha3"
 
+	"github.com/ellcrys/druid/node/histcache"
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
 	net "github.com/libp2p/go-libp2p-net"
@@ -138,7 +139,7 @@ func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Node 
 	return pt.addrRelayPeers
 }
 
-func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) MultiKey {
+func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) histcache.MultiKey {
 	return []interface{}{util.SerializeMsg(addr), peer.StringID()}
 }
 

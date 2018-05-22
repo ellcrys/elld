@@ -9,6 +9,7 @@ import (
 	"time"
 
 	d_crypto "github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/druid/node/histcache"
 	"github.com/ellcrys/druid/wire"
 
 	"github.com/ellcrys/druid/txpool"
@@ -34,25 +35,25 @@ import (
 
 // Node represents a network node
 type Node struct {
-	cfg             *configdir.Config // node config
-	address         ma.Multiaddr      // node multiaddr
-	IP              net.IP            // node ip
-	host            host.Host         // node libp2p host
-	wg              sync.WaitGroup    // wait group for preventing the main thread from exiting
-	localNode       *Node             // local node
-	peerManager     *Manager          // node manager for managing connections to other remote peers
-	protoc          Protocol          // protocol instance
-	remote          bool              // remote indicates the node represents a remote peer
-	Timestamp       time.Time         // the last time this node was seen/active
-	isHardcodedSeed bool              // whether the node was hardcoded as a seed
-	stopped         bool              // flag to tell if node has stopped
-	log             logger.Logger     // node logger
-	rSeed           []byte            // random 256 bit seed to be used for seed random operations
-	db              database.DB       // used to access and modify local database
-	txPool          *txpool.TxPool    // the transaction pool
-	signatory       *d_crypto.Key     // signatory address used to get node ID and for signing
-	historyCache    *HistoryCache     // Used to track objects and behaviours
-	txsRelayQueue   *txpool.TxQueue   // stores transactions waiting to be relayed
+	cfg             *configdir.Config       // node config
+	address         ma.Multiaddr            // node multiaddr
+	IP              net.IP                  // node ip
+	host            host.Host               // node libp2p host
+	wg              sync.WaitGroup          // wait group for preventing the main thread from exiting
+	localNode       *Node                   // local node
+	peerManager     *Manager                // node manager for managing connections to other remote peers
+	protoc          Protocol                // protocol instance
+	remote          bool                    // remote indicates the node represents a remote peer
+	Timestamp       time.Time               // the last time this node was seen/active
+	isHardcodedSeed bool                    // whether the node was hardcoded as a seed
+	stopped         bool                    // flag to tell if node has stopped
+	log             logger.Logger           // node logger
+	rSeed           []byte                  // random 256 bit seed to be used for seed random operations
+	db              database.DB             // used to access and modify local database
+	txPool          *txpool.TxPool          // the transaction pool
+	signatory       *d_crypto.Key           // signatory address used to get node ID and for signing
+	historyCache    *histcache.HistoryCache // Used to track objects and behaviours
+	txsRelayQueue   *txpool.TxQueue         // stores transactions waiting to be relayed
 }
 
 // NewNode creates a node instance at the specified port
@@ -105,7 +106,7 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	node.peerManager = NewManager(config, node, node.log)
 	node.IP = node.ip()
 
-	hc, err := NewHistoryCache(5000)
+	hc, err := histcache.NewHistoryCache(5000)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create history cache. %s", err)
 	}
@@ -150,7 +151,7 @@ func (n *Node) PM() *Manager {
 }
 
 // History returns the cache holding items (messages etc) we have seen
-func (n *Node) History() *HistoryCache {
+func (n *Node) History() *histcache.HistoryCache {
 	return n.historyCache
 }
 

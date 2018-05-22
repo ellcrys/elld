@@ -1,4 +1,4 @@
-package node
+package histcache
 
 import (
 	"crypto/sha256"
@@ -54,4 +54,9 @@ func (hc *HistoryCache) Has(h MultiKey) bool {
 	hash := sha256.Sum256(bs)
 	_, yes := hc.cache.Get(hex.EncodeToString(hash[:]))
 	return yes
+}
+
+// Len returns the number of items in the cache
+func (hc *HistoryCache) Len() int {
+	return hc.cache.Len()
 }

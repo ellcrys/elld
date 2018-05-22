@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 
+	"github.com/ellcrys/druid/node/histcache"
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
 	net "github.com/libp2p/go-libp2p-net"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-func makeTxHistoryKey(tx *wire.Transaction, peer *Node) MultiKey {
+func makeTxHistoryKey(tx *wire.Transaction, peer *Node) histcache.MultiKey {
 	return []interface{}{tx.ID(), peer.StringID()}
 }
 

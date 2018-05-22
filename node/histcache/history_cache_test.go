@@ -1,4 +1,4 @@
-package node
+package histcache
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -29,6 +29,19 @@ var _ = Describe("HistoryCache", func() {
 			Expect(err).To(BeNil())
 			has := hc.Has(key)
 			Expect(has).To(BeTrue())
+		})
+
+	})
+
+	Describe(".Len", func() {
+		It("should return return 0", func() {
+			Expect(hc.Len()).To(Equal(0))
+		})
+
+		It("should return return 1", func() {
+			err := hc.Add([]interface{}{1, int64(10), "james"})
+			Expect(err).To(BeNil())
+			Expect(hc.Len()).To(Equal(1))
 		})
 	})
 })
