@@ -25,7 +25,7 @@ type Protocol interface {
 	SendGetAddr([]*Node) error
 	OnGetAddr(net.Stream)
 	OnAddr(net.Stream)
-	RelayAddr([]*wire.Address) error
+	RelayAddr([]*wire.Address) []error
 	SelfAdvertise([]*Node) int
 	OnTx(net.Stream)
 	RelayTx(*wire.Transaction, []*Node) error

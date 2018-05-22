@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -146,4 +148,14 @@ func HexToStr(hexStr string) (string, error) {
 		return "", err
 	}
 	return string(bs), nil
+}
+
+// SerializeMsg serializes a protocol buffer message.
+// Panics if an error is encountered
+func SerializeMsg(o proto.Message) []byte {
+	bs, err := proto.Marshal(o)
+	if err != nil {
+		panic(err)
+	}
+	return bs
 }
