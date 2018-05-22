@@ -41,15 +41,14 @@ var _ = Describe("ImageBuilder", func() {
 
 	Describe(".buildImage", func() {
 
-		var dockerfile string
-
 		BeforeEach(func() {
-			dockerfile, err = builder.getDockerFile()
+			dockerfile, err := builder.getDockerFile()
 			Expect(err).To(BeNil())
+			Expect(dockerfile).ToNot(BeEmpty())
 		})
 
 		It("should build image from  docker file", func() {
-			image, err := builder.Build(dockerfile)
+			image, err := builder.Build()
 			Expect(err).To(BeNil())
 			Expect(image).NotTo(BeNil())
 			Expect(image.ID).NotTo(BeNil())

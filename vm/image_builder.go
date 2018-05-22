@@ -78,19 +78,25 @@ func (ib *ImageBuilder) getDockerFile() (string, error) {
 }
 
 // Build builds an image from a docker file gotten from the getDockerFile func
+// - Checks if image already exists, else
+// - Gets the docker file 
 // - it creates a build context for the docker image build command
 // - get image if it exists
 // - builds an image if it doesn't already exists
 // - returns the Image & ID if build is successful
-func (ib *ImageBuilder) Build(dockerFileContent string) (*Image, error) {
+func (ib *ImageBuilder) Build() (*Image, error) {
 
 	image := ib.getImage()
 	if image != nil {
 		return image, nil
 	}
 
-	dir := "vm-build-context"
+	dockerFileContent, err := ib.getDockerFile()
+	if err != nil {
+		return nil, err
+	}
 
+	dir := "vm-build-context"
 	buildCtx, err := NewBuildContext(dir, "Dockerfile", dockerFileContent)
 	if err != nil {
 		return nil, err

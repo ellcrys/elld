@@ -11,6 +11,11 @@ import (
 	logger "github.com/ellcrys/druid/util/logger"
 )
 
+const (
+	dockerFileHash = "c0879257e8136bf13b4fceb5651f751b806782a7"
+	dockerFileURL  = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile/%s/Dockerfile"
+)
+
 // MountDir where contracts are stored
 var MountDir = "mountdir"
 
@@ -52,6 +57,12 @@ func (vm *VM) Init() error {
 		if err := os.MkdirAll(vm.containerMountDir, 0700); err != nil {
 			return fmt.Errorf("failed to create container mount directory. %s", err)
 		}
+	}
+
+	imgBuilder := NewImageBuilder(vm.log, vm.dockerClient, fmt.Sprintf(dockerFileURL, dockerFileHash))
+	_, err = imgBuilder.Build()
+	if err != nil {
+		return err
 	}
 
 	return nil
