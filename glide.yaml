@@ -245,6 +245,7 @@ import:
 - package: github.com/dustin/go-humanize
 - package: gopkg.in/asaskevich/govalidator.v4
 - package: github.com/jinzhu/copier
+- package: github.com/hashicorp/golang-lru
 testImport:
 - package: github.com/apex/log
   subpackages:

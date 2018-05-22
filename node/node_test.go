@@ -6,7 +6,6 @@ import (
 
 	"github.com/ellcrys/druid/crypto"
 	"github.com/ellcrys/druid/testutil"
-	"github.com/ellcrys/druid/util"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -261,7 +260,6 @@ var _ = Describe("Node", func() {
 
 	Describe(".Connected", func() {
 
-		var host, host2 host.Host
 		var n, n2 *Node
 		var err error
 
@@ -271,14 +269,6 @@ var _ = Describe("Node", func() {
 			n2, err = NewNode(cfg, "127.0.0.1:40107", crypto.NewKeyFromIntSeed(7), log)
 			Expect(err).To(BeNil())
 			n2.SetLocalNode(n)
-			host = n.Host()
-			Expect(err).To(BeNil())
-			host2 = n2.Host()
-			Expect(err).To(BeNil())
-
-			host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
-			host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
-			host.Connect(context.Background(), host.Peerstore().PeerInfo(host2.ID()))
 		})
 
 		It("should return false when localPeer is nil", func() {
@@ -287,28 +277,14 @@ var _ = Describe("Node", func() {
 		})
 
 		It("should return true when peer is connected", func() {
-			ln, err := NewNode(cfg, "127.0.0.1:40108", crypto.NewKeyFromIntSeed(8), log)
-			Expect(err).To(BeNil())
-			defer ln.host.Close()
-			lpProtoc := NewInception(ln, log)
-
-			rn, err := NewNode(cfg, "127.0.0.1:40109", crypto.NewKeyFromIntSeed(9), log)
-			Expect(err).To(BeNil())
-			defer rn.host.Close()
-			rnProtoc := NewInception(rn, log)
-			rn.SetProtocolHandler(util.PingVersion, rnProtoc.OnPing)
-
-			rn.localNode = ln
-			err = lpProtoc.sendPing(rn)
-			Expect(err).To(BeNil())
-
-			Expect(ln.PM().GetKnownPeer(rn.StringID()).Connected()).To(BeTrue())
-			Expect(rn.PM().GetKnownPeer(ln.StringID()).Connected()).To(BeTrue())
+			n.host.Peerstore().AddAddr(n2.host.ID(), n2.host.Addrs()[0], pstore.PermanentAddrTTL)
+			n.host.Connect(context.Background(), n.host.Peerstore().PeerInfo(n2.host.ID()))
+			Expect(n2.Connected()).To(BeTrue())
 		})
 
 		AfterEach(func() {
-			host.Close()
-			host2.Close()
+			n.host.Close()
+			n2.host.Close()
 		})
 	})
 

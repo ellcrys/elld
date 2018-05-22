@@ -88,6 +88,7 @@ func (pt *Inception) OnPing(s net.Stream) {
 	w := bufio.NewWriter(s)
 	enc := pc.Multicodec(nil).Encoder(w)
 	if err := enc.Encode(pongMsg); err != nil {
+		s.Reset()
 		pt.log.Error("failed to send pong response", "Err", err)
 		return
 	}
