@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/thoas/go-funk"
 
 	"github.com/docker/docker/api/types"
@@ -42,6 +43,8 @@ type Image struct {
 	ID string `json:"ID"`
 }
 
+var log = logger.NewLogrus()
+
 // dockerAlive checks whether docker server is alive
 func dockerAlive() error {
 
@@ -72,16 +75,19 @@ func getDockerFile() (string, error) {
 		return "", err
 	}
 
-	if res.Status == "404 Not Found" {
-		return "", fmt.Errorf("%s", "Docker file not found")
+	switch res.StatusCode {
+	case 200:
+		body, err := res.Body.ToString()
+		if err != nil {
+			return "", err
+		}
+		return body, nil
+	case 404:
+		return "", fmt.Errorf("%s", "docker file not found")
+	default:
+		return "", fmt.Errorf("%s", "problem fetching docker file")
 	}
 
-	body, err := res.Body.ToString()
-	if err != nil {
-		return "", err
-	}
-
-	return body, nil
 }
 
 // buildImage builds an image from a docker file gotten from the getDockerFile func
@@ -97,10 +103,10 @@ func buildImage(dockerFile string) (*Image, error) {
 		return nil, err
 	}
 
-	image := getImage(cli)
-	if image != nil {
-		return image, nil
-	}
+	// image := getImage(cli)
+	// if image != nil {
+	// 	return image, nil
+	// }
 
 	dir := "vm-build-context"
 
@@ -135,21 +141,23 @@ func buildImage(dockerFile string) (*Image, error) {
 	var buildResp BuildResponse
 	var aux Aux
 	var ID string
-	fmt.Print("Building.")
+
 	for scanner.Scan() {
 		err := json.Unmarshal(scanner.Bytes(), &buildResp)
 		if err != nil {
 			return nil, err
 		}
-
-		fmt.Print(".")
+		replacer := strings.NewReplacer("\n", "")
+		val := replacer.Replace(buildResp.Stream)
+		if val != "" {
+			log.Info("Image Build", "ouput", val)
+		}
 
 		if strings.Contains(scanner.Text(), "aux") {
 			json.Unmarshal(scanner.Bytes(), &aux)
 			ID = strings.Split(aux.Image.ID, ":")[1]
 		}
 	}
-	fmt.Print(".100%\n")
 	return &Image{ID}, nil
 }
 
