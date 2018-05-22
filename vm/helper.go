@@ -156,7 +156,7 @@ func getImage(cli *client.Client) *Image {
 	ctx := context.Background()
 	summaries, _ := cli.ImageList(ctx, types.ImageListOptions{})
 
-	// check images if maintainer : ellcrys already exist
+	// check images if version already exist
 	for i := range summaries {
 		summary := summaries[i]
 		for k, v := range summary.Labels {
