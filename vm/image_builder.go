@@ -79,7 +79,7 @@ func (ib *ImageBuilder) getDockerFile() (string, error) {
 
 // Build builds an image from a docker file gotten from the getDockerFile func
 // - Checks if image already exists, else
-// - Gets the docker file 
+// - Gets the docker file
 // - it creates a build context for the docker image build command
 // - get image if it exists
 // - builds an image if it doesn't already exists
@@ -207,7 +207,7 @@ func (b *BuildContext) addFile(file string, content []byte) error {
 	fp := filepath.Join(b.Dir, filepath.FromSlash(file))
 	dirpath := filepath.Dir(fp)
 	if dirpath != "." {
-		if err := os.MkdirAll(dirpath, 0755); err != nil {
+		if err := os.MkdirAll(dirpath, 0700); err != nil {
 			return err
 		}
 	}
