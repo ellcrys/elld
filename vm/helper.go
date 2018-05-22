@@ -63,10 +63,10 @@ func dockerAlive() error {
 
 // getDockerFile fetches Dockerfile from github.
 func getDockerFile() (string, error) {
-	commitURI := fmt.Sprintf("%s/%s/Dockerfile", gitURL, dockerFileHash)
+	dockerFileURI := fmt.Sprintf("%s/%s/Dockerfile", gitURL, dockerFileHash)
 
 	res, err := goreq.Request{
-		Uri: commitURI,
+		Uri: dockerFileURI,
 	}.Do()
 	if err != nil {
 		return "", err
