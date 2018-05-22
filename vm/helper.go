@@ -83,9 +83,9 @@ func getDockerFile() (string, error) {
 		}
 		return body, nil
 	case 404:
-		return "", fmt.Errorf("%s", "docker file not found")
+		return "", fmt.Errorf("docker file not found")
 	default:
-		return "", fmt.Errorf("%s", "problem fetching docker file")
+		return "", fmt.Errorf("problem fetching docker file")
 	}
 
 }
