@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/docker/docker/client"
 	"github.com/ellcrys/druid/util"
+	funk "github.com/thoas/go-funk"
 
 	logger "github.com/ellcrys/druid/util/logger"
 )
@@ -18,6 +20,7 @@ type VM struct {
 	log                    logger.Logger
 	containerMountDir      string
 	InvokeResponseListener func(interface{})
+	dockerClient           *client.Client
 }
 
 // New creates a new instance of VM
@@ -30,13 +33,19 @@ func New(log logger.Logger, containerMountDir string) *VM {
 }
 
 // Init sets up the environment for execution of contracts.
-// - Check if docker daemon is accessible
+// - Create and connect docker client
 // - Check if container mount directory exists, otherwise create it
 // - Check if docker image exists, if not, fetch and build the image
 func (vm *VM) Init() error {
 
-	if err := dockerAlive(); err != nil {
-		return fmt.Errorf("docker not running. %s", err)
+	var err error
+
+	vm.dockerClient, err = client.NewClientWithOpts()
+	if err != nil {
+		if funk.Contains(err.Error(), "Cannot connect to the Docker") {
+			return err
+		}
+		return err
 	}
 
 	if !util.IsPathOk(vm.containerMountDir) {
