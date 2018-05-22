@@ -3,6 +3,8 @@ package util
 import (
 	"math/big"
 
+	"github.com/ellcrys/druid/wire"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -75,6 +77,14 @@ var _ = Describe("Common", func() {
 			str, err := HexToStr("0x3130")
 			Expect(err).To(BeNil())
 			Expect(str).To(Equal("10"))
+		})
+	})
+
+	Describe(".SerializeMsg", func() {
+		It("should return [10, 12, 115, 111, 109, 101, 95, 97, 100, 100, 114, 101, 115, 115, 16, 244, 154, 144, 216, 5]", func() {
+			o := &wire.Address{Timestamp: 1526992244, Address: "some_address"}
+			bs := SerializeMsg(o)
+			Expect(bs).To(Equal([]byte{10, 12, 115, 111, 109, 101, 95, 97, 100, 100, 114, 101, 115, 115, 16, 244, 154, 144, 216, 5}))
 		})
 	})
 })
