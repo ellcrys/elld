@@ -183,6 +183,26 @@ func getImage(cli *client.Client) *Image {
 	}
 }
 
+// destroyImage removes a docker image
+func destroyImage() error {
+	cli, err := client.NewClientWithOpts()
+	if err != nil {
+		return err
+	}
+
+	image := getImage(cli)
+	ctx := context.Background()
+
+	_, err = cli.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{
+		Force: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // addFile stores the dockerfile temporarily on the system
 func (b *BuildContext) addFile(file string, content []byte) error {
 	fp := filepath.Join(b.Dir, filepath.FromSlash(file))

@@ -22,6 +22,11 @@ ENTRYPOINT [ "sleep infinity" ]
 
 `
 
+var _ = AfterSuite(func() {
+	err := destroyImage()
+	Expect(err).To(BeNil())
+})
+
 var _ = Describe("Helper", func() {
 
 	Describe(".getDockerFile", func() {
