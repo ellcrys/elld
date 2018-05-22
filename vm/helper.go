@@ -11,9 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ellcrys/druid/configdir"
-	homedir "github.com/mitchellh/go-homedir"
-
 	"github.com/thoas/go-funk"
 
 	"github.com/docker/docker/api/types"
@@ -23,6 +20,7 @@ import (
 )
 
 const gitURL = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile"
+const dockerFileHash = "c0879257e8136bf13b4fceb5651f751b806782a7"
 
 // BuildContext for building a docker image
 type BuildContext struct {
@@ -64,36 +62,36 @@ func dockerAlive() error {
 }
 
 // getDockerFile fetches Dockerfile from github.
-func getDockerFile(version string) (*goreq.Response, error) {
-	commitURI := fmt.Sprintf("%s/%s/Dockerfile", gitURL, version)
+func getDockerFile() (string, error) {
+	commitURI := fmt.Sprintf("%s/%s/Dockerfile", gitURL, dockerFileHash)
 
 	res, err := goreq.Request{
 		Uri: commitURI,
 	}.Do()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if res.Status == "404 Not Found" {
-		return nil, fmt.Errorf("%s", "Docker file not found")
+		return "", fmt.Errorf("%s", "Docker file not found")
 	}
 
-	return res, nil
+	body, err := res.Body.ToString()
+	if err != nil {
+		return "", err
+	}
+
+	return body, nil
 }
 
 // buildImage builds an image from a docker file gotten from the getDockerFile func
 // - it creates a build context for the docker image build command
 // - builds an image if it doesn't already exists
 // - returns the Image & ID if build is successful
-func buildImage(dockerFile *goreq.Response) (*Image, error) {
+func buildImage(dockerFile string) (*Image, error) {
 	ctx := context.Background()
 
-	body, err := dockerFile.Body.ToString()
-	if err != nil {
-		return nil, err
-	}
-
-	cli, err := client.NewEnvClient()
+	cli, err := client.NewClientWithOpts()
 	if err != nil {
 		return nil, err
 	}
@@ -104,10 +102,9 @@ func buildImage(dockerFile *goreq.Response) (*Image, error) {
 		return image, nil
 	}
 
-	homeDir, _ := homedir.Dir()
-	dir := fmt.Sprintf("%s/.ellcrys/vm-build-context", homeDir)
+	dir := "vm-build-context"
 
-	buildCtx, err := newBuildCtx(dir, "Dockerfile", body)
+	buildCtx, err := newBuildCtx(dir, "Dockerfile", dockerFile)
 	if err != nil {
 		return nil, err
 	}
@@ -120,9 +117,10 @@ func buildImage(dockerFile *goreq.Response) (*Image, error) {
 	}
 	defer source.Close()
 	img, err := cli.ImageBuild(ctx, source, types.ImageBuildOptions{
-		Tags: []string{"ellcrys-vm"},
+		Tags: []string{dockerFileHash},
 		Labels: map[string]string{
 			"maintainer": "ellcrys",
+			"version":    dockerFileHash,
 		},
 	})
 	if err != nil {
@@ -161,10 +159,9 @@ func getImage(cli *client.Client) *Image {
 	// check images if maintainer : ellcrys already exist
 	for i := range summaries {
 		summary := summaries[i]
-		// Todo: check version of image
 		for k, v := range summary.Labels {
 			if k != "" || v != "" {
-				if k == "maintainer" && v == "ellcrys" {
+				if k == "version" && v == dockerFileHash {
 					return &Image{
 						ID: summary.ID,
 					}
@@ -207,17 +204,11 @@ func (b *BuildContext) Reader() (io.ReadCloser, error) {
 func newBuildCtx(dir string, name string, content string) (*BuildContext, error) {
 	buildContext := new(BuildContext)
 
-	err := os.Mkdir(dir, 0700)
+	tempdir, err := ioutil.TempDir("", dir)
 	if err != nil {
 		return nil, err
 	}
-
-	cfdir, err := configdir.NewConfigDir(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	buildContext.Dir = cfdir.Path()
+	buildContext.Dir = tempdir
 
 	err = buildContext.addFile(name, []byte(content))
 	if err != nil {
