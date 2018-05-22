@@ -23,6 +23,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
+	
 	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
@@ -135,6 +136,10 @@ func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Node 
 	}
 
 	return pt.addrRelayPeers
+}
+
+func makeAddrRelayHistoryKey(tx *wire.Transaction, peer *Node) MultiKey {
+	return []interface{}{tx.ID(), peer.StringID()}
 }
 
 // RelayAddr relays addrs under the following rules:
