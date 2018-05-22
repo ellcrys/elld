@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ellcrys/druid/testutil"
@@ -100,9 +101,9 @@ var _ = Describe("Addr", func() {
 				{Address: ""},
 				{Address: ""},
 			}
-			err := lpProtoc.RelayAddr(addrs)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("too many items in addr message"))
+			errs := lpProtoc.RelayAddr(addrs)
+			Expect(errs).ToNot(BeEmpty())
+			Expect(errs).To(ContainElement(fmt.Errorf("too many addresses in the message")))
 		})
 
 		It("should return err.Error(no addr to relay) if non of the addresses where relayable", func() {
@@ -110,18 +111,18 @@ var _ = Describe("Addr", func() {
 				{Address: ""},
 				{Address: ""},
 			}
-			err := lpProtoc.RelayAddr(addrs)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("no addr to relay"))
+			errs := lpProtoc.RelayAddr(addrs)
+			Expect(errs).ToNot(BeEmpty())
+			Expect(errs).To(ContainElement(fmt.Errorf("no addr to relay")))
 		})
 
 		It("should return err.Error(no addr to relay) if address timestamp over 60 minutes", func() {
 			addrs := []*wire.Address{
 				{Address: "/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu", Timestamp: time.Now().Add(61 * time.Minute).Unix()},
 			}
-			err := lpProtoc.RelayAddr(addrs)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("no addr to relay"))
+			errs := lpProtoc.RelayAddr(addrs)
+			Expect(errs).ToNot(BeEmpty())
+			Expect(errs).To(ContainElement(fmt.Errorf("no addr to relay")))
 		})
 
 		Context("with relay peers", func() {
@@ -152,8 +153,7 @@ var _ = Describe("Addr", func() {
 					{Address: p2.GetMultiAddr(), Timestamp: time.Now().Unix()},
 					{Address: p3.GetMultiAddr(), Timestamp: time.Now().Unix()},
 				}
-				err := pt.RelayAddr(addrs)
-				Expect(err).To(BeNil())
+				pt.RelayAddr(addrs)
 				Expect(pt.addrRelayPeers[0]).ToNot(BeNil())
 				Expect(pt.addrRelayPeers[1]).ToNot(BeNil())
 			})

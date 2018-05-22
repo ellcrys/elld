@@ -23,7 +23,7 @@ func (pt *Inception) onAddr(s net.Stream) ([]*wire.Address, error) {
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
 	remotePeerIDShort := remotePeer.ShortID()
-	
+
 	resp := &wire.Addr{}
 	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
 	if err := decoder.Decode(resp); err != nil {
@@ -138,8 +138,8 @@ func (pt *Inception) getAddrRelayPeers(candidateAddrs []*wire.Address) [2]*Node 
 	return pt.addrRelayPeers
 }
 
-func makeAddrRelayHistoryKey(tx *wire.Transaction, peer *Node) MultiKey {
-	return []interface{}{tx.ID(), peer.StringID()}
+func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) MultiKey {
+	return []interface{}{util.SerializeMsg(addr), peer.StringID()}
 }
 
 // RelayAddr relays addrs under the following rules:
@@ -147,32 +147,38 @@ func makeAddrRelayHistoryKey(tx *wire.Transaction, peer *Node) MultiKey {
 // * all addresses must be valid and different from the local peer address
 // * Only addresses within 60 minutes from the current time.
 // * Only routable addresses are allowed.
-func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
+func (pt *Inception) RelayAddr(addrs []*wire.Address) []error {
 
+	var errs []error
 	var relayable []*wire.Address
 	now := time.Now()
 
 	if len(addrs) > 10 {
-		return fmt.Errorf("too many items in addr message")
+		errs = append(errs, fmt.Errorf("too many addresses in the message"))
+		return errs
 	}
 
 	for _, addr := range addrs {
 
 		if !util.IsValidAddr(addr.Address) {
+			errs = append(errs, fmt.Errorf("address {%s} is not valid", addr.Address))
 			continue
 		}
 
 		mAddr, _ := ma.NewMultiaddr(addr.Address)
 		if pt.LocalPeer().IsSameID(util.IDFromAddr(mAddr).Pretty()) {
+			errs = append(errs, fmt.Errorf("address {%s} is the same as local peer's", addr.Address))
 			continue
 		}
 
 		addrTime := time.Unix(addr.Timestamp, 0)
 		if now.Add(60 * time.Minute).Before(addrTime) {
+			errs = append(errs, fmt.Errorf("address {%s} is over 60 minutes old", addr.Address))
 			continue
 		}
 
 		if !pt.LocalPeer().DevMode() && !util.IsRoutableAddr(addr.Address) {
+			errs = append(errs, fmt.Errorf("address {%s} is not routable", addr.Address))
 			continue
 		}
 
@@ -180,10 +186,11 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 	}
 
 	if len(relayable) == 0 {
-		return fmt.Errorf("no addr to relay")
+		errs = append(errs, fmt.Errorf("no addr to relay"))
+		return errs
 	}
 
-	// get the peers to relay address to 
+	// get the peers to relay address to
 	relayPeers := pt.getAddrRelayPeers(relayable)
 	numRelayPeers := len(relayPeers)
 	for _, p := range relayPeers {
@@ -202,8 +209,18 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 			continue
 		}
 
+		historyKey := makeAddrRelayHistoryKey(addrMsg, remotePeer)
+
+		// ensure we have not relayed same message to this peer before
+		if pt.LocalPeer().History().Has(historyKey) {
+			errs = append(errs, fmt.Errorf("already sent same Addr to node"))
+			pt.log.Debug("Already sent same Addr to node. Skipping.", "PeerID", remotePeer.ShortID())
+			continue
+		}
+
 		s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.AddrVersion)
 		if err != nil {
+			errs = append(errs, fmt.Errorf("Addr message failed. failed to connect to peer {%s}", remotePeer.ShortID()))
 			pt.log.Debug("Addr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.ShortID())
 			continue
 		}
@@ -211,9 +228,13 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 		w := bufio.NewWriter(s)
 		if err := pc.Multicodec(nil).Encoder(w).Encode(addrMsg); err != nil {
 			s.Reset()
+			errs = append(errs, fmt.Errorf("AAddr failed. failed to write to stream to peer {%s}", remotePeer.ShortID()))
 			pt.log.Debug("Addr failed. failed to write to stream", "Err", err, "PeerID", remotePeer.ShortID())
 			continue
 		}
+
+		// add new history
+		pt.LocalPeer().History().Add(historyKey)
 
 		w.Flush()
 		s.Close()
@@ -222,5 +243,5 @@ func (pt *Inception) RelayAddr(addrs []*wire.Address) error {
 
 	pt.log.Info("Relay completed", "NumAddrsToRelay", len(relayable), "NumRelayed", successfullyRelayed)
 
-	return nil
+	return errs
 }
