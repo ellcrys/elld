@@ -4,8 +4,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ellcrys/druid/block"
 	miner "github.com/ellcrys/druid/miner"
+	DB "github.com/ellcrys/druid/scribleDB"
+	"github.com/ellcrys/druid/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -41,8 +42,8 @@ var _ = Describe("Miner", func() {
 	//Test For Mine - PROOF OF WORK
 	var _ = Describe(".Mine", func() {
 
-		ellBlock := block.FullBlock{
-			Difficulty:     "30212",
+		ellBlock := wire.Block{
+			Difficulty:     "70212",
 			HashMerkleRoot: "8c4a16df5c399bb06a8752ff16f776901a714dfa3f4113be2c14be7c136ef582",
 			HashPrevBlock:  "efae6c6522095e57bf885756af7ccc38483e6582b83a80adf588126f03134b78",
 			Nounce:         1525873090716071984,
@@ -56,7 +57,7 @@ var _ = Describe("Miner", func() {
 		minerID := 63548
 
 		config := miner.Config{
-			CacheDir: "CacheFile", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "DagFile", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: miner.ModeFake,
+			CacheDir: "../CacheFile", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "../DagFile", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: miner.ModeFake,
 		}
 
 		// Create a New Ethash Constructor
@@ -122,6 +123,27 @@ var _ = Describe("Miner", func() {
 
 			})
 
+		})
+
+	})
+
+	var _ = Describe("VerifyPOW", func() {
+
+		// config struct to innitialize the miner package
+		config := miner.Config{
+			CacheDir: "CacheFile", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "DagFile", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: miner.ModeFake,
+		}
+
+		//Create a New Ethash Constructor
+		newEllMiner := miner.New(config)
+
+		ellBlock := DB.GetSingleBlock("20")
+		ellBlock.Difficulty = "30678"
+
+		errPow := newEllMiner.VerifyPOW(&ellBlock)
+
+		It("It must not be 0", func() {
+			Expect(errPow).ShouldNot(BeZero())
 		})
 
 	})

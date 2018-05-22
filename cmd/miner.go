@@ -27,6 +27,7 @@ import (
 
 	"github.com/spf13/cobra"
 	//"encoding/json"
+
 	DB "github.com/ellcrys/druid/scribleDB"
 )
 
@@ -36,7 +37,6 @@ var minerCmd = &cobra.Command{
 	Short: "Mining Algorithm for proof of work",
 	Long: `An Ethash proof of work Algorith based on formerly Dagger-Hashimoto algorith
 	It uses Dag file to speed up mining process
-
 	Cobra is a CLI library for Go that empowers applications.
 	This application is a tool to generate the needed files
 	to quickly create a Cobra application.`,
@@ -45,25 +45,9 @@ var minerCmd = &cobra.Command{
 
 		fmt.Println("************************************************************************************************************************************************************ ")
 
-		// maxUint256 := new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
-		// diff := big.NewInt(20)
-
-		// Mtarget := new(big.Int).Div(maxUint256, diff)
-
-		// fmt.Println(Mtarget)
-		// os.Exit(0)
-
 		//get current time stamp
 		currentUTCTime := time.Now().Format("20060102150405")
 		currentUTCTimeUint, _ := strconv.ParseUint(currentUTCTime, 10, 64)
-
-		// convert current time to utc string then to big.Int
-		//bigIntTCurrentTime, _ := new(big.Int).SetString(currentUTCTime, 10)
-
-		// db, err := scribleDB.New("scribleDB/", nil)
-		// if err != nil {
-		// 	fmt.Println("there is error in the db")
-		// }
 
 		selectedTransaction := MemPool(15)
 
@@ -114,18 +98,16 @@ var minerCmd = &cobra.Command{
 		} else {
 
 			parentBlock := DB.GetSingleBlock(strconv.Itoa(int(totalBlockNumber)))
-
 			block.HashPrevBlock = parentBlock.PowHash
 
 			parentBlockTime, err1 := new(big.Int).SetString(parentBlock.Time, 10)
-
 			if err1 == false {
-				fmt.Println("Error converting parent blockTime to string")
+				fmt.Println("Error converting parent blockTime to BigInt")
 			}
 
 			ParentDifficulty, err2 := new(big.Int).SetString(parentBlock.Difficulty, 10)
 			if err2 == false {
-				fmt.Println("Error converting ParentDifficulty to string")
+				fmt.Println("Error converting ParentDifficulty to BigInt", err2, parentBlock.Difficulty)
 			}
 
 			parentBlockNumber := new(big.Int).SetUint64(parentBlock.Number)

@@ -50,14 +50,14 @@ message Transaction {
 }
 
 message Block{
-    string Version = 1;
-    string HashPrevBlock =2;
-    repeated string TX=3;
-    string HashMerkleRoot =4;
-    string Time =5;
-    uint64 Nounce =6;
-    string Difficulty =7;
-    uint64 Number =8;
-    string PowHash =9;
-    string PowResult =10;
+    string version = 1;
+    string hashPrevBlock =2;
+    repeated string tX=3;
+    string hashMerkleRoot =4;
+    string time =5;
+    uint64 nounce =6;
+    string difficulty =7;
+    uint64 number =8;
+    string powHash =9;
+    string powResult =10;
 }
