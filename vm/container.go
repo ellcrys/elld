@@ -12,7 +12,7 @@ import (
 // Container defines the container that runs a block code.
 type Container struct {
 	id        string // id of the container
-	children  []Container
+	children  []*Container
 	client    *rpc2.Client
 	parent    *Container
 	dockerCli *client.Client
@@ -29,14 +29,6 @@ type response struct {
 type ExecRequest struct {
 	Function string      `json:"Function"`
 	Data     interface{} `json:"Data"`
-}
-
-// newContainer creates a new instance of docker container
-func newContainer(dockerCli *client.Client, containerID string) *Container {
-	co := new(Container)
-	co.dockerCli = dockerCli
-	co.id = containerID
-	return co
 }
 
 // starts a container
@@ -82,6 +74,12 @@ func (co *Container) buildLang(buildConfig LangBuilder) error {
 	}
 
 	return nil
+}
+
+// adds a child container to the list of children
+func (co *Container) addChild(child *Container) {
+	child.parent = co
+	co.children = append(co.children, child)
 }
 
 // stop a started container
