@@ -1,30 +1,107 @@
 package vm
 
 import (
-	"github.com/cenkalti/hub"
+	"context"
+	"encoding/json"
 
 	"github.com/cenkalti/rpc2"
-	docker "github.com/docker/docker/client"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 )
 
-//Container struct for managing docker containers
+// Container defines the container that runs a block code.
 type Container struct {
-	port       int
-	execpath   string
-	ID         string
-	client     *docker.Client
-	service    *rpc2.Client
-	contractID string
-	eventHub   *hub.Hub
+	id        string // id of the container
+	children  []Container
+	client    *rpc2.Client
+	parent    *Container
+	dockerCli *client.Client
 }
 
-//ContractManifest defines the project metadata
-type ContractManifest struct {
-	Name     string `json:"name"`
-	Language string `json:"language"`
-	Version  string `json:"version"`
-	Port     int    `json:"port"`
+// response defines response from a blockcode execution
+type response struct {
+	Status string `json:"status"`
+	Code   int    `json:"code"`
+	Data   []byte `json:"data"`
 }
 
-const imgTag = "ellcrys-contract"
-const registry = "localhost:5000" //ellcrys image registry
+// ExecRequest defines the execution request to the blockcode stub
+type ExecRequest struct {
+	Function string      `json:"Function"`
+	Data     interface{} `json:"Data"`
+}
+
+// newContainer creates a new instance of docker container
+func newContainer(dockerCli *client.Client, containerID string) *Container {
+	co := new(Container)
+	co.dockerCli = dockerCli
+	co.id = containerID
+	return co
+}
+
+// starts a container
+func (co *Container) start() error {
+	err := co.dockerCli.ContainerStart(context.Background(), co.id, types.ContainerStartOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// executes a block code in the container
+func (co *Container) exec(execBlock *ExecRequest, output chan []byte, done chan struct{}) error {
+
+	co.client.Handle("response", func(client *rpc2.Client, data *response, _ *struct{}) error {
+
+		b, err := json.Marshal(&data)
+		if err != nil {
+			close(done)
+			return err
+		}
+		output <- b
+		close(done)
+		return nil
+	})
+
+	go co.client.Run()
+
+	err := co.client.Call("invoke", execBlock, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// buildLang takes a concrete implementation of the LangBuilder
+// - and builds a block code accordingly
+func (co *Container) buildLang(buildConfig LangBuilder) error {
+	err := buildConfig.Build(co.id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// stop a started container
+func (co *Container) stop() error {
+	err := co.dockerCli.ContainerStop(context.Background(), co.id, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Destroy a container
+func (co *Container) destroy() error {
+	err := co.dockerCli.ContainerRemove(context.Background(), co.id, types.ContainerRemoveOptions{
+		RemoveVolumes: true,
+		Force:         true,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

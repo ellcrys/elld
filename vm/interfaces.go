@@ -1,6 +1,8 @@
 package vm
 
-import "github.com/ellcrys/druid/wire"
+import (
+	"github.com/ellcrys/druid/wire"
+)
 
 // Block defines an interface for a block
 type Block interface {
@@ -10,5 +12,14 @@ type Block interface {
 // Blockchain interface defines a structure for accessing the blockchain
 // and all its primitives.
 type Blockchain interface {
-	GetContract(id string, contract interface{}) error
+	GetBlockCode(address string) BlockCode
+}
+
+// ExecFunc type destermines the structure of the function expected by the RunScript function
+type ExecFunc func() error
+
+// LangBuilder determines the interface of the language builder
+type LangBuilder interface {
+	GetRunScript() []string
+	Build(containerID string) error
 }

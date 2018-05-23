@@ -16,8 +16,16 @@ const (
 	dockerFileURL  = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile/%s/Dockerfile"
 )
 
-// MountDir where contracts are stored
+// MountDir where block codes are stored
 var MountDir = "mountdir"
+
+// BlockCode represents a block code in a blockchain
+type BlockCode struct {
+	Lang            string
+	LangVersion     string
+	Content         []byte
+	PublicFunctions []string
+}
 
 // VM specializes in executing transactions against a contracts
 type VM struct {
