@@ -119,7 +119,7 @@ var minerCmd = &cobra.Command{
 			block.Difficulty = BlockDifficultyString
 		}
 
-		outputDigest, outputResult, outputNonce := newEllMiner.Mine(&block, minerID)
+		outputDigest, outputResult, outputNonce, _ := newEllMiner.Mine(&block, minerID)
 
 		if outputDigest != "" {
 			block.Nounce = outputNonce

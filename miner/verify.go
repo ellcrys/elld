@@ -10,15 +10,16 @@ import (
 )
 
 var (
-	errLargeBlockTime    = errors.New("timestamp too big")
-	errZeroBlockTime     = errors.New("timestamp equals parent's")
-	errTooManyUncles     = errors.New("too many uncles")
-	errDuplicateUncle    = errors.New("duplicate uncle")
-	errUncleIsAncestor   = errors.New("uncle is ancestor")
-	errDanglingUncle     = errors.New("uncle's parent is not ancestor")
-	errInvalidDifficulty = errors.New("non-positive difficulty")
-	errInvalidMixDigest  = errors.New("invalid mix digest")
-	errInvalidPoW        = errors.New("invalid proof-of-work")
+	errLargeBlockTime         = errors.New("timestamp too big")
+	errZeroBlockTime          = errors.New("timestamp equals parent's")
+	errTooManyUncles          = errors.New("too many uncles")
+	errDuplicateUncle         = errors.New("duplicate uncle")
+	errUncleIsAncestor        = errors.New("uncle is ancestor")
+	errDanglingUncle          = errors.New("uncle's parent is not ancestor")
+	errInvalidDifficulty      = errors.New("non-positive difficulty")
+	errInvalidMixDigest       = errors.New("invalid mix digest")
+	errInvalidPoW             = errors.New("invalid proof-of-work")
+	errNonPositiveBlockNumber = errors.New("non Positive Block Number")
 )
 
 // VerifyPOW implements consensus.Engine, checking whether the given block satisfies
@@ -32,6 +33,11 @@ func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 	}
 	// Recompute the digest and PoW value and verify against the header
 	number := block.Number
+
+	//block number must be a positive number
+	if number <= 0 {
+		return errNonPositiveBlockNumber
+	}
 
 	cache := ethash.cache(number)
 	size := datasetSize(number)

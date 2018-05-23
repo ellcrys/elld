@@ -90,8 +90,17 @@ func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, u
 
 	const ModeFake = iota
 	blockNumber := block.Number
+
+	// if block.Number <= 0 {
+	// 	return "", "", 0, errors.New("Invalid Block number")
+	// }
+
 	epoch := blockNumber / epochLength
 	currentI, _ := miner.datasets.get(epoch)
+	// if err != nil {
+	// 	return "", "", 0, errors.New("Invalid Dataset for epoch")
+	// }
+
 	current := currentI.(*dataset)
 
 	// Wait for generation finish.
