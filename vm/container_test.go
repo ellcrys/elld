@@ -59,9 +59,7 @@ var _ = Describe("Container", func() {
 
 	AfterEach(func() {
 		defer cli.Close()
-		before := time.Now().Unix()
 		err := co.stop()
-		fmt.Println("TimeElapsed", time.Now().Unix()-before)
 		Expect(err).To(BeNil())
 		err = co.destroy()
 		Expect(err).To(BeNil())
