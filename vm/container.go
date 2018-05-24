@@ -64,18 +64,11 @@ func (co *Container) exec(command []string, output chan string, done chan error)
 		return
 	}
 
-	execResp, err := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
-	if err != nil {
-		done <- err
-		return
-	}
+	execResp, _ := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+
 	defer execResp.Close()
 
-	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
-	if err != nil {
-		done <- err
-		return
-	}
+	_ = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
 
 	scanner := bufio.NewScanner(execResp.Reader)
 	for scanner.Scan() {

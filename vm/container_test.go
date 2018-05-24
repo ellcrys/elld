@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,17 +24,30 @@ func (lang *TestBuildLang) Build(containerID string) error {
 	return nil
 }
 
+type ErrBuildLang struct {
+}
+
+func (lang *ErrBuildLang) GetRunScript() []string {
+	return []string{"bash", "-c", "echo hello"}
+}
+
+func (lang *ErrBuildLang) Build(containerID string) error {
+	return fmt.Errorf("err", "an error")
+}
+
 var _ = Describe("Container", func() {
 	containerStopTimeout = time.Millisecond * 500
 	var log = logger.NewLogrusNoOp()
 	var co *Container
-	var transactionID = "983007356499672"
+	var transactionID string
 	var err error
 	var dckFileURL = fmt.Sprintf(dockerFileURL, dockerFileHash)
 	var cli *client.Client
 	var image *Image
 
 	BeforeEach(func() {
+		transactionID = util.RandString(5)
+
 		cli, err = client.NewClientWithOpts()
 		Expect(err).To(BeNil())
 
@@ -70,16 +84,51 @@ var _ = Describe("Container", func() {
 			err := co.start()
 			Expect(err).To(BeNil())
 		})
+
+		It("should fail to start a container", func() {
+			original := co.id
+			co.id = "<fake container id>"
+			err := co.start()
+			Expect(err).NotTo(BeNil())
+			co.id = original
+		})
+
+		It("should fail to stop a container", func() {
+			original := co.id
+			co.id = "<fake container id>"
+			err := co.stop()
+			Expect(err).NotTo(BeNil())
+			co.id = original
+		})
+
+		It("should fail to destroy a container", func() {
+			original := co.id
+			co.id = "<fake container id>"
+			err := co.destroy()
+			Expect(err).NotTo(BeNil())
+			co.id = original
+		})
 	})
 	Describe(".exec", func() {
 		It("should execute a command in the container", func() {
-			_ = co.start()
+			err := co.start()
+			Expect(err).To(BeNil())
 			command := []string{"bash", "-c", "echo hello"}
-			done := make(chan error)
+			done := make(chan error, 1)
 			output := make(chan string)
 			go co.exec(command, output, done)
 			Expect(<-output).NotTo(BeEmpty())
 			Expect(<-done).To(BeNil())
+		})
+
+		It("should throw error while trying to execute a command in the container", func() {
+			err := co.start()
+			Expect(err).To(BeNil())
+			command := []string{}
+			done := make(chan error, 1)
+			output := make(chan string)
+			co.exec(command, output, done)
+			Expect(<-done).NotTo(BeNil())
 		})
 	})
 
@@ -107,6 +156,13 @@ var _ = Describe("Container", func() {
 			Expect(co.buildConfig).ToNot(BeNil())
 			err := co.build()
 			Expect(err).To(BeNil())
+		})
+
+		It("should fail to build block code", func() {
+			co.setBuildLang(new(ErrBuildLang))
+			Expect(co.buildConfig).ToNot(BeNil())
+			err := co.build()
+			Expect(err).NotTo(BeNil())
 		})
 	})
 
