@@ -83,6 +83,29 @@ type Ethash struct {
 	fakeDelay time.Duration // Time delay to sleep for before returning from verify
 
 	lock sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
+
+	abortNonceSearch chan struct{} // Aborts nonce search
+}
+
+// New creates a full sized ethash PoW scheme.
+func New(config Config) *Ethash {
+	if config.CachesInMem <= 0 {
+		log.Warn("One ethash cache must always be in memory", "requested", config.CachesInMem)
+		config.CachesInMem = 1
+	}
+	if config.CacheDir != "" && config.CachesOnDisk > 0 {
+		log.Info("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
+	}
+	if config.DatasetDir != "" && config.DatasetsOnDisk > 0 {
+		log.Info("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
+	}
+	return &Ethash{
+		config:   config,
+		caches:   newlru("cache", config.CachesInMem, newCache),
+		datasets: newlru("dataset", config.DatasetsInMem, newDataset),
+		update:   make(chan struct{}),
+		hashrate: metrics.NewMeter(),
+	}
 }
 
 // Mine function mine a block and creates it
@@ -133,7 +156,7 @@ func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, u
 	fmt.Println("Started ethash search for new nonces", "seed", seed)
 
 	// Create a runner and the multiple search threads it directs
-	abort := make(chan struct{})
+	miner.abortNonceSearch = make(chan struct{})
 	// found := make(chan *types.Block)
 
 	outputDigest := ""
@@ -144,7 +167,8 @@ search:
 
 	for {
 		select {
-		case <-abort:
+		case <-miner.abortNonceSearch:
+
 			// Mining terminated, update stats and abort
 			logger.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
 			fmt.Println("Ethash nonce search aborted", "attempts", nonce-seed)
@@ -190,25 +214,9 @@ search:
 	return outputDigest, outputResult, outputNonce
 }
 
-// New creates a full sized ethash PoW scheme.
-func New(config Config) *Ethash {
-	if config.CachesInMem <= 0 {
-		log.Warn("One ethash cache must always be in memory", "requested", config.CachesInMem)
-		config.CachesInMem = 1
-	}
-	if config.CacheDir != "" && config.CachesOnDisk > 0 {
-		log.Info("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
-	}
-	if config.DatasetDir != "" && config.DatasetsOnDisk > 0 {
-		log.Info("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
-	}
-	return &Ethash{
-		config:   config,
-		caches:   newlru("cache", config.CachesInMem, newCache),
-		datasets: newlru("dataset", config.DatasetsInMem, newDataset),
-		update:   make(chan struct{}),
-		hashrate: metrics.NewMeter(),
-	}
+// AbortNonceSearch forces the nonce search to be stopped
+func (miner *Ethash) AbortNonceSearch() {
+	close(miner.abortNonceSearch)
 }
 
 // isLittleEndian returns whether the local system is running in little or big

@@ -31,6 +31,7 @@ func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 	if blockDiffuclty.Sign() <= 0 {
 		return errInvalidDifficulty
 	}
+
 	// Recompute the digest and PoW value and verify against the header
 	number := block.Number
 
@@ -39,11 +40,12 @@ func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 		return errNonPositiveBlockNumber
 	}
 
-	cache := ethash.cache(number)
 	size := datasetSize(number)
 	if ethash.config.PowMode == ModeTest {
 		size = 32 * 1024
 	}
+
+	cache := ethash.cache(number)
 
 	//get Digest and result for POW verification
 	digest, result := hashimotoLight(size, cache.cache, block.HashNoNonce().Bytes(), block.Nounce)
