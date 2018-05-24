@@ -56,7 +56,7 @@ func (co *Container) exec(command []string, output chan string, done chan error)
 		Cmd:          command,
 		Tty:          true,
 		AttachStderr: true,
-		AttachStdin:  true,
+		AttachStdin:  false,
 		AttachStdout: true,
 	})
 	if err != nil {
