@@ -17,13 +17,14 @@ import (
 	"unsafe"
 
 	mmap "github.com/edsrzf/mmap-go"
+	"github.com/ellcrys/druid/util/logger"
 	ellBlock "github.com/ellcrys/druid/wire"
 	"github.com/ellcrys/go-ethereum/consensus"
-	"github.com/ellcrys/go-ethereum/log"
 	"github.com/ellcrys/go-ethereum/metrics"
 	"github.com/ellcrys/go-ethereum/rpc"
-	"github.com/hashicorp/golang-lru/simplelru"
 )
+
+var logg = logger.NewLogrus()
 
 var ErrInvalidDumpMagic = errors.New("invalid dump magic")
 
@@ -84,20 +85,25 @@ type Ethash struct {
 
 	lock sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
 
+	// abortNonceSearch chan struct{} // Aborts nonce search
 	abortNonceSearch chan struct{} // Aborts nonce search
+
 }
 
 // New creates a full sized ethash PoW scheme.
 func New(config Config) *Ethash {
+
+	logg := logger.NewLogrus()
+
 	if config.CachesInMem <= 0 {
-		log.Warn("One ethash cache must always be in memory", "requested", config.CachesInMem)
+		logg.Debug("One ethash cache must always be in memory", "requested", config.CachesInMem)
 		config.CachesInMem = 1
 	}
 	if config.CacheDir != "" && config.CachesOnDisk > 0 {
-		log.Info("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
+		logg.Debug("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
 	}
 	if config.DatasetDir != "" && config.DatasetsOnDisk > 0 {
-		log.Info("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
+		logg.Debug("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
 	}
 	return &Ethash{
 		config:   config,
@@ -109,20 +115,13 @@ func New(config Config) *Ethash {
 }
 
 // Mine function mine a block and creates it
-func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, uint64) {
+func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, uint64, error) {
 
 	const ModeFake = iota
 	blockNumber := block.Number
 
-	// if block.Number <= 0 {
-	// 	return "", "", 0, errors.New("Invalid Block number")
-	// }
-
 	epoch := blockNumber / epochLength
 	currentI, _ := miner.datasets.get(epoch)
-	// if err != nil {
-	// 	return "", "", 0, errors.New("Invalid Dataset for epoch")
-	// }
 
 	current := currentI.(*dataset)
 
@@ -131,16 +130,13 @@ func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, u
 	current.generate(miner.config.DatasetDir, miner.config.DatasetsOnDisk, miner.config.PowMode == ModeTest)
 
 	var (
-		// Mheader = block
-		Mhash = block.HashNoNonce().Bytes()
-
+		Mhash              = block.HashNoNonce().Bytes()
 		blockDifficulty, _ = new(big.Int).SetString(block.Difficulty, 10)
 		Mtarget            = new(big.Int).Div(maxUint256, blockDifficulty)
-		// Mnumber  = Mheader.Number.Uint64()
-		Mdataset = current
+		Mdataset           = current
 	)
 
-	// seed := uint64(567)
+	// random seed using the Current timestamp
 	seed := uint64(time.Now().UTC().UnixNano())
 
 	// Start generating random nonces until we abort or find a good one
@@ -149,15 +145,11 @@ func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, u
 		nonce    = seed
 	)
 
-	logger := log.New("miner", minerID)
-	fmt.Println("Miner ID : ", minerID)
-
-	logger.Trace("Started ethash search for new nonces", "seed", seed)
-	fmt.Println("Started ethash search for new nonces", "seed", seed)
+	logg.Debug("Mine", "ID", minerID)
+	logg.Debug("Started ethash search for new nonces", "seed", nonce)
 
 	// Create a runner and the multiple search threads it directs
 	miner.abortNonceSearch = make(chan struct{})
-	// found := make(chan *types.Block)
 
 	outputDigest := ""
 	outputResult := ""
@@ -168,50 +160,47 @@ search:
 	for {
 		select {
 		case <-miner.abortNonceSearch:
-
-			// Mining terminated, update stats and abort
-			logger.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
-			fmt.Println("Ethash nonce search aborted", "attempts", nonce-seed)
-
 			miner.hashrate.Mark(attempts)
+			fmt.Println("error mining was stopped")
 			break search
+			return "", "", 0, errors.New("Mining was stopped")
 
 		default:
+
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 			attempts++
 			if (attempts % (1 << 15)) == 0 {
 				miner.hashrate.Mark(attempts)
 				attempts = 0
 			}
+
 			// Compute the PoW value of this nonce
 			digest, result := hashimotoFull(Mdataset.dataset, Mhash, nonce)
 
-			//fmt.Println(">>>", binary.LittleEndian.Uint32(digest))
 			if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
 				// Correct nonce found, create a new header with it
 
-				logger.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+				//logg.Debug("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+
 				fmt.Println("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
 
-				//fmt.Println(string(digest))
 				outputDigest = fmt.Sprintf("%x", digest)
 				outputResult = fmt.Sprintf("%x", result)
 				outputNonce = nonce
 
 				break search
-
-				// return outputDigest, outputResult, outputNonce
 			}
 			nonce++
 		}
+
 	}
 
 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
 	// during sealing so it's not unmapped while being read.
 	runtime.KeepAlive(Mdataset)
 
-	// return the output
-	return outputDigest, outputResult, outputNonce
+	// return the output of the  ine function
+	return outputDigest, outputResult, outputNonce, nil
 }
 
 // AbortNonceSearch forces the nonce search to be stopped
@@ -307,58 +296,6 @@ func memoryMapAndGenerate(path string, size uint64, generator func(buffer []uint
 	return memoryMap(path)
 }
 
-// lru tracks caches or datasets by their last use time, keeping at most N of them.
-type lru struct {
-	what string
-	new  func(epoch uint64) interface{}
-	mu   sync.Mutex
-	// Items are kept in a LRU cache, but there is a special case:
-	// We always keep an item for (highest seen epoch) + 1 as the 'future item'.
-	cache      *simplelru.LRU
-	future     uint64
-	futureItem interface{}
-}
-
-// newlru create a new least-recently-used cache for ither the verification caches
-// or the mining datasets.
-func newlru(what string, maxItems int, new func(epoch uint64) interface{}) *lru {
-	if maxItems <= 0 {
-		maxItems = 1
-	}
-	cache, _ := simplelru.NewLRU(maxItems, func(key, value interface{}) {
-		log.Trace("Evicted ethash "+what, "epoch", key)
-	})
-	return &lru{what: what, new: new, cache: cache}
-}
-
-// get retrieves or creates an item for the given epoch. The first return value is always
-// non-nil. The second return value is non-nil if lru thinks that an item will be useful in
-// the near future.
-func (lru *lru) get(epoch uint64) (item, future interface{}) {
-	lru.mu.Lock()
-	defer lru.mu.Unlock()
-
-	// Get or create the item for the requested epoch.
-	item, ok := lru.cache.Get(epoch)
-	if !ok {
-		if lru.future > 0 && lru.future == epoch {
-			item = lru.futureItem
-		} else {
-			log.Trace("Requiring new ethash "+lru.what, "epoch", epoch)
-			item = lru.new(epoch)
-		}
-		lru.cache.Add(epoch, item)
-	}
-	// Update the 'future item' if epoch is larger than previously seen.
-	if epoch < maxEpoch-1 && lru.future < epoch+1 {
-		log.Trace("Requiring new future ethash "+lru.what, "epoch", epoch+1)
-		future = lru.new(epoch + 1)
-		lru.future = epoch + 1
-		lru.futureItem = future
-	}
-	return item, future
-}
-
 // cache wraps an ethash cache with some metadata to allow easier concurrent use.
 type cache struct {
 	epoch uint64    // Epoch for which this cache is relevant
@@ -400,7 +337,7 @@ func (c *cache) generate(dir string, limit int, test bool) {
 			endian = ".be"
 		}
 		path := filepath.Join(dir, fmt.Sprintf("cache-R%d-%x%s", algorithmRevision, seed[:8], endian))
-		logger := log.New("epoch", c.epoch)
+		logg.Debug("miner", "epoch", c.epoch)
 
 		// We're about to mmap the file, ensure that the mapping is cleaned up when the
 		// cache becomes unused.
@@ -410,15 +347,15 @@ func (c *cache) generate(dir string, limit int, test bool) {
 		var err error
 		c.dump, c.mmap, c.cache, err = memoryMap(path)
 		if err == nil {
-			logger.Debug("Loaded old ethash cache from disk")
+			logg.Debug("miner", "cache", "Loaded old ethash cache from disk")
 			return
 		}
-		logger.Debug("Failed to load old ethash cache", "err", err)
+		logg.Debug("Failed to load old ethash cache", "err", err)
 
 		// No previous cache available, create a new cache file to fill
 		c.dump, c.mmap, c.cache, err = memoryMapAndGenerate(path, size, func(buffer []uint32) { generateCache(buffer, c.epoch, seed) })
 		if err != nil {
-			logger.Error("Failed to generate mapped ethash cache", "err", err)
+			logg.Debug("miner", "cache", fmt.Sprintf("Failed to generate mapped ethash cache %v", err))
 
 			c.cache = make([]uint32, size/4)
 			generateCache(c.cache, c.epoch, seed)
@@ -480,7 +417,6 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 			endian = ".be"
 		}
 		path := filepath.Join(dir, fmt.Sprintf("full-R%d-%x%s", algorithmRevision, seed[:8], endian))
-		logger := log.New("epoch", d.epoch)
 
 		// We're about to mmap the file, ensure that the mapping is cleaned up when the
 		// cache becomes unused.
@@ -490,10 +426,11 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 		var err error
 		d.dump, d.mmap, d.dataset, err = memoryMap(path)
 		if err == nil {
-			logger.Debug("Loaded old ethash dataset from disk")
+			val := "Loaded old ethash dataset from disk"
+			logg.Debug("Generate", "Dataset", val)
 			return
 		}
-		logger.Debug("Failed to load old ethash dataset", "err", err)
+		logg.Debug("Failed to load old ethash dataset", "err", err)
 
 		// No previous dataset available, create a new dataset file to fill
 		cache := make([]uint32, csize/4)
@@ -501,7 +438,7 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 
 		d.dump, d.mmap, d.dataset, err = memoryMapAndGenerate(path, dsize, func(buffer []uint32) { generateDataset(buffer, d.epoch, cache) })
 		if err != nil {
-			logger.Error("Failed to generate mapped ethash dataset", "err", err)
+			logg.Debug("Failed to generate mapped ethash dataset", "err", err)
 
 			d.dataset = make([]uint32, dsize/2)
 			generateDataset(d.dataset, d.epoch, cache)
@@ -534,63 +471,6 @@ func MakeCache(block uint64, dir string) {
 func MakeDataset(block uint64, dir string) {
 	d := dataset{epoch: block / epochLength}
 	d.generate(dir, math.MaxInt32, false)
-}
-
-// NewTester creates a small sized ethash PoW scheme useful only for testing
-// purposes.
-func NewTester() *Ethash {
-	return New(Config{CachesInMem: 1, PowMode: ModeTest})
-}
-
-// NewFaker creates a ethash consensus engine with a fake PoW scheme that accepts
-// all blocks' seal as valid, though they still have to conform to the Ethereum
-// consensus rules.
-func NewFaker() *Ethash {
-	return &Ethash{
-		config: Config{
-			PowMode: ModeFake,
-		},
-	}
-}
-
-// NewFakeFailer creates a ethash consensus engine with a fake PoW scheme that
-// accepts all blocks as valid apart from the single one specified, though they
-// still have to conform to the Ethereum consensus rules.
-func NewFakeFailer(fail uint64) *Ethash {
-	return &Ethash{
-		config: Config{
-			PowMode: ModeFake,
-		},
-		fakeFail: fail,
-	}
-}
-
-// NewFakeDelayer creates a ethash consensus engine with a fake PoW scheme that
-// accepts all blocks as valid, but delays verifications by some time, though
-// they still have to conform to the Ethereum consensus rules.
-func NewFakeDelayer(delay time.Duration) *Ethash {
-	return &Ethash{
-		config: Config{
-			PowMode: ModeFake,
-		},
-		fakeDelay: delay,
-	}
-}
-
-// NewFullFaker creates an ethash consensus engine with a full fake scheme that
-// accepts all blocks as valid, without checking any consensus rules whatsoever.
-func NewFullFaker() *Ethash {
-	return &Ethash{
-		config: Config{
-			PowMode: ModeFullFake,
-		},
-	}
-}
-
-// NewShared creates a full sized ethash PoW shared between all requesters running
-// in the same process.
-func NewShared() *Ethash {
-	return &Ethash{shared: sharedEthash}
 }
 
 // cache tries to retrieve a verification cache for the specified block number

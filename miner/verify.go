@@ -22,7 +22,7 @@ var (
 	errNonPositiveBlockNumber = errors.New("non Positive Block Number")
 )
 
-// VerifyPOW implements consensus.Engine, checking whether the given block satisfies
+// VerifyPOW checks whether the given block satisfies
 // the PoW difficulty requirements.
 func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 
@@ -54,23 +54,13 @@ func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 	// until after the call to hashimotoLight so it's not unmapped while being used.
 	runtime.KeepAlive(cache)
 
-	// if !bytes.Equal(header.MixDigest[:], digest) {
-	// 	return errInvalidMixDigest
-	// }
-
+	// convert digest to string
 	outputDigest := fmt.Sprintf("%x", digest)
-	//outputResult := fmt.Sprintf("%x", result)
 
 	// check if the mix digest is equivalent to the block Mix Digest
 	if outputDigest != block.PowHash {
 		return errInvalidMixDigest
 	}
-	// else {
-	// 	fmt.Println("Proof of Work Verification Accepted")
-	// }
-
-	//fmt.Println("Digest <<<<<<<", outputDigest)
-	//fmt.Println("Result >>>>>>>", outputResult)
 
 	target := new(big.Int).Div(maxUint256, blockDiffuclty)
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {

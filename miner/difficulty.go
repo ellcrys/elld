@@ -28,17 +28,6 @@ func (ethash *Ethash) CalcDifficulty(DifficultyVersion string, time uint64, pare
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(DifficultyVersion string, time uint64, parentBlockTime *big.Int, ParentDifficulty *big.Int, parentBlockNumber *big.Int) *big.Int {
-
-	//next := new(big.Int).Add(parentBlockNumber, big1)
-	//switch {
-	// case config.IsByzantium(next):
-	// 	return calcDifficultyByzantium(time, parent)
-	// case config.IsHomestead(next):
-	// 	return calcDifficultyHomestead(time, parent)
-	// default:
-	// 	return calcDifficultyFrontier(time, parent)
-	// }
-
 	return calcDifficultyHomestead(time, parentBlockTime, ParentDifficulty)
 }
 
@@ -52,9 +41,8 @@ func calcDifficultyHomestead(time uint64, parentBlockTime *big.Int, ParentDiffic
 	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
 	//        ) + 2^(periodCount - 2)
 
+	// convert time to *big.Int
 	bigTime := new(big.Int).SetUint64(time)
-	// bigParentTime := new(big.Int).Set(parent.Time)
-	//bigParentTime, _ := new(big.Int).SetString(parent.Time, 10)
 
 	// holds intermediate values to make the algo easier to read & audit
 	x := new(big.Int)
@@ -78,9 +66,8 @@ func calcDifficultyHomestead(time uint64, parentBlockTime *big.Int, ParentDiffic
 	if x.Cmp(params.MinimumDifficulty) < 0 {
 		x.Set(params.MinimumDifficulty)
 	}
-	// for the exponential factor
 
-	// fmt.Println("<<>>", parent.Number)
+	// for the exponential factor
 	periodCount := new(big.Int).Add(new(big.Int).Set(ParentDifficulty), big1)
 	periodCount.Div(periodCount, expDiffPeriod)
 

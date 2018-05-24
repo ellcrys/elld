@@ -25,10 +25,8 @@ import (
 	"github.com/ellcrys/druid/miner"
 	ellBlock "github.com/ellcrys/druid/wire"
 
-	"github.com/spf13/cobra"
-	//"encoding/json"
-
 	DB "github.com/ellcrys/druid/scribleDB"
+	"github.com/spf13/cobra"
 )
 
 // minerCmd represents the miner command
@@ -37,9 +35,7 @@ var minerCmd = &cobra.Command{
 	Short: "Mining Algorithm for proof of work",
 	Long: `An Ethash proof of work Algorith based on formerly Dagger-Hashimoto algorith
 	It uses Dag file to speed up mining process
-	Cobra is a CLI library for Go that empowers applications.
-	This application is a tool to generate the needed files
-	to quickly create a Cobra application.`,
+	go run main.go miner to run this package.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -75,6 +71,7 @@ var minerCmd = &cobra.Command{
 			TX:             selectedTransaction,
 		}
 
+		// create a config struct to be passed as our parameter
 		config := miner.Config{
 			CacheDir: "CacheFile", CachesInMem: 0, CachesOnDisk: 1, DatasetDir: "DagFile", DatasetsInMem: 0, DatasetsOnDisk: 1, PowMode: miner.ModeFake,
 		}
@@ -119,7 +116,12 @@ var minerCmd = &cobra.Command{
 			block.Difficulty = BlockDifficultyString
 		}
 
-		outputDigest, outputResult, outputNonce, _ := newEllMiner.Mine(&block, minerID)
+		// Create a runner and the multiple search threads it directs
+		outputDigest, outputResult, outputNonce, err := newEllMiner.Mine(&block, minerID)
+
+		if err != nil {
+			fmt.Println("Mining was cancelled by the Miner")
+		}
 
 		if outputDigest != "" {
 			block.Nounce = outputNonce
@@ -193,13 +195,4 @@ func (t Transaction) Equals(other merkletree.Content) bool {
 func init() {
 	rootCmd.AddCommand(minerCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// minerCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// minerCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
