@@ -15,9 +15,6 @@ type Blockchain interface {
 	GetBlockCode(address string) BlockCode
 }
 
-// ExecFunc type destermines the structure of the function expected by the RunScript function
-type ExecFunc func() error
-
 // LangBuilder determines the interface of the language builder
 type LangBuilder interface {
 	GetRunScript() []string

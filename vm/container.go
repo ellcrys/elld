@@ -1,21 +1,29 @@
 package vm
 
 import (
+	"bufio"
 	"context"
-	"encoding/json"
+	"time"
+
+	"github.com/apex/log"
+	logger "github.com/ellcrys/druid/util/logger"
 
 	"github.com/cenkalti/rpc2"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 )
 
+var containerStopTimeout = time.Second * 2
+
 // Container defines the container that runs a block code.
 type Container struct {
-	id        string // id of the container
-	children  []*Container
-	client    *rpc2.Client
-	parent    *Container
-	dockerCli *client.Client
+	id          string // id of the container
+	children    []*Container
+	client      *rpc2.Client
+	parent      *Container
+	dockerCli   *client.Client
+	buildConfig LangBuilder
+	log         logger.Logger
 }
 
 // response defines response from a blockcode execution
@@ -41,34 +49,58 @@ func (co *Container) start() error {
 }
 
 // executes a block code in the container
-func (co *Container) exec(execBlock *ExecRequest, output chan []byte, done chan struct{}) error {
+func (co *Container) exec(command []string, output chan string, done chan bool) {
 
-	co.client.Handle("response", func(client *rpc2.Client, data *response, _ *struct{}) error {
-
-		b, err := json.Marshal(&data)
-		if err != nil {
-			close(done)
-			return err
-		}
-		output <- b
-		close(done)
-		return nil
+	ctx := context.Background()
+	exec, err := co.dockerCli.ContainerExecCreate(ctx, co.id, types.ExecConfig{
+		Cmd:          command,
+		Tty:          true,
+		AttachStderr: true,
+		AttachStdin:  true,
+		AttachStdout: true,
 	})
-
-	go co.client.Run()
-
-	err := co.client.Call("invoke", execBlock, nil)
 	if err != nil {
-		return err
+		log.Error(err.Error())
+		close(done)
 	}
 
-	return nil
+	execResp, err := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+
+	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{
+		Detach: false,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		close(done)
+	}
+
+	scanner := bufio.NewScanner(execResp.Reader)
+
+	for scanner.Scan() {
+		out := scanner.Text()
+		if out != "" {
+			go func() {
+				for {
+					output <- out
+					done <- true
+				}
+			}()
+		}
+
+	}
+
+	execResp.Close()
 }
 
 // buildLang takes a concrete implementation of the LangBuilder
-// - and builds a block code accordingly
-func (co *Container) buildLang(buildConfig LangBuilder) error {
-	err := buildConfig.Build(co.id)
+
+func (co *Container) setBuildLang(buildConfig LangBuilder) {
+	co.buildConfig = buildConfig
+}
+
+// builds a block code
+func (co *Container) build() error {
+	err := co.buildConfig.Build(co.id)
 	if err != nil {
 		return err
 	}
@@ -84,7 +116,8 @@ func (co *Container) addChild(child *Container) {
 
 // stop a started container
 func (co *Container) stop() error {
-	err := co.dockerCli.ContainerStop(context.Background(), co.id, nil)
+
+	err := co.dockerCli.ContainerStop(context.Background(), co.id, &containerStopTimeout)
 	if err != nil {
 		return err
 	}
