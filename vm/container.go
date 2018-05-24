@@ -5,7 +5,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/apex/log"
 	logger "github.com/ellcrys/druid/util/logger"
 
 	"github.com/cenkalti/rpc2"
@@ -48,8 +47,9 @@ func (co *Container) start() error {
 	return nil
 }
 
-// executes a block code in the container
-func (co *Container) exec(command []string, output chan string, done chan bool) {
+// executes a command in the container. It will block and channel std output to output.
+// If an error occurs, done will be sent an error, otherwise, nil.
+func (co *Container) exec(command []string, output chan string, done chan error) {
 
 	ctx := context.Background()
 	exec, err := co.dockerCli.ContainerExecCreate(ctx, co.id, types.ExecConfig{
@@ -60,36 +60,34 @@ func (co *Container) exec(command []string, output chan string, done chan bool) 
 		AttachStdout: true,
 	})
 	if err != nil {
-		log.Error(err.Error())
-		close(done)
+		done <- err
+		return
 	}
 
 	execResp, err := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
-
-	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{
-		Detach: false,
-	})
 	if err != nil {
-		log.Error(err.Error())
-		close(done)
+		done <- err
+		return
+	}
+	defer execResp.Close()
+
+	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
+	if err != nil {
+		done <- err
+		return
 	}
 
 	scanner := bufio.NewScanner(execResp.Reader)
-
 	for scanner.Scan() {
 		out := scanner.Text()
 		if out != "" {
-			go func() {
-				for {
-					output <- out
-					done <- true
-				}
-			}()
+			output <- out
 		}
-
 	}
 
-	execResp.Close()
+	done <- nil
+
+	return
 }
 
 // buildLang takes a concrete implementation of the LangBuilder

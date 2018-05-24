@@ -75,11 +75,11 @@ var _ = Describe("Container", func() {
 		It("should execute a command in the container", func() {
 			_ = co.start()
 			command := []string{"bash", "-c", "echo hello"}
-			done := make(chan bool)
+			done := make(chan error)
 			output := make(chan string)
-			co.exec(command, output, done)
+			go co.exec(command, output, done)
 			Expect(<-output).NotTo(BeEmpty())
-			Expect(<-done).To(BeTrue())
+			Expect(<-done).To(BeNil())
 		})
 	})
 
