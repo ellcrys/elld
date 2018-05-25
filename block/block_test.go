@@ -1,19 +1,19 @@
-package wire_test
+package block_test
 
 import (
 	"math/big"
 	"strconv"
 	"testing"
 
-	db "github.com/ellcrys/druid/scribleDB"
-	block "github.com/ellcrys/druid/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	block "github.com/ellcrys/druid/block"
 )
 
-func TestWire(t *testing.T) {
+func TestBlock(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Wire Suite")
+	RunSpecs(t, "Block Suite")
 }
 
 var _ = Describe("Block", func() {
@@ -23,19 +23,19 @@ var _ = Describe("Block", func() {
 
 		//Delete all existing block in the Chain
 		BeforeEach(func() {
-			db.DeleteAllBlock()
+			block.DeleteAllBlock()
 		})
 
 		//When the blockchain is empty
 		Context("When blockchain has 0 blocks", func() {
 			//test total block in block chain must be 0
 			It("Must have 0 block in block chain", func() {
-				Expect(db.GetTotalBlocks()).Should(BeZero())
+				Expect(block.GetTotalBlocks()).Should(BeZero())
 			})
 
 			// test total block should not be nil
 			It("Must have 0 block in block chain", func() {
-				Expect(db.GetTotalBlocks()).ShouldNot(BeNil())
+				Expect(block.GetTotalBlocks()).ShouldNot(BeNil())
 			})
 		})
 
@@ -55,21 +55,21 @@ var _ = Describe("Block", func() {
 
 			BeforeEach(func() {
 
-				//mapD := map[string]interface{}{"Number": strconv.Itoa(int(ellBlock.Number)), "Version": ellBlock.Version, "HashPrevBlock": ellBlock.HashPrevBlock, "HashMerkleRoot": ellBlock.HashMerkleRoot, "Time": ellBlock.Time, "Nounce": strconv.Itoa(int(ellBlock.Nounce))}
+				mapD := map[string]interface{}{"Number": strconv.Itoa(int(ellBlock.Number)), "Version": ellBlock.Version, "HashPrevBlock": ellBlock.HashPrevBlock, "HashMerkleRoot": ellBlock.HashMerkleRoot, "Time": ellBlock.Time, "Nounce": strconv.Itoa(int(ellBlock.Nounce))}
 				//ADD block to block chain
-				db.AddBlockToChain(strconv.Itoa(int(ellBlock.Number)), ellBlock)
+				ellBlock.AddBlockToChain(strconv.Itoa(int(ellBlock.Number)), mapD)
 			})
 
 			It("Must have 1 block in blockchain", func() {
-				Expect(db.GetTotalBlocks()).ShouldNot(BeZero())
+				Expect(block.GetTotalBlocks()).ShouldNot(BeZero())
 			})
 
 			It("Must have 1 block in blockchain", func() {
-				Expect(db.GetTotalBlocks()).ShouldNot(BeNil())
+				Expect(block.GetTotalBlocks()).ShouldNot(BeNil())
 			})
 
 			It("Must have 1 block in blockchain", func() {
-				Expect(db.GetTotalBlocks()).To(Equal(1))
+				Expect(block.GetTotalBlocks()).To(Equal(1))
 			})
 
 		})
@@ -83,7 +83,7 @@ var _ = Describe("Block", func() {
 
 		//Delete all existing block in the Chain
 		BeforeEach(func() {
-			db.DeleteAllBlock()
+			block.DeleteAllBlock()
 		})
 
 		//When the blockchain is empty
