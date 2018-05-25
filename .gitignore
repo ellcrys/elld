@@ -1,4 +1,6 @@
 *coverprofile
 dist
 vendor
-play
+CacheFile
+scribleDB
+DagFile
