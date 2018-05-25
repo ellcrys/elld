@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Miner", func() {
+var _ = Describe("Ethash", func() {
 
 	var ellBlock wire.Block
 	var minerID = 63548

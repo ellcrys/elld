@@ -19,9 +19,7 @@ import (
 	mmap "github.com/edsrzf/mmap-go"
 	"github.com/ellcrys/druid/util/logger"
 	ellBlock "github.com/ellcrys/druid/wire"
-	"github.com/ellcrys/go-ethereum/consensus"
 	"github.com/ellcrys/go-ethereum/metrics"
-	"github.com/ellcrys/go-ethereum/rpc"
 )
 
 var log = logger.NewLogrus()
@@ -124,19 +122,19 @@ func New(config Config) *Ethash {
 }
 
 // Mine function mine a block and creates it
-func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, uint64, error) {
+func (ethash *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, uint64, error) {
 
 	const ModeFake = iota
 	blockNumber := block.Number
 
 	epoch := blockNumber / epochLength
-	currentI, _ := miner.datasets.get(epoch)
+	currentI, _ := ethash.datasets.get(epoch)
 
 	current := currentI.(*dataset)
 
 	// Wait for generation finish.
 	// cache and Dag file
-	current.generate(miner.config.DatasetDir, miner.config.DatasetsOnDisk, miner.config.PowMode == ModeTest)
+	current.generate(ethash.config.DatasetDir, ethash.config.DatasetsOnDisk, ethash.config.PowMode == ModeTest)
 
 	var (
 		Mhash              = block.HashNoNonce().Bytes()
@@ -165,8 +163,8 @@ func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, u
 search:
 	for {
 		select {
-		case <-miner.abortNonceSearch:
-			miner.hashrate.Mark(attempts)
+		case <-ethash.abortNonceSearch:
+			ethash.hashrate.Mark(attempts)
 			log.Info("error mining was stopped")
 			err = fmt.Errorf("mining was stopped")
 			break search
@@ -175,7 +173,7 @@ search:
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 			attempts++
 			if (attempts % (1 << 15)) == 0 {
-				miner.hashrate.Mark(attempts)
+				ethash.hashrate.Mark(attempts)
 				attempts = 0
 			}
 
@@ -207,8 +205,8 @@ search:
 }
 
 // AbortNonceSearch forces the nonce search to be stopped
-func (miner *Ethash) AbortNonceSearch() {
-	close(miner.abortNonceSearch)
+func (ethash *Ethash) AbortNonceSearch() {
+	close(ethash.abortNonceSearch)
 }
 
 // isLittleEndian returns whether the local system is running in little or big
@@ -550,10 +548,4 @@ func (ethash *Ethash) SetThreads(threads int) {
 // per second over the last minute.
 func (ethash *Ethash) Hashrate() float64 {
 	return ethash.hashrate.Rate1()
-}
-
-// APIs implements consensus.Engine, returning the user facing RPC APIs. Currently
-// that is empty.
-func (ethash *Ethash) APIs(chain consensus.ChainReader) []rpc.API {
-	return nil
 }
