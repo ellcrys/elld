@@ -32,7 +32,7 @@ func (lang *ErrBuildLang) GetRunScript() []string {
 }
 
 func (lang *ErrBuildLang) Build(containerID string) error {
-	return fmt.Errorf("err", "an error")
+	return fmt.Errorf("err %s", "an error")
 }
 
 var _ = Describe("Container", func() {
