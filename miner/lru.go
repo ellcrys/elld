@@ -3,7 +3,6 @@ package miner
 import (
 	"sync"
 
-	"github.com/ellcrys/druid/util/logger"
 	"github.com/hashicorp/golang-lru/simplelru"
 )
 
@@ -23,8 +22,6 @@ type lru struct {
 // or the mining datasets.
 func newlru(what string, maxItems int, new func(epoch uint64) interface{}) *lru {
 
-	log := logger.NewLogrus()
-
 	if maxItems <= 0 {
 		maxItems = 1
 	}
@@ -39,8 +36,6 @@ func newlru(what string, maxItems int, new func(epoch uint64) interface{}) *lru 
 // the near future.
 func (lru *lru) get(epoch uint64) (item, future interface{}) {
 
-	log := logger.NewLogrus()
-
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
 
@@ -50,14 +45,12 @@ func (lru *lru) get(epoch uint64) (item, future interface{}) {
 		if lru.future > 0 && lru.future == epoch {
 			item = lru.futureItem
 		} else {
-			log.Debug("Requiring new ethash "+lru.what, "epoch", epoch)
 			item = lru.new(epoch)
 		}
 		lru.cache.Add(epoch, item)
 	}
 	// Update the 'future item' if epoch is larger than previously seen.
 	if epoch < maxEpoch-1 && lru.future < epoch+1 {
-		log.Debug("Requiring new future ethash "+lru.what, "epoch", epoch+1)
 		future = lru.new(epoch + 1)
 		lru.future = epoch + 1
 		lru.futureItem = future

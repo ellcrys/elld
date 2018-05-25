@@ -1,4 +1,4 @@
-package miner_test
+package miner
 
 import (
 	"testing"
@@ -8,6 +8,7 @@ import (
 )
 
 func TestMiner(t *testing.T) {
+	log.SetToDebug()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Miner Suite")
 }

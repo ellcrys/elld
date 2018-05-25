@@ -11,7 +11,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/ellcrys/druid/util/logger"
 	"github.com/ellcrys/go-ethereum/common"
 	"github.com/ellcrys/go-ethereum/common/bitutil"
 	"github.com/ellcrys/go-ethereum/crypto/sha3"
@@ -110,12 +109,10 @@ func seedHash(block uint64) []byte {
 // This method places the result into dest in machine byte order.
 func generateCache(dest []uint32, epoch uint64, seed []byte) {
 
-	log := logger.NewLogrus()
-
 	start := time.Now()
 	defer func() {
 		elapsed := time.Since(start)
-		log.Debug("Generated ethash verification cache", "elapsed", common.PrettyDuration(elapsed))
+		log.Debug("Generated ethash verification cache", "Elapsed", common.PrettyDuration(elapsed))
 	}()
 	// Convert our destination slice to a byte buffer
 	header := *(*reflect.SliceHeader)(unsafe.Pointer(&dest))
@@ -139,7 +136,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 			case <-done:
 				return
 			case <-time.After(3 * time.Second):
-				log.Debug("Generating ethash verification cache", "percentage", atomic.LoadUint32(&progress)*100/uint32(rows)/4, "elapsed", common.PrettyDuration(time.Since(start)))
+				log.Debug("Generating ethash verification cache", "Percentage", atomic.LoadUint32(&progress)*100/uint32(rows)/4, "Elapsed", common.PrettyDuration(time.Since(start)))
 			}
 		}
 	}()
@@ -234,14 +231,12 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 	// Print some debug logs to allow analysis on low end devices
 
-	log := logger.NewLogrus()
-
-	log.Debug("epoch", epoch)
+	log.Debug("epoch", "Epoch", epoch)
 
 	start := time.Now()
 	defer func() {
 		elapsed := time.Since(start)
-		log.Debug("Generated ethash verification cache", "elapsed", common.PrettyDuration(elapsed))
+		log.Debug("Generated ethash verification cache", "Elapsed", common.PrettyDuration(elapsed))
 	}()
 
 	// Figure out whether the bytes need to be swapped for the machine
@@ -285,7 +280,7 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 				copy(dataset[index*hashBytes:], item)
 
 				if status := atomic.AddUint32(&progress, 1); status%percent == 0 {
-					log.Debug("Generating DAG in progress", "percentage", uint64(status*100)/(size/hashBytes), "elapsed", common.PrettyDuration(time.Since(start)))
+					log.Debug("Generating DAG in progress", "Percentage", uint64(status*100)/(size/hashBytes), "Elapsed", common.PrettyDuration(time.Since(start)))
 
 				}
 			}

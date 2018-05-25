@@ -24,7 +24,17 @@ import (
 	"github.com/ellcrys/go-ethereum/rpc"
 )
 
-var logg = logger.NewLogrus()
+var log = logger.NewLogrus()
+
+// SetLogger sets the package default logger
+func SetLogger(l logger.Logger) {
+	log = l
+}
+
+// GetLogger returns the default logger
+func GetLogger() logger.Logger {
+	return log
+}
 
 var ErrInvalidDumpMagic = errors.New("invalid dump magic")
 
@@ -93,24 +103,23 @@ type Ethash struct {
 // New creates a full sized ethash PoW scheme.
 func New(config Config) *Ethash {
 
-	logg := logger.NewLogrus()
-
 	if config.CachesInMem <= 0 {
-		logg.Debug("One ethash cache must always be in memory", "requested", config.CachesInMem)
+		log.Debug("One ethash cache must always be in memory", "requested", config.CachesInMem)
 		config.CachesInMem = 1
 	}
 	if config.CacheDir != "" && config.CachesOnDisk > 0 {
-		logg.Debug("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
+		log.Debug("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
 	}
 	if config.DatasetDir != "" && config.DatasetsOnDisk > 0 {
-		logg.Debug("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
+		log.Debug("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
 	}
 	return &Ethash{
-		config:   config,
-		caches:   newlru("cache", config.CachesInMem, newCache),
-		datasets: newlru("dataset", config.DatasetsInMem, newDataset),
-		update:   make(chan struct{}),
-		hashrate: metrics.NewMeter(),
+		config:           config,
+		caches:           newlru("cache", config.CachesInMem, newCache),
+		datasets:         newlru("dataset", config.DatasetsInMem, newDataset),
+		update:           make(chan struct{}),
+		abortNonceSearch: make(chan struct{}),
+		hashrate:         metrics.NewMeter(),
 	}
 }
 
@@ -145,28 +154,24 @@ func (miner *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, u
 		nonce    = seed
 	)
 
-	logg.Debug("Mine", "ID", minerID)
-	logg.Debug("Started ethash search for new nonces", "seed", nonce)
+	log.Debug("Mine", "ID", minerID)
+	log.Debug("Started ethash search for new nonces", "Seed", nonce)
 
-	// Create a runner and the multiple search threads it directs
-	miner.abortNonceSearch = make(chan struct{})
-
-	outputDigest := ""
-	outputResult := ""
+	var err error
+	var outputDigest string
+	var outputResult string
 	var outputNonce uint64
 
 search:
-
 	for {
 		select {
 		case <-miner.abortNonceSearch:
 			miner.hashrate.Mark(attempts)
-			fmt.Println("error mining was stopped")
+			log.Info("error mining was stopped")
+			err = fmt.Errorf("mining was stopped")
 			break search
-			return "", "", 0, errors.New("Mining was stopped")
 
 		default:
-
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 			attempts++
 			if (attempts % (1 << 15)) == 0 {
@@ -180,7 +185,7 @@ search:
 			if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
 
 				// Correct nonce found, create a new header with it
-				logg.Debug("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+				log.Debug("Ethash nonce found and reported", "Attempts", nonce-seed, "Nonce", nonce)
 
 				outputDigest = fmt.Sprintf("%x", digest)
 				outputResult = fmt.Sprintf("%x", result)
@@ -198,7 +203,7 @@ search:
 	runtime.KeepAlive(Mdataset)
 
 	// return the output of the  ine function
-	return outputDigest, outputResult, outputNonce, nil
+	return outputDigest, outputResult, outputNonce, err
 }
 
 // AbortNonceSearch forces the nonce search to be stopped
@@ -335,7 +340,7 @@ func (c *cache) generate(dir string, limit int, test bool) {
 			endian = ".be"
 		}
 		path := filepath.Join(dir, fmt.Sprintf("cache-R%d-%x%s", algorithmRevision, seed[:8], endian))
-		logg.Debug("miner", "epoch", c.epoch)
+		log.Debug("miner", "epoch", c.epoch)
 
 		// We're about to mmap the file, ensure that the mapping is cleaned up when the
 		// cache becomes unused.
@@ -345,15 +350,15 @@ func (c *cache) generate(dir string, limit int, test bool) {
 		var err error
 		c.dump, c.mmap, c.cache, err = memoryMap(path)
 		if err == nil {
-			logg.Debug("miner", "cache", "Loaded old ethash cache from disk")
+			log.Debug("miner", "cache", "Loaded old ethash cache from disk")
 			return
 		}
-		logg.Debug("Failed to load old ethash cache", "err", err)
+		log.Debug("Failed to load old ethash cache", "err", err)
 
 		// No previous cache available, create a new cache file to fill
 		c.dump, c.mmap, c.cache, err = memoryMapAndGenerate(path, size, func(buffer []uint32) { generateCache(buffer, c.epoch, seed) })
 		if err != nil {
-			logg.Debug("miner", "cache", fmt.Sprintf("Failed to generate mapped ethash cache %v", err))
+			log.Debug("miner", "cache", fmt.Sprintf("Failed to generate mapped ethash cache %v", err))
 
 			c.cache = make([]uint32, size/4)
 			generateCache(c.cache, c.epoch, seed)
@@ -425,10 +430,10 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 		d.dump, d.mmap, d.dataset, err = memoryMap(path)
 		if err == nil {
 			val := "Loaded old ethash dataset from disk"
-			logg.Debug("Generate", "Dataset", val)
+			log.Debug("Generate", "Dataset", val)
 			return
 		}
-		logg.Debug("Failed to load old ethash dataset", "err", err)
+		log.Debug("Failed to load old ethash dataset", "err", err)
 
 		// No previous dataset available, create a new dataset file to fill
 		cache := make([]uint32, csize/4)
@@ -436,7 +441,7 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 
 		d.dump, d.mmap, d.dataset, err = memoryMapAndGenerate(path, dsize, func(buffer []uint32) { generateDataset(buffer, d.epoch, cache) })
 		if err != nil {
-			logg.Debug("Failed to generate mapped ethash dataset", "err", err)
+			log.Debug("Failed to generate mapped ethash dataset", "err", err)
 
 			d.dataset = make([]uint32, dsize/2)
 			generateDataset(d.dataset, d.epoch, cache)
