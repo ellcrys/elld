@@ -178,11 +178,9 @@ search:
 			digest, result := hashimotoFull(Mdataset.dataset, Mhash, nonce)
 
 			if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
+
 				// Correct nonce found, create a new header with it
-
-				//logg.Debug("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
-
-				fmt.Println("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+				logg.Debug("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
 
 				outputDigest = fmt.Sprintf("%x", digest)
 				outputResult = fmt.Sprintf("%x", result)
