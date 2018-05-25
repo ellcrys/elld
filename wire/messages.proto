@@ -4,13 +4,60 @@ package wire;
 
 // Handshake represents the first message between peers
 message Handshake {
-    string address = 1;     // senders address
-    string subVersion = 2;  // version of the client
-    bytes sig = 3;          // message signature
+    string subVersion = 1;  // version of the client
 }
 
-// HandshakeResponse is a response to Handshake message
-message HandshakeResponse {
-    repeated string addresses = 1;      // list of addresses
-    bytes sig = 2;                      // message signature
+// GetAddr is used to request for addresses from other peers
+message GetAddr {
+}
+
+// GetAddrResponse is used to send addresses in response to a GetAddr
+message Addr {
+    repeated Address addresses = 1;  // list of addresses
+}
+
+message Address {
+    string address = 1;
+    int64 timestamp = 2;
+}
+
+// Ping represents a ping message
+message Ping {
+}
+
+// Pong represents a pong message
+message Pong {
+}
+
+// Reject is used to inform a node that its message was rejected
+message Reject {
+    string message = 1;
+    int32 code = 2;
+    string reason = 3;
+    bytes extraData = 4;
+}
+
+// Transaction represents a transaction
+message Transaction {
+    int64 type = 1;
+    int64 nonce = 2;
+    string to = 3;
+    string senderPubKey = 4;
+    string value = 5;
+    int64 Timestamp = 6;
+    string Fee = 7;
+    bytes sig = 8;
+}
+
+message Block{
+    string version = 1;
+    string hashPrevBlock =2;
+    repeated string tX=3;
+    string hashMerkleRoot =4;
+    string time =5;
+    uint64 nounce =6;
+    string difficulty =7;
+    uint64 number =8;
+    string powHash =9;
+    string powResult =10;
 }
