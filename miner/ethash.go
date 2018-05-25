@@ -121,7 +121,8 @@ func New(config Config) *Ethash {
 	}
 }
 
-// Mine function mine a block and creates it
+// Mine function mine a block and
+//generate the Pow digest for the block
 func (ethash *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, uint64, error) {
 
 	const ModeFake = iota
@@ -132,7 +133,7 @@ func (ethash *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, 
 
 	current := currentI.(*dataset)
 
-	// Wait for generation finish.
+	// Wait for generation to finish if need be.
 	// cache and Dag file
 	current.generate(ethash.config.DatasetDir, ethash.config.DatasetsOnDisk, ethash.config.PowMode == ModeTest)
 
@@ -143,7 +144,7 @@ func (ethash *Ethash) Mine(block *ellBlock.Block, minerID int) (string, string, 
 		Mdataset           = current
 	)
 
-	// random seed using the Current timestamp
+	// random seed using the current timestamp
 	seed := uint64(time.Now().UTC().UnixNano())
 
 	// Start generating random nonces until we abort or find a good one
