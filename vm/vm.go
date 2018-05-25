@@ -12,12 +12,20 @@ import (
 )
 
 const (
-	dockerFileHash = "c0879257e8136bf13b4fceb5651f751b806782a7"
+	dockerFileHash = "2a7262215a616106b644a489e6e1da1d52834853"
 	dockerFileURL  = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile/%s/Dockerfile"
 )
 
-// MountDir where contracts are stored
+// MountDir where block codes are stored
 var MountDir = "mountdir"
+
+// BlockCode represents a block code in a blockchain
+type BlockCode struct {
+	Lang            string
+	LangVersion     string
+	Content         []byte
+	PublicFunctions []string
+}
 
 // VM specializes in executing transactions against a contracts
 type VM struct {
