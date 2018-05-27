@@ -9,7 +9,7 @@ import (
 var _ = Describe("Key", func() {
 
 	Describe(".NewKey", func() {
-		When("seed is 1", func() {
+		When("seeds are '1'", func() {
 			It("multiple calls should return same private keys", func() {
 				seed := int64(1)
 				a1, err := NewKey(&seed)
@@ -19,8 +19,18 @@ var _ = Describe("Key", func() {
 			})
 		})
 
-		When("with different seeds", func() {
-			It("multiple calls should return same private keys", func() {
+		When("seeds are nil", func() {
+			It("should return random key on each call", func() {
+				a1, err := NewKey(nil)
+				Expect(err).To(BeNil())
+				a2, err := NewKey(nil)
+				Expect(err).To(BeNil())
+				Expect(a1).NotTo(Equal(a2))
+			})
+		})
+
+		When("seeds are different", func() {
+			It("multiple calls should not return same private keys", func() {
 				seed := int64(1)
 				a1, err := NewKey(&seed)
 				Expect(err).To(BeNil())
