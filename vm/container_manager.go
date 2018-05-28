@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ellcrys/druid/blockcode"
+
 	"github.com/cenkalti/rpc2"
 	"github.com/cenkalti/rpc2/jsonrpc"
 	"github.com/phayes/freeport"
@@ -15,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	. "github.com/ellcrys/druid/blockcode"
 	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/ellcrys/druid/wire"
 )
@@ -96,7 +99,7 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 // - - create container rpc client
 // - - create bi-directional connection to container
 // - - send transaction with container client
-func (cm *ContainerManager) Run(tx *ContainerTransaction, txID string, blockcodes []BlockCode, txOutput chan []byte, done chan error) {
+func (cm *ContainerManager) Run(tx *ContainerTransaction, txID string, blockcodes []Blockcode, txOutput chan []byte, done chan error) {
 
 	container, err := cm.create(txID)
 	if err != nil {
@@ -104,17 +107,16 @@ func (cm *ContainerManager) Run(tx *ContainerTransaction, txID string, blockcode
 		return
 	}
 
-	for _, blockcode := range blockcodes {
-		content := blockcode.Content
-
+	for _, bcode := range blockcodes {
+		content := bcode.Code
 		err := container.copy(txID, content)
 		if err != nil {
 			done <- err
 			return
 		}
 
-		switch blockcode.Lang {
-		case "go":
+		switch bcode.Manifest.Lang {
+		case blockcode.LangGo:
 			go container.build(cm.containerLock, txOutput, done)
 		}
 

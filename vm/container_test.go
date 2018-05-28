@@ -21,8 +21,11 @@ func (lang *TestBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *TestBuildLang) Build(*sync.Mutex) ([]byte, error) {
-	return nil, nil
+func (lang *TestBuildLang) Build(mtx *sync.Mutex) ([]byte, error) {
+	mtx.Lock()
+	b := []byte("hello")
+	mtx.Unlock()
+	return b, nil
 }
 
 type ErrBuildLang struct {
@@ -32,9 +35,8 @@ func (lang *ErrBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *ErrBuildLang) Build(*sync.Mutex) ([]byte, error) {
-	b := []byte("")
-	return b, fmt.Errorf("err %s", "an error")
+func (lang *ErrBuildLang) Build(mtx *sync.Mutex) ([]byte, error) {
+	return nil, fmt.Errorf("err %s", "an error")
 }
 
 var _ = Describe("Container", func() {
@@ -46,7 +48,7 @@ var _ = Describe("Container", func() {
 	var dckFileURL = fmt.Sprintf(dockerFileURL, dockerFileHash)
 	var cli *client.Client
 	var image *Image
-	var mtx *sync.Mutex
+	var mtx sync.Mutex
 
 	BeforeEach(func() {
 		transactionID = util.RandString(5)
@@ -160,7 +162,7 @@ var _ = Describe("Container", func() {
 
 			done := make(chan error, 1)
 			output := make(chan []byte)
-			go co.build(mtx, output, done)
+			go co.build(&mtx, output, done)
 			Expect(<-output).NotTo(BeEmpty())
 			Expect(<-done).To(BeNil())
 		})
@@ -171,9 +173,8 @@ var _ = Describe("Container", func() {
 
 			done := make(chan error, 1)
 			output := make(chan []byte)
-			go co.build(mtx, output, done)
-			Expect(<-output).NotTo(BeEmpty())
-			Expect(<-done).To(BeNil())
+			co.build(&mtx, output, done)
+			Expect(<-done).NotTo(BeNil())
 		})
 	})
 
