@@ -36,7 +36,7 @@ func (lang *ErrBuildLang) GetRunScript() []string {
 }
 
 func (lang *ErrBuildLang) Build(mtx *sync.Mutex) ([]byte, error) {
-	return nil, fmt.Errorf("err %s", "an error")
+	return []byte(""), fmt.Errorf("err %s", "an error")
 }
 
 var _ = Describe("Container", func() {
@@ -173,7 +173,8 @@ var _ = Describe("Container", func() {
 
 			done := make(chan error, 1)
 			output := make(chan []byte)
-			co.build(&mtx, output, done)
+			go co.build(&mtx, output, done)
+			Expect(string(<-output)).To(BeEmpty())
 			Expect(<-done).NotTo(BeNil())
 		})
 	})
