@@ -3,11 +3,18 @@ package vm
 import (
 	"context"
 	"fmt"
+	"net"
+	"strconv"
 	"sync"
+
+	"github.com/cenkalti/rpc2"
+	"github.com/cenkalti/rpc2/jsonrpc"
+	"github.com/phayes/freeport"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/ellcrys/druid/wire"
 )
@@ -18,6 +25,14 @@ type ContainerManager struct {
 	containerLock *sync.Mutex
 	log           logger.Logger
 	client        *client.Client
+	wg            *sync.WaitGroup
+}
+
+// ContainerTransaction defines the structure of the blockcode transaction
+type ContainerTransaction struct {
+	*wire.Transaction
+	Function string `json:"Function"`
+	Data     []byte `json:"Data"`
 }
 
 // NewContainerManager creates an instance of ContainerManager
@@ -36,13 +51,25 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 	imgB := NewImageBuilder(cm.log, cm.client, fmt.Sprintf(dockerFileURL, dockerFileHash))
 	image := imgB.getImage()
 
+	port, err := freeport.GetFreePort()
+	if err != nil {
+		return nil, err
+	}
+
 	cb, err := cm.client.ContainerCreate(context.Background(), &container.Config{
 		Image: image.ID,
 		Labels: map[string]string{
 			"maintainer":    "Ellcrys",
 			"image-version": dockerFileHash,
 		},
-	}, &container.HostConfig{}, &network.NetworkingConfig{}, ID)
+		ExposedPorts: nat.PortSet{
+			nat.Port("4000/tcp"): {},
+		},
+	}, &container.HostConfig{
+		PortBindings: nat.PortMap{
+			nat.Port("4000/tcp"): []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: strconv.Itoa(port)}},
+		},
+	}, &network.NetworkingConfig{}, ID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +78,7 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 	co.dockerCli = cm.client
 	co.id = cb.ID
 	co.log = cm.log
+	co.port = port
 
 	cm.containers[ID] = co
 
@@ -68,7 +96,50 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 // - - create container rpc client
 // - - create bi-directional connection to container
 // - - send transaction with container client
-func (cm *ContainerManager) Run(tx *wire.Transaction, blockcodes []BlockCode, txOutput chan []byte, done chan error) {
+func (cm *ContainerManager) Run(tx *ContainerTransaction, txID string, blockcodes []BlockCode, txOutput chan []byte, done chan error) {
+
+	container, err := cm.create(txID)
+	if err != nil {
+		done <- err
+		return
+	}
+
+	for _, blockcode := range blockcodes {
+		content := blockcode.Content
+
+		err := container.copy(txID, content)
+		if err != nil {
+			done <- err
+			return
+		}
+
+		switch blockcode.Lang {
+		case "go":
+			go container.build(cm.containerLock, txOutput, done)
+		}
+
+		runScript := container.buildConfig.GetRunScript()
+		go container.exec(runScript, txOutput, done)
+
+		addr := fmt.Sprintf("127.0.0.1:%s", strconv.Itoa(container.port))
+		io, _ := net.Dial("tcp", addr)
+		codec := jsonrpc.NewJSONCodec(io)
+		rpcCli := rpc2.NewClientWithCodec(codec)
+
+		container.client = rpcCli
+		container.client.Handle("response", func(vm *rpc2.Client, data []byte, reply *struct{}) error {
+			txOutput <- data
+			return nil
+		})
+
+		go container.client.Run()
+
+		err = container.client.Call("invoke", tx, nil)
+		if err != nil {
+			done <- err
+		}
+
+	}
 
 }
 

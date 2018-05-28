@@ -3,6 +3,7 @@ package vm
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -20,8 +21,8 @@ func (lang *TestBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *TestBuildLang) Build(containerID string) error {
-	return nil
+func (lang *TestBuildLang) Build(*sync.Mutex) ([]byte, error) {
+	return nil, nil
 }
 
 type ErrBuildLang struct {
@@ -31,8 +32,9 @@ func (lang *ErrBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *ErrBuildLang) Build(containerID string) error {
-	return fmt.Errorf("err %s", "an error")
+func (lang *ErrBuildLang) Build(*sync.Mutex) ([]byte, error) {
+	b := []byte("")
+	return b, fmt.Errorf("err %s", "an error")
 }
 
 var _ = Describe("Container", func() {
@@ -44,6 +46,7 @@ var _ = Describe("Container", func() {
 	var dckFileURL = fmt.Sprintf(dockerFileURL, dockerFileHash)
 	var cli *client.Client
 	var image *Image
+	var mtx *sync.Mutex
 
 	BeforeEach(func() {
 		transactionID = util.RandString(5)
@@ -115,7 +118,7 @@ var _ = Describe("Container", func() {
 			Expect(err).To(BeNil())
 			command := []string{"bash", "-c", "echo hello"}
 			done := make(chan error, 1)
-			output := make(chan string)
+			output := make(chan []byte)
 			go co.exec(command, output, done)
 			Expect(<-output).NotTo(BeEmpty())
 			Expect(<-done).To(BeNil())
@@ -126,7 +129,7 @@ var _ = Describe("Container", func() {
 			Expect(err).To(BeNil())
 			command := []string{}
 			done := make(chan error, 1)
-			output := make(chan string)
+			output := make(chan []byte)
 			co.exec(command, output, done)
 			Expect(<-done).NotTo(BeNil())
 		})
@@ -154,15 +157,23 @@ var _ = Describe("Container", func() {
 		It("should attempt to build block code", func() {
 			co.setBuildLang(new(TestBuildLang))
 			Expect(co.buildConfig).ToNot(BeNil())
-			err := co.build()
-			Expect(err).To(BeNil())
+
+			done := make(chan error, 1)
+			output := make(chan []byte)
+			go co.build(mtx, output, done)
+			Expect(<-output).NotTo(BeEmpty())
+			Expect(<-done).To(BeNil())
 		})
 
 		It("should fail to build block code", func() {
 			co.setBuildLang(new(ErrBuildLang))
 			Expect(co.buildConfig).ToNot(BeNil())
-			err := co.build()
-			Expect(err).NotTo(BeNil())
+
+			done := make(chan error, 1)
+			output := make(chan []byte)
+			go co.build(mtx, output, done)
+			Expect(<-output).NotTo(BeEmpty())
+			Expect(<-done).To(BeNil())
 		})
 	})
 

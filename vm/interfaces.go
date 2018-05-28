@@ -1,6 +1,8 @@
 package vm
 
 import (
+	"sync"
+
 	"github.com/ellcrys/druid/wire"
 )
 
@@ -18,5 +20,5 @@ type Blockchain interface {
 // LangBuilder determines the interface of the language builder
 type LangBuilder interface {
 	GetRunScript() []string
-	Build(containerID string) error
+	Build(mtx *sync.Mutex) ([]byte, error)
 }

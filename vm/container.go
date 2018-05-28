@@ -3,6 +3,8 @@ package vm
 import (
 	"bufio"
 	"context"
+	"io/ioutil"
+	"sync"
 	"time"
 
 	logger "github.com/ellcrys/druid/util/logger"
@@ -23,6 +25,7 @@ type Container struct {
 	dockerCli   *client.Client
 	buildConfig LangBuilder
 	log         logger.Logger
+	port        int
 }
 
 // response defines response from a blockcode execution
@@ -49,7 +52,7 @@ func (co *Container) start() error {
 
 // executes a command in the container. It will block and channel std output to output.
 // If an error occurs, done will be sent an error, otherwise, nil.
-func (co *Container) exec(command []string, output chan string, done chan error) {
+func (co *Container) exec(command []string, output chan []byte, done chan error) {
 
 	ctx := context.Background()
 	exec, err := co.dockerCli.ContainerExecCreate(ctx, co.id, types.ExecConfig{
@@ -74,7 +77,8 @@ func (co *Container) exec(command []string, output chan string, done chan error)
 	for scanner.Scan() {
 		out := scanner.Text()
 		if out != "" {
-			output <- out
+			b := []byte(out)
+			output <- b
 		}
 	}
 
@@ -90,8 +94,44 @@ func (co *Container) setBuildLang(buildConfig LangBuilder) {
 }
 
 // builds a block code
-func (co *Container) build() error {
-	err := co.buildConfig.Build(co.id)
+func (co *Container) build(mtx *sync.Mutex, output chan []byte, done chan error) {
+	out, err := co.buildConfig.Build(mtx)
+	if err != nil {
+		done <- err
+		return
+	}
+
+	output <- out
+}
+
+// copy block code content into container
+// - creates new instance of BuildContext
+// - build context creates temporary dir to store block code content
+// - build context creates a TAR reader stream for docker cli to copy content into container
+// - docker cli copies TAR stream into container
+func (co *Container) copy(id string, content []byte) error {
+	buildContext := new(BuildContext)
+
+	tempdir, err := ioutil.TempDir("", "/archive")
+	if err != nil {
+		return err
+	}
+	buildContext.Dir = tempdir
+
+	err = buildContext.addFile(id, content)
+	if err != nil {
+		return err
+	}
+
+	r, err := buildContext.Reader()
+	if err != nil {
+		return err
+	}
+
+	err = co.dockerCli.CopyToContainer(context.Background(), co.id, "/archive", r, types.CopyToContainerOptions{
+		AllowOverwriteDirWithFile: true,
+	})
+
 	if err != nil {
 		return err
 	}
