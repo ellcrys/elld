@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/ellcrys/druid/blockcode"
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 	. "github.com/onsi/ginkgo"
@@ -69,6 +70,9 @@ var _ = Describe("Container", func() {
 		Expect(err).To(BeNil())
 		container, err := cli.ContainerCreate(context.Background(), &container.Config{
 			Image: image.ID,
+			Volumes: map[string]struct{}{
+				"/archive": struct{}{},
+			},
 		}, nil, nil, transactionID)
 		Expect(err).To(BeNil())
 		Expect(container).NotTo(BeNil())
@@ -134,6 +138,24 @@ var _ = Describe("Container", func() {
 			output := make(chan []byte)
 			co.exec(command, output, done)
 			Expect(<-done).NotTo(BeNil())
+		})
+	})
+
+	Describe(".copy", func() {
+		var bc *blockcode.Blockcode
+		BeforeEach(func() {
+			bc, err = blockcode.FromDir("../blockcode/testdata/blockcode_example")
+			Expect(err).To(BeNil())
+			Expect(bc).NotTo(BeNil())
+		})
+		It("should copy content into the container", func() {
+			err := co.copy("736729", bc.Bytes())
+			Expect(err).To(BeNil())
+		})
+
+		It("should fail to copy content into the container", func() {
+			err := co.copy("", bc.Bytes())
+			Expect(err).NotTo(BeNil())
 		})
 	})
 
