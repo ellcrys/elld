@@ -97,6 +97,7 @@ func (co *Container) setBuildLang(buildConfig LangBuilder) {
 func (co *Container) build(mtx *sync.Mutex, output chan []byte, done chan error) {
 	out, err := co.buildConfig.Build(mtx)
 	if err != nil {
+		output <- nil
 		done <- err
 		return
 	}
