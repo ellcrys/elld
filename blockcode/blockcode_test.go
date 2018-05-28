@@ -81,7 +81,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return Hash", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Hash()).To(Equal([]byte{55, 94, 9, 239, 144, 166, 50, 60, 223, 17, 196, 34, 96, 176, 237, 216, 81, 77, 187, 244, 193, 245, 78, 143, 131, 224, 96, 15, 44, 243, 233, 110}))
+			Expect(bc.Hash()).To(Equal([]byte{206, 214, 40, 89, 227, 179, 166, 223, 143, 56, 99, 237, 216, 90, 17, 110, 2, 251, 26, 170, 219, 220, 6, 130, 124, 168, 61, 100, 234, 97, 179, 3}))
 		})
 	})
 
@@ -89,7 +89,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return ID", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.ID()).To(Equal("375e09ef90a6323cdf11c42260b0edd8514dbbf4c1f54e8f83e0600f2cf3e96e"))
+			Expect(bc.ID()).To(Equal("ced62859e3b3a6df8f3863edd85a116e02fb1aaadbdc06827ca83d64ea61b303"))
 		})
 	})
 
@@ -115,7 +115,7 @@ var _ = Describe("Blockcode", func() {
 
 		It("should successfully un-tar to destination", func() {
 
-			destination := "/Users/ncodes/go/src/github.com/ellcrys/druid/blockcode/testdata/blockcode_example_untar"
+			destination := "/tmp/blockcode_example_untar"
 			err := os.Mkdir(destination, 0700)
 			Expect(err).To(BeNil())
 			defer os.RemoveAll(destination)
@@ -125,7 +125,6 @@ var _ = Describe("Blockcode", func() {
 
 			err = bc.Read(destination)
 			Expect(err).To(BeNil())
-
 		})
 	})
 })
