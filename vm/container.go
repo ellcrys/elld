@@ -2,8 +2,8 @@ package vm
 
 import (
 	"bufio"
+	"bytes"
 	"context"
-	"io/ioutil"
 	"sync"
 	"time"
 
@@ -100,7 +100,7 @@ func (co *Container) build(mtx *sync.Mutex, output chan []byte, done chan error)
 		done <- err
 		return
 	}
-
+	done <- nil
 	output <- out
 }
 
@@ -110,25 +110,9 @@ func (co *Container) build(mtx *sync.Mutex, output chan []byte, done chan error)
 // - build context creates a TAR reader stream for docker cli to copy content into container
 // - docker cli copies TAR stream into container
 func (co *Container) copy(id string, content []byte) error {
-	buildContext := new(BuildContext)
 
-	tempdir, err := ioutil.TempDir("", "/archive")
-	if err != nil {
-		return err
-	}
-	buildContext.Dir = tempdir
-
-	err = buildContext.addFile(id, content)
-	if err != nil {
-		return err
-	}
-
-	r, err := buildContext.Reader()
-	if err != nil {
-		return err
-	}
-
-	err = co.dockerCli.CopyToContainer(context.Background(), co.id, "/archive", r, types.CopyToContainerOptions{
+	var r = bytes.NewBuffer(content)
+	err := co.dockerCli.CopyToContainer(context.Background(), co.id, "/archive", r, types.CopyToContainerOptions{
 		AllowOverwriteDirWithFile: true,
 	})
 

@@ -37,7 +37,7 @@ func (gb *goBuilder) GetRunScript() []string {
 func (gb *goBuilder) Build(mtx *sync.Mutex) ([]byte, error) {
 	ctx := context.Background()
 	archive := fmt.Sprintf("./archive/%s", gb.id)
-	execoutput := fmt.Sprintf(".container/bin/%s", gb.id)
+	execoutput := fmt.Sprintf("~/bin/%s", gb.id)
 	buildCmd := []string{"bash", "-c", "unzip", archive, "-d", "./container", "&&", "mkdir ./container/bin", "&&", "go", "build", "./container", "-o", execoutput}
 
 	mtx.Lock()

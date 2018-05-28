@@ -50,7 +50,7 @@ type asn1Blockcode struct {
 
 // Manifest describes the blockcode
 type Manifest struct {
-	Lang        string   `json:"lang"`
+	Lang        Lang     `json:"lang"`
 	LangVersion string   `json:"langVer"`
 	PublicFuncs []string `json:"publicFuncs"`
 }
@@ -170,7 +170,7 @@ func FromDir(projectPath string) (*Blockcode, error) {
 // validateManifest
 func validateManifest(m *Manifest) error {
 
-	if govalidator.IsNull(m.Lang) {
+	if govalidator.IsNull(string(m.Lang)) {
 		return fmt.Errorf("manifest error: language is missing")
 	}
 
