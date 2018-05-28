@@ -1,10 +1,11 @@
 package crypto
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	mrand "math/rand"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	pb "github.com/libp2p/go-libp2p-crypto/pb"
@@ -47,10 +48,16 @@ type PrivKey struct {
 // NewKey creates a new key
 func NewKey(seed *int64) (*Key, error) {
 
-	var r = mrand.New(mrand.NewSource(time.Now().UnixNano()))
+	var r *mrand.Rand
 
 	if seed != nil {
 		r = mrand.New(mrand.NewSource(*seed))
+	} else {
+		bigN, err := rand.Int(rand.Reader, big.NewInt(32))
+		if err != nil {
+			return nil, err
+		}
+		r = mrand.New(mrand.NewSource(bigN.Int64()))
 	}
 
 	priv, _, err := crypto.GenerateEd25519Key(r)
