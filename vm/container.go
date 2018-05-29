@@ -1,9 +1,9 @@
 package vm
 
 import (
-	"bufio"
+	"bytes"
 	"context"
-	"sync"
+	"fmt"
 	"time"
 
 	logger "github.com/ellcrys/druid/util/logger"
@@ -49,9 +49,8 @@ func (co *Container) start() error {
 	return nil
 }
 
-// executes a command in the container. It will block and channel std output to output.
-// If an error occurs, done will be sent an error, otherwise, nil.
-func (co *Container) exec(command []string, output chan []byte, done chan error) {
+// executes a command in the container.
+func (co *Container) exec(command []string) error {
 
 	ctx := context.Background()
 	exec, err := co.dockerCli.ContainerExecCreate(ctx, co.id, types.ExecConfig{
@@ -62,46 +61,46 @@ func (co *Container) exec(command []string, output chan []byte, done chan error)
 		AttachStdout: true,
 	})
 	if err != nil {
-		done <- err
-		return
+		return fmt.Errorf("failed to create exec %s", err)
 	}
 
-	execResp, _ := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	execResp, err := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	if err != nil {
+		return fmt.Errorf("failed to attach to container exec. %s", err)
+	}
 
 	defer execResp.Close()
 
-	_ = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
-
-	scanner := bufio.NewScanner(execResp.Reader)
-	for scanner.Scan() {
-		out := scanner.Text()
-		if out != "" {
-			b := []byte(out)
-			output <- b
-		}
+	co.log.Debug("Starting blockcode execution process")
+	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
+	if err != nil {
+		return fmt.Errorf("failed to start exec %s", err)
 	}
 
-	done <- nil
+	for {
+		line, _, _ := execResp.Reader.ReadLine()
+		if len(line) > 0 {
+			co.log.Debug(fmt.Sprintf("Blockcode Execution ==> %s", string(line)))
+		}
+		break
+	}
 
-	return
+	co.log.Debug("Blockcode execution successful")
+	return nil
 }
 
-// buildLang takes a concrete implementation of the LangBuilder
-
+// setBuildLang takes a concrete implementation of the LangBuilder
 func (co *Container) setBuildLang(buildConfig LangBuilder) {
 	co.buildConfig = buildConfig
 }
 
 // builds a block code
-func (co *Container) build(mtx *sync.Mutex, output chan []byte, done chan error) {
-	out, err := co.buildConfig.Build(mtx)
+func (co *Container) build() error {
+	err := co.buildConfig.Build()
 	if err != nil {
-		output <- nil
-		done <- err
-		return
+		return err
 	}
-	done <- nil
-	output <- out
+	return nil
 }
 
 // copy block code content into container
@@ -110,24 +109,16 @@ func (co *Container) build(mtx *sync.Mutex, output chan []byte, done chan error)
 // - build context creates a TAR reader stream for docker cli to copy content into container
 // - docker cli copies TAR stream into container
 func (co *Container) copy(id string, content []byte) error {
-	bCtx, err := NewBuildContext("archive", id, string(content))
-	if err != nil {
-		return err
-	}
 
-	r, err := bCtx.Reader()
-	if err != nil {
-		return err
-	}
+	buf := bytes.NewBuffer(content)
 
-	err = co.dockerCli.CopyToContainer(context.Background(), co.id, "/archive", r, types.CopyToContainerOptions{
-		AllowOverwriteDirWithFile: true,
+	err := co.dockerCli.CopyToContainer(context.Background(), co.id, "/go/src/contract/"+id, buf, types.CopyToContainerOptions{
+		AllowOverwriteDirWithFile: false,
 	})
 
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 

@@ -7,17 +7,18 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/ellcrys/druid/blockcode"
+	"github.com/kr/pretty"
+	"github.com/phayes/freeport"
 
 	"github.com/cenkalti/rpc2"
 	"github.com/cenkalti/rpc2/jsonrpc"
-	"github.com/phayes/freeport"
+	"github.com/ellcrys/druid/blockcode"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	. "github.com/ellcrys/druid/blockcode"
+
 	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/ellcrys/druid/wire"
 )
@@ -26,32 +27,68 @@ import (
 type ContainerManager struct {
 	containers    map[string]*Container
 	containerLock *sync.Mutex
-	log           logger.Logger
+	logger        logger.Logger
 	client        *client.Client
+	blockchain    Blockchain
 	wg            *sync.WaitGroup
 }
 
 // ContainerTransaction defines the structure of the blockcode transaction
 type ContainerTransaction struct {
-	*wire.Transaction
-	Function string `json:"Function"`
-	Data     []byte `json:"Data"`
+	Tx       *wire.Transaction `json:"Tx"`
+	Function string            `json:"Function"`
+	Data     []byte            `json:"Data"`
+}
+
+type InvokeData struct {
+	Function   string      `json:"Function"`
+	Data       interface{} `json:"Data"`
+	ContractID string      `json:"ContractID"`
+}
+
+type Response struct {
+	Status string `json:"status"`
+	Code   int    `json:"code"`
+	Data   []byte `json:"data"`
+}
+
+type SampleBlockchain struct {
+	blockcodes map[string]*blockcode.Blockcode
+}
+
+func NewSampleBlockchain() *SampleBlockchain {
+	b := new(SampleBlockchain)
+	bc, err := blockcode.FromDir("./testdata/blockcode_example")
+	if err != nil {
+		panic(err)
+	}
+	b.blockcodes = map[string]*blockcode.Blockcode{
+		"some_address": bc,
+	}
+	return b
+}
+
+func (b *SampleBlockchain) GetBlockCode(address string) *blockcode.Blockcode {
+	return b.blockcodes[address]
 }
 
 // NewContainerManager creates an instance of ContainerManager
-func NewContainerManager(logger logger.Logger, dockerClient *client.Client) *ContainerManager {
-
-	return &ContainerManager{
-		log:    logger,
-		client: dockerClient,
-	}
+func NewContainerManager(log logger.Logger, dockerClient *client.Client) *ContainerManager {
+	cm := new(ContainerManager)
+	cm.logger = log
+	cm.client = dockerClient
+	cm.containers = make(map[string]*Container)
+	cm.containerLock = &sync.Mutex{}
+	cm.wg = &sync.WaitGroup{}
+	cm.blockchain = NewSampleBlockchain()
+	return cm
 }
 
 // Create container that holds a blockcode
 // - & add the container to containers list
 func (cm *ContainerManager) create(ID string) (*Container, error) {
 
-	imgB := NewImageBuilder(cm.log, cm.client, fmt.Sprintf(dockerFileURL, dockerFileHash))
+	imgB := NewImageBuilder(cm.logger, cm.client, fmt.Sprintf(dockerFileURL, dockerFileHash))
 	image := imgB.getImage()
 
 	port, err := freeport.GetFreePort()
@@ -59,12 +96,16 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 		return nil, err
 	}
 
-	cb, err := cm.client.ContainerCreate(context.Background(), &container.Config{
+	vol := make(map[string]struct{})
+	vol["/go/src/contract/"+ID] = struct{}{}
+
+	cb, _ := cm.client.ContainerCreate(context.Background(), &container.Config{
 		Image: image.ID,
 		Labels: map[string]string{
 			"maintainer":    "Ellcrys",
 			"image-version": dockerFileHash,
 		},
+		Volumes: vol,
 		ExposedPorts: nat.PortSet{
 			nat.Port("4000/tcp"): {},
 		},
@@ -72,15 +113,12 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 		PortBindings: nat.PortMap{
 			nat.Port("4000/tcp"): []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: strconv.Itoa(port)}},
 		},
-	}, &network.NetworkingConfig{}, ID)
-	if err != nil {
-		return nil, err
-	}
+	}, &network.NetworkingConfig{}, "")
 
 	co := new(Container)
 	co.dockerCli = cm.client
 	co.id = cb.ID
-	co.log = cm.log
+	co.log = cm.logger
 	co.port = port
 
 	cm.containers[ID] = co
@@ -99,50 +137,75 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 // - - create container rpc client
 // - - create bi-directional connection to container
 // - - send transaction with container client
-func (cm *ContainerManager) Run(tx *ContainerTransaction, txID string, blockcodes []Blockcode, txOutput chan []byte, done chan error) {
+func (cm *ContainerManager) Run(tx *wire.Transaction, txOutput chan []byte, done chan error) {
 
-	container, err := cm.create(txID)
+	bcode := cm.blockchain.GetBlockCode(tx.To)
+	content := bcode.Code
+
+	container, err := cm.create(bcode.ID())
 	if err != nil {
 		done <- err
 		return
 	}
 
-	for _, bcode := range blockcodes {
-		content := bcode.Code
-		err := container.copy(txID, content)
+	err = container.start()
+	if err != nil {
+		done <- err
+		return
+	}
+
+	err = container.copy(bcode.ID(), content)
+	if err != nil {
+		done <- err
+		return
+	}
+
+	switch bcode.Manifest.Lang {
+	case blockcode.LangGo:
+		cm.wg.Add(1)
+		defer cm.wg.Wait()
+		goBuilder := newGoBuilder(bcode.ID(), container, cm.logger)
+		container.setBuildLang(goBuilder)
+		err := container.build()
 		if err != nil {
 			done <- err
 			return
 		}
-
-		switch bcode.Manifest.Lang {
-		case blockcode.LangGo:
-			go container.build(cm.containerLock, txOutput, done)
-		}
-
-		runScript := container.buildConfig.GetRunScript()
-		go container.exec(runScript, txOutput, done)
-
-		addr := fmt.Sprintf("127.0.0.1:%s", strconv.Itoa(container.port))
-		io, _ := net.Dial("tcp", addr)
-		codec := jsonrpc.NewJSONCodec(io)
-		rpcCli := rpc2.NewClientWithCodec(codec)
-
-		container.client = rpcCli
-		container.client.Handle("response", func(vm *rpc2.Client, data []byte, reply *struct{}) error {
-			txOutput <- data
-			return nil
-		})
-
-		go container.client.Run()
-
-		err = container.client.Call("invoke", tx, nil)
-		if err != nil {
-			done <- err
-		}
-
+		cm.wg.Done()
 	}
 
+	runScript := container.buildConfig.GetRunScript()
+	err = container.exec(runScript)
+	if err != nil {
+		pretty.Println(err)
+		done <- err
+		return
+	}
+
+	addr := fmt.Sprintf("127.0.0.1:%s", strconv.Itoa(container.port))
+	io, _ := net.Dial("tcp", addr)
+
+	codec := jsonrpc.NewJSONCodec(io)
+	rpcCli := rpc2.NewClientWithCodec(codec)
+
+	container.client = rpcCli
+	container.client.Handle("response", func(vm *rpc2.Client, data *Response, reply *struct{}) error {
+		txOutput <- data.Data
+		done <- nil
+		return nil
+	})
+
+	container.client.Run()
+
+	err = container.client.Call("invoke", InvokeData{
+		Function:   tx.BlockcodeParams.GetFunc(),
+		ContractID: bcode.ID(),
+		Data:       tx.BlockcodeParams.GetData(),
+	}, nil)
+
+	if err != nil {
+		done <- nil
+	}
 }
 
 // Find looks up a container by it's ID

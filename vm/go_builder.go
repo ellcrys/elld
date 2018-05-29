@@ -1,11 +1,11 @@
 package vm
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"fmt"
-	"strings"
-	"sync"
+
+	"github.com/kr/pretty"
 
 	"github.com/docker/docker/api/types"
 	logger "github.com/ellcrys/druid/util/logger"
@@ -29,19 +29,19 @@ func newGoBuilder(id string, container *Container, log logger.Logger) *goBuilder
 
 // get the run script that executes a blockcode
 func (gb *goBuilder) GetRunScript() []string {
-	script := fmt.Sprintf("./container/bin/%s", gb.id)
-	return []string{script}
+	cmd := []string{"bash", "-c", "/bin/bcode"}
+	return cmd
 }
 
 // build a block code
-func (gb *goBuilder) Build(mtx *sync.Mutex) ([]byte, error) {
-	ctx := context.Background()
-	archive := fmt.Sprintf("./archive/%s", gb.id)
-	execoutput := fmt.Sprintf("~/bin/%s", gb.id)
-	buildCmd := []string{"bash", "-c", "unzip", archive, "-d", "./container", "&&", "mkdir ./container/bin", "&&", "go", "build", "./container", "-o", execoutput}
+func (gb *goBuilder) Build() error {
 
-	mtx.Lock()
-	exec, err := gb.container.dockerCli.ContainerExecCreate(ctx, gb.id, types.ExecConfig{
+	ctx := context.Background()
+	archive := fmt.Sprintf("./src/contract/%s", gb.id)
+	execCmd := "cd " + archive + "&& go build -x -o /bin/bcode"
+	buildCmd := []string{"bash", "-c", execCmd}
+
+	exec, err := gb.container.dockerCli.ContainerExecCreate(ctx, gb.container.id, types.ExecConfig{
 		Cmd:          buildCmd,
 		Tty:          true,
 		AttachStderr: true,
@@ -49,28 +49,50 @@ func (gb *goBuilder) Build(mtx *sync.Mutex) ([]byte, error) {
 		AttachStdout: true,
 	})
 	if err != nil {
-		mtx.Unlock()
-		return nil, err
+		return err
 	}
 
-	execResp, _ := gb.container.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	execResp, err := gb.container.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	if err != nil {
+		return fmt.Errorf("failed to attach to container exec. %s", err)
+	}
+	defer execResp.Close()
+
+	for {
+		execI, err := gb.container.dockerCli.ContainerExecInspect(context.Background(), exec.ID)
+		if err != nil {
+			return fmt.Errorf("failed to get exec status. %s", err)
+		}
+		if !execI.Running {
+			if execI.ExitCode != 0 {
+				return fmt.Errorf("build failed")
+			}
+			break
+		}
+	}
+
+	gb.log.Debug("Starting blockcode build process")
 
 	err = gb.container.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
 	if err != nil {
-		mtx.Unlock()
-		return nil, err
+		pretty.Println(err)
+		return err
 	}
 
-	outputArr := []string{}
-	scanner := bufio.NewScanner(execResp.Reader)
-	for scanner.Scan() {
-		out := scanner.Text()
-		if out != "" {
-			gb.log.Debug("Blockcode Build", "output", out)
-			outputArr = append(outputArr, out)
+	var buf = bytes.NewBuffer(nil)
+	buf.ReadFrom(execResp.Reader)
+
+	for {
+		line, err := buf.ReadString('\n')
+		if err != nil {
+			break
+		}
+		if len(line) > 0 {
+			gb.log.Info(fmt.Sprintf("%s", line))
 		}
 	}
-	mtx.Unlock()
-	output := []byte(strings.Join(outputArr, "\r\n"))
-	return output, nil
+
+	gb.log.Debug("Blockcode build successful")
+
+	return nil
 }
