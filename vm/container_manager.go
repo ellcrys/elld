@@ -14,10 +14,10 @@ import (
 	"github.com/cenkalti/rpc2/jsonrpc"
 	"github.com/ellcrys/druid/blockcode"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/ellcrys/docker/api/types/container"
+	"github.com/ellcrys/docker/api/types/network"
+	"github.com/ellcrys/docker/client"
 
 	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/ellcrys/druid/wire"

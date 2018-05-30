@@ -4,7 +4,7 @@ import (
 	"github.com/ellcrys/druid/crypto"
 	"github.com/ellcrys/druid/wire"
 
-	"github.com/docker/docker/client"
+	"github.com/ellcrys/docker/client"
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 	. "github.com/onsi/ginkgo"

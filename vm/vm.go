@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/client"
+	"github.com/ellcrys/docker/client"
 	"github.com/ellcrys/druid/util"
 	funk "github.com/thoas/go-funk"
 

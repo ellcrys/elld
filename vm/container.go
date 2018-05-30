@@ -9,8 +9,8 @@ import (
 	logger "github.com/ellcrys/druid/util/logger"
 
 	"github.com/cenkalti/rpc2"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"github.com/ellcrys/docker/api/types"
+	"github.com/ellcrys/docker/client"
 )
 
 var containerStopTimeout = time.Second * 2

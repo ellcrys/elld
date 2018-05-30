@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/ellcrys/docker/api/types/container"
+	"github.com/ellcrys/docker/client"
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 	. "github.com/onsi/ginkgo"

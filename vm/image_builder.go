@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
+	"github.com/ellcrys/docker/api/types"
+	"github.com/ellcrys/docker/client"
+	"github.com/ellcrys/docker/pkg/archive"
 	"github.com/ellcrys/druid/util/logger"
 	"github.com/franela/goreq"
 	funk "github.com/thoas/go-funk"

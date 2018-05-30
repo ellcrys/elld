@@ -7,7 +7,7 @@ import (
 
 	"github.com/kr/pretty"
 
-	"github.com/docker/docker/api/types"
+	"github.com/ellcrys/docker/api/types"
 	logger "github.com/ellcrys/druid/util/logger"
 )
 
