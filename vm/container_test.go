@@ -20,7 +20,7 @@ func (lang *TestBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *TestBuildLang) Build(containerID string) error {
+func (lang *TestBuildLang) Build() error {
 	return nil
 }
 
@@ -31,8 +31,8 @@ func (lang *ErrBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *ErrBuildLang) Build(containerID string) error {
-	return fmt.Errorf("err", "an error")
+func (lang *ErrBuildLang) Build() error {
+	return fmt.Errorf("err %s", "an error")
 }
 
 var _ = Describe("Container", func() {
@@ -64,11 +64,15 @@ var _ = Describe("Container", func() {
 		Expect(err).To(BeNil())
 		container, err := cli.ContainerCreate(context.Background(), &container.Config{
 			Image: image.ID,
+			Volumes: map[string]struct{}{
+				"/archive": struct{}{},
+			},
 		}, nil, nil, transactionID)
 		Expect(err).To(BeNil())
 		Expect(container).NotTo(BeNil())
 		co.id = container.ID
 		co.log = log
+		co.log.SetToDebug()
 	})
 
 	AfterEach(func() {
@@ -114,23 +118,40 @@ var _ = Describe("Container", func() {
 			err := co.start()
 			Expect(err).To(BeNil())
 			command := []string{"bash", "-c", "echo hello"}
-			done := make(chan error, 1)
-			output := make(chan string)
-			go co.exec(command, output, done)
-			Expect(<-output).NotTo(BeEmpty())
-			Expect(<-done).To(BeNil())
+
+			err = co.exec(command, nil)
+			Expect(err).To(BeNil())
 		})
 
 		It("should throw error while trying to execute a command in the container", func() {
 			err := co.start()
 			Expect(err).To(BeNil())
 			command := []string{}
-			done := make(chan error, 1)
-			output := make(chan string)
-			co.exec(command, output, done)
-			Expect(<-done).NotTo(BeNil())
+
+			err = co.exec(command, nil)
+			Expect(err).NotTo(BeNil())
 		})
 	})
+
+	// Describe(".copy", func() {
+	// 	var bc *blockcode.Blockcode
+	// 	BeforeEach(func() {
+	// 		bc, err = blockcode.FromDir("../blockcode/testdata/blockcode_example")
+	// 		Expect(err).To(BeNil())
+	// 		Expect(bc).NotTo(BeNil())
+	// 	})
+	// 	It("should copy content into the container", func() {
+	// 		err := co.start()
+	// 		Expect(err).To(BeNil())
+	// 		err = co.copy("736729", bc.Bytes())
+	// 		Expect(err).To(BeNil())
+	// 	})
+
+	// 	It("should fail to copy content into the container", func() {
+	// 		err := co.copy("", bc.Bytes())
+	// 		Expect(err).NotTo(BeNil())
+	// 	})
+	// })
 
 	Describe(".addChild", func() {
 		It("should add a child container", func() {
@@ -154,6 +175,9 @@ var _ = Describe("Container", func() {
 		It("should attempt to build block code", func() {
 			co.setBuildLang(new(TestBuildLang))
 			Expect(co.buildConfig).ToNot(BeNil())
+
+			// done := make(chan error, 1)
+			// output := make(chan []byte)
 			err := co.build()
 			Expect(err).To(BeNil())
 		})
@@ -161,6 +185,9 @@ var _ = Describe("Container", func() {
 		It("should fail to build block code", func() {
 			co.setBuildLang(new(ErrBuildLang))
 			Expect(co.buildConfig).ToNot(BeNil())
+
+			// done := make(chan error, 1)
+			// output := make(chan []byte)
 			err := co.build()
 			Expect(err).NotTo(BeNil())
 		})

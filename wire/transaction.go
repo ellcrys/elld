@@ -32,6 +32,9 @@ var (
 
 	// TxTypeRepoCreate represents a transaction type for creating a repository
 	TxTypeRepoCreate int64 = 0x2
+
+	// TxTypeA2B represents a transaction type targeting a blockcode
+	TxTypeA2B int64 = 0x3
 )
 
 type asn1Tx struct {

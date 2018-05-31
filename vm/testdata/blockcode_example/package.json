@@ -1,0 +1,14 @@
+{
+  "name": "example_blockcode",
+  "version": "0.0.1",
+  "description": "An example blockcode",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "lang": "go",
+  "langVer": "1.10.2",
+  "publicFuncs": ["DoSomething"]
+}

@@ -1,8 +1,9 @@
 package vm
 
 import (
-	"bufio"
+	"bytes"
 	"context"
+	"fmt"
 	"time"
 
 	logger "github.com/ellcrys/druid/util/logger"
@@ -23,6 +24,7 @@ type Container struct {
 	dockerCli   *client.Client
 	buildConfig LangBuilder
 	log         logger.Logger
+	port        int
 }
 
 // response defines response from a blockcode execution
@@ -47,9 +49,12 @@ func (co *Container) start() error {
 	return nil
 }
 
-// executes a command in the container. It will block and channel std output to output.
-// If an error occurs, done will be sent an error, otherwise, nil.
-func (co *Container) exec(command []string, output chan string, done chan error) {
+// executes a command in the container.
+func (co *Container) exec(command []string, done chan bool) error {
+
+	if done == nil {
+		done = make(chan bool)
+	}
 
 	ctx := context.Background()
 	exec, err := co.dockerCli.ContainerExecCreate(ctx, co.id, types.ExecConfig{
@@ -60,42 +65,87 @@ func (co *Container) exec(command []string, output chan string, done chan error)
 		AttachStdout: true,
 	})
 	if err != nil {
-		done <- err
-		return
+		return fmt.Errorf("failed to create exec %s", err)
 	}
 
-	execResp, _ := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
-
+	execResp, err := co.dockerCli.ContainerExecAttach(ctx, exec.ID, types.ExecStartCheck{})
+	if err != nil {
+		return fmt.Errorf("failed to attach to container exec. %s", err)
+	}
 	defer execResp.Close()
 
-	_ = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
+	co.log.Debug("Blockcode execution started")
 
-	scanner := bufio.NewScanner(execResp.Reader)
-	for scanner.Scan() {
-		out := scanner.Text()
-		if out != "" {
-			output <- out
-		}
+	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
+	if err != nil {
+		return fmt.Errorf("failed to start exec %s", err)
 	}
 
-	done <- nil
+	var finished bool
 
-	return
+	go func() {
+		for {
+			execI, err := co.dockerCli.ContainerExecInspect(context.Background(), exec.ID)
+			if err != nil {
+				return
+			}
+
+			if !execI.Running {
+				break
+			}
+		}
+		finished = true
+		close(done)
+	}()
+
+	go func() {
+		for !finished {
+			buf := make([]byte, 32)
+			_, err := execResp.Reader.Read(buf)
+			if err != nil {
+				return
+			}
+			if len(buf) > 0 {
+				co.log.Debug(fmt.Sprintf("Execution: %s", buf))
+			}
+		}
+	}()
+
+	co.log.Debug("Blockcode execution successful")
+
+	return nil
 }
 
-// buildLang takes a concrete implementation of the LangBuilder
-
+// setBuildLang takes a concrete implementation of the LangBuilder
 func (co *Container) setBuildLang(buildConfig LangBuilder) {
 	co.buildConfig = buildConfig
 }
 
 // builds a block code
 func (co *Container) build() error {
-	err := co.buildConfig.Build(co.id)
+	err := co.buildConfig.Build()
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
+// copy block code content into container
+// - creates new instance of BuildContext
+// - build context creates temporary dir to store block code content
+// - build context creates a TAR reader stream for docker cli to copy content into container
+// - docker cli copies TAR stream into container
+func (co *Container) copy(id string, content []byte) error {
+
+	buf := bytes.NewBuffer(content)
+
+	err := co.dockerCli.CopyToContainer(context.Background(), co.id, "/go/src/contract/"+id, buf, types.CopyToContainerOptions{
+		AllowOverwriteDirWithFile: false,
+	})
+
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

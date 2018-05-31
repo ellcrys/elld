@@ -97,7 +97,7 @@ func (ib *ImageBuilder) Build() (*Image, error) {
 	}
 
 	dir := "vm-build-context"
-	buildCtx, err := NewBuildContext(dir, "Dockerfile", dockerFileContent)
+	buildCtx, err := NewBuildContext(dir, "Dockerfile", []byte(dockerFileContent))
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,9 @@ func (ib *ImageBuilder) destroyImage() error {
 	image := ib.getImage()
 	ctx := context.Background()
 
-	_, err := ib.client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
+	_, err := ib.client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{
+		PruneChildren: true,
+	})
 	if err != nil {
 		return err
 	}
@@ -185,7 +187,7 @@ func (ib *ImageBuilder) getImage() *Image {
 }
 
 // NewBuildContext creates a build context for the docker image build
-func NewBuildContext(dir string, name string, content string) (*BuildContext, error) {
+func NewBuildContext(dir string, name string, content []byte) (*BuildContext, error) {
 	buildContext := new(BuildContext)
 
 	tempdir, err := ioutil.TempDir("", dir)
@@ -194,7 +196,7 @@ func NewBuildContext(dir string, name string, content string) (*BuildContext, er
 	}
 	buildContext.Dir = tempdir
 
-	err = buildContext.addFile(name, []byte(content))
+	err = buildContext.addFile(name, content)
 	if err != nil {
 		return nil, err
 	}

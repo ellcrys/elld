@@ -70,7 +70,7 @@ var _ = Describe("ImageBuilder", func() {
 
 		BeforeEach(func() {
 			dir := "test-hello"
-			buildCtx, err = NewBuildContext(dir, "hellofile", "hello world")
+			buildCtx, err = NewBuildContext(dir, "hellofile", []byte("hello world"))
 			Expect(err).To(BeNil())
 			Expect(buildCtx).NotTo(BeNil())
 		})

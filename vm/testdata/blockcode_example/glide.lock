@@ -1,0 +1,12 @@
+hash: 601728e084dc8929ba9917e057aa2c8a0602ae30ff4ba1773a54f887da1cce29
+updated: 2018-05-28T22:17:54.852182+01:00
+imports:
+- name: github.com/cenkalti/hub
+  version: 11382a9960d39b0ecda16fd01c424c11ff765a34
+- name: github.com/cenkalti/rpc2
+  version: c51a77e5f664b4a8a69bce4270d14204f94d51f9
+  subpackages:
+  - jsonrpc
+- name: github.com/ellcrys/stub.go
+  version: cc3d9c3301ae238066bdb6da9261dc09fd4f0dc3
+testImports: []
