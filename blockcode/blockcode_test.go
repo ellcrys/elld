@@ -53,7 +53,7 @@ var _ = Describe("Blockcode", func() {
 		It("should successfully create a Blockcode", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Code).ToNot(BeEmpty())
+			Expect(bc.code).ToNot(BeEmpty())
 			Expect(bc.Manifest).ToNot(BeNil())
 			Expect(bc.Manifest.Lang).ToNot(BeEmpty())
 			Expect(bc.Manifest.LangVersion).ToNot(BeEmpty())

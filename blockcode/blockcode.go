@@ -39,7 +39,7 @@ var (
 
 // Blockcode defines a block code
 type Blockcode struct {
-	Code     []byte
+	code     []byte
 	Manifest *Manifest
 }
 
@@ -57,7 +57,7 @@ type Manifest struct {
 
 // Len returns the bytecode size
 func (bc *Blockcode) Len() int {
-	return len(bc.Code)
+	return len(bc.code)
 }
 
 // Bytes return the ASN.1 marshalled representation of the Blockcode
@@ -65,13 +65,18 @@ func (bc *Blockcode) Bytes() []byte {
 
 	manifestBS, _ := json.Marshal(bc.Manifest)
 	result, err := asn1.Marshal(asn1Blockcode{
-		bc.Code,
+		bc.code,
 		manifestBS,
 	})
 	if err != nil {
 		panic(err)
 	}
 	return result
+}
+
+// GetCode returns the code in its tar archived form
+func (bc *Blockcode) GetCode() []byte {
+	return bc.code
 }
 
 // Hash returns the SHA256 hash of the blockcode
@@ -93,7 +98,7 @@ func (bc *Blockcode) Read(destination string) error {
 		return fmt.Errorf("destination path does not exist")
 	}
 
-	buff := bytes.NewBuffer(bc.Code)
+	buff := bytes.NewBuffer(bc.code)
 	return archiver.Tar.Read(buff, destination)
 }
 
@@ -111,7 +116,7 @@ func FromBytes(bs []byte) (*Blockcode, error) {
 	}
 
 	return &Blockcode{
-		Code:     asn1Bc.Code,
+		code:     asn1Bc.Code,
 		Manifest: &manifest,
 	}, nil
 }
@@ -161,7 +166,7 @@ func FromDir(projectPath string) (*Blockcode, error) {
 	}
 
 	bc := new(Blockcode)
-	bc.Code = buf.Bytes()
+	bc.code = buf.Bytes()
 	bc.Manifest = &manifest
 
 	return bc, nil

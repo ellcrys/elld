@@ -7,28 +7,27 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/kr/pretty"
+	"github.com/coreos/etcd/client"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/network"
+	"github.com/docker/go-connections/nat"
 	"github.com/phayes/freeport"
 
 	"github.com/cenkalti/rpc2"
 	"github.com/cenkalti/rpc2/jsonrpc"
 	"github.com/ellcrys/druid/blockcode"
-
-	"github.com/docker/go-connections/nat"
-	"github.com/ellcrys/docker/api/types/container"
-	"github.com/ellcrys/docker/api/types/network"
-	"github.com/ellcrys/docker/client"
-
 	logger "github.com/ellcrys/druid/util/logger"
 	"github.com/ellcrys/druid/wire"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 // ContainerManager defines the module that manages containerization of Block codes and their execution
 type ContainerManager struct {
+	cmt           *sync.RWMutex
 	containers    map[string]*Container
 	containerLock *sync.Mutex
 	logger        logger.Logger
-	client        *client.Client
+	client        *docker.Client
 	blockchain    Blockchain
 	wg            *sync.WaitGroup
 }
@@ -40,36 +39,18 @@ type ContainerTransaction struct {
 	Data     []byte            `json:"Data"`
 }
 
+// InvokeData represents the payload sent to the invoke handler of a blockcode's stub
 type InvokeData struct {
 	Function   string      `json:"Function"`
 	Data       interface{} `json:"Data"`
 	ContractID string      `json:"ContractID"`
 }
 
+// Response represents payload received from a blockcode stuff
 type Response struct {
 	Status string `json:"status"`
 	Code   int    `json:"code"`
 	Data   []byte `json:"data"`
-}
-
-type SampleBlockchain struct {
-	blockcodes map[string]*blockcode.Blockcode
-}
-
-func NewSampleBlockchain() *SampleBlockchain {
-	b := new(SampleBlockchain)
-	bc, err := blockcode.FromDir("./testdata/blockcode_example")
-	if err != nil {
-		panic(err)
-	}
-	b.blockcodes = map[string]*blockcode.Blockcode{
-		"some_address": bc,
-	}
-	return b
-}
-
-func (b *SampleBlockchain) GetBlockCode(address string) *blockcode.Blockcode {
-	return b.blockcodes[address]
 }
 
 // NewContainerManager creates an instance of ContainerManager
@@ -140,7 +121,7 @@ func (cm *ContainerManager) create(ID string) (*Container, error) {
 func (cm *ContainerManager) Run(tx *wire.Transaction, txOutput chan []byte, done chan error) {
 
 	bcode := cm.blockchain.GetBlockCode(tx.To)
-	content := bcode.Code
+	content := bcode.GetCode()
 
 	container, err := cm.create(bcode.ID())
 	if err != nil {
@@ -162,22 +143,17 @@ func (cm *ContainerManager) Run(tx *wire.Transaction, txOutput chan []byte, done
 
 	switch bcode.Manifest.Lang {
 	case blockcode.LangGo:
-		cm.wg.Add(1)
-		defer cm.wg.Wait()
-		goBuilder := newGoBuilder(bcode.ID(), container, cm.logger)
-		container.setBuildLang(goBuilder)
+		container.setBuildLang(newGoBuilder(bcode.ID(), container, cm.logger))
 		err := container.build()
 		if err != nil {
 			done <- err
 			return
 		}
-		cm.wg.Done()
 	}
 
 	runScript := container.buildConfig.GetRunScript()
 	err = container.exec(runScript)
 	if err != nil {
-		pretty.Println(err)
 		done <- err
 		return
 	}

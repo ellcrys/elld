@@ -16,8 +16,8 @@ type Blockchain interface {
 	GetBlockCode(address string) *blockcode.Blockcode
 }
 
-// LangBuilder determines the interface of the language builder
+// LangBuilder provides information about how to build and run a blockcode of a specific language
 type LangBuilder interface {
 	GetRunScript() []string
-	Build() error
+	GetBuildScript() []string
 }
