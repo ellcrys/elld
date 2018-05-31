@@ -2,7 +2,6 @@ package vm
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/docker/docker/client"
 	"github.com/ellcrys/druid/util/logger"
@@ -28,7 +27,6 @@ var _ = Describe("ImageBuilder", func() {
 	})
 
 	AfterSuite(func() {
-		<-time.NewTicker(time.Millisecond * 3000).C
 		err := builder.destroyImage()
 		Expect(err).To(BeNil())
 	})

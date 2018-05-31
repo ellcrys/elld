@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/kr/pretty"
 	"github.com/phayes/freeport"
 
 	"github.com/cenkalti/rpc2"
@@ -41,9 +40,9 @@ type ContainerTransaction struct {
 }
 
 type InvokeData struct {
-	Function   string      `json:"Function"`
-	Data       interface{} `json:"Data"`
-	ContractID string      `json:"ContractID"`
+	Function    string      `json:"Function"`
+	Data        interface{} `json:"Data"`
+	BlockCodeID string      `json:"BlockCodeID"`
 }
 
 type Response struct {
@@ -175,14 +174,13 @@ func (cm *ContainerManager) Run(tx *wire.Transaction, txOutput chan []byte, done
 	}
 
 	runScript := container.buildConfig.GetRunScript()
-	err = container.exec(runScript)
+	err = container.exec(runScript, nil)
 	if err != nil {
-		pretty.Println(err)
 		done <- err
 		return
 	}
 
-	addr := fmt.Sprintf("127.0.0.1:%s", strconv.Itoa(container.port))
+	addr := fmt.Sprintf("0.0.0.0:%s", strconv.Itoa(container.port))
 	io, _ := net.Dial("tcp", addr)
 
 	codec := jsonrpc.NewJSONCodec(io)
@@ -190,22 +188,26 @@ func (cm *ContainerManager) Run(tx *wire.Transaction, txOutput chan []byte, done
 
 	container.client = rpcCli
 	container.client.Handle("response", func(vm *rpc2.Client, data *Response, reply *struct{}) error {
+		cm.logger.Debug(fmt.Sprintf("Exec Response: %s", string(data.Data)))
 		txOutput <- data.Data
-		done <- nil
 		return nil
 	})
 
-	container.client.Run()
+	go container.client.Run()
 
-	err = container.client.Call("invoke", InvokeData{
-		Function:   tx.BlockcodeParams.GetFunc(),
-		ContractID: bcode.ID(),
-		Data:       tx.BlockcodeParams.GetData(),
-	}, nil)
+	go func() {
+		err = container.client.Call("invoke", &InvokeData{
+			Function:    tx.BlockcodeParams.GetFunc(),
+			BlockCodeID: bcode.ID(),
+			Data:        tx.BlockcodeParams.GetData(),
+		}, nil)
+		if err != nil {
+			done <- err
+			return
+		}
+	}()
 
-	if err != nil {
-		done <- nil
-	}
+	done <- nil
 }
 
 // Find looks up a container by it's ID

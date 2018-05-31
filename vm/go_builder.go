@@ -29,7 +29,7 @@ func newGoBuilder(id string, container *Container, log logger.Logger) *goBuilder
 
 // get the run script that executes a blockcode
 func (gb *goBuilder) GetRunScript() []string {
-	cmd := []string{"bash", "-c", "/bin/bcode"}
+	cmd := []string{"bash", "-c", "/bin/bcode  2>/dev/null"}
 	return cmd
 }
 

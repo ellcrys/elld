@@ -50,7 +50,11 @@ func (co *Container) start() error {
 }
 
 // executes a command in the container.
-func (co *Container) exec(command []string) error {
+func (co *Container) exec(command []string, done chan bool) error {
+
+	if done == nil {
+		done = make(chan bool)
+	}
 
 	ctx := context.Background()
 	exec, err := co.dockerCli.ContainerExecCreate(ctx, co.id, types.ExecConfig{
@@ -68,24 +72,47 @@ func (co *Container) exec(command []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to attach to container exec. %s", err)
 	}
-
 	defer execResp.Close()
 
-	co.log.Debug("Starting blockcode execution process")
+	co.log.Debug("Blockcode execution started")
+
 	err = co.dockerCli.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{Detach: false})
 	if err != nil {
 		return fmt.Errorf("failed to start exec %s", err)
 	}
 
-	for {
-		line, _, _ := execResp.Reader.ReadLine()
-		if len(line) > 0 {
-			co.log.Debug(fmt.Sprintf("Blockcode Execution ==> %s", string(line)))
+	var finished bool
+
+	go func() {
+		for {
+			execI, err := co.dockerCli.ContainerExecInspect(context.Background(), exec.ID)
+			if err != nil {
+				return
+			}
+
+			if !execI.Running {
+				break
+			}
 		}
-		break
-	}
+		finished = true
+		close(done)
+	}()
+
+	go func() {
+		for !finished {
+			buf := make([]byte, 32)
+			_, err := execResp.Reader.Read(buf)
+			if err != nil {
+				return
+			}
+			if len(buf) > 0 {
+				co.log.Debug(fmt.Sprintf("Execution: %s", buf))
+			}
+		}
+	}()
 
 	co.log.Debug("Blockcode execution successful")
+
 	return nil
 }
 

@@ -155,7 +155,9 @@ func (ib *ImageBuilder) destroyImage() error {
 	image := ib.getImage()
 	ctx := context.Background()
 
-	_, err := ib.client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
+	_, err := ib.client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{
+		PruneChildren: true,
+	})
 	if err != nil {
 		return err
 	}

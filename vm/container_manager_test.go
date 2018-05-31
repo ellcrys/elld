@@ -102,6 +102,10 @@ var _ = Describe("ContainerManager", func() {
 				Nonce:        1,
 				To:           "some_address",
 				SenderPubKey: a.PubKey().Base58(),
+				BlockcodeParams: &wire.BlockcodeParams{
+					Func: "DoSomething",
+					Data: []byte("hello world"),
+				},
 			}
 
 			done := make(chan error, 1)

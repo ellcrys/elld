@@ -72,6 +72,7 @@ var _ = Describe("Container", func() {
 		Expect(container).NotTo(BeNil())
 		co.id = container.ID
 		co.log = log
+		co.log.SetToDebug()
 	})
 
 	AfterEach(func() {
@@ -118,8 +119,7 @@ var _ = Describe("Container", func() {
 			Expect(err).To(BeNil())
 			command := []string{"bash", "-c", "echo hello"}
 
-			err = co.exec(command)
-
+			err = co.exec(command, nil)
 			Expect(err).To(BeNil())
 		})
 
@@ -127,7 +127,8 @@ var _ = Describe("Container", func() {
 			err := co.start()
 			Expect(err).To(BeNil())
 			command := []string{}
-			err = co.exec(command)
+
+			err = co.exec(command, nil)
 			Expect(err).NotTo(BeNil())
 		})
 	})
