@@ -1,32 +1,28 @@
-# Druid
-Druid is the official client that implements the Ellcrys specification and manage by Ellcrys PBC. Druid allows anyone to run a full node, perform mining, validation and launch an RPC server.
+# Elld - Official Ellcrys Client
+Elld is the official client that implements a full node according to the Ellcrys specification. The client is written in Go programming language.
 
-## Installation
+This client is still very much under active development. It will allow uses run a daemon that will follow the protocol of the Ellcrys network. It will connect to other nodes on the network, receive and relay transactions and other messages, maintain the ledger and so on.
 
-```go get github.com/ellcrys/druid```
+Find more documentations in the []Wiki](https://github.com/ellcrys/elld/wiki) and in specific package directories. 
 
-## Components
-
-The following list includes features currently being worked on (unchecked) and those that are stable/finished (checked).
-
-- [ ] Peer Discovery
-- [ ] Transaction Pool Management
-- [ ] Consensus Layer
-- [ ] Blockchain Layer
-- [ ] Mining
-
-## Requirements
+### Requirement
 [Go](http://golang.org/) 1.9 or newer.
 
-## Build
+### Contributing
+We use [Dep](https://github.com/golang/dep) tool to manage project dependencies. You will need it to create deterministic builds with other developers.
 
+#### Get the Dep
+Checkout the Dep [documentation](https://github.com/golang/dep#installation) for installation guide.
+
+#### Get the source and build
 ```
-git clone git@github.com:ellcrys/druid.git
-cd $GOPATH/github.com/ellcrys/druid
-go build
+git clone https://github.com/ellcrys/elld $GOPATH/src/github.com/ellcrys/elld
+cd $GOPATH/src/github.com/ellcrys/elld
+dep ensure
+go install
 ```
 
 ## Contact
-- [Slack](https://slack.ellcrys.co)
+- Email: hello@ellcrys.co
 - [Telegram](https://t.me/ellcryshq)
 - [Twitter](https://twitter.com/ellcryshq)

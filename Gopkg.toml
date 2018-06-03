@@ -1,0 +1,130 @@
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#   name = "github.com/x/y"
+#   version = "2.4.0"
+#
+# [prune]
+#   non-go = false
+#   go-tests = true
+#   unused-packages = true
+
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/cbergoon/merkletree"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/cenkalti/rpc2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/dustin/go-humanize"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/edsrzf/mmap-go"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ellcrys/go-ethereum"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ellcrys/go-libp2p-crypto"
+
+[[constraint]]
+  name = "github.com/fatih/color"
+  version = "1.6.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/franela/goreq"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/fsouza/go-dockerclient"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/graarh/golang-socketio"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/golang-lru"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jinzhu/configor"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jinzhu/copier"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/libp2p/go-libp2p-crypto"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/libp2p/go-libp2p-protocol"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mholt/archiver"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/multiformats/go-multiaddr"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/multiformats/go-multicodec"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/nanobox-io/golang-scribble"
+
+[[constraint]]
+  name = "github.com/onsi/gomega"
+  version = "1.4.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/phayes/freeport"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/segmentio/go-prompt"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/shopspring/decimal"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.1-35-ga1f051b"
+
+[[constraint]]
+  name = "gopkg.in/asaskevich/govalidator.v4"
+  version = "4.0.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
