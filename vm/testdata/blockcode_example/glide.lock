@@ -1,12 +1,18 @@
-hash: 601728e084dc8929ba9917e057aa2c8a0602ae30ff4ba1773a54f887da1cce29
-updated: 2018-05-28T22:17:54.852182+01:00
+hash: ea0c3a8cbd0dd8555aeec479323b8d1e584151d8c226184f346ecb342eb65346
+updated: 2018-06-02T13:17:16.711704+01:00
 imports:
-- name: github.com/cenkalti/hub
-  version: 11382a9960d39b0ecda16fd01c424c11ff765a34
-- name: github.com/cenkalti/rpc2
-  version: c51a77e5f664b4a8a69bce4270d14204f94d51f9
+- name: github.com/ellcrys/go.stub
+  version: 0362d025766e95bb25d6dea96f5bfebd95840ebe
+- name: github.com/googollee/go-engine.io
+  version: 80ae0e43aca17b4c5a6834999d0f2eaa16b9afda
   subpackages:
-  - jsonrpc
-- name: github.com/ellcrys/stub.go
-  version: cc3d9c3301ae238066bdb6da9261dc09fd4f0dc3
+  - message
+  - parser
+  - polling
+  - transport
+  - websocket
+- name: github.com/googollee/go-socket.io
+  version: 970a1286d096d33129776082dfa89b35970e00c2
+- name: github.com/gorilla/websocket
+  version: 21ab95fa12b9bdd8fecf5fa3586aad941cc98785
 testImports: []

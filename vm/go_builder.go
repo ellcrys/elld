@@ -11,16 +11,16 @@ func newGoBuilder(containerID string) *goBuilder {
 	}
 }
 
-// get the run script that executes a blockcode
+// GetRunScript run the blockcode execution script
 func (gb *goBuilder) GetRunScript() []string {
 	cmd := []string{"bash", "-c", "/bin/bcode"}
 	return cmd
 }
 
-// build a block code
-func (gb *goBuilder) Build() []string {
+// GetBuildScript returns build script
+func (gb *goBuilder) GetBuildScript() []string {
 	path := makeCopyPath(gb.containerID)
-	execCmd := "cd " + path + " && go build -x -o /bin/bcode"
-	buildCmd := []string{"bash", "-c", execCmd}
+	script := `cd ` + path + ` && go build -v -o /bin/bcode && ls /bin/bcode`
+	buildCmd := []string{"bash", "-c", "echo >> __script.sh '" + script + "' && bash ./__script.sh"}
 	return buildCmd
 }

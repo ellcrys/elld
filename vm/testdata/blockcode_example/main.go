@@ -1,35 +1,22 @@
 package main
 
 import (
-	"github.com/ellcrys/stub.go"
+	. "github.com/ellcrys/go.stub"
 )
 
-type InvokeData struct {
-	Function   string      `json:"Function"`
-	ContractID string      `json:"ContractID"`
-	Data       interface{} `json:"Data"`
+// BlockcodeEx defines a blockcode
+type BlockcodeEx struct {
 }
 
-//MyContract
-type MyContract struct{}
-
-//OnInit
-func (contract *MyContract) OnInit(ctx *ellstub.Context) {
-
+// OnInit initializes the blockcode
+func (b *BlockcodeEx) OnInit() {
+	On("add", b.add)
 }
 
-//OnTerminate
-func (contract *MyContract) OnTerminate(ctx *ellstub.Context) {
-
-}
-
-//DoSomething
-func (contract *MyContract) DoSomething(ctx *ellstub.Context) (interface{}, error) {
-	return ctx, nil
+func (b *BlockcodeEx) add() (interface{}, error) {
+	return 10, nil
 }
 
 func main() {
-
-	ellstub.Run(new(MyContract), 4000)
-
+	Run(new(BlockcodeEx))
 }

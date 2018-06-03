@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/druid/blockcode"
-	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/util/logger"
 	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
@@ -38,14 +37,12 @@ var _ = Describe("Container", func() {
 	var log = logger.NewLogrus()
 	log.SetToDebug()
 	var co *Container
-	var transactionID string
 	var err error
 	var dckFileURL = fmt.Sprintf(dockerFileURL, dockerFileHash)
 	var cli *docker.Client
 	var image *Image
 
 	BeforeEach(func() {
-		transactionID = util.RandString(5)
 		cli, err = docker.NewClient(dockerEndpoint)
 		Expect(err).To(BeNil())
 	})
@@ -58,7 +55,7 @@ var _ = Describe("Container", func() {
 	})
 
 	BeforeEach(func() {
-		co = NewContainer(util.RandString(5), cli, image, log)
+		co = NewContainer(cli, image, log)
 	})
 
 	AfterEach(func() {
@@ -152,7 +149,7 @@ var _ = Describe("Container", func() {
 		It("should copy content into the container", func() {
 			err = co.copy(bc.GetCode())
 			Expect(err).To(BeNil())
-			statusCode, err := co.exec([]string{"bash", "-c", "ls " + makeCopyPath(co.id)})
+			statusCode, err := co.exec([]string{"bash", "-c", "ls " + makeCopyPath(co.id())})
 			Expect(err).To(BeNil())
 			Expect(statusCode).To(Equal(0))
 		})
@@ -164,13 +161,20 @@ var _ = Describe("Container", func() {
 	})
 
 	Describe(".addChild", func() {
+
+		BeforeEach(func() {
+			err := co.create()
+			Expect(err).To(BeNil())
+		})
+
 		It("should add a child container", func() {
 			child := new(Container)
-			child.id = "1c6de1dbaad3"
+			err := child.create()
+			Expect(err).To(BeNil())
 			co.addChild(child)
 			Expect(len(co.children)).NotTo(BeZero())
-			Expect(co.children[0].id).To(Equal(child.id))
-			Expect(child.parent.id).To(Equal(co.id))
+			Expect(co.children[0].id()).To(Equal(child.id()))
+			Expect(child.parent.id()).To(Equal(co.id()))
 		})
 	})
 

@@ -1,6 +1,8 @@
 package vm
 
-import "github.com/ellcrys/druid/blockcode"
+import (
+	"github.com/ellcrys/druid/blockcode"
+)
 
 // SampleBlockchain defines a structure of a blockchain.
 // This is for test only. Blockchains are more complex than this.
@@ -16,12 +18,12 @@ func NewSampleBlockchain() *SampleBlockchain {
 		panic(err)
 	}
 	b.blockcodes = map[string]*blockcode.Blockcode{
-		"some_address": bc,
+		"blockcode_0": bc,
 	}
 	return b
 }
 
 // GetBlockCode returns a blockcode
-func (b *SampleBlockchain) GetBlockCode(address string) *blockcode.Blockcode {
-	return b.blockcodes[address]
+func (b *SampleBlockchain) GetBlockCode(address string) (*blockcode.Blockcode, error) {
+	return b.blockcodes[address], nil
 }

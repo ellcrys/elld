@@ -4,11 +4,10 @@
   "description": "An example blockcode",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "lang": "go",
   "langVer": "1.10.2",
-  "publicFuncs": ["DoSomething"]
+  "publicFuncs": ["some_func"]
 }

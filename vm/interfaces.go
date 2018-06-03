@@ -13,7 +13,7 @@ type Block interface {
 // Blockchain interface defines a structure for accessing the blockchain
 // and all its primitives.
 type Blockchain interface {
-	GetBlockCode(address string) *blockcode.Blockcode
+	GetBlockCode(address string) (*blockcode.Blockcode, error)
 }
 
 // LangBuilder provides information about how to build and run a blockcode of a specific language
