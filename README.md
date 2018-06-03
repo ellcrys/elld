@@ -1,9 +1,9 @@
 # Elld - Official Ellcrys Client
 Elld is the official client that implements a full node according to the Ellcrys specification. The client is written in Go programming language.
 
-This client is still very much under active development. It will allow uses run a daemon that will follow the protocol of the Ellcrys network. It will connect to other nodes on the network, receive and relay transactions and other messages, maintain the ledger and so on.
+This client is still very much under active development. It will allow users run a daemon that will follow the protocol of the Ellcrys network. It will connect to other nodes on the network, receive and relay transactions and other messages, maintain the ledger and more.
 
-Find more documentations in the []Wiki](https://github.com/ellcrys/elld/wiki) and in specific package directories. 
+Find more documentations in the [Wiki](https://github.com/ellcrys/elld/wiki) and in specific package directories. 
 
 ### Requirement
 [Go](http://golang.org/) 1.9 or newer.
