@@ -1,4 +1,4 @@
-package configdir_test
+package configdir
 
 import (
 	"testing"
