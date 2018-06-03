@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 
+	"github.com/ellcrys/druid/node/histcache"
 	"github.com/ellcrys/druid/util"
 	"github.com/ellcrys/druid/wire"
 	net "github.com/libp2p/go-libp2p-net"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-func makeTxHistoryKey(tx *wire.Transaction, peer *Node) MultiKey {
+func makeTxHistoryKey(tx *wire.Transaction, peer *Node) histcache.MultiKey {
 	return []interface{}{tx.ID(), peer.StringID()}
 }
 
@@ -53,7 +54,6 @@ func (pt *Inception) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
 
 	txID := tx.ID()
 	pt.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
-
 	sent := 0
 	for _, peer := range remotePeers {
 

@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package wire;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
 // Handshake represents the first message between peers
 message Handshake {
     string subVersion = 1;  // version of the client
@@ -37,6 +39,12 @@ message Reject {
     bytes extraData = 4;
 }
 
+// InvokeArgs describes a function to be executed by a blockode
+message InvokeArgs {
+    string func = 1;
+    map<string,string> params = 2;
+}
+
 // Transaction represents a transaction
 message Transaction {
     int64 type = 1;
@@ -46,7 +54,8 @@ message Transaction {
     string value = 5;
     int64 Timestamp = 6;
     string Fee = 7;
-    bytes sig = 8;
+    InvokeArgs InvokeArgs = 8;
+    bytes sig = 9;
 }
 
 message Block{

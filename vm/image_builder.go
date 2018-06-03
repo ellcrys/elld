@@ -1,22 +1,16 @@
 package vm
 
 import (
-	"bufio"
-	"context"
-	"encoding/json"
+	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
+	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/archive"
 	"github.com/ellcrys/druid/util/logger"
 	"github.com/franela/goreq"
-	funk "github.com/thoas/go-funk"
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 // BuildContext for building a docker image
@@ -43,11 +37,11 @@ type Image struct {
 type ImageBuilder struct {
 	log           logger.Logger
 	dockerFileURL string
-	client        *client.Client
+	client        *docker.Client
 }
 
 // NewImageBuilder creates an instance of ImageBuilder
-func NewImageBuilder(log logger.Logger, dockerClient *client.Client, dockerFileURL string) *ImageBuilder {
+func NewImageBuilder(log logger.Logger, dockerClient *docker.Client, dockerFileURL string) *ImageBuilder {
 	ib := new(ImageBuilder)
 	ib.log = log
 	ib.client = dockerClient
@@ -58,6 +52,7 @@ func NewImageBuilder(log logger.Logger, dockerClient *client.Client, dockerFileU
 // getDockerFile fetches Dockerfile from github.
 func (ib *ImageBuilder) getDockerFile() (string, error) {
 
+	goreq.SetConnectTimeout(10 * time.Second)
 	res, err := goreq.Request{Uri: ib.dockerFileURL}.Do()
 	if err != nil {
 		return "", err
@@ -78,78 +73,96 @@ func (ib *ImageBuilder) getDockerFile() (string, error) {
 }
 
 // Build builds an image from a docker file gotten from the getDockerFile func
-// - it creates a build context for the docker image build command
-// - get image if it exists
-// - builds an image if it doesn't already exists
-// - returns the Image & ID if build is successful
-func (ib *ImageBuilder) Build(dockerFileContent string) (*Image, error) {
+// - Checks if image already exists, else
+// - Gets the docker file
+// - Create an in-memory tar object and add the docker file to it
+// - Create the build options
+// - Build image in a separate go routine
+// - Read the output
+// - When build completes, check if image was created
+func (ib *ImageBuilder) Build() (*Image, error) {
 
-	image := ib.getImage()
+	var err error
+
+	image, _ := ib.getImage()
 	if image != nil {
 		return image, nil
 	}
 
-	dir := "vm-build-context"
-
-	buildCtx, err := NewBuildContext(dir, "Dockerfile", dockerFileContent)
+	dockerFileContent, err := ib.getDockerFile()
 	if err != nil {
 		return nil, err
 	}
 
-	defer buildCtx.Close()
+	inpBuf := bytes.NewBuffer(nil)
+	tr := tar.NewWriter(inpBuf)
+	t := time.Now()
+	dockerfileSize := int64(len([]byte(dockerFileContent)))
+	tr.WriteHeader(&tar.Header{Name: "Dockerfile", Size: dockerfileSize, ModTime: t, AccessTime: t, ChangeTime: t})
+	tr.Write([]byte(dockerFileContent))
+	tr.Close()
 
-	source, err := buildCtx.Reader()
-	if err != nil {
-		return nil, err
-	}
-
-	defer source.Close()
-
-	ctx := context.Background()
-	img, err := ib.client.ImageBuild(ctx, source, types.ImageBuildOptions{
-		Tags: []string{dockerFileHash},
+	r, w := io.Pipe()
+	imgOpts := docker.BuildImageOptions{
+		Name:           dockerFileHash,
+		RmTmpContainer: true,
 		Labels: map[string]string{
 			"maintainer": "ellcrys",
 			"version":    dockerFileHash,
 		},
-	})
-	if err != nil {
-		return nil, err
+		InputStream:  inpBuf,
+		OutputStream: w,
 	}
-	defer img.Body.Close()
 
-	scanner := bufio.NewScanner(img.Body)
-
-	var buildResp BuildResponse
-	var aux Aux
-	var ID string
-
-	for scanner.Scan() {
-		err := json.Unmarshal(scanner.Bytes(), &buildResp)
-		if err != nil {
-			return nil, err
+	errCh := make(chan error, 1)
+	go func() {
+		defer w.Close()
+		defer close(errCh)
+		if err := ib.client.BuildImage(imgOpts); err != nil {
+			errCh <- err
 		}
-		replacer := strings.NewReplacer("\n", "")
-		val := replacer.Replace(buildResp.Stream)
-		if val != "" {
-			ib.log.Debug("Image Build", "Output", val)
-		}
+	}()
 
-		if strings.Contains(scanner.Text(), "aux") {
-			json.Unmarshal(scanner.Bytes(), &aux)
-			ID = strings.Split(aux.Image.ID, ":")[1]
+	go func() {
+		for {
+			buf := make([]byte, 64)
+			_, err := r.Read(buf)
+			if err != nil {
+				break
+			}
+
+			if logStr := string(buf); strings.TrimSpace(logStr) != "" {
+				ib.log.Debug(fmt.Sprintf("[Building Image] -> %s", strings.Join(strings.Fields(logStr), " ")))
+			}
 		}
+	}()
+
+	if buildErr := <-errCh; err != nil {
+		return nil, fmt.Errorf("build failed: %s", buildErr)
 	}
-	return &Image{ID}, nil
+
+	img, _ := ib.getImage()
+	if img == nil {
+		return nil, fmt.Errorf("failed to create image")
+	}
+
+	return img, nil
 }
 
 // destroyImage removes a docker image
 func (ib *ImageBuilder) destroyImage() error {
 
-	image := ib.getImage()
-	ctx := context.Background()
+	image, err := ib.getImage()
+	if err != nil {
+		return err
+	}
 
-	_, err := ib.client.ImageRemove(ctx, image.ID, types.ImageRemoveOptions{Force: true})
+	if image == nil {
+
+		return fmt.Errorf("image not found")
+	}
+
+	err = ib.client.RemoveImageExtended(image.ID, docker.RemoveImageOptions{Force: true})
 	if err != nil {
 		return err
 	}
@@ -157,68 +170,22 @@ func (ib *ImageBuilder) destroyImage() error {
 	return nil
 }
 
-func (ib *ImageBuilder) getImage() *Image {
-	ctx := context.Background()
-	summaries, _ := ib.client.ImageList(ctx, types.ImageListOptions{})
+func (ib *ImageBuilder) getImage() (*Image, error) {
 
-	// check images if version already exist
-	image := funk.Find(summaries, func(x types.ImageSummary) bool {
-		if x.Labels["version"] == dockerFileHash && x.Labels["maintainer"] == "ellcrys" {
-			return true
-		}
-		return false
-	})
+	image, err := ib.client.InspectImage(dockerFileHash)
+	if err != nil {
+		return nil, err
+	}
 
 	if image == nil {
-		return nil
+		return nil, nil
+	}
+
+	if labels := image.Config.Labels; labels["version"] != dockerFileHash || labels["maintainer"] != "ellcrys" {
+		return nil, fmt.Errorf("similar docker image found but not maintained by ellcrys")
 	}
 
 	return &Image{
-		ID: image.(types.ImageSummary).ID,
-	}
-}
-
-// NewBuildContext creates a build context for the docker image build
-func NewBuildContext(dir string, name string, content string) (*BuildContext, error) {
-	buildContext := new(BuildContext)
-
-	tempdir, err := ioutil.TempDir("", dir)
-	if err != nil {
-		return nil, err
-	}
-	buildContext.Dir = tempdir
-
-	err = buildContext.addFile(name, []byte(content))
-	if err != nil {
-		return nil, err
-	}
-
-	return buildContext, nil
-}
-
-// addFile stores the dockerfile temporarily on the system
-func (b *BuildContext) addFile(file string, content []byte) error {
-	fp := filepath.Join(b.Dir, filepath.FromSlash(file))
-	dirpath := filepath.Dir(fp)
-	if dirpath != "." {
-		if err := os.MkdirAll(dirpath, 0755); err != nil {
-			return err
-		}
-	}
-	return ioutil.WriteFile(fp, content, 0644)
-}
-
-// Close deletes the context
-func (b *BuildContext) Close() error {
-	return os.RemoveAll(b.Dir)
-}
-
-// Reader outputs a tar stream of the docker file
-func (b *BuildContext) Reader() (io.ReadCloser, error) {
-	reader, err := archive.TarWithOptions(b.Dir, &archive.TarOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	return reader, nil
+		ID: image.ID,
+	}, nil
 }

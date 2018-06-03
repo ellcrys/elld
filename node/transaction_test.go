@@ -59,7 +59,7 @@ var _ = Describe("Transaction", func() {
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
-			Expect(n.historyCache.cache.Len()).To(Equal(1))
+			Expect(n.historyCache.Len()).To(Equal(1))
 			Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
 		})
 
