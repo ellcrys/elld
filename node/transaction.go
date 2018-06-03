@@ -54,7 +54,6 @@ func (pt *Inception) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
 
 	txID := tx.ID()
 	pt.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
-
 	sent := 0
 	for _, peer := range remotePeers {
 

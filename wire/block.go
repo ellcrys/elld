@@ -8,20 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-//Block  Construct
-// type Block struct {
-// 	Version        string
-// 	HashPrevBlock  string
-// 	TX             []string
-// 	HashMerkleRoot string
-// 	Time           string
-// 	Nounce         uint64
-// 	Difficulty     string
-// 	Number         uint64
-// 	PowHash        string
-// 	PowResult      string
-// }
-
 type asn1BlockNoNonce struct {
 	HashPrevBlock  string `asn1:"utf8" json:"hashPrevBlock"`
 	HashMerkleRoot string `asn1:"utf8" json:"hashMerkleRoot"`

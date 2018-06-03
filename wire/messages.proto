@@ -4,11 +4,6 @@ package wire;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-option (gogoproto.marshaler_all) = false;
-option (gogoproto.unmarshaler_all) = false;
-option (gogoproto.equal_all) = false;
-option (gogoproto.sizer_all) = false;
-
 // Handshake represents the first message between peers
 message Handshake {
     string subVersion = 1;  // version of the client
@@ -47,7 +42,7 @@ message Reject {
 // InvokeArgs describes a function to be executed by a blockode
 message InvokeArgs {
     string func = 1;
-    map<string, bytes> params = 2 [(gogoproto.castvalue) = "interface{}"];
+    map<string,string> params = 2;
 }
 
 // Transaction represents a transaction

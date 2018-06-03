@@ -1,8 +1,8 @@
 hash: ea0c3a8cbd0dd8555aeec479323b8d1e584151d8c226184f346ecb342eb65346
-updated: 2018-06-02T13:17:16.711704+01:00
+updated: 2018-06-03T15:46:14.461791+01:00
 imports:
 - name: github.com/ellcrys/go.stub
-  version: 0362d025766e95bb25d6dea96f5bfebd95840ebe
+  version: 5e025a1d311d45220d3d1ff0abdb996214143adb
 - name: github.com/googollee/go-engine.io
   version: 80ae0e43aca17b4c5a6834999d0f2eaa16b9afda
   subpackages:

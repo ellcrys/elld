@@ -3,7 +3,7 @@ package miner
 import (
 	"math/big"
 
-	"github.com/ellcrys/druid/params"
+	"github.com/ellcrys/druid/constants"
 )
 
 // Some weird constants to avoid constant memory allocs for them.
@@ -58,13 +58,13 @@ func calcDifficultyHomestead(time uint64, parentBlockTime *big.Int, ParentDiffic
 		x.Set(bigMinus99)
 	}
 	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
-	y.Div(ParentDifficulty, params.DifficultyBoundDivisor)
+	y.Div(ParentDifficulty, constants.DifficultyBoundDivisor)
 	x.Mul(y, x)
 	x.Add(ParentDifficulty, x)
 
 	// minimum difficulty can ever be (before exponential factor)
-	if x.Cmp(params.MinimumDifficulty) < 0 {
-		x.Set(params.MinimumDifficulty)
+	if x.Cmp(constants.MinimumDifficulty) < 0 {
+		x.Set(constants.MinimumDifficulty)
 	}
 
 	// for the exponential factor

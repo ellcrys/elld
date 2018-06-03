@@ -25,10 +25,10 @@ type Context struct {
 
 // Args represents the parameters of a function call
 type Args struct {
-	Func      string                 `json:"func"`
-	Payload   map[string]interface{} `json:"payload"`
-	Tx        *Tx                    `json:"tx"`
-	BlockInfo *BlockInfo             `json:"blockInfo"`
+	Func      string            `json:"func"`
+	Payload   map[string]string `json:"payload"`
+	Tx        *Tx               `json:"tx"`
+	BlockInfo *BlockInfo        `json:"blockInfo"`
 }
 
 // Result represents the output of a function call

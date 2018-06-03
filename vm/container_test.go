@@ -168,7 +168,7 @@ var _ = Describe("Container", func() {
 		})
 
 		It("should add a child container", func() {
-			child := new(Container)
+			child := NewContainer(cli, image, log)
 			err := child.create()
 			Expect(err).To(BeNil())
 			co.addChild(child)

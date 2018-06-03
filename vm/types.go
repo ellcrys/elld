@@ -15,10 +15,10 @@ type Tx struct {
 
 // Args defines the structure of arguments sent to a blockcode
 type Args struct {
-	Func      string                 `json:"func"`
-	Payload   map[string]interface{} `json:"payload"`
-	Tx        *Tx                    `json:"tx"`
-	BlockInfo *BlockInfo             `json:"blockInfo"`
+	Func      string            `json:"func"`
+	Payload   map[string]string `json:"payload"`
+	Tx        *Tx               `json:"tx"`
+	BlockInfo *BlockInfo        `json:"blockInfo"`
 }
 
 // BlockcodeMsg defines the message expected from a blockcode
