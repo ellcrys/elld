@@ -4,36 +4,28 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/client"
 	"github.com/ellcrys/druid/util"
-	funk "github.com/thoas/go-funk"
-
 	logger "github.com/ellcrys/druid/util/logger"
+	docker "github.com/fsouza/go-dockerclient"
+	funk "github.com/thoas/go-funk"
 )
 
 const (
-	dockerFileHash = "2a7262215a616106b644a489e6e1da1d52834853"
-	dockerFileURL  = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile/%s/Dockerfile"
+	dockerFileHash         = "2a7262215a616106b644a489e6e1da1d52834853"
+	dockerFileURL          = "https://raw.githubusercontent.com/ellcrys/vm-dockerfile/%s/Dockerfile"
+	targetDockerAPIVersion = "1.37"
+	dockerEndpoint         = "unix:///var/run/docker.sock"
 )
 
 // MountDir where block codes are stored
 var MountDir = "mountdir"
 
-// BlockCode represents a block code in a blockchain
-type BlockCode struct {
-	Lang            string
-	LangVersion     string
-	Content         []byte
-	PublicFunctions []string
-}
-
 // VM specializes in executing transactions against a contracts
 type VM struct {
-	containers             map[string]*Container
 	log                    logger.Logger
 	containerMountDir      string
 	InvokeResponseListener func(interface{})
-	dockerClient           *client.Client
+	dockerCli              *docker.Client
 }
 
 // New creates a new instance of VM
@@ -41,7 +33,6 @@ func New(log logger.Logger, containerMountDir string) *VM {
 	vm := new(VM)
 	vm.log = log
 	vm.containerMountDir = containerMountDir
-	vm.containers = map[string]*Container{}
 	return vm
 }
 
@@ -53,7 +44,7 @@ func (vm *VM) Init() error {
 
 	var err error
 
-	vm.dockerClient, err = client.NewClientWithOpts()
+	vm.dockerCli, err = docker.NewClient(dockerEndpoint)
 	if err != nil {
 		if funk.Contains(err.Error(), "Cannot connect to the Docker") {
 			return err
@@ -67,7 +58,7 @@ func (vm *VM) Init() error {
 		}
 	}
 
-	imgBuilder := NewImageBuilder(vm.log, vm.dockerClient, fmt.Sprintf(dockerFileURL, dockerFileHash))
+	imgBuilder := NewImageBuilder(vm.log, vm.dockerCli, fmt.Sprintf(dockerFileURL, dockerFileHash))
 	_, err = imgBuilder.Build()
 	if err != nil {
 		return err

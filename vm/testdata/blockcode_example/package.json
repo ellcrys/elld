@@ -1,0 +1,13 @@
+{
+  "name": "example_blockcode",
+  "version": "0.0.1",
+  "description": "An example blockcode",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "",
+  "license": "ISC",
+  "lang": "go",
+  "langVer": "1.10.2",
+  "publicFuncs": ["some_func"]
+}

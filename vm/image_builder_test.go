@@ -3,8 +3,8 @@ package vm
 import (
 	"fmt"
 
-	"github.com/docker/docker/client"
 	"github.com/ellcrys/druid/util/logger"
+	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -12,23 +12,19 @@ import (
 var _ = Describe("ImageBuilder", func() {
 
 	var err error
-	var dockerClient *client.Client
-	var log = logger.NewLogrusNoOp()
+	var dockerClient *docker.Client
 	var builder *ImageBuilder
 	var dckFileURL = fmt.Sprintf(dockerFileURL, dockerFileHash)
+	var log = logger.NewLogrus()
+	log.SetToDebug()
 
 	BeforeEach(func() {
-		dockerClient, err = client.NewClientWithOpts()
+		dockerClient, err = docker.NewClient(dockerEndpoint)
 		Expect(err).To(BeNil())
 	})
 
 	BeforeEach(func() {
 		builder = NewImageBuilder(log, dockerClient, dckFileURL)
-	})
-
-	AfterSuite(func() {
-		err := builder.destroyImage()
-		Expect(err).To(BeNil())
 	})
 
 	Describe(".getDockerFile", func() {
@@ -41,52 +37,20 @@ var _ = Describe("ImageBuilder", func() {
 
 	Describe(".buildImage", func() {
 
-		BeforeEach(func() {
-			dockerfile, err := builder.getDockerFile()
-			Expect(err).To(BeNil())
-			Expect(dockerfile).ToNot(BeEmpty())
-		})
-
-		It("should build image from  docker file", func() {
+		It("should build image from docker file", func() {
 			image, err := builder.Build()
 			Expect(err).To(BeNil())
 			Expect(image).NotTo(BeNil())
-			Expect(image.ID).NotTo(BeNil())
+			Expect(image.ID).NotTo(BeEmpty())
+			builder.getImage()
 		})
 
 		Describe(".getImage", func() {
 			It("should get image if it exists", func() {
-				image := builder.getImage()
+				image, err := builder.getImage()
+				Expect(err).To(BeNil())
 				Expect(image).NotTo(BeNil())
 				Expect(image.ID).ToNot(BeEmpty())
-			})
-		})
-	})
-
-	Describe("BuildContext", func() {
-
-		var buildCtx *BuildContext
-		var err error
-
-		BeforeEach(func() {
-			dir := "test-hello"
-			buildCtx, err = NewBuildContext(dir, "hellofile", "hello world")
-			Expect(err).To(BeNil())
-			Expect(buildCtx).NotTo(BeNil())
-		})
-
-		Describe(".addFile", func() {
-			It("should create a file and content", func() {
-				err := buildCtx.addFile("hellofile", []byte("hello world"))
-				Expect(err).To(BeNil())
-			})
-		})
-
-		Describe(".Reader", func() {
-			It("should create a stream from buildCtx", func() {
-				reader, err := buildCtx.Reader()
-				Expect(err).To(BeNil())
-				Expect(reader).NotTo(BeNil())
 			})
 		})
 	})

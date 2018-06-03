@@ -1,14 +1,11 @@
 package vm
 
 import (
-	"context"
 	"fmt"
-	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/druid/blockcode"
 	"github.com/ellcrys/druid/util/logger"
+	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -20,8 +17,8 @@ func (lang *TestBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *TestBuildLang) Build(containerID string) error {
-	return nil
+func (lang *TestBuildLang) GetBuildScript() []string {
+	return []string{"bash", "-c", "echo build"}
 }
 
 type ErrBuildLang struct {
@@ -31,26 +28,26 @@ func (lang *ErrBuildLang) GetRunScript() []string {
 	return []string{"bash", "-c", "echo hello"}
 }
 
-func (lang *ErrBuildLang) Build(containerID string) error {
-	return fmt.Errorf("err", "an error")
+func (lang *ErrBuildLang) GetBuildScript() []string {
+	return []string{"basjx"}
 }
 
 var _ = Describe("Container", func() {
-	containerStopTimeout = time.Millisecond * 500
-	var log = logger.NewLogrusNoOp()
+	containerStopTimeout = 1
+	var log = logger.NewLogrus()
+	log.SetToDebug()
 	var co *Container
-	var transactionID string
 	var err error
 	var dckFileURL = fmt.Sprintf(dockerFileURL, dockerFileHash)
-	var cli *client.Client
+	var cli *docker.Client
 	var image *Image
 
 	BeforeEach(func() {
-		transactionID = util.RandString(5)
-
-		cli, err = client.NewClientWithOpts()
+		cli, err = docker.NewClient(dockerEndpoint)
 		Expect(err).To(BeNil())
+	})
 
+	BeforeEach(func() {
 		builder := NewImageBuilder(log, cli, dckFileURL)
 		image, err = builder.Build()
 		Expect(err).To(BeNil())
@@ -58,88 +55,126 @@ var _ = Describe("Container", func() {
 	})
 
 	BeforeEach(func() {
-		co = new(Container)
-		co.dockerCli = cli
-		co.children = []*Container{}
-		Expect(err).To(BeNil())
-		container, err := cli.ContainerCreate(context.Background(), &container.Config{
-			Image: image.ID,
-		}, nil, nil, transactionID)
-		Expect(err).To(BeNil())
-		Expect(container).NotTo(BeNil())
-		co.id = container.ID
-		co.log = log
+		co = NewContainer(cli, image, log)
 	})
 
 	AfterEach(func() {
-		defer cli.Close()
-		err := co.stop()
-		Expect(err).To(BeNil())
 		err = co.destroy()
 		Expect(err).To(BeNil())
 	})
 
+	Describe(".create", func() {
+
+		It("should create the container", func() {
+			err := co.create()
+			Expect(err).To(BeNil())
+			container, err := cli.InspectContainer(co._container.ID)
+			Expect(err).To(BeNil())
+			Expect(container).ToNot(BeNil())
+		})
+	})
+
 	Describe(".start", func() {
+
+		BeforeEach(func() {
+			err := co.create()
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			ci, err := cli.InspectContainer(co._container.ID)
+			Expect(err).To(BeNil())
+			if ci.State.Running {
+				err = cli.StopContainer(co._container.ID, 1)
+				Expect(err).To(BeNil())
+			}
+		})
+
 		It("should start a container", func() {
 			err := co.start()
 			Expect(err).To(BeNil())
+			ci, err := cli.InspectContainer(co._container.ID)
+			Expect(err).To(BeNil())
+			Expect(ci.State.Running).To(BeTrue())
 		})
 
-		It("should fail to start a container", func() {
-			original := co.id
-			co.id = "<fake container id>"
+		It("should return err = 'API error (404): No such container: <fake container id>'", func() {
+			original := co._container.ID
+			co._container.ID = "<fake container id>"
 			err := co.start()
 			Expect(err).NotTo(BeNil())
-			co.id = original
-		})
-
-		It("should fail to stop a container", func() {
-			original := co.id
-			co.id = "<fake container id>"
-			err := co.stop()
-			Expect(err).NotTo(BeNil())
-			co.id = original
-		})
-
-		It("should fail to destroy a container", func() {
-			original := co.id
-			co.id = "<fake container id>"
-			err := co.destroy()
-			Expect(err).NotTo(BeNil())
-			co.id = original
+			co._container.ID = original
 		})
 	})
+
 	Describe(".exec", func() {
-		It("should execute a command in the container", func() {
-			err := co.start()
+
+		BeforeEach(func() {
+			err := co.create()
 			Expect(err).To(BeNil())
-			command := []string{"bash", "-c", "echo hello"}
-			done := make(chan error, 1)
-			output := make(chan string)
-			go co.exec(command, output, done)
-			Expect(<-output).NotTo(BeEmpty())
-			Expect(<-done).To(BeNil())
 		})
 
-		It("should throw error while trying to execute a command in the container", func() {
+		BeforeEach(func() {
 			err := co.start()
 			Expect(err).To(BeNil())
-			command := []string{}
-			done := make(chan error, 1)
-			output := make(chan string)
-			co.exec(command, output, done)
-			Expect(<-done).NotTo(BeNil())
+		})
+
+		It("should execute a command in the container", func() {
+			command := []string{"bash", "-c", "echo hello"}
+			statusCode, err := co.exec(command)
+			Expect(err).To(BeNil())
+			Expect(statusCode).To(Equal(0))
+		})
+	})
+
+	Describe(".copy", func() {
+		var bc *blockcode.Blockcode
+
+		BeforeEach(func() {
+			bc, err = blockcode.FromDir("./testdata/blockcode_example")
+			Expect(err).To(BeNil())
+			Expect(bc.Len()).NotTo(BeZero())
+		})
+
+		BeforeEach(func() {
+			err := co.create()
+			Expect(err).To(BeNil())
+		})
+
+		BeforeEach(func() {
+			err := co.start()
+			Expect(err).To(BeNil())
+		})
+
+		It("should copy content into the container", func() {
+			err = co.copy(bc.GetCode())
+			Expect(err).To(BeNil())
+			statusCode, err := co.exec([]string{"bash", "-c", "ls " + makeCopyPath(co.id())})
+			Expect(err).To(BeNil())
+			Expect(statusCode).To(Equal(0))
+		})
+
+		It("should fail to copy content into the container", func() {
+			err := co.copy(bc.Bytes())
+			Expect(err).NotTo(BeNil())
 		})
 	})
 
 	Describe(".addChild", func() {
+
+		BeforeEach(func() {
+			err := co.create()
+			Expect(err).To(BeNil())
+		})
+
 		It("should add a child container", func() {
 			child := new(Container)
-			child.id = "1c6de1dbaad3"
+			err := child.create()
+			Expect(err).To(BeNil())
 			co.addChild(child)
 			Expect(len(co.children)).NotTo(BeZero())
-			Expect(co.children[0].id).To(Equal(child.id))
-			Expect(child.parent.id).To(Equal(co.id))
+			Expect(co.children[0].id()).To(Equal(child.id()))
+			Expect(child.parent.id()).To(Equal(co.id()))
 		})
 	})
 
@@ -151,18 +186,30 @@ var _ = Describe("Container", func() {
 	})
 
 	Describe(".build", func() {
+
+		BeforeEach(func() {
+			err := co.create()
+			Expect(err).To(BeNil())
+		})
+
+		BeforeEach(func() {
+			err := co.start()
+			Expect(err).To(BeNil())
+		})
+
 		It("should attempt to build block code", func() {
 			co.setBuildLang(new(TestBuildLang))
 			Expect(co.buildConfig).ToNot(BeNil())
-			err := co.build()
+			success, err := co.build()
 			Expect(err).To(BeNil())
+			Expect(success).To(BeTrue())
 		})
 
 		It("should fail to build block code", func() {
 			co.setBuildLang(new(ErrBuildLang))
-			Expect(co.buildConfig).ToNot(BeNil())
-			err := co.build()
-			Expect(err).NotTo(BeNil())
+			success, err := co.build()
+			Expect(err).To(BeNil())
+			Expect(success).To(BeFalse())
 		})
 	})
 
