@@ -1,7 +1,7 @@
-package blockcodeex
+package main
 
 import "fmt"
 
-func Stuff() {
+func main() {
 	fmt.Println("do it")
 }

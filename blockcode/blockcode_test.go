@@ -62,7 +62,7 @@ var _ = Describe("Blockcode", func() {
 	})
 
 	Describe(".Len", func() {
-		It("should return 3584", func() {
+		It("should return 3072", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
 			Expect(bc.Len()).To(Equal(3072))
@@ -81,7 +81,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return Hash", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Hash()).To(Equal([]byte{74, 1, 196, 58, 225, 53, 55, 54, 160, 83, 231, 211, 115, 147, 183, 15, 110, 181, 212, 129, 36, 255, 117, 17, 73, 204, 72, 191, 86, 189, 104, 84}))
+			Expect(bc.Hash()).To(Equal([]byte{148, 25, 211, 248, 52, 247, 87, 232, 85, 122, 54, 128, 104, 171, 53, 68, 243, 150, 28, 66, 217, 58, 223, 47, 111, 118, 36, 95, 219, 145, 83, 185}))
 		})
 	})
 
@@ -89,7 +89,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return ID", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.ID()).To(Equal("4a01c43ae1353736a053e7d37393b70f6eb5d48124ff751149cc48bf56bd6854"))
+			Expect(bc.ID()).To(Equal("9419d3f834f757e8557a368068ab3544f3961c42d93adf2f6f76245fdb9153b9"))
 		})
 	})
 
