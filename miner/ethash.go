@@ -100,7 +100,6 @@ type Ethash struct {
 
 // New creates a full sized ethash PoW scheme.
 func New(config Config) *Ethash {
-
 	if config.CachesInMem <= 0 {
 		log.Debug("One ethash cache must always be in memory", "requested", config.CachesInMem)
 		config.CachesInMem = 1
@@ -180,7 +179,8 @@ search:
 
 			// Compute the PoW value of this nonce
 			digest, result := hashimotoFull(Mdataset.dataset, Mhash, nonce)
-			fmt.Println(fmt.Sprintf("Cur.Nonce: %s, Target: %s", new(big.Int).SetBytes(result).String(), Mtarget.String()))
+
+			// fmt.Println(fmt.Sprintf("Cur.Nonce: %s, Target: %s", new(big.Int).SetBytes(result).String(), Mtarget.String()))
 			if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
 
 				// Correct nonce found, create a new header with it
@@ -192,11 +192,11 @@ search:
 
 				break search
 			}
+
 			nonce++
 		}
 
 	}
-
 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
 	// during sealing so it's not unmapped while being read.
 	runtime.KeepAlive(Mdataset)
@@ -352,7 +352,6 @@ func (c *cache) generate(dir string, limit int, test bool) {
 			log.Debug("miner", "cache", "Loaded old ethash cache from disk")
 			return
 		}
-		log.Debug("Failed to load old ethash cache", "err", err)
 
 		// No previous cache available, create a new cache file to fill
 		c.dump, c.mmap, c.cache, err = memoryMapAndGenerate(path, size, func(buffer []uint32) { generateCache(buffer, c.epoch, seed) })
@@ -424,8 +423,8 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 		// cache becomes unused.
 		runtime.SetFinalizer(d, (*dataset).finalizer)
 
-		// Try to load the file from disk and memory map it
 		var err error
+		// Try to load the file from disk and memory map it
 		d.dump, d.mmap, d.dataset, err = memoryMap(path)
 		if err == nil {
 			val := "Loaded old ethash dataset from disk"
@@ -445,6 +444,7 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 			d.dataset = make([]uint32, dsize/2)
 			generateDataset(d.dataset, d.epoch, cache)
 		}
+
 		// Iterate over all previous instances and delete old ones
 		for ep := int(d.epoch) - limit; ep >= 0; ep-- {
 			seed := seedHash(uint64(ep)*epochLength + 1)

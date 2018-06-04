@@ -18,7 +18,7 @@ func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32)
 	copy(seed, hash)
 	binary.LittleEndian.PutUint64(seed[32:], nonce)
 
-	seed = blake2b512Hash().Sum(seed)
+	seed = rHash512(seed)
 	seedHead := binary.LittleEndian.Uint32(seed)
 
 	// Start the mix with replicated seed
@@ -46,18 +46,16 @@ func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32)
 	for i, val := range mix {
 		binary.LittleEndian.PutUint32(digest[i*4:], val)
 	}
-	return digest, blake2b256Hash().Sum(append(seed, digest...))
+	return digest, rHash256(append(seed, digest...))
 }
 
 // hashimotoLight aggregates data from the full dataset (using only a small
 // in-memory cache) in order to produce our final value for a particular header
 // hash and nonce.
 func hashimotoLight(size uint64, cache []uint32, hash []byte, nonce uint64) ([]byte, []byte) {
-	blake2b512 := makeHasher(blake2b512Hash())
 
 	lookup := func(index uint32) []uint32 {
-		rawData := generateDatasetItem(cache, index, blake2b512)
-
+		rawData := generateDatasetItem(cache, index)
 		data := make([]uint32, len(rawData)/4)
 		for i := 0; i < len(data); i++ {
 			data[i] = binary.LittleEndian.Uint32(rawData[i*4:])

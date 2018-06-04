@@ -39,6 +39,7 @@ var minerCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 
+		miner.GetLogger().SetToDebug()
 		fmt.Println("************************************************************************************************************************************************************ ")
 
 		//get current time stamp

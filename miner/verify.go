@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"runtime"
 
 	ellBlock "github.com/ellcrys/druid/wire"
 )
@@ -26,9 +25,26 @@ var (
 // the PoW difficulty requirements.
 func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 
+	blockNumber := block.Number
+
+	epoch := blockNumber / epochLength
+	currentI, _ := ethash.datasets.get(epoch)
+
+	current := currentI.(*dataset)
+
+	// Wait for generation to finish if need be.
+	// cache and Dag file
+	current.generate(ethash.config.DatasetDir, ethash.config.DatasetsOnDisk, ethash.config.PowMode == ModeTest)
+
+	var (
+		Mhash              = block.HashNoNonce().Bytes()
+		blockDifficulty, _ = new(big.Int).SetString(block.Difficulty, 10)
+		Mtarget            = new(big.Int).Div(maxUint256, blockDifficulty)
+		Mdataset           = current
+	)
+
 	// Ensure that we have a valid difficulty for the block
-	blockDiffuclty, _ := new(big.Int).SetString(block.Difficulty, 10)
-	if blockDiffuclty.Sign() <= 0 {
+	if blockDifficulty.Sign() <= 0 {
 		return errInvalidDifficulty
 	}
 
@@ -40,31 +56,10 @@ func (ethash *Ethash) VerifyPOW(block *ellBlock.Block) error {
 		return errNonPositiveBlockNumber
 	}
 
-	size := datasetSize(number)
-	if ethash.config.PowMode == ModeTest {
-		size = 32 * 1024
+	_, result := hashimotoFull(Mdataset.dataset, Mhash, block.Nounce)
+	if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
+		return nil
 	}
 
-	cache := ethash.cache(number)
-
-	//get Digest and result for POW verification
-	digest, result := hashimotoLight(size, cache.cache, block.HashNoNonce().Bytes(), block.Nounce)
-
-	// Caches are unmapped in a finalizer. Ensure that the cache stays live
-	// until after the call to hashimotoLight so it's not unmapped while being used.
-	runtime.KeepAlive(cache)
-
-	// convert digest to string
-	outputDigest := fmt.Sprintf("%x", digest)
-
-	// check if the mix digest is equivalent to the block Mix Digest
-	if outputDigest != block.PowHash {
-		return errInvalidMixDigest
-	}
-
-	target := new(big.Int).Div(maxUint256, blockDiffuclty)
-	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
-		return errInvalidPoW
-	}
-	return nil
+	return fmt.Errorf("invalid block")
 }
