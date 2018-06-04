@@ -189,7 +189,8 @@
     "log",
     "rlp"
   ]
-  revision = "86be91b3e2dff5df28ee53c59df1ecfe9f97e007"
+  revision = "eae63c511ceafab14b92e274c1b18bf1700e2d3d"
+  version = "v1.8.10"
 
 [[projects]]
   name = "github.com/fatih/color"
@@ -982,6 +983,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1f1ae94a32f5608d635f02f75770819464a1803c0265bbc066e9797f60b898f9"
+  inputs-digest = "21ebfd1fd5a1fabd5f3a5d4fe2200294ee8755ab7ef6e1dedbc7acd6aa26e0a3"
   solver-name = "gps-cdcl"
   solver-version = 1

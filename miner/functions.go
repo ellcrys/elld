@@ -11,9 +11,10 @@ import (
 	"time"
 	"unsafe"
 
+	"golang.org/x/crypto/blake2b"
+
 	"github.com/ellcrys/go-ethereum/common"
 	"github.com/ellcrys/go-ethereum/common/bitutil"
-	"github.com/ellcrys/go-ethereum/crypto/sha3"
 )
 
 const (
@@ -87,6 +88,16 @@ func makeHasher(h hash.Hash) hasher {
 	}
 }
 
+func blake2b256Hash() hash.Hash {
+	h, _ := blake2b.New256(nil)
+	return h
+}
+
+func blake2b512Hash() hash.Hash {
+	h, _ := blake2b.New512(nil)
+	return h
+}
+
 // seedHash is the seed to use for generating a verification cache and the mining
 // dataset.
 func seedHash(block uint64) []byte {
@@ -94,9 +105,10 @@ func seedHash(block uint64) []byte {
 	if block < epochLength {
 		return seed
 	}
-	keccak256 := makeHasher(sha3.NewKeccak256())
+	blake2b256 := makeHasher(blake2b256Hash())
+	// keccak256 := makeHasher(sha3.NewKeccak256())
 	for i := 0; i < int(block/epochLength); i++ {
-		keccak256(seed, seed)
+		blake2b256(seed, seed)
 	}
 	return seed
 }
@@ -141,12 +153,12 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 		}
 	}()
 	// Create a hasher to reuse between invocations
-	keccak512 := makeHasher(sha3.NewKeccak512())
+	blake2b512 := makeHasher(blake2b512Hash())
 
 	// Sequentially produce the initial dataset
-	keccak512(cache, seed)
+	blake2b512(cache, seed)
 	for offset := uint64(hashBytes); offset < size; offset += hashBytes {
-		keccak512(cache[offset:], cache[offset-hashBytes:offset])
+		blake2b512(cache[offset:], cache[offset-hashBytes:offset])
 		atomic.AddUint32(&progress, 1)
 	}
 	// Use a low-round version of randmemohash
@@ -160,7 +172,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 				xorOff = (binary.LittleEndian.Uint32(cache[dstOff:]) % uint32(rows)) * hashBytes
 			)
 			bitutil.XORBytes(temp, cache[srcOff:srcOff+hashBytes], cache[xorOff:xorOff+hashBytes])
-			keccak512(cache[dstOff:], temp)
+			blake2b512(cache[dstOff:], temp)
 
 			atomic.AddUint32(&progress, 1)
 		}
@@ -261,7 +273,7 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 			defer pend.Done()
 
 			// Create a hasher to reuse between invocations
-			keccak512 := makeHasher(sha3.NewKeccak512())
+			blake2b512 := makeHasher(blake2b512Hash())
 
 			// Calculate the data segment this thread should generate
 			batch := uint32((size + hashBytes*uint64(threads) - 1) / (hashBytes * uint64(threads)))
@@ -273,7 +285,7 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 			// Calculate the dataset segment
 			percent := uint32(size / hashBytes / 100)
 			for index := first; index < limit; index++ {
-				item := generateDatasetItem(cache, index, keccak512)
+				item := generateDatasetItem(cache, index, blake2b512)
 				if swapped {
 					swap(item)
 				}

@@ -180,7 +180,7 @@ search:
 
 			// Compute the PoW value of this nonce
 			digest, result := hashimotoFull(Mdataset.dataset, Mhash, nonce)
-
+			fmt.Println(fmt.Sprintf("Cur.Nonce: %s, Target: %s", new(big.Int).SetBytes(result).String(), Mtarget.String()))
 			if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
 
 				// Correct nonce found, create a new header with it
