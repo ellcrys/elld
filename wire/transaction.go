@@ -9,7 +9,7 @@ import (
 
 	validator "gopkg.in/asaskevich/govalidator.v4"
 
-	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/elld/crypto"
 )
 
 var (

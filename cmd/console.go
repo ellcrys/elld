@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/configdir"
 	"github.com/spf13/cobra"
 )
 

@@ -3,8 +3,8 @@ package txpool
 import (
 	"sort"
 
-	"github.com/ellcrys/druid/util"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/wire"
 )
 
 var (

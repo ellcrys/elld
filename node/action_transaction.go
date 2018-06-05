@@ -1,8 +1,8 @@
 package node
 
 import (
-	"github.com/ellcrys/druid/constants"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/constants"
+	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
 )
 

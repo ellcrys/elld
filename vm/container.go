@@ -10,8 +10,8 @@ import (
 
 	"github.com/phayes/freeport"
 
-	"github.com/ellcrys/druid/util"
-	logger "github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util"
+	logger "github.com/ellcrys/elld/util/logger"
 
 	"github.com/cenkalti/rpc2"
 	docker "github.com/fsouza/go-dockerclient"

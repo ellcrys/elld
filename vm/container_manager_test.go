@@ -3,8 +3,8 @@ package vm
 import (
 	"fmt"
 
-	"github.com/ellcrys/druid/util/logger"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/elld/wire"
 	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

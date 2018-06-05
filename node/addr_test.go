@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/druid/testutil"
+	"github.com/ellcrys/elld/testutil"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/wire"
 )
 
 var _ = Describe("Addr", func() {

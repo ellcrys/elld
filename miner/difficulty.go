@@ -3,7 +3,7 @@ package miner
 import (
 	"math/big"
 
-	"github.com/ellcrys/druid/constants"
+	"github.com/ellcrys/elld/constants"
 )
 
 // Some weird constants to avoid constant memory allocs for them.

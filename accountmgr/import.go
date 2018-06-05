@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/elld/crypto"
 	"github.com/fatih/color"
 
 	funk "github.com/thoas/go-funk"

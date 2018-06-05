@@ -8,10 +8,10 @@ import (
 	"github.com/graarh/golang-socketio"
 	"github.com/graarh/golang-socketio/transport"
 
-	"github.com/ellcrys/druid/blockcode"
-	"github.com/ellcrys/druid/constants"
-	logger "github.com/ellcrys/druid/util/logger"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/blockcode"
+	"github.com/ellcrys/elld/constants"
+	logger "github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/elld/wire"
 	docker "github.com/fsouza/go-dockerclient"
 )
 

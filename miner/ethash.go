@@ -17,8 +17,8 @@ import (
 	"unsafe"
 
 	mmap "github.com/edsrzf/mmap-go"
-	"github.com/ellcrys/druid/util/logger"
-	ellBlock "github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/util/logger"
+	ellBlock "github.com/ellcrys/elld/wire"
 	"github.com/ellcrys/go-ethereum/metrics"
 )
 

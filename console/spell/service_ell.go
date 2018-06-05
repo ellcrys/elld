@@ -4,9 +4,9 @@ import (
 	net_rpc "net/rpc"
 	"time"
 
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/rpc"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/elld/wire"
 	"github.com/jinzhu/copier"
 )
 

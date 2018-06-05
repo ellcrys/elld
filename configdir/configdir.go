@@ -7,7 +7,7 @@ import (
 	path "path/filepath"
 	"strings"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 	"github.com/jinzhu/configor"
 
 	"github.com/mitchellh/go-homedir"

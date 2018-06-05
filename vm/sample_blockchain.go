@@ -1,7 +1,7 @@
 package vm
 
 import (
-	"github.com/ellcrys/druid/blockcode"
+	"github.com/ellcrys/elld/blockcode"
 )
 
 // SampleBlockchain defines a structure of a blockchain.

@@ -1,6 +1,6 @@
 package vm
 
-import "github.com/ellcrys/druid/wire"
+import "github.com/ellcrys/elld/wire"
 
 // BlockInfo represents information about the current block
 type BlockInfo struct {

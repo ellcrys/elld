@@ -5,8 +5,8 @@ import (
 
 	net_rpc "net/rpc"
 
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/rpc"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/rpc"
 )
 
 // Account provides account access and management functions

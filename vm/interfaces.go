@@ -1,8 +1,8 @@
 package vm
 
 import (
-	"github.com/ellcrys/druid/blockcode"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/blockcode"
+	"github.com/ellcrys/elld/wire"
 )
 
 // Block defines an interface for a block

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/druid/util"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )

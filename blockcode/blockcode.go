@@ -22,7 +22,7 @@ import (
 
 	"github.com/mholt/archiver"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 )
 
 // Lang represents a blockcode language

@@ -1,7 +1,7 @@
 package rpc
 
 import (
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 )
 
 // SendTxArgs represents arguments for method SendELL

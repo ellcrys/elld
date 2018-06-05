@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"path/filepath"
 
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

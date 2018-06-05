@@ -3,8 +3,8 @@ package node
 import (
 	"path"
 
-	"github.com/ellcrys/druid/accountmgr"
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/accountmgr"
+	"github.com/ellcrys/elld/configdir"
 )
 
 // GetAccounts returns all accounts on this node

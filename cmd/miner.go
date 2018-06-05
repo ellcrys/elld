@@ -22,10 +22,10 @@ import (
 	"time"
 
 	merkletree "github.com/cbergoon/merkletree"
-	"github.com/ellcrys/druid/miner"
-	ellBlock "github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/miner"
+	ellBlock "github.com/ellcrys/elld/wire"
 
-	DB "github.com/ellcrys/druid/scribleDB"
+	DB "github.com/ellcrys/elld/scribleDB"
 	"github.com/spf13/cobra"
 )
 
@@ -38,7 +38,7 @@ var minerCmd = &cobra.Command{
 	go run main.go miner to run this package.`,
 
 	Run: func(cmd *cobra.Command, args []string) {
-
+		miner.GetLogger().SetToDebug()
 		fmt.Println("************************************************************************************************************************************************************ ")
 
 		//get current time stamp

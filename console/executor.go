@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ellcrys/druid/console/spell"
+	"github.com/ellcrys/elld/console/spell"
 	"github.com/fatih/color"
 	"github.com/robertkrimen/otto"
 )
