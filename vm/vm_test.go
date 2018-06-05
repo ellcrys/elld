@@ -3,7 +3,7 @@ package vm
 import (
 	"path/filepath"
 
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/mitchellh/go-homedir"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/druid/configdir"
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/testutil"
+	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/testutil"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"

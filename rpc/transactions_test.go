@@ -3,10 +3,10 @@ package rpc
 import (
 	"time"
 
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/node"
-	"github.com/ellcrys/druid/testutil"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

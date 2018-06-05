@@ -21,13 +21,13 @@ import (
 	path "path/filepath"
 	"syscall"
 
-	"github.com/ellcrys/druid/accountmgr"
+	"github.com/ellcrys/elld/accountmgr"
 
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/configdir"
 	"github.com/spf13/cobra"
 )
 

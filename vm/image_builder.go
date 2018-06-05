@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/franela/goreq"
 	docker "github.com/fsouza/go-dockerclient"
 )

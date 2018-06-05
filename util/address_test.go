@@ -12,8 +12,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/ellcrys/druid/testutil"
-	. "github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/testutil"
+	. "github.com/ellcrys/elld/util"
 )
 
 var _ = Describe("Address", func() {

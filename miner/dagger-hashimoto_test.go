@@ -3,7 +3,7 @@ package miner
 import (
 	"encoding/binary"
 
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 	"github.com/ellcrys/go-ethereum/crypto/sha3"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

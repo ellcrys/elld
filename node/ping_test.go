@@ -3,10 +3,10 @@ package node
 import (
 	"time"
 
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/testutil"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/testutil"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

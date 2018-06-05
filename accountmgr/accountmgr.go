@@ -19,8 +19,8 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 	"github.com/segmentio/go-prompt"
 )
 

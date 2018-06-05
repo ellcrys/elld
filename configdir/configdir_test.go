@@ -8,7 +8,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

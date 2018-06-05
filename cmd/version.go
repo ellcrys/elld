@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 	"github.com/spf13/cobra"
 )
 

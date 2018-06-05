@@ -5,9 +5,9 @@ import (
 	"net/rpc"
 	"runtime"
 
-	"github.com/ellcrys/druid/console/spell"
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/console/spell"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 
 	prompt "github.com/c-bata/go-prompt"
 )

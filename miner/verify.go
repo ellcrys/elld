@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"runtime"
 
-	ellBlock "github.com/ellcrys/druid/wire"
+	ellBlock "github.com/ellcrys/elld/wire"
 )
 
 var (

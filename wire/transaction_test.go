@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
