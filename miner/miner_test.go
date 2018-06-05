@@ -1,7 +1,7 @@
 package miner
 
 import (
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 	"github.com/kr/pretty"
 	. "github.com/onsi/ginkgo"
 	// . "github.com/onsi/gomega"

@@ -26,6 +26,19 @@ func init() {
 	r.Seed(time.Now().UnixNano())
 }
 
+const (
+	HashLength    = 32
+	AddressLength = 20
+)
+
+type Hash [HashLength]byte
+
+// Bytes gets the byte representation of the underlying hash.
+func (h Hash) Bytes() []byte { return h[:] }
+
+// Big converts a hash to a big integer.
+func (h Hash) Big() *big.Int { return new(big.Int).SetBytes(h[:]) }
+
 // StructToBytes returns json encoded representation of a struct
 func StructToBytes(s interface{}) []byte {
 	b, _ := json.Marshal(s)

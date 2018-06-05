@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ellcrys/druid/util/logger"
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/elld/wire"
 	"github.com/ellcrys/go-ethereum/metrics"
 )
 

@@ -58,15 +58,20 @@ message Transaction {
     bytes sig = 9;
 }
 
+// Header represents the header of a block
+message Header {
+    string ParentHash = 1;
+    uint64 number = 2;
+    string root = 3;
+    bytes txHash = 4;
+    uint64 nonce = 5;
+    bytes mixHash = 6;
+    string difficulty = 7;
+    string timestamp = 8;
+}
+
+// Block represents an Ellcrys block (work in progress)
 message Block{
-    string version = 1;
-    string hashPrevBlock =2;
-    repeated string tX=3;
-    string hashMerkleRoot =4;
-    string time =5;
-    uint64 nounce =6;
-    string difficulty =7;
-    uint64 number =8;
-    string powHash =9;
-    string powResult =10;
+    Header header = 1;
+    repeated Transaction transactions = 2;
 }
