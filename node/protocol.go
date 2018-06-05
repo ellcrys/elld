@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/druid/constants"
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/constants"
+	"github.com/ellcrys/elld/util/logger"
 	pc "github.com/multiformats/go-multicodec/protobuf"
 
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
 )

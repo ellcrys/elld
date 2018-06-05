@@ -19,7 +19,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
 )
 

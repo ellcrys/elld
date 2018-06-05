@@ -3,11 +3,11 @@ package rpc
 import (
 	"path"
 
-	"github.com/ellcrys/druid/accountmgr"
-	"github.com/ellcrys/druid/configdir"
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/node"
-	"github.com/ellcrys/druid/testutil"
+	"github.com/ellcrys/elld/accountmgr"
+	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/testutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

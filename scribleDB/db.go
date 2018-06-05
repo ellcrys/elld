@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 
-	ellBlock "github.com/ellcrys/druid/wire"
+	ellBlock "github.com/ellcrys/elld/wire"
 	scribble "github.com/nanobox-io/golang-scribble"
 )
 

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ellcrys/druid/util"
-	logger "github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util"
+	logger "github.com/ellcrys/elld/util/logger"
 	docker "github.com/fsouza/go-dockerclient"
 	funk "github.com/thoas/go-funk"
 )

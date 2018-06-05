@@ -3,7 +3,7 @@ package miner
 import (
 	"errors"
 
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

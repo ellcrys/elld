@@ -18,8 +18,8 @@ import (
 	"os"
 	path "path/filepath"
 
-	"github.com/ellcrys/druid/accountmgr"
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/accountmgr"
+	"github.com/ellcrys/elld/configdir"
 	"github.com/spf13/cobra"
 )
 

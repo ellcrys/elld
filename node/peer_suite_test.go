@@ -3,9 +3,9 @@ package node
 import (
 	"testing"
 
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/configdir"
 
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

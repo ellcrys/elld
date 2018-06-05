@@ -3,7 +3,7 @@ package txpool
 import (
 	"time"
 
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ellcrys/druid/wire"
+	"github.com/ellcrys/elld/wire"
 )
 
 // TxPool defines a structure and functionalities of a transaction pool

@@ -8,16 +8,16 @@ import (
 	"sync"
 	"time"
 
-	d_crypto "github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/node/histcache"
-	"github.com/ellcrys/druid/wire"
+	d_crypto "github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node/histcache"
+	"github.com/ellcrys/elld/wire"
 
-	"github.com/ellcrys/druid/txpool"
+	"github.com/ellcrys/elld/txpool"
 
-	"github.com/ellcrys/druid/database"
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/configdir"
 
 	"github.com/thoas/go-funk"
 
@@ -25,7 +25,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"

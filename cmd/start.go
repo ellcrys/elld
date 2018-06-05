@@ -7,18 +7,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ellcrys/druid/rpc"
+	"github.com/ellcrys/elld/rpc"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
-	"github.com/ellcrys/druid/accountmgr"
+	"github.com/ellcrys/elld/accountmgr"
 	funk "github.com/thoas/go-funk"
 
-	"github.com/ellcrys/druid/configdir"
-	"github.com/ellcrys/druid/console"
-	"github.com/ellcrys/druid/crypto"
-	"github.com/ellcrys/druid/node"
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/console"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/util"
 	"github.com/spf13/cobra"
 )
 

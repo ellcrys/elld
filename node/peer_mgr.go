@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/druid/configdir"
+	"github.com/ellcrys/elld/configdir"
 
-	"github.com/ellcrys/druid/util"
+	"github.com/ellcrys/elld/util"
 	ma "github.com/multiformats/go-multiaddr"
 )
 

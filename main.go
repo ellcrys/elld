@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ellcrys/druid/cmd"
+	"github.com/ellcrys/elld/cmd"
 )
 
 func main() {

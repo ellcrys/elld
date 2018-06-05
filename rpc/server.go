@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/rpc"
 
-	"github.com/ellcrys/druid/node"
-	"github.com/ellcrys/druid/util/logger"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/util/logger"
 )
 
 // Service provides functionalities accessible through JSON-RPC

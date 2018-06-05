@@ -6,7 +6,7 @@ import (
 
 	"github.com/robertkrimen/otto"
 
-	"github.com/ellcrys/druid/crypto"
+	"github.com/ellcrys/elld/crypto"
 	"github.com/fatih/color"
 )
 
