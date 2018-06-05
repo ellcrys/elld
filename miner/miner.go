@@ -200,10 +200,8 @@ func (m *Miner) mine(minerID int, header *wire.Header, miningRes chan *MiningRes
 		nonce    = seed
 	)
 
-	log.Debug("Mine", "ID", minerID)
-	log.Debug("Started ethash search for new nonces", "Seed", nonce)
+	log.Debug("Miner has started", "ID", minerID, "Seed", nonce)
 
-search:
 	for !m.isStopped() {
 		// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 		attempts++
@@ -218,7 +216,7 @@ search:
 		if new(big.Int).SetBytes(result).Cmp(Mtarget) <= 0 {
 
 			// Correct nonce found, create a new header with it
-			log.Debug("Ethash nonce found and reported", "Attempts", nonce-seed, "Nonce", nonce)
+			log.Debug("Ethash nonce found", "MinerID", minerID, "Attempts", nonce-seed, "Nonce", nonce)
 
 			result := &MiningResult{
 				digest: digest,
@@ -228,7 +226,7 @@ search:
 
 			miningRes <- result
 
-			break search
+			break
 		}
 		nonce++
 	}

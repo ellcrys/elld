@@ -38,7 +38,7 @@ var _ = Describe("Miner", func() {
 			b.Header.MixHash = res.digest
 			b.Header.Nonce = res.nonce
 			err = miner.VerifyPoW(b.Header)
-			pretty.Println("PoW Ver.", err)
+			pretty.Println("PoW Verification Error:", err)
 		})
 	})
 })

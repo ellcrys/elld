@@ -54,15 +54,17 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 		// cache becomes unused.
 		runtime.SetFinalizer(d, (*dataset).finalizer)
 
+		log.Debug("Attempting to load dataset", "Path", path)
+
 		// Try to load the file from disk and memory map it
 		var err error
 		d.dump, d.mmap, d.dataset, err = memoryMap(path)
 		if err == nil {
-			val := "Loaded old ethash dataset from disk"
-			log.Debug("Generate", "Dataset", val)
+			log.Debug("Successfully loaded dataset from disk")
 			return
 		}
-		log.Debug("Failed to load old ethash dataset", "err", err)
+
+		log.Debug("No previous dataset file exist. Creating a new one")
 
 		// No previous dataset available, create a new dataset file to fill
 		cache := make([]uint32, csize/4)
@@ -75,6 +77,9 @@ func (d *dataset) generate(dir string, limit int, test bool) {
 			d.dataset = make([]uint32, dsize/2)
 			generateDataset(d.dataset, d.epoch, cache)
 		}
+
+		log.Debug("Dataset successfully created")
+
 		// Iterate over all previous instances and delete old ones
 		for ep := int(d.epoch) - limit; ep >= 0; ep-- {
 			seed := seedHash(uint64(ep)*epochLength + 1)

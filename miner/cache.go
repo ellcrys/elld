@@ -52,7 +52,8 @@ func (c *cache) generate(dir string, limit int, test bool) {
 			endian = ".be"
 		}
 		path := filepath.Join(dir, fmt.Sprintf("cache-R%d-%x%s", algorithmRevision, seed[:8], endian))
-		log.Debug("miner", "epoch", c.epoch)
+
+		log.Debug("Attempting to load cache from disk", "Epoch", c.epoch, "Path", path)
 
 		// We're about to mmap the file, ensure that the mapping is cleaned up when the
 		// cache becomes unused.
@@ -62,10 +63,11 @@ func (c *cache) generate(dir string, limit int, test bool) {
 		var err error
 		c.dump, c.mmap, c.cache, err = memoryMap(path)
 		if err == nil {
-			log.Debug("miner", "cache", "Loaded old ethash cache from disk")
+			log.Debug("Successfully loaded cache from disk")
 			return
 		}
-		log.Debug("Failed to load old ethash cache", "err", err)
+
+		log.Debug("No previous cache file exists. Creating a new one")
 
 		// No previous cache available, create a new cache file to fill
 		c.dump, c.mmap, c.cache, err = memoryMapAndGenerate(path, size, func(buffer []uint32) { generateCache(buffer, c.epoch, seed) })
@@ -75,6 +77,9 @@ func (c *cache) generate(dir string, limit int, test bool) {
 			c.cache = make([]uint32, size/4)
 			generateCache(c.cache, c.epoch, seed)
 		}
+
+		log.Debug("Cache successfully created")
+
 		// Iterate over all previous instances and delete old ones
 		for ep := int(c.epoch) - limit; ep >= 0; ep-- {
 			seed := seedHash(uint64(ep)*epochLength + 1)
