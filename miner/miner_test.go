@@ -9,7 +9,6 @@ import (
 )
 
 var _ = Describe("Miner", func() {
-	GetLogger().SetToDebug()
 	miner := New(Config{
 		NumCPU:         1,
 		CachesOnDisk:   1,
