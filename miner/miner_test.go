@@ -9,7 +9,7 @@ import (
 )
 
 var _ = Describe("Miner", func() {
-
+	GetLogger().SetToDebug()
 	miner := New(Config{
 		NumCPU:         1,
 		CachesOnDisk:   1,
@@ -18,7 +18,7 @@ var _ = Describe("Miner", func() {
 		DatasetDir:     "DagFile",
 		DatasetsInMem:  0,
 		DatasetsOnDisk: 1,
-		PowMode:        ModeNormal,
+		PowMode:        ModeTest,
 	})
 
 	b := &wire.Block{
