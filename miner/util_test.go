@@ -7,13 +7,6 @@ import (
 
 var _ = Describe("Util", func() {
 
-	Describe(".isLittleEndian", func() {
-		It("It must be Boolean", func() {
-			response := isLittleEndian()
-			Expect(response).Should(BeTrue())
-		})
-	})
-
 	Describe(".cacheSize", func() {
 		It("It will use cacheSizes[epoch] & must not be Zero", func() {
 			blockNumber := uint64(60)
