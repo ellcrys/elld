@@ -2,7 +2,6 @@ package miner
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -96,10 +95,4 @@ func (d *dataset) finalizer() {
 		d.dump.Close()
 		d.mmap, d.dump = nil, nil
 	}
-}
-
-// MakeDataset generates a new ethash dataset and optionally stores it to disk.
-func MakeDataset(block uint64, dir string) {
-	d := dataset{epoch: block / epochLength}
-	d.generate(dir, math.MaxInt32, false)
 }

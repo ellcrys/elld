@@ -2,7 +2,6 @@ package miner
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -18,12 +17,6 @@ type cache struct {
 	mmap  mmap.MMap // Memory map itself to unmap before releasing
 	cache []uint32  // The actual cache data content (may be memory mapped)
 	once  sync.Once // Ensures the cache is generated only once
-}
-
-// MakeCache generates a new ethash cache and optionally stores it to disk.
-func MakeCache(block uint64, dir string) {
-	c := cache{epoch: block / epochLength}
-	c.generate(dir, math.MaxInt32, false)
 }
 
 // newCache creates a new ethash verification cache and returns it as a plain Go
