@@ -22,10 +22,7 @@ import (
 var minerCmd = &cobra.Command{
 	Use:   "miner",
 	Short: "Mining Algorithm for proof of work",
-	Long: `An Ethash proof of work Algorith based on formerly Dagger-Hashimoto algorith
-	It uses Dag file to speed up mining process
-	go run main.go miner to run this package.`,
-
+	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 
 	},
@@ -33,5 +30,4 @@ var minerCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(minerCmd)
-
 }
