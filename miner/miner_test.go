@@ -31,73 +31,97 @@ var _ = Describe("Miner", func() {
 	var MixHash []byte
 	var Nonce uint64
 
-	It("Begin Result & Digest length should not be Bezo using default Nthread and numCpu", func() {
+	Describe(".Begin", func() {
+		Context("Begin function using default Nthread and numCpu", func() {
 
-		res, err := miner.Begin(b.Header)
-		Nonce = res.nonce
-		MixHash = res.digest
+			It("err should be nil", func() {
 
-		Expect(len(res.digest)).ShouldNot(BeZero())
-		Expect(len(res.result)).ShouldNot(BeZero())
-		Expect(err).Should(BeNil())
+				res, err := miner.Begin(b.Header)
+				Nonce = res.nonce
+				MixHash = res.digest
+
+				Expect(len(res.digest)).ShouldNot(BeZero())
+				Expect(len(res.result)).ShouldNot(BeZero())
+				Expect(err).Should(BeNil())
+			})
+
+		})
+
+		Context("Setting NumCpu to 0", func() {
+
+			It("err Should be Nil", func() {
+
+				miner.config.NumCPU = 0
+
+				res, err := miner.Begin(b.Header)
+				Nonce = res.nonce
+				MixHash = res.digest
+
+				Expect(len(res.digest)).ShouldNot(BeZero())
+				Expect(len(res.result)).ShouldNot(BeZero())
+				Expect(err).Should(BeNil())
+			})
+
+		})
+
+		Context("Setting Nthread and numCpu to higher value", func() {
+
+			It("err must be nil", func() {
+
+				numCPU := runtime.NumCPU()
+				nThreads := miner.config.NumCPU + numCPU
+				miner.config.NumCPU = nThreads
+
+				res, err := miner.Begin(b.Header)
+				Nonce = res.nonce
+				MixHash = res.digest
+
+				Expect(len(res.digest)).ShouldNot(BeZero())
+				Expect(len(res.result)).ShouldNot(BeZero())
+				Expect(err).Should(BeNil())
+			})
+
+		})
 	})
 
-	It("VerifyPoW err should be nil", func() {
+	Describe(".VerifyPoW", func() {
 
-		b.Header.MixHash = MixHash
-		b.Header.Nonce = Nonce
+		Context("VerifyPoW err should be nil if all parameters are valid", func() {
+			It("It should be nil", func() {
+				b.Header.MixHash = MixHash
+				b.Header.Nonce = Nonce
+				errPow := miner.VerifyPoW(b.Header)
+				Expect(errPow).Should(BeNil())
+			})
+		})
 
-		errPow := miner.VerifyPoW(b.Header)
-		Expect(errPow).Should(BeNil())
+		Context("VerifyPoW should generate error when block number is 0", func() {
+
+			It("It should not be nil", func() {
+				b.Header.Number = 0
+				errPow := miner.VerifyPoW(b.Header)
+				Expect(errPow).ShouldNot(BeNil())
+			})
+
+		})
+
+		Context("If PowMode == ModeTest", func() {
+			It("It should not be Nil", func() {
+				miner.config.PowMode = ModeTest
+				b.Header.MixHash = MixHash
+				b.Header.Nonce = Nonce
+				b.Header.Number = 54
+
+				errPow := miner.VerifyPoW(b.Header)
+				Expect(errPow).ShouldNot(BeNil())
+			})
+		})
+
 	})
 
-	It("VerifyPoW return errNonPositiveBlock, if Number is block number is 0", func() {
-		b.Header.Number = 0
-		errPow := miner.VerifyPoW(b.Header)
-		Expect(errPow).ShouldNot(BeNil())
-	})
-
-	It("VerifyPoW PowMode == ModeTest", func() {
-
-		miner.config.PowMode = ModeTest
-
-		b.Header.MixHash = MixHash
-		b.Header.Nonce = Nonce
-		b.Header.Number = 54
-
-		errPow := miner.VerifyPoW(b.Header)
-		Expect(errPow).ShouldNot(BeNil())
-	})
-
-	It("Begin Result & Digest length should not be Bezo setting Nthread and numCpu to higher value", func() {
-
-		numCPU := runtime.NumCPU()
-		nThreads := miner.config.NumCPU + numCPU
-		miner.config.NumCPU = nThreads
-
-		res, err := miner.Begin(b.Header)
-		Nonce = res.nonce
-		MixHash = res.digest
-
-		Expect(len(res.digest)).ShouldNot(BeZero())
-		Expect(len(res.result)).ShouldNot(BeZero())
-		Expect(err).Should(BeNil())
-	})
-
-	It("Begin Result & Digest length should not be Bezo setting Nthread  to 0", func() {
-
-		miner.config.NumCPU = 0
-
-		res, err := miner.Begin(b.Header)
-		Nonce = res.nonce
-		MixHash = res.digest
-
-		Expect(len(res.digest)).ShouldNot(BeZero())
-		Expect(len(res.result)).ShouldNot(BeZero())
-		Expect(err).Should(BeNil())
-	})
-
-	It("Threads cannot be zero", func() {
-		Expect(miner.Threads()).ShouldNot(BeZero())
+	Describe(".Threads", func() {
+		It("It Should not be zero", func() {
+			Expect(miner.Threads()).ShouldNot(BeZero())
+		})
 	})
 })

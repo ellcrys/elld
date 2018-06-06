@@ -153,10 +153,6 @@ func calcDatasetSize(epoch int) uint64 {
 	return size
 }
 
-// hasher is a repetitive hasher allowing the same hash data structures to be
-// reused between hash runs instead of requiring new ones to be created.
-type hasher func(dest []byte, data []byte)
-
 func hash256(dest []byte, data []byte) {
 	hash := blake2b.Sum256(data)
 	copy(dest, hash[:])

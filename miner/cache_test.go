@@ -7,10 +7,12 @@ import (
 
 var _ = Describe("Cache", func() {
 
-	It("newCache must not be Nil", func() {
-		epoch := uint64(98)
-		ds := newCache(epoch)
-		Expect(ds).ShouldNot(BeNil())
+	Describe(".newCache", func() {
+		It("It must not be Nil", func() {
+			epoch := uint64(98)
+			ds := newCache(epoch)
+			Expect(ds).ShouldNot(BeNil())
+		})
 	})
 
 })
