@@ -271,7 +271,7 @@ func init() {
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on")
 	startCmd.Flags().Bool("rpc", false, "Launch RPC server")
-	startCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
+	startCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
 	startCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
 	startCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for account creation (not recommended)")
