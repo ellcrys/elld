@@ -32,6 +32,10 @@ func (es *ELLService) Send(params map[string]interface{}) interface{} {
 		return ConsoleErr("rpc client not initialized", nil)
 	}
 
+	if es.key == nil {
+		return ConsoleErr("key not set", nil)
+	}
+
 	tx := &wire.Transaction{
 		Type:         wire.TxTypeA2A,
 		Nonce:        1, // TODO: fetch current nonce
