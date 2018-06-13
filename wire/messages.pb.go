@@ -19,6 +19,16 @@
 		Transaction
 		Header
 		Block
+		ObjectState
+		SignTxData
+		SignedTransaction
+		BlockcodeObject
+		BlockcodeData
+		AccountData
+		GitBundle
+		RepoBundles
+		RepoData
+		Account
 */
 package wire
 
@@ -365,6 +375,271 @@ func (m *Block) GetTransactions() []*Transaction {
 	return nil
 }
 
+// ObjectState represents the new state of an account's object
+type ObjectState struct {
+	PrevHash string `protobuf:"bytes,1,opt,name=prevHash,proto3" json:"prevHash,omitempty"`
+	NewAHash string `protobuf:"bytes,2,opt,name=newAHash,proto3" json:"newAHash,omitempty"`
+	Value    []byte `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+}
+
+func (m *ObjectState) Reset()                    { *m = ObjectState{} }
+func (*ObjectState) ProtoMessage()               {}
+func (*ObjectState) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{11} }
+
+func (m *ObjectState) GetPrevHash() string {
+	if m != nil {
+		return m.PrevHash
+	}
+	return ""
+}
+
+func (m *ObjectState) GetNewAHash() string {
+	if m != nil {
+		return m.NewAHash
+	}
+	return ""
+}
+
+func (m *ObjectState) GetValue() []byte {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
+// SignTxData represents information about a signed transaction, the signer
+// and the affected state objects.
+type SignTxData struct {
+	PubKey       string         `protobuf:"bytes,1,opt,name=pubKey,proto3" json:"pubKey,omitempty"`
+	Sig          []byte         `protobuf:"bytes,2,opt,name=sig,proto3" json:"sig,omitempty"`
+	StateUpdates []*ObjectState `protobuf:"bytes,3,rep,name=stateUpdates" json:"stateUpdates,omitempty"`
+}
+
+func (m *SignTxData) Reset()                    { *m = SignTxData{} }
+func (*SignTxData) ProtoMessage()               {}
+func (*SignTxData) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{12} }
+
+func (m *SignTxData) GetPubKey() string {
+	if m != nil {
+		return m.PubKey
+	}
+	return ""
+}
+
+func (m *SignTxData) GetSig() []byte {
+	if m != nil {
+		return m.Sig
+	}
+	return nil
+}
+
+func (m *SignTxData) GetStateUpdates() []*ObjectState {
+	if m != nil {
+		return m.StateUpdates
+	}
+	return nil
+}
+
+// SignedTransaction represents a signed transaction
+type SignedTransaction struct {
+	Tx      *Transaction `protobuf:"bytes,1,opt,name=tx" json:"tx,omitempty"`
+	SigData *SignTxData  `protobuf:"bytes,2,opt,name=sigData" json:"sigData,omitempty"`
+}
+
+func (m *SignedTransaction) Reset()                    { *m = SignedTransaction{} }
+func (*SignedTransaction) ProtoMessage()               {}
+func (*SignedTransaction) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{13} }
+
+func (m *SignedTransaction) GetTx() *Transaction {
+	if m != nil {
+		return m.Tx
+	}
+	return nil
+}
+
+func (m *SignedTransaction) GetSigData() *SignTxData {
+	if m != nil {
+		return m.SigData
+	}
+	return nil
+}
+
+// BlockcodeObject represents objects belonging to a blockcode
+type BlockcodeObject struct {
+	Data []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+}
+
+func (m *BlockcodeObject) Reset()                    { *m = BlockcodeObject{} }
+func (*BlockcodeObject) ProtoMessage()               {}
+func (*BlockcodeObject) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{14} }
+
+func (m *BlockcodeObject) GetData() []byte {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+// BlockcodeData represent data belonging to a blockcode
+type BlockcodeData struct {
+	ByteCode []byte                      `protobuf:"bytes,1,opt,name=byteCode,proto3" json:"byteCode,omitempty"`
+	Data     map[string]*BlockcodeObject `protobuf:"bytes,2,rep,name=data" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+}
+
+func (m *BlockcodeData) Reset()                    { *m = BlockcodeData{} }
+func (*BlockcodeData) ProtoMessage()               {}
+func (*BlockcodeData) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{15} }
+
+func (m *BlockcodeData) GetByteCode() []byte {
+	if m != nil {
+		return m.ByteCode
+	}
+	return nil
+}
+
+func (m *BlockcodeData) GetData() map[string]*BlockcodeObject {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+// AccountData represents the data specific to a regular account
+type AccountData struct {
+	Balance string `protobuf:"bytes,1,opt,name=balance,proto3" json:"balance,omitempty"`
+}
+
+func (m *AccountData) Reset()                    { *m = AccountData{} }
+func (*AccountData) ProtoMessage()               {}
+func (*AccountData) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{16} }
+
+func (m *AccountData) GetBalance() string {
+	if m != nil {
+		return m.Balance
+	}
+	return ""
+}
+
+// GitBundle represents a git bundle
+type GitBundle struct {
+	Id        string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CommitIDs []string `protobuf:"bytes,2,rep,name=commitIDs" json:"commitIDs,omitempty"`
+}
+
+func (m *GitBundle) Reset()                    { *m = GitBundle{} }
+func (*GitBundle) ProtoMessage()               {}
+func (*GitBundle) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{17} }
+
+func (m *GitBundle) GetId() string {
+	if m != nil {
+		return m.Id
+	}
+	return ""
+}
+
+func (m *GitBundle) GetCommitIDs() []string {
+	if m != nil {
+		return m.CommitIDs
+	}
+	return nil
+}
+
+// RepoBundles represents a collection of git bundles.
+type RepoBundles struct {
+	Bundles []*GitBundle `protobuf:"bytes,1,rep,name=bundles" json:"bundles,omitempty"`
+}
+
+func (m *RepoBundles) Reset()                    { *m = RepoBundles{} }
+func (*RepoBundles) ProtoMessage()               {}
+func (*RepoBundles) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{18} }
+
+func (m *RepoBundles) GetBundles() []*GitBundle {
+	if m != nil {
+		return m.Bundles
+	}
+	return nil
+}
+
+// RepoData represents a git repository data
+type RepoData struct {
+	Balance  string                  `protobuf:"bytes,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	Branches map[string]*RepoBundles `protobuf:"bytes,3,rep,name=branches" json:"branches,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+}
+
+func (m *RepoData) Reset()                    { *m = RepoData{} }
+func (*RepoData) ProtoMessage()               {}
+func (*RepoData) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{19} }
+
+func (m *RepoData) GetBalance() string {
+	if m != nil {
+		return m.Balance
+	}
+	return ""
+}
+
+func (m *RepoData) GetBranches() map[string]*RepoBundles {
+	if m != nil {
+		return m.Branches
+	}
+	return nil
+}
+
+// Account represents an entity on the network.
+type Account struct {
+	Type          int32          `protobuf:"varint,1,opt,name=type,proto3" json:"type,omitempty"`
+	Address       string         `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	Hash          string         `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
+	BlockcodeData *BlockcodeData `protobuf:"bytes,4,opt,name=blockcodeData" json:"blockcodeData,omitempty"`
+	AccountData   *AccountData   `protobuf:"bytes,5,opt,name=accountData" json:"accountData,omitempty"`
+	RepoData      *RepoData      `protobuf:"bytes,6,opt,name=repoData" json:"repoData,omitempty"`
+}
+
+func (m *Account) Reset()                    { *m = Account{} }
+func (*Account) ProtoMessage()               {}
+func (*Account) Descriptor() ([]byte, []int) { return fileDescriptorMessages, []int{20} }
+
+func (m *Account) GetType() int32 {
+	if m != nil {
+		return m.Type
+	}
+	return 0
+}
+
+func (m *Account) GetAddress() string {
+	if m != nil {
+		return m.Address
+	}
+	return ""
+}
+
+func (m *Account) GetHash() string {
+	if m != nil {
+		return m.Hash
+	}
+	return ""
+}
+
+func (m *Account) GetBlockcodeData() *BlockcodeData {
+	if m != nil {
+		return m.BlockcodeData
+	}
+	return nil
+}
+
+func (m *Account) GetAccountData() *AccountData {
+	if m != nil {
+		return m.AccountData
+	}
+	return nil
+}
+
+func (m *Account) GetRepoData() *RepoData {
+	if m != nil {
+		return m.RepoData
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Handshake)(nil), "wire.Handshake")
 	proto.RegisterType((*GetAddr)(nil), "wire.GetAddr")
@@ -377,6 +652,16 @@ func init() {
 	proto.RegisterType((*Transaction)(nil), "wire.Transaction")
 	proto.RegisterType((*Header)(nil), "wire.Header")
 	proto.RegisterType((*Block)(nil), "wire.Block")
+	proto.RegisterType((*ObjectState)(nil), "wire.ObjectState")
+	proto.RegisterType((*SignTxData)(nil), "wire.SignTxData")
+	proto.RegisterType((*SignedTransaction)(nil), "wire.SignedTransaction")
+	proto.RegisterType((*BlockcodeObject)(nil), "wire.BlockcodeObject")
+	proto.RegisterType((*BlockcodeData)(nil), "wire.BlockcodeData")
+	proto.RegisterType((*AccountData)(nil), "wire.AccountData")
+	proto.RegisterType((*GitBundle)(nil), "wire.GitBundle")
+	proto.RegisterType((*RepoBundles)(nil), "wire.RepoBundles")
+	proto.RegisterType((*RepoData)(nil), "wire.RepoData")
+	proto.RegisterType((*Account)(nil), "wire.Account")
 }
 func (this *Handshake) Equal(that interface{}) bool {
 	if that == nil {
@@ -711,6 +996,310 @@ func (this *Block) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *ObjectState) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*ObjectState)
+	if !ok {
+		that2, ok := that.(ObjectState)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.PrevHash != that1.PrevHash {
+		return false
+	}
+	if this.NewAHash != that1.NewAHash {
+		return false
+	}
+	if !bytes.Equal(this.Value, that1.Value) {
+		return false
+	}
+	return true
+}
+func (this *SignTxData) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*SignTxData)
+	if !ok {
+		that2, ok := that.(SignTxData)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.PubKey != that1.PubKey {
+		return false
+	}
+	if !bytes.Equal(this.Sig, that1.Sig) {
+		return false
+	}
+	if len(this.StateUpdates) != len(that1.StateUpdates) {
+		return false
+	}
+	for i := range this.StateUpdates {
+		if !this.StateUpdates[i].Equal(that1.StateUpdates[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *SignedTransaction) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*SignedTransaction)
+	if !ok {
+		that2, ok := that.(SignedTransaction)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.Tx.Equal(that1.Tx) {
+		return false
+	}
+	if !this.SigData.Equal(that1.SigData) {
+		return false
+	}
+	return true
+}
+func (this *BlockcodeObject) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*BlockcodeObject)
+	if !ok {
+		that2, ok := that.(BlockcodeObject)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Data, that1.Data) {
+		return false
+	}
+	return true
+}
+func (this *BlockcodeData) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*BlockcodeData)
+	if !ok {
+		that2, ok := that.(BlockcodeData)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.ByteCode, that1.ByteCode) {
+		return false
+	}
+	if len(this.Data) != len(that1.Data) {
+		return false
+	}
+	for i := range this.Data {
+		if !this.Data[i].Equal(that1.Data[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *AccountData) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*AccountData)
+	if !ok {
+		that2, ok := that.(AccountData)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Balance != that1.Balance {
+		return false
+	}
+	return true
+}
+func (this *GitBundle) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*GitBundle)
+	if !ok {
+		that2, ok := that.(GitBundle)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Id != that1.Id {
+		return false
+	}
+	if len(this.CommitIDs) != len(that1.CommitIDs) {
+		return false
+	}
+	for i := range this.CommitIDs {
+		if this.CommitIDs[i] != that1.CommitIDs[i] {
+			return false
+		}
+	}
+	return true
+}
+func (this *RepoBundles) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*RepoBundles)
+	if !ok {
+		that2, ok := that.(RepoBundles)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if len(this.Bundles) != len(that1.Bundles) {
+		return false
+	}
+	for i := range this.Bundles {
+		if !this.Bundles[i].Equal(that1.Bundles[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *RepoData) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*RepoData)
+	if !ok {
+		that2, ok := that.(RepoData)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Balance != that1.Balance {
+		return false
+	}
+	if len(this.Branches) != len(that1.Branches) {
+		return false
+	}
+	for i := range this.Branches {
+		if !this.Branches[i].Equal(that1.Branches[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *Account) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*Account)
+	if !ok {
+		that2, ok := that.(Account)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if this.Type != that1.Type {
+		return false
+	}
+	if this.Address != that1.Address {
+		return false
+	}
+	if this.Hash != that1.Hash {
+		return false
+	}
+	if !this.BlockcodeData.Equal(that1.BlockcodeData) {
+		return false
+	}
+	if !this.AccountData.Equal(that1.AccountData) {
+		return false
+	}
+	if !this.RepoData.Equal(that1.RepoData) {
+		return false
+	}
+	return true
+}
 func (this *Handshake) GoString() string {
 	if this == nil {
 		return "nil"
@@ -855,6 +1444,157 @@ func (this *Block) GoString() string {
 	}
 	if this.Transactions != nil {
 		s = append(s, "Transactions: "+fmt.Sprintf("%#v", this.Transactions)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *ObjectState) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&wire.ObjectState{")
+	s = append(s, "PrevHash: "+fmt.Sprintf("%#v", this.PrevHash)+",\n")
+	s = append(s, "NewAHash: "+fmt.Sprintf("%#v", this.NewAHash)+",\n")
+	s = append(s, "Value: "+fmt.Sprintf("%#v", this.Value)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *SignTxData) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&wire.SignTxData{")
+	s = append(s, "PubKey: "+fmt.Sprintf("%#v", this.PubKey)+",\n")
+	s = append(s, "Sig: "+fmt.Sprintf("%#v", this.Sig)+",\n")
+	if this.StateUpdates != nil {
+		s = append(s, "StateUpdates: "+fmt.Sprintf("%#v", this.StateUpdates)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *SignedTransaction) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&wire.SignedTransaction{")
+	if this.Tx != nil {
+		s = append(s, "Tx: "+fmt.Sprintf("%#v", this.Tx)+",\n")
+	}
+	if this.SigData != nil {
+		s = append(s, "SigData: "+fmt.Sprintf("%#v", this.SigData)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *BlockcodeObject) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&wire.BlockcodeObject{")
+	s = append(s, "Data: "+fmt.Sprintf("%#v", this.Data)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *BlockcodeData) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&wire.BlockcodeData{")
+	s = append(s, "ByteCode: "+fmt.Sprintf("%#v", this.ByteCode)+",\n")
+	keysForData := make([]string, 0, len(this.Data))
+	for k, _ := range this.Data {
+		keysForData = append(keysForData, k)
+	}
+	sortkeys.Strings(keysForData)
+	mapStringForData := "map[string]*BlockcodeObject{"
+	for _, k := range keysForData {
+		mapStringForData += fmt.Sprintf("%#v: %#v,", k, this.Data[k])
+	}
+	mapStringForData += "}"
+	if this.Data != nil {
+		s = append(s, "Data: "+mapStringForData+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *AccountData) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&wire.AccountData{")
+	s = append(s, "Balance: "+fmt.Sprintf("%#v", this.Balance)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *GitBundle) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&wire.GitBundle{")
+	s = append(s, "Id: "+fmt.Sprintf("%#v", this.Id)+",\n")
+	s = append(s, "CommitIDs: "+fmt.Sprintf("%#v", this.CommitIDs)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RepoBundles) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 5)
+	s = append(s, "&wire.RepoBundles{")
+	if this.Bundles != nil {
+		s = append(s, "Bundles: "+fmt.Sprintf("%#v", this.Bundles)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *RepoData) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&wire.RepoData{")
+	s = append(s, "Balance: "+fmt.Sprintf("%#v", this.Balance)+",\n")
+	keysForBranches := make([]string, 0, len(this.Branches))
+	for k, _ := range this.Branches {
+		keysForBranches = append(keysForBranches, k)
+	}
+	sortkeys.Strings(keysForBranches)
+	mapStringForBranches := "map[string]*RepoBundles{"
+	for _, k := range keysForBranches {
+		mapStringForBranches += fmt.Sprintf("%#v: %#v,", k, this.Branches[k])
+	}
+	mapStringForBranches += "}"
+	if this.Branches != nil {
+		s = append(s, "Branches: "+mapStringForBranches+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *Account) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 10)
+	s = append(s, "&wire.Account{")
+	s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
+	s = append(s, "Address: "+fmt.Sprintf("%#v", this.Address)+",\n")
+	s = append(s, "Hash: "+fmt.Sprintf("%#v", this.Hash)+",\n")
+	if this.BlockcodeData != nil {
+		s = append(s, "BlockcodeData: "+fmt.Sprintf("%#v", this.BlockcodeData)+",\n")
+	}
+	if this.AccountData != nil {
+		s = append(s, "AccountData: "+fmt.Sprintf("%#v", this.AccountData)+",\n")
+	}
+	if this.RepoData != nil {
+		s = append(s, "RepoData: "+fmt.Sprintf("%#v", this.RepoData)+",\n")
 	}
 	s = append(s, "}")
 	return strings.Join(s, "")
@@ -1263,6 +2003,408 @@ func (m *Block) MarshalTo(dAtA []byte) (int, error) {
 	return i, nil
 }
 
+func (m *ObjectState) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ObjectState) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.PrevHash) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.PrevHash)))
+		i += copy(dAtA[i:], m.PrevHash)
+	}
+	if len(m.NewAHash) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.NewAHash)))
+		i += copy(dAtA[i:], m.NewAHash)
+	}
+	if len(m.Value) > 0 {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Value)))
+		i += copy(dAtA[i:], m.Value)
+	}
+	return i, nil
+}
+
+func (m *SignTxData) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SignTxData) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.PubKey) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.PubKey)))
+		i += copy(dAtA[i:], m.PubKey)
+	}
+	if len(m.Sig) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Sig)))
+		i += copy(dAtA[i:], m.Sig)
+	}
+	if len(m.StateUpdates) > 0 {
+		for _, msg := range m.StateUpdates {
+			dAtA[i] = 0x1a
+			i++
+			i = encodeVarintMessages(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedTransaction) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *SignedTransaction) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Tx != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.Tx.Size()))
+		n3, err := m.Tx.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.SigData != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.SigData.Size()))
+		n4, err := m.SigData.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
+func (m *BlockcodeObject) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockcodeObject) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Data) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Data)))
+		i += copy(dAtA[i:], m.Data)
+	}
+	return i, nil
+}
+
+func (m *BlockcodeData) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *BlockcodeData) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.ByteCode) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.ByteCode)))
+		i += copy(dAtA[i:], m.ByteCode)
+	}
+	if len(m.Data) > 0 {
+		for k, _ := range m.Data {
+			dAtA[i] = 0x12
+			i++
+			v := m.Data[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovMessages(uint64(msgSize))
+			}
+			mapSize := 1 + len(k) + sovMessages(uint64(len(k))) + msgSize
+			i = encodeVarintMessages(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintMessages(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintMessages(dAtA, i, uint64(v.Size()))
+				n5, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n5
+			}
+		}
+	}
+	return i, nil
+}
+
+func (m *AccountData) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AccountData) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Balance) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Balance)))
+		i += copy(dAtA[i:], m.Balance)
+	}
+	return i, nil
+}
+
+func (m *GitBundle) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *GitBundle) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Id) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Id)))
+		i += copy(dAtA[i:], m.Id)
+	}
+	if len(m.CommitIDs) > 0 {
+		for _, s := range m.CommitIDs {
+			dAtA[i] = 0x12
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
+	}
+	return i, nil
+}
+
+func (m *RepoBundles) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RepoBundles) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Bundles) > 0 {
+		for _, msg := range m.Bundles {
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintMessages(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *RepoData) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RepoData) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Balance) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Balance)))
+		i += copy(dAtA[i:], m.Balance)
+	}
+	if len(m.Branches) > 0 {
+		for k, _ := range m.Branches {
+			dAtA[i] = 0x1a
+			i++
+			v := m.Branches[k]
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovMessages(uint64(msgSize))
+			}
+			mapSize := 1 + len(k) + sovMessages(uint64(len(k))) + msgSize
+			i = encodeVarintMessages(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintMessages(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			if v != nil {
+				dAtA[i] = 0x12
+				i++
+				i = encodeVarintMessages(dAtA, i, uint64(v.Size()))
+				n6, err := v.MarshalTo(dAtA[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n6
+			}
+		}
+	}
+	return i, nil
+}
+
+func (m *Account) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Account) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Type != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.Type))
+	}
+	if len(m.Address) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Address)))
+		i += copy(dAtA[i:], m.Address)
+	}
+	if len(m.Hash) > 0 {
+		dAtA[i] = 0x1a
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(len(m.Hash)))
+		i += copy(dAtA[i:], m.Hash)
+	}
+	if m.BlockcodeData != nil {
+		dAtA[i] = 0x22
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.BlockcodeData.Size()))
+		n7, err := m.BlockcodeData.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	if m.AccountData != nil {
+		dAtA[i] = 0x2a
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.AccountData.Size()))
+		n8, err := m.AccountData.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.RepoData != nil {
+		dAtA[i] = 0x32
+		i++
+		i = encodeVarintMessages(dAtA, i, uint64(m.RepoData.Size()))
+		n9, err := m.RepoData.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n9
+	}
+	return i, nil
+}
+
 func encodeVarintMessages(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
@@ -1455,6 +2597,181 @@ func (m *Block) Size() (n int) {
 	return n
 }
 
+func (m *ObjectState) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.PrevHash)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	l = len(m.NewAHash)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
+func (m *SignTxData) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.PubKey)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	l = len(m.Sig)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if len(m.StateUpdates) > 0 {
+		for _, e := range m.StateUpdates {
+			l = e.Size()
+			n += 1 + l + sovMessages(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *SignedTransaction) Size() (n int) {
+	var l int
+	_ = l
+	if m.Tx != nil {
+		l = m.Tx.Size()
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if m.SigData != nil {
+		l = m.SigData.Size()
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
+func (m *BlockcodeObject) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Data)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
+func (m *BlockcodeData) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.ByteCode)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if len(m.Data) > 0 {
+		for k, v := range m.Data {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovMessages(uint64(l))
+			}
+			mapEntrySize := 1 + len(k) + sovMessages(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovMessages(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *AccountData) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Balance)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
+func (m *GitBundle) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Id)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if len(m.CommitIDs) > 0 {
+		for _, s := range m.CommitIDs {
+			l = len(s)
+			n += 1 + l + sovMessages(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *RepoBundles) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Bundles) > 0 {
+		for _, e := range m.Bundles {
+			l = e.Size()
+			n += 1 + l + sovMessages(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *RepoData) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Balance)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if len(m.Branches) > 0 {
+		for k, v := range m.Branches {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+				l += 1 + sovMessages(uint64(l))
+			}
+			mapEntrySize := 1 + len(k) + sovMessages(uint64(len(k))) + l
+			n += mapEntrySize + 1 + sovMessages(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Account) Size() (n int) {
+	var l int
+	_ = l
+	if m.Type != 0 {
+		n += 1 + sovMessages(uint64(m.Type))
+	}
+	l = len(m.Address)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	l = len(m.Hash)
+	if l > 0 {
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if m.BlockcodeData != nil {
+		l = m.BlockcodeData.Size()
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if m.AccountData != nil {
+		l = m.AccountData.Size()
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	if m.RepoData != nil {
+		l = m.RepoData.Size()
+		n += 1 + l + sovMessages(uint64(l))
+	}
+	return n
+}
+
 func sovMessages(x uint64) (n int) {
 	for {
 		n++
@@ -1602,6 +2919,139 @@ func (this *Block) String() string {
 	s := strings.Join([]string{`&Block{`,
 		`Header:` + strings.Replace(fmt.Sprintf("%v", this.Header), "Header", "Header", 1) + `,`,
 		`Transactions:` + strings.Replace(fmt.Sprintf("%v", this.Transactions), "Transaction", "Transaction", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ObjectState) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ObjectState{`,
+		`PrevHash:` + fmt.Sprintf("%v", this.PrevHash) + `,`,
+		`NewAHash:` + fmt.Sprintf("%v", this.NewAHash) + `,`,
+		`Value:` + fmt.Sprintf("%v", this.Value) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignTxData) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&SignTxData{`,
+		`PubKey:` + fmt.Sprintf("%v", this.PubKey) + `,`,
+		`Sig:` + fmt.Sprintf("%v", this.Sig) + `,`,
+		`StateUpdates:` + strings.Replace(fmt.Sprintf("%v", this.StateUpdates), "ObjectState", "ObjectState", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedTransaction) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&SignedTransaction{`,
+		`Tx:` + strings.Replace(fmt.Sprintf("%v", this.Tx), "Transaction", "Transaction", 1) + `,`,
+		`SigData:` + strings.Replace(fmt.Sprintf("%v", this.SigData), "SignTxData", "SignTxData", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *BlockcodeObject) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&BlockcodeObject{`,
+		`Data:` + fmt.Sprintf("%v", this.Data) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *BlockcodeData) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForData := make([]string, 0, len(this.Data))
+	for k, _ := range this.Data {
+		keysForData = append(keysForData, k)
+	}
+	sortkeys.Strings(keysForData)
+	mapStringForData := "map[string]*BlockcodeObject{"
+	for _, k := range keysForData {
+		mapStringForData += fmt.Sprintf("%v: %v,", k, this.Data[k])
+	}
+	mapStringForData += "}"
+	s := strings.Join([]string{`&BlockcodeData{`,
+		`ByteCode:` + fmt.Sprintf("%v", this.ByteCode) + `,`,
+		`Data:` + mapStringForData + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *AccountData) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&AccountData{`,
+		`Balance:` + fmt.Sprintf("%v", this.Balance) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *GitBundle) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&GitBundle{`,
+		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
+		`CommitIDs:` + fmt.Sprintf("%v", this.CommitIDs) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RepoBundles) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&RepoBundles{`,
+		`Bundles:` + strings.Replace(fmt.Sprintf("%v", this.Bundles), "GitBundle", "GitBundle", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RepoData) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForBranches := make([]string, 0, len(this.Branches))
+	for k, _ := range this.Branches {
+		keysForBranches = append(keysForBranches, k)
+	}
+	sortkeys.Strings(keysForBranches)
+	mapStringForBranches := "map[string]*RepoBundles{"
+	for _, k := range keysForBranches {
+		mapStringForBranches += fmt.Sprintf("%v: %v,", k, this.Branches[k])
+	}
+	mapStringForBranches += "}"
+	s := strings.Join([]string{`&RepoData{`,
+		`Balance:` + fmt.Sprintf("%v", this.Balance) + `,`,
+		`Branches:` + mapStringForBranches + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Account) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Account{`,
+		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
+		`Address:` + fmt.Sprintf("%v", this.Address) + `,`,
+		`Hash:` + fmt.Sprintf("%v", this.Hash) + `,`,
+		`BlockcodeData:` + strings.Replace(fmt.Sprintf("%v", this.BlockcodeData), "BlockcodeData", "BlockcodeData", 1) + `,`,
+		`AccountData:` + strings.Replace(fmt.Sprintf("%v", this.AccountData), "AccountData", "AccountData", 1) + `,`,
+		`RepoData:` + strings.Replace(fmt.Sprintf("%v", this.RepoData), "RepoData", "RepoData", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3044,6 +4494,1383 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
+func (m *ObjectState) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ObjectState: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ObjectState: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PrevHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PrevHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewAHash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NewAHash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = append(m.Value[:0], dAtA[iNdEx:postIndex]...)
+			if m.Value == nil {
+				m.Value = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SignTxData) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SignTxData: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SignTxData: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PubKey", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PubKey = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sig", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Sig = append(m.Sig[:0], dAtA[iNdEx:postIndex]...)
+			if m.Sig == nil {
+				m.Sig = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StateUpdates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.StateUpdates = append(m.StateUpdates, &ObjectState{})
+			if err := m.StateUpdates[len(m.StateUpdates)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *SignedTransaction) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: SignedTransaction: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: SignedTransaction: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Tx", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Tx == nil {
+				m.Tx = &Transaction{}
+			}
+			if err := m.Tx.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SigData", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.SigData == nil {
+				m.SigData = &SignTxData{}
+			}
+			if err := m.SigData.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockcodeObject) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockcodeObject: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockcodeObject: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Data = append(m.Data[:0], dAtA[iNdEx:postIndex]...)
+			if m.Data == nil {
+				m.Data = []byte{}
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *BlockcodeData) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: BlockcodeData: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: BlockcodeData: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ByteCode", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ByteCode = append(m.ByteCode[:0], dAtA[iNdEx:postIndex]...)
+			if m.ByteCode == nil {
+				m.ByteCode = []byte{}
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Data", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Data == nil {
+				m.Data = make(map[string]*BlockcodeObject)
+			}
+			var mapkey string
+			var mapvalue *BlockcodeObject
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowMessages
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowMessages
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthMessages
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowMessages
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthMessages
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthMessages
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &BlockcodeObject{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipMessages(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthMessages
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Data[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AccountData) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AccountData: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AccountData: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Balance", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Balance = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *GitBundle) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: GitBundle: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: GitBundle: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Id = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CommitIDs", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CommitIDs = append(m.CommitIDs, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RepoBundles) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RepoBundles: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RepoBundles: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bundles", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Bundles = append(m.Bundles, &GitBundle{})
+			if err := m.Bundles[len(m.Bundles)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RepoData) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RepoData: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RepoData: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Balance", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Balance = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Branches", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Branches == nil {
+				m.Branches = make(map[string]*RepoBundles)
+			}
+			var mapkey string
+			var mapvalue *RepoBundles
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowMessages
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowMessages
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthMessages
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var mapmsglen int
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowMessages
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						mapmsglen |= (int(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					if mapmsglen < 0 {
+						return ErrInvalidLengthMessages
+					}
+					postmsgIndex := iNdEx + mapmsglen
+					if mapmsglen < 0 {
+						return ErrInvalidLengthMessages
+					}
+					if postmsgIndex > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = &RepoBundles{}
+					if err := mapvalue.Unmarshal(dAtA[iNdEx:postmsgIndex]); err != nil {
+						return err
+					}
+					iNdEx = postmsgIndex
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipMessages(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthMessages
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.Branches[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Account) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowMessages
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Account: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Account: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Type", wireType)
+			}
+			m.Type = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.Type |= (int32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Address", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Address = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Hash", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Hash = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockcodeData", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.BlockcodeData == nil {
+				m.BlockcodeData = &BlockcodeData{}
+			}
+			if err := m.BlockcodeData.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AccountData", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.AccountData == nil {
+				m.AccountData = &AccountData{}
+			}
+			if err := m.AccountData.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RepoData", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowMessages
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthMessages
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RepoData == nil {
+				m.RepoData = &RepoData{}
+			}
+			if err := m.RepoData.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipMessages(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthMessages
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
 func skipMessages(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
@@ -3152,46 +5979,70 @@ var (
 func init() { proto.RegisterFile("wire/messages.proto", fileDescriptorMessages) }
 
 var fileDescriptorMessages = []byte{
-	// 641 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x5c, 0x54, 0x4d, 0x6f, 0xd3, 0x4a,
-	0x14, 0xcd, 0xe4, 0xc3, 0xa9, 0x27, 0x79, 0x4f, 0x7d, 0xf3, 0x10, 0xb2, 0xaa, 0xca, 0x8a, 0x2c,
-	0x16, 0x91, 0x0a, 0x29, 0x6a, 0x41, 0x02, 0x76, 0xa9, 0xa0, 0x14, 0xb1, 0x89, 0xac, 0x8a, 0xfd,
-	0xc4, 0xbe, 0x71, 0x4c, 0x92, 0x99, 0x68, 0x66, 0x5c, 0x9a, 0x1d, 0x3f, 0x01, 0xfe, 0x05, 0x3f,
-	0x85, 0x65, 0x97, 0x88, 0x15, 0x35, 0x1b, 0x96, 0xdd, 0xb0, 0x47, 0xf3, 0x91, 0xda, 0x65, 0xe5,
-	0x7b, 0xce, 0xdc, 0xb9, 0x73, 0xcf, 0xb9, 0x57, 0xc6, 0xff, 0x7f, 0xc8, 0x05, 0x1c, 0xae, 0x40,
-	0x4a, 0x9a, 0x81, 0x1c, 0xad, 0x05, 0x57, 0x9c, 0xb4, 0x35, 0xb9, 0xf7, 0x28, 0xcb, 0xd5, 0xbc,
-	0x98, 0x8e, 0x12, 0xbe, 0x3a, 0xcc, 0x78, 0xc6, 0x0f, 0xcd, 0xe1, 0xb4, 0x98, 0x19, 0x64, 0x80,
-	0x89, 0xec, 0xa5, 0xe8, 0x00, 0xfb, 0x67, 0x94, 0xa5, 0x72, 0x4e, 0x17, 0x40, 0x42, 0x8c, 0x65,
-	0x31, 0x7d, 0x07, 0x42, 0xe6, 0x9c, 0x05, 0x68, 0x80, 0x86, 0x7e, 0x5c, 0x63, 0x22, 0x1f, 0x77,
-	0x5f, 0x83, 0x1a, 0xa7, 0xa9, 0x88, 0x8e, 0x71, 0x5b, 0x7f, 0xc9, 0x01, 0xf6, 0x69, 0x9a, 0x0a,
-	0x90, 0x12, 0x64, 0x80, 0x06, 0xad, 0x61, 0xef, 0xe8, 0x9f, 0x91, 0x6e, 0x64, 0x34, 0xb6, 0x74,
-	0x5c, 0x9d, 0x47, 0x63, 0xdc, 0x75, 0x2c, 0x09, 0x70, 0xd7, 0xf1, 0xee, 0x9d, 0x2d, 0x24, 0xfb,
-	0xd8, 0x57, 0xf9, 0x0a, 0xa4, 0xa2, 0xab, 0x75, 0xd0, 0x1c, 0xa0, 0x61, 0x2b, 0xae, 0x88, 0xc8,
-	0xc3, 0xed, 0x49, 0xce, 0x32, 0xf3, 0xe5, 0x2c, 0x8b, 0x96, 0xd8, 0x8b, 0xe1, 0x3d, 0x24, 0x4a,
-	0x57, 0x74, 0x86, 0x6c, 0x2b, 0x3a, 0x48, 0x08, 0x6e, 0x27, 0x3c, 0x05, 0x53, 0xac, 0x13, 0x9b,
-	0x98, 0xdc, 0xc7, 0x9e, 0x00, 0x2a, 0x39, 0x0b, 0x5a, 0x26, 0xd9, 0x21, 0xfd, 0x3a, 0x5c, 0x2a,
-	0x41, 0x5f, 0x52, 0x45, 0x83, 0xf6, 0x00, 0x0d, 0xfb, 0x71, 0x45, 0x44, 0x9f, 0x11, 0xc6, 0x6f,
-	0xd8, 0x05, 0x5f, 0xc0, 0x58, 0x64, 0x52, 0x17, 0x9e, 0x15, 0x2c, 0x71, 0xef, 0x99, 0x98, 0x3c,
-	0xc1, 0xde, 0x9a, 0x0a, 0xba, 0x92, 0x41, 0xd3, 0xb8, 0xb1, 0x6f, 0xdd, 0xa8, 0x6e, 0x8d, 0x26,
-	0xe6, 0xf8, 0x15, 0x53, 0x62, 0x13, 0xbb, 0xdc, 0xbd, 0xe7, 0xb8, 0x57, 0xa3, 0xc9, 0x2e, 0x6e,
-	0x2d, 0x60, 0xe3, 0xea, 0xea, 0x90, 0xdc, 0xc3, 0x9d, 0x0b, 0xba, 0x2c, 0xac, 0x08, 0x3f, 0xb6,
-	0xe0, 0x45, 0xf3, 0x19, 0x8a, 0x7e, 0x23, 0xdc, 0x3b, 0x17, 0x94, 0x49, 0x9a, 0xa8, 0x9c, 0x33,
-	0xdd, 0x94, 0xda, 0xac, 0xad, 0x09, 0xad, 0xd8, 0xc4, 0xfa, 0x36, 0xe3, 0x2c, 0x01, 0xe7, 0xa7,
-	0x05, 0xe4, 0x5f, 0xdc, 0x54, 0xdc, 0xe9, 0x6f, 0x2a, 0x4e, 0x22, 0xdc, 0x97, 0xc0, 0x52, 0x10,
-	0x93, 0x62, 0xfa, 0x16, 0x36, 0x46, 0xbe, 0x1f, 0xdf, 0xe1, 0xaa, 0x3e, 0x3a, 0xb5, 0x3e, 0xb4,
-	0x6b, 0xe7, 0xb7, 0x33, 0xf3, 0xec, 0xcc, 0x6e, 0x09, 0xad, 0xe6, 0x14, 0x20, 0xe8, 0x5a, 0x35,
-	0xa7, 0x00, 0xe4, 0x71, 0xdd, 0xc6, 0x60, 0x67, 0x80, 0x86, 0xbd, 0xa3, 0xdd, 0xbf, 0x8d, 0x8a,
-	0xeb, 0x56, 0xef, 0xe2, 0x96, 0xcc, 0xb3, 0xc0, 0x37, 0x13, 0xd1, 0x61, 0xf4, 0x1d, 0x61, 0xef,
-	0x0c, 0x68, 0x0a, 0x42, 0xef, 0xed, 0x84, 0x0a, 0x60, 0xea, 0x8c, 0xca, 0xf9, 0x76, 0x6f, 0x2b,
-	0x46, 0x0f, 0x9b, 0x15, 0xab, 0x29, 0x08, 0xa3, 0xbf, 0x1d, 0x3b, 0xa4, 0xad, 0x12, 0x9c, 0x2b,
-	0x67, 0x81, 0x89, 0x75, 0xae, 0xba, 0x34, 0x75, 0xec, 0xf4, 0x1d, 0xaa, 0x2c, 0xec, 0x98, 0x12,
-	0xce, 0x42, 0xbd, 0x74, 0xb9, 0x4d, 0xf7, 0x4c, 0xfa, 0x16, 0xea, 0x9e, 0xd2, 0x7c, 0x36, 0xcb,
-	0x93, 0x62, 0xa9, 0x36, 0x4e, 0x7b, 0x8d, 0xb9, 0xbb, 0xe6, 0x3b, 0xe6, 0xb8, 0xb6, 0xe6, 0x29,
-	0xee, 0x9c, 0x2c, 0x79, 0xb2, 0x20, 0x0f, 0xb0, 0x37, 0x37, 0x22, 0x8d, 0xac, 0xde, 0x51, 0xdf,
-	0xba, 0x64, 0x85, 0xc7, 0xee, 0x8c, 0x3c, 0xc5, 0x7d, 0x55, 0xad, 0xc0, 0x76, 0xf5, 0xfe, 0xb3,
-	0xb9, 0xb5, 0xe5, 0x88, 0xef, 0xa4, 0x9d, 0x3c, 0xbc, 0xba, 0x0e, 0x1b, 0xdf, 0xae, 0xc3, 0xc6,
-	0xcd, 0x75, 0x88, 0x3e, 0x96, 0x21, 0xfa, 0x52, 0x86, 0xe8, 0x6b, 0x19, 0xa2, 0xab, 0x32, 0x44,
-	0x3f, 0xca, 0x10, 0xfd, 0x2a, 0xc3, 0xc6, 0x4d, 0x19, 0xa2, 0x4f, 0x3f, 0xc3, 0xc6, 0xd4, 0x33,
-	0x7f, 0x8c, 0xe3, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x6d, 0x64, 0x32, 0x85, 0x7d, 0x04, 0x00,
-	0x00,
+	// 1038 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x56, 0x4f, 0x6f, 0xdc, 0x44,
+	0x14, 0x8f, 0xbd, 0x7f, 0xfd, 0x9c, 0xb4, 0xcd, 0x14, 0x90, 0xb5, 0x2a, 0x56, 0xb0, 0x40, 0x0d,
+	0x0d, 0x6c, 0x60, 0x03, 0x52, 0xc2, 0x6d, 0x43, 0x69, 0x53, 0x21, 0x95, 0x68, 0x1a, 0xb8, 0x70,
+	0x1a, 0xdb, 0x93, 0x5d, 0x93, 0x5d, 0xcf, 0xca, 0x33, 0x4e, 0x77, 0x6f, 0x7c, 0x04, 0xf8, 0x16,
+	0x9c, 0xf8, 0x1c, 0x1c, 0x7b, 0x44, 0x9c, 0xc8, 0x72, 0x80, 0x63, 0x2f, 0xdc, 0xd1, 0xfc, 0x59,
+	0x7b, 0x5c, 0x45, 0x5c, 0xb2, 0xef, 0xdf, 0xbc, 0x79, 0xef, 0xf7, 0x7e, 0xf3, 0x1c, 0xb8, 0xff,
+	0x32, 0x2b, 0xe8, 0xe1, 0x9c, 0x72, 0x4e, 0x26, 0x94, 0x0f, 0x17, 0x05, 0x13, 0x0c, 0xb5, 0xa5,
+	0x71, 0xf0, 0xf1, 0x24, 0x13, 0xd3, 0x32, 0x1e, 0x26, 0x6c, 0x7e, 0x38, 0x61, 0x13, 0x76, 0xa8,
+	0x9c, 0x71, 0x79, 0xa9, 0x34, 0xa5, 0x28, 0x49, 0x1f, 0x8a, 0x0e, 0xc0, 0x3b, 0x23, 0x79, 0xca,
+	0xa7, 0xe4, 0x8a, 0xa2, 0x10, 0x80, 0x97, 0xf1, 0x77, 0xb4, 0xe0, 0x19, 0xcb, 0x03, 0x67, 0xcf,
+	0xd9, 0xf7, 0xb0, 0x65, 0x89, 0x3c, 0xe8, 0x3d, 0xa5, 0x62, 0x9c, 0xa6, 0x45, 0x74, 0x04, 0x6d,
+	0xf9, 0x8b, 0x0e, 0xc0, 0x23, 0x69, 0x5a, 0x50, 0xce, 0x29, 0x0f, 0x9c, 0xbd, 0xd6, 0xbe, 0x3f,
+	0xda, 0x19, 0xca, 0x42, 0x86, 0x63, 0x6d, 0xc6, 0xb5, 0x3f, 0x1a, 0x43, 0xcf, 0x58, 0x51, 0x00,
+	0x3d, 0x63, 0x37, 0xf7, 0x6c, 0x54, 0xf4, 0x00, 0x3c, 0x91, 0xcd, 0x29, 0x17, 0x64, 0xbe, 0x08,
+	0xdc, 0x3d, 0x67, 0xbf, 0x85, 0x6b, 0x43, 0xd4, 0x85, 0xf6, 0x79, 0x96, 0x4f, 0xd4, 0x2f, 0xcb,
+	0x27, 0xd1, 0x0c, 0xba, 0x98, 0xfe, 0x40, 0x13, 0x21, 0x33, 0x1a, 0x40, 0x36, 0x19, 0x8d, 0x8a,
+	0x10, 0xb4, 0x13, 0x96, 0x52, 0x95, 0xac, 0x83, 0x95, 0x8c, 0xde, 0x81, 0x6e, 0x41, 0x09, 0x67,
+	0x79, 0xd0, 0x52, 0xc1, 0x46, 0x93, 0xb7, 0xd3, 0xa5, 0x28, 0xc8, 0x63, 0x22, 0x48, 0xd0, 0xde,
+	0x73, 0xf6, 0xb7, 0x71, 0x6d, 0x88, 0x7e, 0x76, 0x00, 0x9e, 0xe5, 0xd7, 0xec, 0x8a, 0x8e, 0x8b,
+	0x09, 0x97, 0x89, 0x2f, 0xcb, 0x3c, 0x31, 0xf7, 0x29, 0x19, 0x7d, 0x06, 0xdd, 0x05, 0x29, 0xc8,
+	0x9c, 0x07, 0xae, 0x42, 0xe3, 0x81, 0x46, 0xa3, 0x3e, 0x35, 0x3c, 0x57, 0xee, 0xaf, 0x72, 0x51,
+	0xac, 0xb0, 0x89, 0x1d, 0x9c, 0x80, 0x6f, 0x99, 0xd1, 0x3d, 0x68, 0x5d, 0xd1, 0x95, 0xc9, 0x2b,
+	0x45, 0xf4, 0x16, 0x74, 0xae, 0xc9, 0xac, 0xd4, 0x4d, 0x78, 0x58, 0x2b, 0x5f, 0xb8, 0xc7, 0x4e,
+	0xf4, 0xaf, 0x03, 0xfe, 0x45, 0x41, 0x72, 0x4e, 0x12, 0x91, 0xb1, 0x5c, 0x16, 0x25, 0x56, 0x0b,
+	0x0d, 0x42, 0x0b, 0x2b, 0x59, 0x9e, 0xce, 0x59, 0x9e, 0x50, 0x83, 0xa7, 0x56, 0xd0, 0x1d, 0x70,
+	0x05, 0x33, 0xfd, 0xbb, 0x82, 0xa1, 0x08, 0xb6, 0x39, 0xcd, 0x53, 0x5a, 0x9c, 0x97, 0xf1, 0xd7,
+	0x74, 0xa5, 0xda, 0xf7, 0x70, 0xc3, 0x56, 0xd7, 0xd1, 0xb1, 0xea, 0x90, 0xa8, 0x5d, 0x54, 0x33,
+	0xeb, 0xea, 0x99, 0x55, 0x06, 0xd9, 0xcd, 0x13, 0x4a, 0x83, 0x9e, 0xee, 0xe6, 0x09, 0xa5, 0xe8,
+	0x13, 0x1b, 0xc6, 0xa0, 0xbf, 0xe7, 0xec, 0xfb, 0xa3, 0x7b, 0x6f, 0x02, 0x85, 0x6d, 0xa8, 0xef,
+	0x41, 0x8b, 0x67, 0x93, 0xc0, 0x53, 0x13, 0x91, 0x62, 0xf4, 0x87, 0x03, 0xdd, 0x33, 0x4a, 0x52,
+	0x5a, 0x48, 0xde, 0x9e, 0x93, 0x82, 0xe6, 0xe2, 0x8c, 0xf0, 0xe9, 0x86, 0xb7, 0xb5, 0x45, 0x0e,
+	0x3b, 0x2f, 0xe7, 0x31, 0x2d, 0x54, 0xff, 0x6d, 0x6c, 0x34, 0x09, 0x55, 0xc1, 0x98, 0x30, 0x10,
+	0x28, 0x59, 0xc6, 0x8a, 0xa5, 0xca, 0xa3, 0xa7, 0x6f, 0xb4, 0x1a, 0xc2, 0x8e, 0x4a, 0x61, 0x20,
+	0x94, 0xa4, 0xcb, 0x74, 0x78, 0x57, 0x85, 0x6f, 0x54, 0x59, 0x53, 0x9a, 0x5d, 0x5e, 0x66, 0x49,
+	0x39, 0x13, 0x2b, 0xd3, 0xbb, 0x65, 0x69, 0xd2, 0xbc, 0xaf, 0xdc, 0x16, 0xcd, 0x53, 0xe8, 0x9c,
+	0xce, 0x58, 0x72, 0x85, 0xde, 0x87, 0xee, 0x54, 0x35, 0xa9, 0xda, 0xf2, 0x47, 0xdb, 0x1a, 0x25,
+	0xdd, 0x38, 0x36, 0x3e, 0xf4, 0x39, 0x6c, 0x8b, 0x9a, 0x02, 0x1b, 0xea, 0xed, 0xea, 0x58, 0x8b,
+	0x1c, 0xb8, 0x11, 0x16, 0x7d, 0x0f, 0xfe, 0x37, 0xb1, 0x7c, 0x3c, 0x2f, 0x04, 0x11, 0x14, 0x0d,
+	0xa0, 0xbf, 0x28, 0xe8, 0xb5, 0x05, 0x62, 0xa5, 0x4b, 0x5f, 0x4e, 0x5f, 0x8e, 0x95, 0x4f, 0x53,
+	0xb0, 0xd2, 0x6b, 0x4e, 0xb4, 0x14, 0x04, 0x5a, 0x89, 0xe6, 0x00, 0x2f, 0xb2, 0x49, 0x7e, 0xb1,
+	0x94, 0x2f, 0x47, 0xc2, 0xba, 0xd0, 0xac, 0xd2, 0x99, 0x8d, 0xb6, 0x99, 0xab, 0x5b, 0xcd, 0x55,
+	0xf6, 0xc2, 0x65, 0x39, 0xdf, 0x2e, 0x52, 0x22, 0x28, 0x0f, 0x5a, 0x76, 0x2f, 0x56, 0xb9, 0xb8,
+	0x11, 0x16, 0xc5, 0xb0, 0x2b, 0xaf, 0xa3, 0xa9, 0xfd, 0x16, 0xde, 0x03, 0x57, 0x2c, 0x0d, 0x72,
+	0xb7, 0xa0, 0xe1, 0x8a, 0x25, 0x7a, 0x04, 0x3d, 0x9e, 0x4d, 0xd4, 0x73, 0x77, 0x6d, 0x1e, 0xd6,
+	0xb5, 0xe3, 0x4d, 0x40, 0xf4, 0x01, 0xdc, 0x55, 0x53, 0x91, 0x1b, 0x44, 0x57, 0x22, 0x29, 0x94,
+	0xca, 0xb3, 0x8e, 0x6a, 0x40, 0xc9, 0xd1, 0xaf, 0x0e, 0xec, 0x54, 0x71, 0xaa, 0xfb, 0x01, 0xf4,
+	0xe3, 0x95, 0xa0, 0x5f, 0xca, 0x2d, 0xa4, 0x23, 0x2b, 0x1d, 0x7d, 0x6a, 0x32, 0xe8, 0x99, 0xbd,
+	0xab, 0x6f, 0x6f, 0x1c, 0x1f, 0xca, 0x3f, 0x7a, 0x5f, 0xa8, 0xd0, 0xc1, 0x73, 0xf0, 0x2a, 0xd3,
+	0x2d, 0xbb, 0xe2, 0xc0, 0xde, 0x15, 0xfe, 0xe8, 0xed, 0x37, 0x52, 0xea, 0xca, 0xed, 0x15, 0xf2,
+	0x10, 0xfc, 0x71, 0x92, 0xb0, 0x32, 0x17, 0xaa, 0xda, 0x00, 0x7a, 0x31, 0x99, 0x11, 0x49, 0x76,
+	0xb3, 0x49, 0x8d, 0x1a, 0x9d, 0x80, 0xf7, 0x34, 0x13, 0xa7, 0x65, 0x9e, 0xce, 0xd4, 0xfa, 0xc8,
+	0x52, 0x13, 0xe1, 0x66, 0xa9, 0x64, 0x74, 0xc2, 0xe6, 0xf3, 0x4c, 0x3c, 0x7b, 0xac, 0x19, 0xe8,
+	0xe1, 0xda, 0x10, 0x1d, 0x83, 0x8f, 0xe9, 0x82, 0xe9, 0xb3, 0x1c, 0x7d, 0x08, 0xbd, 0x58, 0x8b,
+	0xe6, 0xab, 0x71, 0x57, 0x57, 0x59, 0xa5, 0xc7, 0x1b, 0xbf, 0x84, 0xb3, 0x2f, 0x8f, 0xfe, 0x7f,
+	0x6d, 0xe8, 0x18, 0xfa, 0x71, 0x41, 0xf2, 0x64, 0x5a, 0x71, 0xc6, 0xac, 0xde, 0xcd, 0xd9, 0xe1,
+	0xa9, 0x71, 0x6b, 0x28, 0xab, 0xe8, 0xc1, 0x73, 0xd8, 0x69, 0xb8, 0x6e, 0x81, 0xf4, 0x61, 0x13,
+	0xd2, 0xdd, 0x3a, 0xb3, 0x69, 0xc8, 0x86, 0xf3, 0x6f, 0x07, 0x7a, 0x06, 0xcf, 0xc6, 0x36, 0xee,
+	0x98, 0x6d, 0x6c, 0x7d, 0xfb, 0xdc, 0xe6, 0xb7, 0x0f, 0x41, 0x7b, 0x2a, 0x5f, 0x98, 0x59, 0x48,
+	0x52, 0x46, 0x27, 0xb0, 0x13, 0xdb, 0x6c, 0x50, 0x7b, 0xc9, 0x1f, 0xdd, 0xbf, 0x85, 0x28, 0xb8,
+	0x19, 0x89, 0x8e, 0xc0, 0x27, 0xf5, 0x5c, 0xd5, 0xe6, 0xaa, 0x6a, 0xb7, 0x06, 0x8e, 0xed, 0x28,
+	0xf4, 0x08, 0xfa, 0x85, 0x41, 0x4c, 0xed, 0x34, 0x7f, 0x74, 0xa7, 0x89, 0x23, 0xae, 0xfc, 0xa7,
+	0x1f, 0xbd, 0xba, 0x09, 0xb7, 0x7e, 0xbf, 0x09, 0xb7, 0x5e, 0xdf, 0x84, 0xce, 0x8f, 0xeb, 0xd0,
+	0xf9, 0x65, 0x1d, 0x3a, 0xbf, 0xad, 0x43, 0xe7, 0xd5, 0x3a, 0x74, 0xfe, 0x5c, 0x87, 0xce, 0x3f,
+	0xeb, 0x70, 0xeb, 0xf5, 0x3a, 0x74, 0x7e, 0xfa, 0x2b, 0xdc, 0x8a, 0xbb, 0xea, 0x5f, 0x8e, 0xa3,
+	0xff, 0x02, 0x00, 0x00, 0xff, 0xff, 0x28, 0xce, 0x7a, 0x8b, 0xbe, 0x08, 0x00, 0x00,
 }

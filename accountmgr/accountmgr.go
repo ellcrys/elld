@@ -142,11 +142,12 @@ func (am *AccountManager) CreateAccount(address *crypto.Key, passphrase string) 
 
 // CreateCmd creates a new account and interactively obtains
 // encryption passphrase.
+// If seed is non-zero, it is used. Otherwise, one will be randomly generated.
 // If pwd is provide and it is not a file path, it is used as
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
 // is set, interactive password collection is not used.
-func (am *AccountManager) CreateCmd(pwd string) (*crypto.Key, error) {
+func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error) {
 
 	var passphrase string
 	var err error
@@ -179,10 +180,13 @@ func (am *AccountManager) CreateCmd(pwd string) (*crypto.Key, error) {
 	}
 
 	// create address using random seed
-	seed := make([]byte, 32)
-	io.ReadFull(rand.Reader, seed)
-	var seedUint64 = int64(binary.BigEndian.Uint64(seed))
-	address, err := crypto.NewKey(&seedUint64)
+	var address *crypto.Key
+	if seed == 0 {
+		rBytes := make([]byte, 32)
+		io.ReadFull(rand.Reader, rBytes)
+		seed = int64(binary.BigEndian.Uint64(rBytes))
+	}
+	address, err = crypto.NewKey(&seed)
 	if err != nil {
 		return nil, err
 	}
