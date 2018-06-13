@@ -27,8 +27,8 @@ var (
 )
 
 var (
-	// TxTypeA2A represents a transaction from an account to another account
-	TxTypeA2A int64 = 0x1
+	// TxTypeBalance represents a transaction from an account to another account
+	TxTypeBalance int64 = 0x1
 
 	// TxTypeRepoCreate represents a transaction type for creating a repository
 	TxTypeRepoCreate int64 = 0x2

@@ -42,7 +42,7 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 	}
 
 	switch tx.Type {
-	case wire.TxTypeA2A:
+	case wire.TxTypeBalance:
 		return tp.addTx(tx)
 	default:
 		return wire.ErrTxTypeUnknown
