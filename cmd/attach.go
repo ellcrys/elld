@@ -18,20 +18,38 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/console"
+	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
 )
 
 // attachCmd represents the attach command
 var attachCmd = &cobra.Command{
 	Use:   "attach",
-	Short: "Attach to a remote node",
-	Long:  ``,
+	Short: "Attach to a remote node and start a Javascript console.",
+	Long: `Description:
+Attach to a remote node and start a Javascript console.
+	
+To load an initial account, provide the account using '--account' flag. 
+An interactive console will be started to unlock the account. To skip the
+interactive session, set the unlock password using '--pwd' flag. The provided
+account does not exist, the command will fail.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
+		account, _ := cmd.Flags().GetString("account")
+		password, _ := cmd.Flags().GetString("pwd")
 
-		cs := console.New(nil)
-		err := cs.DialRPCServer(rpcAddress)
+		var err error
+		var loadedAddress *crypto.Key
+		if account != "" {
+			loadedAddress, err = loadOrCreateAccount(account, password, 0)
+			if err != nil {
+				log.Fatal(err.Error())
+			}
+		}
+
+		cs := console.New(loadedAddress)
+		err = cs.DialRPCServer(rpcAddress)
 		if err != nil {
 			log.Fatal("unable to start RPC server", "Err", err)
 		}
@@ -49,4 +67,6 @@ var attachCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(attachCmd)
 	attachCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
+	attachCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
+	attachCmd.Flags().String("pwd", "", "Used as password during initial account creation or to unlock an account")
 }
