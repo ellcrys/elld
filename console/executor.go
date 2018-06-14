@@ -58,6 +58,7 @@ func (e *Executor) OnInput(in string) {
 	case ".help":
 		e.help()
 	default:
+		
 		e.exec(in)
 	}
 }

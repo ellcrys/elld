@@ -32,13 +32,14 @@ import (
 )
 
 var (
-	cfg         *configdir.Config
-	log         logger.Logger
-	devMode     bool
-	sigs        chan os.Signal
-	done        chan bool
-	accountMgr  *accountmgr.AccountManager
-	onTerminate func()
+	cfg                    *configdir.Config
+	consoleHistoryFilePath string
+	log                    logger.Logger
+	devMode                bool
+	sigs                   chan os.Signal
+	done                   chan bool
+	accountMgr             *accountmgr.AccountManager
+	onTerminate            func()
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -100,4 +101,5 @@ func initConfig() {
 
 	cfg.Node.Test = false
 	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
+	consoleHistoryFilePath = path.Join(cfg.ConfigDir(), ".console_history")
 }
