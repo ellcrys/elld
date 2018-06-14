@@ -4,9 +4,10 @@ package node
 func (protoc *Inception) AddTxSession(txID string) {
 	if !protoc.HasTxSession(txID) {
 		protoc.mtx.Lock()
-		defer protoc.mtx.Unlock()
 		protoc.openTxSessions[txID] = struct{}{}
+		protoc.mtx.Unlock()
 		protoc.log.Info("New transaction session has been opened", "TxID", txID, "NumOpenedSessions", protoc.CountTxSession())
+		return
 	}
 }
 

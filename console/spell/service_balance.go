@@ -43,7 +43,7 @@ func (es *BalanceService) Send(params map[string]interface{}) interface{} {
 		SenderPubKey: es.key.PubKey().Base58(),
 		To:           params["to"].(string),
 		Value:        params["value"].(string),
-		Fee:          "1", // TODO: if params["fee"] is null, use a default
+		Fee:          "1", // TODO: if params["fee"] is null, use as default
 		Timestamp:    time.Now().Unix(),
 	}
 
