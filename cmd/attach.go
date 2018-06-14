@@ -48,7 +48,7 @@ account does not exist, the command will fail.`,
 			}
 		}
 
-		cs := console.New(loadedAddress)
+		cs := console.New(loadedAddress, consoleHistoryFilePath)
 		err = cs.DialRPCServer(rpcAddress)
 		if err != nil {
 			log.Fatal("unable to start RPC server", "Err", err)

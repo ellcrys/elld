@@ -211,7 +211,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	var cs *console.Console
 	if startConsole {
 
-		cs = console.New(loadedAddress)
+		cs = console.New(loadedAddress, consoleHistoryFilePath)
 
 		if startRPC {
 

@@ -22,15 +22,13 @@ var commonFunc = [][]string{
 
 // SuggestionManager manages suggestions
 type SuggestionManager struct {
-	initialSuggestions []prompt.Suggest
-	suggestions        []prompt.Suggest
+	suggestions []prompt.Suggest
 }
 
 // NewSuggestionManager creates a suggestion manager. Initialize suggestions
 // by providing initial suggestion as argument
 func NewSuggestionManager(initialSuggestions []prompt.Suggest) *SuggestionManager {
 	sm := new(SuggestionManager)
-	sm.initialSuggestions = initialSuggestions
 	sm.suggestions = initialSuggestions
 	return sm
 }
