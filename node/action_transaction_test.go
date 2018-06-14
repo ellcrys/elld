@@ -29,6 +29,8 @@ var _ = Describe("ActionTransaction", func() {
 
 		BeforeEach(func() {
 			n, err = NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
+			protoc := NewInception(n, log)
+			n.SetProtocol(protoc)
 			Expect(err).To(BeNil())
 		})
 
@@ -137,6 +139,19 @@ var _ = Describe("ActionTransaction", func() {
 			err := n.ActionAddTx(tx)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unknown transaction type"))
+		})
+
+		It("should successfully add tx to transaction session", func() {
+			address, _ := crypto.NewKey(nil)
+			sender, _ := crypto.NewKey(nil)
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
+			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
+			Expect(err).To(BeNil())
+
+			err := n.ActionAddTx(tx)
+			Expect(err).To(BeNil())
+
+			Expect(n.protoc.HasTxSession(tx.ID())).To(BeTrue())
 		})
 	})
 })
