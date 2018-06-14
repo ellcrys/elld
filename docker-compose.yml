@@ -8,6 +8,7 @@ services:
         peed_id: 12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu
     ports:
       - "9001:9000"
+      - "8999:8999"
     networks:
       local_net:
         ipv4_address: 172.16.238.10
@@ -24,26 +25,27 @@ services:
         addnode: "-j /ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"
     ports:
       - "9002:9000"
+      - "8998:8999"
     networks:
       local_net:
         ipv4_address: 172.16.238.11
         ipv6_address: 2001:3984:3989::11
         
-  n3:
-    depends_on: 
-      - n2
-    build: 
-      context: .
-      args: 
-        seed: 3
-        peed_id: 12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh
-        addnode: "-j /ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"
-    ports:
-      - "9003:9000"
-    networks:
-      local_net:
-        ipv4_address: 172.16.238.12
-        ipv6_address: 2001:3984:3989::12
+  # n3:
+  #   depends_on: 
+  #     - n2
+  #   build: 
+  #     context: .
+  #     args: 
+  #       seed: 3
+  #       peed_id: 12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh
+  #       addnode: "-j /ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"
+  #   ports:
+  #     - "9003:9000"
+  #   networks:
+  #     local_net:
+  #       ipv4_address: 172.16.238.12
+  #       ipv6_address: 2001:3984:3989::12
         
   # n4:
   #   depends_on: 

@@ -66,8 +66,9 @@ var accountCreateCmd = &cobra.Command{
 		}
 
 		pwd, _ := cmd.Flags().GetString("pwd")
+		seed, _ := cmd.Flags().GetInt64("seed")
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
-		am.CreateCmd(pwd)
+		am.CreateCmd(seed, pwd)
 	},
 }
 
@@ -140,6 +141,7 @@ func init() {
 	accountCmd.AddCommand(accountUpdateCmd)
 	accountCmd.AddCommand(accountImportCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
+	accountCreateCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	accountImportCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	rootCmd.AddCommand(accountCmd)
 }

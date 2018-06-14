@@ -2,33 +2,114 @@ package miner
 
 import (
 	"encoding/binary"
-	"hash"
+	"errors"
 	"math/big"
+	"math/rand"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 	"unsafe"
 
+	mmap "github.com/edsrzf/mmap-go"
 	"github.com/ellcrys/go-ethereum/common"
 	"github.com/ellcrys/go-ethereum/common/bitutil"
-	"github.com/ellcrys/go-ethereum/crypto/sha3"
+	blake2b "github.com/minio/blake2b-simd"
 )
 
-const (
-	datasetInitBytes   = 1 << 30 // Bytes in dataset at genesis
-	datasetGrowthBytes = 1 << 23 // Dataset growth per epoch
-	cacheInitBytes     = 1 << 24 // Bytes in cache at genesis
-	cacheGrowthBytes   = 1 << 17 // Cache growth per epoch
-	epochLength        = 30000   // Blocks per epoch
-	mixBytes           = 128     // Width of mix
-	hashBytes          = 64      // Hash length in bytes
-	hashWords          = 16      // Number of 32 bit ints in a hash
-	datasetParents     = 256     // Number of parents of each dataset element
-	cacheRounds        = 3       // Number of rounds in cache production
-	loopAccesses       = 64      // Number of accesses in hashimoto loop
-)
+var errInvalidDumpMagic = errors.New("invalid dump magic")
+
+// isLittleEndian returns whether the local system is running in little or big
+// endian byte order.
+func isLittleEndian() bool {
+	n := uint32(0x01020304)
+	return *(*byte)(unsafe.Pointer(&n)) == 0x04
+}
+
+// memoryMap tries to memory map a file of uint32s for read only access.
+func memoryMap(path string) (*os.File, mmap.MMap, []uint32, error) {
+	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	mem, buffer, err := memoryMapFile(file, false)
+	if err != nil {
+		file.Close()
+		return nil, nil, nil, err
+	}
+	for i, magic := range dumpMagic {
+		if buffer[i] != magic {
+			mem.Unmap()
+			file.Close()
+			return nil, nil, nil, errInvalidDumpMagic
+		}
+	}
+	return file, mem, buffer[len(dumpMagic):], err
+}
+
+// memoryMapFile tries to memory map an already opened file descriptor.
+func memoryMapFile(file *os.File, write bool) (mmap.MMap, []uint32, error) {
+	// Try to memory map the file
+	flag := mmap.RDONLY
+	if write {
+		flag = mmap.RDWR
+	}
+	mem, err := mmap.Map(file, flag, 0)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Yay, we managed to memory map the file, here be dragons
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&mem))
+	header.Len /= 4
+	header.Cap /= 4
+
+	return mem, *(*[]uint32)(unsafe.Pointer(&header)), nil
+}
+
+// memoryMapAndGenerate tries to memory map a temporary file of uint32s for write
+// access, fill it with the data from a generator and then move it into the final
+// path requested.
+func memoryMapAndGenerate(path string, size uint64, generator func(buffer []uint32)) (*os.File, mmap.MMap, []uint32, error) {
+	// Ensure the data folder exists
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return nil, nil, nil, err
+	}
+	// Create a huge temporary empty file to fill with data
+	temp := path + "." + strconv.Itoa(rand.Int())
+
+	dump, err := os.Create(temp)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if err = dump.Truncate(int64(len(dumpMagic))*4 + int64(size)); err != nil {
+		return nil, nil, nil, err
+	}
+	// Memory map the file for writing and fill it with the generator
+	mem, buffer, err := memoryMapFile(dump, true)
+	if err != nil {
+		dump.Close()
+		return nil, nil, nil, err
+	}
+	copy(buffer, dumpMagic)
+
+	data := buffer[len(dumpMagic):]
+	generator(data)
+
+	if err := mem.Unmap(); err != nil {
+		return nil, nil, nil, err
+	}
+	if err := dump.Close(); err != nil {
+		return nil, nil, nil, err
+	}
+	if err := os.Rename(temp, path); err != nil {
+		return nil, nil, nil, err
+	}
+	return memoryMap(path)
+}
 
 // cacheSize returns the size of the ethash verification cache that belongs to a certain
 // block number.
@@ -72,19 +153,24 @@ func calcDatasetSize(epoch int) uint64 {
 	return size
 }
 
-// hasher is a repetitive hasher allowing the same hash data structures to be
-// reused between hash runs instead of requiring new ones to be created.
-type hasher func(dest []byte, data []byte)
+func hash256(dest []byte, data []byte) {
+	hash := blake2b.Sum256(data)
+	copy(dest, hash[:])
+}
 
-// makeHasher creates a repetitive hasher, allowing the same hash data structures
-// to be reused between hash runs instead of requiring new ones to be created.
-// The returned function is not thread safe!
-func makeHasher(h hash.Hash) hasher {
-	return func(dest []byte, data []byte) {
-		h.Write(data)
-		h.Sum(dest[:0])
-		h.Reset()
-	}
+func hash512(dest []byte, data []byte) {
+	hash := blake2b.Sum256(data)
+	copy(dest, hash[:])
+}
+
+func rHash256(data []byte) []byte {
+	h := blake2b.Sum256(data)
+	return h[:]
+}
+
+func rHash512(data []byte) []byte {
+	h := blake2b.Sum512(data)
+	return h[:]
 }
 
 // seedHash is the seed to use for generating a verification cache and the mining
@@ -94,11 +180,17 @@ func seedHash(block uint64) []byte {
 	if block < epochLength {
 		return seed
 	}
-	keccak256 := makeHasher(sha3.NewKeccak256())
+
 	for i := 0; i < int(block/epochLength); i++ {
-		keccak256(seed, seed)
+		hash256(seed, seed)
 	}
 	return seed
+}
+
+// SeedHash is the seed to use for generating a verification cache and the mining
+// dataset.
+func SeedHash(block uint64) []byte {
+	return seedHash(block)
 }
 
 // generateCache creates a verification cache of a given size for an input seed.
@@ -140,13 +232,11 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 			}
 		}
 	}()
-	// Create a hasher to reuse between invocations
-	keccak512 := makeHasher(sha3.NewKeccak512())
 
 	// Sequentially produce the initial dataset
-	keccak512(cache, seed)
+	hash512(cache, seed)
 	for offset := uint64(hashBytes); offset < size; offset += hashBytes {
-		keccak512(cache[offset:], cache[offset-hashBytes:offset])
+		hash512(cache[offset:], cache[offset-hashBytes:offset])
 		atomic.AddUint32(&progress, 1)
 	}
 	// Use a low-round version of randmemohash
@@ -160,7 +250,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 				xorOff = (binary.LittleEndian.Uint32(cache[dstOff:]) % uint32(rows)) * hashBytes
 			)
 			bitutil.XORBytes(temp, cache[srcOff:srcOff+hashBytes], cache[xorOff:xorOff+hashBytes])
-			keccak512(cache[dstOff:], temp)
+			hash512(cache[dstOff:], temp)
 
 			atomic.AddUint32(&progress, 1)
 		}
@@ -195,7 +285,7 @@ func fnvHash(mix []uint32, data []uint32) {
 
 // generateDatasetItem combines data from 256 pseudorandomly selected cache nodes,
 // and hashes that to compute a single dataset node.
-func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte {
+func generateDatasetItem(cache []uint32, index uint32) []byte {
 	// Calculate the number of theoretical rows (we use one buffer nonetheless)
 	rows := uint32(len(cache) / hashWords)
 
@@ -206,7 +296,7 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 	for i := 1; i < hashWords; i++ {
 		binary.LittleEndian.PutUint32(mix[i*4:], cache[(index%rows)*hashWords+uint32(i)])
 	}
-	keccak512(mix, mix)
+	hash512(mix, mix)
 
 	// Convert the mix to uint32s to avoid constant bit shifting
 	intMix := make([]uint32, hashWords)
@@ -222,7 +312,7 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 	for i, val := range intMix {
 		binary.LittleEndian.PutUint32(mix[i*4:], val)
 	}
-	keccak512(mix, mix)
+	hash512(mix, mix)
 	return mix
 }
 
@@ -231,7 +321,7 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 	// Print some debug logs to allow analysis on low end devices
 
-	log.Debug("epoch", "Epoch", epoch)
+	log.Debug("Generating ethash dataset", "Epoch", epoch)
 
 	start := time.Now()
 	defer func() {
@@ -260,9 +350,6 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 		go func(id int) {
 			defer pend.Done()
 
-			// Create a hasher to reuse between invocations
-			keccak512 := makeHasher(sha3.NewKeccak512())
-
 			// Calculate the data segment this thread should generate
 			batch := uint32((size + hashBytes*uint64(threads) - 1) / (hashBytes * uint64(threads)))
 			first := uint32(id) * batch
@@ -273,14 +360,14 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 			// Calculate the dataset segment
 			percent := uint32(size / hashBytes / 100)
 			for index := first; index < limit; index++ {
-				item := generateDatasetItem(cache, index, keccak512)
+				item := generateDatasetItem(cache, index)
 				if swapped {
 					swap(item)
 				}
 				copy(dataset[index*hashBytes:], item)
 
 				if status := atomic.AddUint32(&progress, 1); status%percent == 0 {
-					log.Debug("Generating DAG in progress", "Percentage", uint64(status*100)/(size/hashBytes), "Elapsed", common.PrettyDuration(time.Since(start)))
+					log.Debug("DAG Generation in progress", "Percentage", uint64(status*100)/(size/hashBytes), "Elapsed", common.PrettyDuration(time.Since(start)))
 
 				}
 			}

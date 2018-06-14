@@ -23,7 +23,7 @@ func (n *Node) ActionAddTx(tx *wire.Transaction) error {
 	}
 
 	switch tx.Type {
-	case wire.TxTypeA2A:
+	case wire.TxTypeBalance:
 
 		value, _ := decimal.NewFromString(tx.Value)
 		if value.LessThanOrEqual(decimal.NewFromFloat(0)) {
@@ -35,7 +35,13 @@ func (n *Node) ActionAddTx(tx *wire.Transaction) error {
 			return wire.ErrTxInsufficientFee
 		}
 
-		return n.txPool.Put(tx)
+		if err := n.txPool.Put(tx); err != nil {
+			return err
+		}
+
+		n.protoc.AddTxSession(tx.ID())
+
+		return nil
 
 	default:
 		return wire.ErrTxTypeUnknown

@@ -57,7 +57,7 @@ var _ = Describe("Transactions", func() {
 
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
 			payload := SendTxPayload{Args: SendTxArgs{
 				Type:         tx.Type,
 				Nonce:        tx.Nonce,

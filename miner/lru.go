@@ -28,7 +28,8 @@ func newlru(what string, maxItems int, new func(epoch uint64) interface{}) *lru 
 	cache, _ := simplelru.NewLRU(maxItems, func(key, value interface{}) {
 		log.Debug("Evicted ethash "+what, "epoch", key)
 	})
-	return &lru{what: what, new: new, cache: cache}
+
+	return &lru{what: what, new: new, cache: cache, mu: sync.Mutex{}}
 }
 
 // get retrieves or creates an item for the given epoch. The first return value is always

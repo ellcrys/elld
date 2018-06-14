@@ -38,7 +38,7 @@ func (s *Service) Send(payload SendTxPayload, result *Result) error {
 	tx.Sig = payload.Sig
 
 	switch payload.Args.Type {
-	case wire.TxTypeA2A:
+	case wire.TxTypeBalance:
 
 		if err := s.node.ActionAddTx(tx); err != nil {
 			return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
