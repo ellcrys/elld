@@ -1,6 +1,7 @@
 package node
 
 import (
+	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util/logger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -8,11 +9,15 @@ import (
 
 var _ = Describe("TransactionSession", func() {
 
+	var err error
 	var protoc *Inception
 	var log = logger.NewLogrusNoOp()
+	var n *Node
 
 	BeforeEach(func() {
-		protoc = NewInception(nil, log)
+		n, err = NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
+		Expect(err).To(BeNil())
+		protoc = NewInception(n, log)
 	})
 
 	Describe(".HasTxSession", func() {

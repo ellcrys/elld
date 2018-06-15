@@ -29,9 +29,9 @@ var _ = Describe("ActionTransaction", func() {
 
 		BeforeEach(func() {
 			n, err = NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
+			Expect(err).To(BeNil())
 			protoc := NewInception(n, log)
 			n.SetProtocol(protoc)
-			Expect(err).To(BeNil())
 		})
 
 		AfterEach(func() {

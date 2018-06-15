@@ -32,7 +32,7 @@ func (pt *Inception) OnTx(s net.Stream) {
 
 	historyKey := makeTxHistoryKey(msg, remotePeer)
 
-	// check if we have a history about this transaction with the remote peer,
+	// check if we have an history about this transaction with the remote peer,
 	// if no, add the transaction.
 	if !pt.LocalPeer().History().Has(historyKey) {
 
@@ -59,7 +59,7 @@ func (pt *Inception) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
 
 		historyKey := makeTxHistoryKey(tx, peer)
 
-		// check if we have a history of transaction with this remote peer,
+		// check if we have an history of transaction with this remote peer,
 		// if yes, do not relay
 		if pt.LocalPeer().History().Has(historyKey) {
 			continue

@@ -35,7 +35,7 @@ func (n *Node) ActionAddTx(tx *wire.Transaction) error {
 			return wire.ErrTxInsufficientFee
 		}
 
-		if err := n.txPool.Put(tx); err != nil {
+		if err := n.protoc.GetUnSignedTxPool().Put(tx); err != nil {
 			return err
 		}
 

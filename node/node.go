@@ -50,10 +50,8 @@ type Node struct {
 	log             logger.Logger           // node logger
 	rSeed           []byte                  // random 256 bit seed to be used for seed random operations
 	db              database.DB             // used to access and modify local database
-	txPool          *txpool.TxPool          // the transaction pool
 	signatory       *d_crypto.Key           // signatory address used to get node ID and for signing
 	historyCache    *histcache.HistoryCache // Used to track objects and behaviours
-	txsRelayQueue   *txpool.TxQueue         // stores transactions waiting to be relayed
 }
 
 // NewNode creates a node instance at the specified port
@@ -91,15 +89,13 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	}
 
 	node := &Node{
-		cfg:           config,
-		address:       util.FullAddressFromHost(host),
-		host:          host,
-		wg:            sync.WaitGroup{},
-		log:           log,
-		rSeed:         util.RandBytes(64),
-		txPool:        txpool.NewTxPool(config.TxPool.Capacity),
-		signatory:     signatory,
-		txsRelayQueue: txpool.NewQueueNoSort(config.TxPool.Capacity),
+		cfg:       config,
+		address:   util.FullAddressFromHost(host),
+		host:      host,
+		wg:        sync.WaitGroup{},
+		log:       log,
+		rSeed:     util.RandBytes(64),
+		signatory: signatory,
 	}
 
 	node.localNode = node
@@ -356,18 +352,19 @@ func (n *Node) connectToNode(remote *Node) error {
 
 // GetTxPool returns the transaction pool
 func (n *Node) GetTxPool() *txpool.TxPool {
-	return n.txPool
+	return n.protoc.GetUnSignedTxPool()
 }
 
-// relayTx continuously relays transactions in the tx relay queue
+// relayTx continuously relays unsigned transactions in the tx relay queue
 func (n *Node) relayTx() {
 	for !n.stopped {
-		if n.txsRelayQueue.Size() == 0 {
+		q := n.protoc.GetUnsignedTxRelayQueue()
+		if q.Size() == 0 {
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		tx := n.txsRelayQueue.First()
+		tx := q.First()
 		n.protoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 	}
 }
@@ -384,10 +381,10 @@ func (n *Node) Start() {
 		go n.connectToNode(node)
 	}
 
-	// before a transaction is added to the tx pool, it must be successfully
+	// before an unsigned transaction is added to the unsigned tx pool, it must be successfully
 	// added to the Node's tx relay queue.
-	n.txPool.BeforeAppend(func(tx *wire.Transaction) error {
-		if !n.txsRelayQueue.Append(tx) {
+	n.protoc.GetUnSignedTxPool().BeforeAppend(func(tx *wire.Transaction) error {
+		if !n.protoc.GetUnsignedTxRelayQueue().Append(tx) {
 			return txpool.ErrQueueFull
 		}
 		return nil

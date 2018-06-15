@@ -71,7 +71,7 @@ var _ = Describe("Transaction", func() {
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
 			time.Sleep(1 * time.Millisecond)
-			Expect(rp.txPool.Has(tx)).To(BeTrue())
+			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
 		})
 
 		It("remote node should add tx in its tx pool", func() {
@@ -81,13 +81,14 @@ var _ = Describe("Transaction", func() {
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
 			time.Sleep(1 * time.Millisecond)
-			Expect(rp.txPool.Has(tx)).To(BeTrue())
+			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
 		})
 
 		It("remote node will fail to add tx if its transaction pool is full", func() {
 			cfg.TxPool.Capacity = 0
 			rp, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
 			Expect(err).To(BeNil())
+			rp.SetProtocol(proto)
 
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
@@ -96,7 +97,7 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 
 			time.Sleep(1 * time.Millisecond)
-			Expect(rp.txPool.Has(tx)).To(BeFalse())
+			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeFalse())
 		})
 	})
 })
