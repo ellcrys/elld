@@ -128,3 +128,11 @@
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/go-xorm/xorm"
+  version = "0.7.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/lib/pq"

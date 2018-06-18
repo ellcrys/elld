@@ -45,6 +45,13 @@ message InvokeArgs {
     map<string,string> params = 2;
 }
 
+// BlockVote represents a vote for a block
+message BlockVote {
+	string ticket = 1;
+	string pubKey = 2;
+	string sig  = 3;
+}
+
 // Transaction represents a transaction
 message Transaction {
     int64 type = 1;
@@ -56,6 +63,7 @@ message Transaction {
     string Fee = 7;
     InvokeArgs InvokeArgs = 8;
     bytes sig = 9;
+    bytes hash = 10;
 }
 
 // Header represents the header of a block
@@ -74,6 +82,8 @@ message Header {
 message Block{
     Header header = 1;
     repeated Transaction transactions = 2;
+    repeated string validators = 3;
+    bytes hash = 4;
 }
 
 // ObjectState represents the new state of an account's object

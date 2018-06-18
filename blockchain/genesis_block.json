@@ -1,0 +1,30 @@
+{
+    "header": {
+        "parentHash": null,
+        "number": 1,
+        "root": "",
+        "txHash": "jsjhf9e3i9nfi",
+        "nonce": 0,
+        "mixHash": "",
+        "difficulty": "500000",
+        "timestamp": 1538858758
+    },
+    "transactions": [
+        {
+            "type": 1,
+            "nonce": "abc",
+            "to": "efjshfhh389djn29snmnvuis",
+            "senderPubKey": "xsj2909jfhhjskmj99k",
+            "value": "100.333",
+            "timestamp": 1508673895,
+            "fee": "0.00003",
+            "signature": "93udndte7hxbvhivmnzbzguruhcbybcdbxcbyulmxsncs"
+        }
+    ],
+    "validators": [
+        "eksjhhdimnnfhhjjsjiidn",
+        "jd83jnfnmsmkfihehf89ks",
+        "3jjfjshhyusdnnchjzmmnf"
+    ],
+    "hash": "lkssjajsdnaskomcskosks"
+}

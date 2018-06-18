@@ -94,7 +94,7 @@ var _ = Describe("Transaction", func() {
 			seed := int64(1)
 			a, _ := crypto.NewKey(&seed)
 			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: a.PubKey().Base58()}
-			Expect(tx.Hash()).To(Equal([]byte{35, 25, 58, 248, 4, 154, 18, 141, 250, 79, 195, 147, 216, 172, 66, 28, 119, 135, 234, 51, 111, 125, 163, 178, 177, 114, 247, 89, 141, 81, 111, 59}))
+			Expect(tx.GetHash()).To(Equal([]byte{35, 25, 58, 248, 4, 154, 18, 141, 250, 79, 195, 147, 216, 172, 66, 28, 119, 135, 234, 51, 111, 125, 163, 178, 177, 114, 247, 89, 141, 81, 111, 59}))
 		})
 	})
 

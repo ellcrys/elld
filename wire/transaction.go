@@ -80,8 +80,8 @@ func (tx *Transaction) Bytes() []byte {
 	return result
 }
 
-// Hash returns the SHA256 hash of the transaction
-func (tx *Transaction) Hash() []byte {
+// GetHash returns the SHA256 hash of the transaction
+func (tx *Transaction) GetHash() []byte {
 	bs := tx.Bytes()
 	hash := sha256.Sum256(bs)
 	return hash[:]
@@ -89,7 +89,7 @@ func (tx *Transaction) Hash() []byte {
 
 // ID returns the hex representation of Hash()
 func (tx *Transaction) ID() string {
-	return hex.EncodeToString(tx.Hash())
+	return hex.EncodeToString(tx.GetHash())
 }
 
 // TxVerify checks whether a transaction's signature is valid.
