@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ellcrys/elld/blockchain/types"
 	"github.com/ellcrys/elld/configdir"
@@ -12,9 +13,11 @@ import (
 // functionalities for interacting with the underlying database
 // and primitives.
 type Blockchain struct {
-	cfg   *configdir.Config // Node configuration
-	log   logger.Logger     // Logger
-	store types.Store
+	lock      *sync.Mutex
+	cfg       *configdir.Config // Node configuration
+	log       logger.Logger     // Logger
+	store     types.Store       // The database where block data is stored
+	bestChain *Chain            // The chain considered to be the true chain
 }
 
 // New creates a Blockchain instance.
@@ -22,6 +25,7 @@ func New(cfg *configdir.Config, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.log = log
 	bc.cfg = cfg
+	bc.lock = &sync.Mutex{}
 	return bc
 }
 
@@ -39,16 +43,23 @@ func (b *Blockchain) Up() error {
 	}
 
 	b.log.Info("Initializing blockchain store")
-
 	if err := b.store.Initialize(); err != nil {
 		return err
 	}
 
-	b.createGenesisBlock()
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	b.bestChain = NewChain(b.store, b.log)
+	if err := b.bestChain.init(GenesisBlock); err != nil {
+		b.log.Debug("best chain initialization: %s", "Err", err)
+		return err
+	}
 
 	return nil
 }
 
-func (b *Blockchain) createGenesisBlock() error {
-	return nil
+// IsEndorser takes an address and checks whether it has an active endorser ticket
+func (b *Blockchain) IsEndorser(address string) bool {
+	return false
 }

@@ -111,12 +111,7 @@ func (k *Key) PeerID() string {
 
 // Addr returns the address corresponding to the public key
 func (k *Key) Addr() string {
-	pkHex := k.PubKey().Hex()
-	pubSha256 := sha3.Sum256([]byte(pkHex))
-	r := ripemd160.New()
-	r.Write(pubSha256[:])
-	addr := r.Sum(nil)
-	return base58.CheckEncode(addr, AddressVersion)
+	return k.PubKey().Addr()
 }
 
 // PubKey returns the public key
@@ -155,6 +150,16 @@ func (p *PubKey) Base58() string {
 // Verify verifies a signature
 func (p *PubKey) Verify(data, sig []byte) (bool, error) {
 	return p.pubKey.Verify(data, sig)
+}
+
+// Addr computes an address from the public key
+func (p *PubKey) Addr() string {
+	pkHex := p.Hex()
+	pubSha256 := sha3.Sum256([]byte(pkHex))
+	r := ripemd160.New()
+	r.Write(pubSha256[:])
+	addr := r.Sum(nil)
+	return base58.CheckEncode(addr, AddressVersion)
 }
 
 // Bytes returns the byte equivalent of the public key

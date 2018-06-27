@@ -39,6 +39,7 @@ func NewInception(p *Node, log logger.Logger) *Inception {
 		arm:            &sync.Mutex{},
 		unsignedTxPool: txpool.NewTxPool(p.cfg.TxPool.Capacity),
 		openTxSessions: make(map[string]struct{}),
+		txsRelayQueue:  txpool.NewQueueNoSort(p.cfg.TxPool.Capacity),
 	}
 }
 

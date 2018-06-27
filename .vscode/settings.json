@@ -12,6 +12,7 @@
         "dbfile",
         "decr",
         "druid",
+        "evbus",
         "golog",
         "gologging",
         "ipfs",

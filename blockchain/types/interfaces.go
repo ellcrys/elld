@@ -4,7 +4,7 @@ package types
 type Block interface {
 
 	// GetNumber returns the block number
-	GetNumber() int64
+	GetNumber() uint64
 }
 
 // Store defines an interface for storing objects and metadata
@@ -18,7 +18,7 @@ type Store interface {
 	PutBlock(block Block) error
 
 	// GetBlock finds and returns a block
-	GetBlock(number int64, block Block) error
+	GetBlock(number uint64, block Block) error
 
 	// Close closes the store, freeing resources held.
 	Close() error

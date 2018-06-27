@@ -3,11 +3,13 @@ package util
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	r "math/rand"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -27,17 +29,8 @@ func init() {
 }
 
 const (
-	HashLength    = 32
 	AddressLength = 20
 )
-
-type Hash [HashLength]byte
-
-// Bytes gets the byte representation of the underlying hash.
-func (h Hash) Bytes() []byte { return h[:] }
-
-// Big converts a hash to a big integer.
-func (h Hash) Big() *big.Int { return new(big.Int).SetBytes(h[:]) }
 
 // StructToBytes returns json encoded representation of a struct
 func StructToBytes(s interface{}) []byte {
@@ -171,4 +164,22 @@ func SerializeMsg(o proto.Message) []byte {
 		panic(err)
 	}
 	return bs
+}
+
+// ToHex encodes value to hex with a '0x' prefix
+func ToHex(value []byte) string {
+	return fmt.Sprintf("0x%s", hex.EncodeToString(value))
+}
+
+// FromHex decodes hex value to bytes. If hex value is prefixed
+// with '0x' it is trimmed before the decode operation.
+func FromHex(hexValue string) ([]byte, error) {
+	var _hexValue string
+	parts := strings.Split(hexValue, "0x")
+	if len(parts) == 1 {
+		_hexValue = parts[0]
+	} else {
+		_hexValue = parts[1]
+	}
+	return hex.DecodeString(_hexValue)
 }

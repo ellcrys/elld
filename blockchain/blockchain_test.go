@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"fmt"
+
 	"github.com/ellcrys/elld/blockchain/couchdb"
 	"github.com/ellcrys/elld/blockchain/types"
 	"github.com/ellcrys/elld/testutil"
@@ -34,8 +36,8 @@ var _ = Describe("Blockchain", func() {
 		It("", func() {
 			bc := New(cfg, log)
 			bc.SetStore(store)
-
-			bc.Up()
+			err := bc.Up()
+			fmt.Println(err)
 		})
 	})
 })

@@ -3,6 +3,7 @@ package couchdb
 import (
 	"fmt"
 
+	"github.com/fatih/structs"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/ellcrys/elld/blockchain/types"
@@ -75,7 +76,7 @@ func (s *Store) deleteDB() error {
 	}
 }
 
-func (s *Store) hasBlock(number int64) (bool, error) {
+func (s *Store) hasBlock(number uint64) (bool, error) {
 
 	query := map[string]interface{}{
 		"limit": 1,
@@ -102,12 +103,13 @@ func (s *Store) hasBlock(number int64) (bool, error) {
 }
 
 // GetBlock fetches a block by its block number.
-func (s *Store) GetBlock(number int64, result types.Block) error {
+func (s *Store) GetBlock(number uint64, result types.Block) error {
 
 	query := map[string]interface{}{
 		"limit": 1,
 		"selector": map[string]interface{}{
 			"header.number": number,
+			"type":          types.TypeBlock,
 		},
 	}
 
@@ -147,6 +149,9 @@ func (s *Store) PutBlock(block types.Block) error {
 	} else if exist {
 		return fmt.Errorf("block with same number already exists")
 	}
+
+	blockM := structs.Map(block)
+	blockM["type"] = types.TypeBlock
 
 	resp, err := resty.R().
 		SetBody(block).

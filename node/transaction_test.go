@@ -3,8 +3,10 @@ package node
 import (
 	"time"
 
+	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/util"
 
+	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/wire"
@@ -28,26 +30,34 @@ var _ = Describe("Transaction", func() {
 
 		var err error
 		var n, rp *Node
-		var proto Protocol
+		var proto, rpProto Protocol
 		var sender, address *crypto.Key
+		var nBus, rpBus evbus.Bus
 
 		BeforeEach(func() {
 			address, _ = crypto.NewKey(nil)
 			sender, _ = crypto.NewKey(nil)
+			nBus = evbus.New()
+			rpBus = evbus.New()
 		})
 
 		BeforeEach(func() {
 			n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			proto = NewInception(n, log)
+			n.SetProtocol(proto)
+			n.SetLogicBus(nBus)
+			logic.New(n, nBus, log)
 		})
 
 		BeforeEach(func() {
 			rp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
-			rpProto := NewInception(rp, log)
+			rpProto = NewInception(rp, log)
 			rp.SetProtocol(rpProto)
 			rp.SetProtocolHandler(util.TxVersion, rpProto.OnTx)
+			rp.SetLogicBus(rpBus)
+			logic.New(rp, rpBus, log)
 		})
 
 		AfterEach(func() {
@@ -57,7 +67,10 @@ var _ = Describe("Transaction", func() {
 
 		It("should return nil and history key of transaction should be in HistoryCache", func() {
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
+			tx.Hash = util.ToHex(tx.ComputeHash())
+			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
+			Expect(err).To(BeNil())
+			tx.Sig = util.ToHex(sig)
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
 			Expect(n.historyCache.Len()).To(Equal(1))
@@ -65,22 +78,16 @@ var _ = Describe("Transaction", func() {
 		})
 
 		It("remote node should add tx in its tx pool", func() {
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
-			Expect(err).To(BeNil())
-			err = proto.RelayTx(tx, []*Node{rp})
-			Expect(err).To(BeNil())
-			time.Sleep(1 * time.Millisecond)
-			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
-		})
 
-		It("remote node should add tx in its tx pool", func() {
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
+			tx.Hash = util.ToHex(tx.ComputeHash())
+			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			err = proto.RelayTx(tx, []*Node{rp})
-			Expect(err).To(BeNil())
+			tx.Sig = util.ToHex(sig)
+
+			err = n.protoc.RelayTx(tx, []*Node{rp})
 			time.Sleep(1 * time.Millisecond)
+			Expect(err).To(BeNil())
 			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
 		})
 
@@ -91,8 +98,10 @@ var _ = Describe("Transaction", func() {
 			rp.SetProtocol(proto)
 
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
+			tx.Hash = util.ToHex(tx.ComputeHash())
+			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
+			tx.Sig = util.ToHex(sig)
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
 

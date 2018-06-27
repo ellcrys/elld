@@ -19,6 +19,7 @@ import (
 
 	"github.com/ellcrys/elld/configdir"
 
+	evbus "github.com/asaskevich/EventBus"
 	"github.com/thoas/go-funk"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -52,6 +53,7 @@ type Node struct {
 	db              database.DB             // used to access and modify local database
 	signatory       *d_crypto.Key           // signatory address used to get node ID and for signing
 	historyCache    *histcache.HistoryCache // Used to track objects and behaviours
+	logicBus        evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
 }
 
 // NewNode creates a node instance at the specified port
@@ -141,9 +143,19 @@ func (n *Node) OpenDB() error {
 	return n.db.Open(namespace)
 }
 
+// Proto returns the set protocol
+func (n *Node) Proto() Protocol {
+	return n.protoc
+}
+
 // PM returns the peer manager
 func (n *Node) PM() *Manager {
 	return n.peerManager
+}
+
+// Cfg returns the config object
+func (n *Node) Cfg() *configdir.Config {
+	return n.cfg
 }
 
 // History returns the cache holding items (messages etc) we have seen
@@ -164,6 +176,11 @@ func (n *Node) DevMode() bool {
 // IsSameID is like IsSame except it accepts string
 func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
+}
+
+// SetLogicBus sets the logic event bus
+func (n *Node) SetLogicBus(bus evbus.Bus) {
+	n.logicBus = bus
 }
 
 // SetLocalNode sets the local peer
@@ -474,4 +491,19 @@ func (n *Node) createTx() error {
 	// tx := &wire.NewTransaction(wire.TxTypeRepoCreate, 1, "somebody", n.)
 	// return n.txPool.Put()
 	return nil
+}
+
+// GetUnsignedTxRelayQueue returns the transaction relay queue
+func (n *Node) GetUnsignedTxRelayQueue() *txpool.TxQueue {
+	return n.protoc.GetUnsignedTxRelayQueue()
+}
+
+// GetUnSignedTxPool returns the unsigned transaction pool
+func (n *Node) GetUnSignedTxPool() *txpool.TxPool {
+	return n.protoc.GetUnSignedTxPool()
+}
+
+// AddTxSession adds a transaction session
+func (n *Node) AddTxSession(txID string) {
+	n.protoc.AddTxSession(txID)
 }

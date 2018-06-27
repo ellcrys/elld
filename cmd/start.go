@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/asaskevich/EventBus"
+	"github.com/ellcrys/elld/logic"
+
 	"github.com/ellcrys/elld/rpc"
 
 	"gopkg.in/asaskevich/govalidator.v4"
@@ -130,6 +133,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 // - add bootstrap node from config file if any
 // - open database
 // - initialize protocol instance along with message handlers
+// - create logic handler and pass it to the node
 // - start RPC server if enabled
 // - start console if enabled
 // - connect console to rpc server and prepare console vm if rpc server is enabled
@@ -200,11 +204,15 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(util.AddrVersion, protocol.OnAddr)
 	n.SetProtocolHandler(util.TxVersion, protocol.OnTx)
 
+	logicBus := EventBus.New()
+	lgc := logic.New(n, logicBus, log)
+	n.SetLogicBus(logicBus)
+
 	n.Start()
 
 	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = rpc.NewServer(rpcAddress, n, log)
+		rpcServer = rpc.NewServer(rpcAddress, lgc, log)
 		go rpcServer.Serve()
 	}
 

@@ -3,9 +3,11 @@ package rpc
 import (
 	"path"
 
+	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/configdir"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
 	. "github.com/onsi/ginkgo"
@@ -14,8 +16,9 @@ import (
 
 var _ = Describe("Accounts", func() {
 
-	var p *node.Node
+	var n *node.Node
 	var err error
+	var bus evbus.Bus
 
 	BeforeEach(func() {
 		var err error
@@ -28,25 +31,26 @@ var _ = Describe("Accounts", func() {
 	})
 
 	BeforeEach(func() {
-		p, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
+		n, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
-		p.Host().Close()
+		n.Host().Close()
 	})
 
 	Describe(".AccountsGet", func() {
 		service := new(Service)
 
 		BeforeEach(func() {
-			service.node = p
+			bus = evbus.New()
+			service.logic = logic.New(n, bus, log)
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {
-			payload := GetAccountsPayload{}
+			payload := map[string]interface{}{}
 			var result Result
-			err := service.GetAccounts(payload, &result)
+			err := service.AccountGetAll(payload, &result)
 			Expect(err).To(BeNil())
 			Expect(result.Data).To(HaveKey("accounts"))
 			Expect(result.Data["accounts"]).To(HaveLen(0))
@@ -61,7 +65,7 @@ var _ = Describe("Accounts", func() {
 
 			payload := GetAccountsPayload{}
 			var result Result
-			err = service.GetAccounts(payload, &result)
+			err = service.AccountGetAll(payload, &result)
 			Expect(err).To(BeNil())
 			Expect(result.Data).To(HaveKey("accounts"))
 			Expect(result.Data["accounts"]).To(HaveLen(1))

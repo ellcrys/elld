@@ -1,4 +1,4 @@
-package blockchain
+package types
 
 // DocType represents a document type
 type DocType int

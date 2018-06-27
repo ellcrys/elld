@@ -30,9 +30,9 @@ func (es *Account) GetAccounts() []string {
 		Panic("Accounts.GetAccounts", "client not initialized")
 	}
 
-	var args = new(rpc.GetAccountsPayload)
+	var args = new(rpc.AccountGetAllPayload)
 	var result rpc.Result
-	err := es.client.Call("Service.GetAccounts", args, &result)
+	err := es.client.Call("Service.AccountGetAll", args, &result)
 	if err != nil {
 		Panic("Accounts.GetAccounts", err.Error())
 	}

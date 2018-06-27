@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"fmt"
+
 	"github.com/ellcrys/elld/wire"
+	"github.com/mitchellh/mapstructure"
 )
 
 // SendTxArgs represents arguments for method SendELL
@@ -15,32 +18,30 @@ type SendTxArgs struct {
 	Timestamp    int64  `json:"timestamp"`
 }
 
-// SendTxPayload is used to define payload for SendELL
-type SendTxPayload struct {
-	Args SendTxArgs `json:"args"`
-	Sig  []byte     `json:"sig"`
-}
+// SendTxPayload is used to define payload for a transaction
+type SendTxPayload map[string]interface{}
 
-// Send adds a transaction to the transaction pool.
+// TransactionAdd adds a transaction to the transaction pool.
 // The transaction is validated and verified before it is sent to the node.
-func (s *Service) Send(payload SendTxPayload, result *Result) error {
+func (s *Service) TransactionAdd(payload SendTxPayload, result *Result) error {
 
-	tx := wire.NewTransaction(
-		payload.Args.Type,
-		payload.Args.Nonce,
-		payload.Args.To,
-		payload.Args.SenderPubKey,
-		payload.Args.Value,
-		payload.Args.Fee,
-		payload.Args.Timestamp,
-	)
+	var tx wire.Transaction
+	if err := mapstructure.Decode(payload, &tx); err != nil {
+		return fmt.Errorf("failed to decode payload: %s", err)
+	}
 
-	tx.Sig = payload.Sig
+	var err error
 
-	switch payload.Args.Type {
+	switch tx.Type {
 	case wire.TxTypeBalance:
 
-		if err := s.node.ActionAddTx(tx); err != nil {
+		var errCh = make(chan error, 1)
+		err = s.logic.TransactionAdd(&tx, errCh)
+		if err != nil {
+			return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
+		}
+
+		if err = <-errCh; err != nil {
 			return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
 		}
 
