@@ -10,7 +10,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-host"
@@ -82,12 +82,12 @@ func RandBytes(n int) []byte {
 }
 
 // SetTestCfg prepare a config directory for tests
-func SetTestCfg() (*configdir.Config, error) {
+func SetTestCfg() (*config.EngineConfig, error) {
 	var err error
 	dir, _ := homedir.Dir()
 	cfgDir := path.Join(dir, ".ellcrys_test")
 	os.MkdirAll(cfgDir, 0700)
-	cfg, err := configdir.LoadCfg(cfgDir)
+	cfg, err := config.LoadCfg(cfgDir)
 	cfg.Node.Dev = true
 	cfg.Node.MaxAddrsExpected = 5
 	cfg.Node.Test = true

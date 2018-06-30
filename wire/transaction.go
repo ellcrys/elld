@@ -30,7 +30,7 @@ var (
 	TxTypeBalance int64 = 0x1
 
 	// TxTypeEndorserTicketCreate represents a transaction to create an endorser ticket
-	TxTypeEndorserTicketCreate = 0x2
+	TxTypeEndorserTicketCreate int64 = 0x2
 )
 
 // NewTransaction creates a new transaction
@@ -168,12 +168,12 @@ func (tx *Transaction) Validate() error {
 		return fieldError("to", "address is not valid")
 	}
 
-	if err := crypto.IsValidAddr(tx.From); err != nil {
-		return fieldError("from", "address is not valid")
-	}
-
 	if len(tx.From) == 0 {
 		return fieldError("from", "sender address is required")
+	}
+
+	if err := crypto.IsValidAddr(tx.From); err != nil {
+		return fieldError("from", "address is not valid")
 	}
 
 	if senderPubKey, _ := crypto.PubKeyFromBase58(tx.SenderPubKey); senderPubKey.Addr() != tx.From {

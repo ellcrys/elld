@@ -7,9 +7,9 @@ import (
 	"net/rpc"
 	"runtime"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/console/spell"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/util"
 
 	prompt "github.com/c-bata/go-prompt"
 )
@@ -101,7 +101,7 @@ func (c *Console) Exit() {
 
 func (c *Console) about() {
 	fmt.Println("Welcome to Druid Javascript console!")
-	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s, Go:%s", util.ClientVersion, util.ProtocolVersion, runtime.Version()))
+	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s, Go:%s", config.ClientVersion, config.ProtocolVersion, runtime.Version()))
 	fmt.Println(" type '.exit' to exit console")
 	fmt.Println("")
 }

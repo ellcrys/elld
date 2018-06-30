@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/ellcrys/elld/blockchain/types"
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -14,14 +14,14 @@ import (
 // and primitives.
 type Blockchain struct {
 	lock      *sync.Mutex
-	cfg       *configdir.Config // Node configuration
-	log       logger.Logger     // Logger
-	store     types.Store       // The database where block data is stored
-	bestChain *Chain            // The chain considered to be the true chain
+	cfg       *config.EngineConfig // Node configuration
+	log       logger.Logger        // Logger
+	store     types.Store          // The database where block data is stored
+	bestChain *Chain               // The chain considered to be the true chain
 }
 
 // New creates a Blockchain instance.
-func New(cfg *configdir.Config, log logger.Logger) *Blockchain {
+func New(cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.log = log
 	bc.cfg = cfg
@@ -50,7 +50,7 @@ func (b *Blockchain) Up() error {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	b.bestChain = NewChain(b.store, b.log)
+	b.bestChain = NewChain(b.store, b.cfg, b.log)
 	if err := b.bestChain.init(GenesisBlock); err != nil {
 		b.log.Debug("best chain initialization: %s", "Err", err)
 		return err

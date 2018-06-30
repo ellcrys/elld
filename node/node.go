@@ -17,7 +17,7 @@ import (
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 
 	evbus "github.com/asaskevich/EventBus"
 	"github.com/thoas/go-funk"
@@ -36,7 +36,7 @@ import (
 
 // Node represents a network node
 type Node struct {
-	cfg             *configdir.Config       // node config
+	cfg             *config.EngineConfig    // node config
 	address         ma.Multiaddr            // node multiaddr
 	IP              net.IP                  // node ip
 	host            host.Host               // node libp2p host
@@ -53,11 +53,11 @@ type Node struct {
 	db              database.DB             // used to access and modify local database
 	signatory       *d_crypto.Key           // signatory address used to get node ID and for signing
 	historyCache    *histcache.HistoryCache // Used to track objects and behaviours
-	logicBus        evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	logicEvt        evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
 }
 
 // NewNode creates a node instance at the specified port
-func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db database.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 
 	if signatory == nil {
 		return nil, fmt.Errorf("signatory address required")
@@ -98,6 +98,7 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 		log:       log,
 		rSeed:     util.RandBytes(64),
 		signatory: signatory,
+		db:        db,
 	}
 
 	node.localNode = node
@@ -116,6 +117,16 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	return node, nil
 }
 
+// NewNode creates a Node instance
+func NewNode(config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+	return newNode(nil, config, address, signatory, log)
+}
+
+// NewNodeWithDB is like NewNode but it accepts a db instance
+func NewNodeWithDB(db database.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+	return newNode(db, config, address, signatory, log)
+}
+
 // NewRemoteNode creates a Node that represents a remote node
 func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	node := &Node{
@@ -128,19 +139,25 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 }
 
 // OpenDB opens the database.
-// In dev mode, the database is namespaced by the node id.
+// In dev mode, create a namespace and open database file prefixed with the namespace.
 func (n *Node) OpenDB() error {
+
 	if n.db != nil {
 		return fmt.Errorf("db already open")
 	}
-	n.db = database.NewGeneralDB(n.cfg.ConfigDir())
 
-	namespace := ""
+	n.db = database.NewLevelDB(n.cfg.ConfigDir())
+	var namespace string
 	if n.DevMode() {
 		namespace = n.StringID()
 	}
 
 	return n.db.Open(namespace)
+}
+
+// DB returns the database instance
+func (n *Node) DB() database.DB {
+	return n.db
 }
 
 // Proto returns the set protocol
@@ -154,7 +171,7 @@ func (n *Node) PM() *Manager {
 }
 
 // Cfg returns the config object
-func (n *Node) Cfg() *configdir.Config {
+func (n *Node) Cfg() *config.EngineConfig {
 	return n.cfg
 }
 
@@ -180,12 +197,31 @@ func (n *Node) IsSameID(id string) bool {
 
 // SetLogicBus sets the logic event bus
 func (n *Node) SetLogicBus(bus evbus.Bus) {
-	n.logicBus = bus
+	n.logicEvt = bus
 }
 
 // SetLocalNode sets the local peer
 func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
+}
+
+// canAcceptPeer determines whether we can continue to interact with
+// a remote node. This is a good place to check if a remote node
+// has been blacklisted etc
+func (n *Node) canAcceptPeer(remotePeer *Node) (bool, string) {
+
+	// In dev mode, we cannot interact with a remote peer with a public IP
+	if n.isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+		return false, "in development mode, we cannot interact with peers with public IP"
+	}
+
+	// If the local peer does not know the remotePeer, it cannot interact with it.
+	// This does not apply in dev mode.
+	if !remotePeer.IsKnown() && !n.isDevMode() {
+		return false, "remote peer is unknown"
+	}
+
+	return true, ""
 }
 
 // addToPeerStore adds a remote node to the host's peerstore
@@ -423,6 +459,10 @@ func (n *Node) Stop() {
 
 	if pm := n.PM(); pm != nil {
 		pm.Stop()
+	}
+
+	if n.host != nil {
+		n.host.Close()
 	}
 
 	if n.db != nil {

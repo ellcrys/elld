@@ -3,7 +3,6 @@ package logic
 import (
 	"time"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
@@ -30,17 +29,15 @@ var _ = Describe("Transaction", func() {
 		var err error
 		var n *node.Node
 		var logic *Logic
-		var bus evbus.Bus
 		var errCh chan error
 
 		BeforeEach(func() {
 			errCh = make(chan error)
 			n, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
-			protoc := node.NewInception(n, log)
-			n.SetProtocol(protoc)
-			bus = evbus.New()
-			logic = New(n, bus, log)
+			gossip := node.NewGossip(n, log)
+			n.SetProtocol(gossip)
+			logic, _ = New(n, log)
 		})
 
 		AfterEach(func() {
@@ -59,6 +56,7 @@ var _ = Describe("Transaction", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "0", "0.1", time.Now().Unix())
+			tx.From = sender.Addr()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
@@ -72,6 +70,7 @@ var _ = Describe("Transaction", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "0.0000000001", time.Now().Unix())
+			tx.From = sender.Addr()
 			tx.Hash = util.ToHex(tx.ComputeHash())
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
@@ -86,6 +85,7 @@ var _ = Describe("Transaction", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(0x300, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
+			tx.From = sender.Addr()
 			tx.Hash = util.ToHex(tx.ComputeHash())
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
@@ -100,6 +100,7 @@ var _ = Describe("Transaction", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
+			tx.From = sender.Addr()
 			tx.Hash = util.ToHex(tx.ComputeHash())
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())

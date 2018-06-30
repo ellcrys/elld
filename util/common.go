@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/structs"
+
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/shopspring/decimal"
@@ -182,4 +184,12 @@ func FromHex(hexValue string) ([]byte, error) {
 		_hexValue = parts[1]
 	}
 	return hex.DecodeString(_hexValue)
+}
+
+// StructToMap returns a map containing fields from the s.
+// Map fields are named after their json tags on the struct
+func StructToMap(s interface{}) map[string]interface{} {
+	_s := structs.New(s)
+	_s.TagName = "json"
+	return _s.Map()
 }

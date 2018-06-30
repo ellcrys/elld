@@ -27,12 +27,12 @@ import (
 
 	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
 
 var (
-	cfg                    *configdir.Config
+	cfg                    *config.EngineConfig
 	consoleHistoryFilePath string
 	log                    logger.Logger
 	devMode                bool
@@ -94,7 +94,7 @@ func initConfig() {
 		os.MkdirAll(cfgDirPath, 0700)
 	}
 
-	cfg, err = configdir.LoadCfg(cfgDirPath)
+	cfg, err = config.LoadCfg(cfgDirPath)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

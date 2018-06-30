@@ -1,4 +1,4 @@
-package configdir
+package config
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ var _ = Describe("Configdir", func() {
 
 	Describe(".NewHomeDir", func() {
 		It("should return error when the passed in directory does not exist", func() {
-			_, err := NewConfigDir("~/not_existing")
+			_, err := NewConfig("~/not_existing")
 			Expect(err).NotTo(BeNil())
 			Expect(err.Error()).To(Equal("config directory is not ok; may not exist or we don't have enough permission"))
 		})
@@ -34,13 +34,13 @@ var _ = Describe("Configdir", func() {
 			Expect(err).To(BeNil())
 			defer os.RemoveAll(dirName)
 
-			_, err = NewConfigDir(dirName)
+			_, err = NewConfig(dirName)
 			Expect(err).To(BeNil())
 		})
 
 		It("should return the default directory path", func() {
 			dirName := fmt.Sprintf("%s/.ellcrys", homeDir)
-			cfgDir, err := NewConfigDir("")
+			cfgDir, err := NewConfig("")
 			Expect(err).To(BeNil())
 			Expect(cfgDir.path).To(Equal(dirName))
 		})
@@ -55,7 +55,7 @@ var _ = Describe("Configdir", func() {
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
-				cfg, err := NewConfigDir(dirName)
+				cfg, err := NewConfig(dirName)
 				Expect(err).To(BeNil())
 				existed, err := cfg.createConfigFileInNotExist()
 				Expect(err).To(BeNil())
@@ -76,7 +76,7 @@ var _ = Describe("Configdir", func() {
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
-				cfg, err := NewConfigDir(dirName)
+				cfg, err := NewConfig(dirName)
 				Expect(err).To(BeNil())
 				existed, err := cfg.createConfigFileInNotExist()
 				Expect(err).To(BeNil())
@@ -98,13 +98,13 @@ var _ = Describe("Configdir", func() {
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
-				defaultConfig = Config{
+				defaultConfig = EngineConfig{
 					Node: &PeerConfig{
 						BootstrapNodes: []string{"127.0.0.1:4000"},
 					},
 				}
 
-				cfgDir, err := NewConfigDir(dirName)
+				cfgDir, err := NewConfig(dirName)
 				Expect(err).To(BeNil())
 				existed, err := cfgDir.createConfigFileInNotExist()
 				Expect(err).To(BeNil())
@@ -112,7 +112,7 @@ var _ = Describe("Configdir", func() {
 
 				cfg, err := cfgDir.Load()
 				Expect(err).To(BeNil())
-				Expect(cfg).To(Equal(&Config{
+				Expect(cfg).To(Equal(&EngineConfig{
 					Node: &PeerConfig{
 						BootstrapNodes: []string{"127.0.0.1:4000"},
 					},
@@ -138,7 +138,7 @@ var _ = Describe("Configdir", func() {
 				err = ioutil.WriteFile(filePath, []byte("invalid content"), 0600)
 				Expect(err).To(BeNil())
 
-				cfgDir, err := NewConfigDir(dirName)
+				cfgDir, err := NewConfig(dirName)
 				Expect(err).To(BeNil())
 				_, err = cfgDir.Load()
 				Expect(err).NotTo(BeNil())

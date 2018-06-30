@@ -4,7 +4,7 @@ import (
 	path "path/filepath"
 
 	"github.com/ellcrys/elld/accountmgr"
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 )
 
 // AccountsGet returns all accounts on this node.
@@ -12,7 +12,7 @@ import (
 func (l *Logic) AccountsGet(result chan []*accountmgr.StoredAccount, errCh chan error) error {
 
 	// Using the account manager, fetch all accounts in the config directory
-	am := accountmgr.New(path.Join(l.engine.Cfg().ConfigDir(), configdir.AccountDirName))
+	am := accountmgr.New(path.Join(l.engine.Cfg().ConfigDir(), config.AccountDirName))
 	accounts, err := am.GetAccountsOnDisk()
 	if err != nil {
 		return sendErr(errCh, err)

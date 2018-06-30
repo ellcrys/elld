@@ -1,14 +1,13 @@
 package node
 
 import (
-	"bufio"
 	"context"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
-	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
 func makeTxHistoryKey(tx *wire.Transaction, peer *Node) histcache.MultiKey {
@@ -16,18 +15,20 @@ func makeTxHistoryKey(tx *wire.Transaction, peer *Node) histcache.MultiKey {
 }
 
 // OnTx handles incoming transaction message
-func (pt *Inception) OnTx(s net.Stream) {
+func (g *Gossip) OnTx(s net.Stream) {
+
 	defer s.Close()
-	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
+
+	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
-	pt.log.Info("Received new transaction", "PeerID", remotePeerIDShort)
+	g.log.Info("Received new transaction", "PeerID", remotePeerIDShort)
 
-	// Decode message to expected message type
+	// read the message
 	msg := &wire.Transaction{}
-	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+	if err := readStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Error("failed to read tx message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read tx message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -37,62 +38,64 @@ func (pt *Inception) OnTx(s net.Stream) {
 
 	// check if we have an history about this transaction with the remote peer,
 	// if no, add the transaction.
-	if !pt.LocalPeer().History().Has(historyKey) {
+	if !g.engine.History().Has(historyKey) {
 
 		// Add the transaction to the transaction pool and wait for error response
 		var errCh = make(chan error)
-		pt.LocalPeer().logicBus.Publish("transaction.add", msg, errCh)
+		g.engine.logicEvt.Publish("transaction.add", msg, errCh)
 		if err := <-errCh; err != nil {
 			s.Reset()
-			pt.log.Error("failed to add transaction to pool", "Err", err)
+			g.log.Error("failed to add transaction to pool", "Err", err)
 			return
 		}
 
 		// add transaction to the history cache using the key we created earlier
-		pt.LocalPeer().History().Add(historyKey)
+		g.engine.History().Add(historyKey)
 	}
 
-	pt.log.Info("Added new transaction to pool", "TxID", msg.ID())
+	g.log.Info("Added new transaction to pool", "TxID", msg.ID())
 }
 
 // RelayTx relays transactions to peers
-func (pt *Inception) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
+func (g *Gossip) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
 
 	txID := tx.ID()
 	sent := 0
 
-	pt.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
+	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
+
 	for _, peer := range remotePeers {
+
 		historyKey := makeTxHistoryKey(tx, peer)
 
 		// check if we have an history of transaction with this remote peer,
 		// if yes, do not relay
-		if pt.LocalPeer().History().Has(historyKey) {
+		if g.engine.History().Has(historyKey) {
 			continue
 		}
 
-		s, err := pt.LocalPeer().addToPeerStore(peer).newStream(context.Background(), peer.ID(), util.TxVersion)
+		// create a stream to the remote peer
+		s, err := g.newStream(context.Background(), peer, config.TxVersion)
 		if err != nil {
-			pt.log.Debug("Tx message failed. failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
+			g.log.Debug("Tx message failed. failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
 			continue
 		}
+		defer s.Close()
 
-		w := bufio.NewWriter(s)
-		if err := pc.Multicodec(nil).Encoder(w).Encode(tx); err != nil {
+		// write to the stream
+		if err := writeStream(s, tx); err != nil {
 			s.Reset()
-			pt.log.Debug("Tx message failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
+			g.log.Debug("Tx message failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
 			continue
 		}
 
 		// add new history
-		pt.LocalPeer().History().Add(historyKey)
+		g.engine.History().Add(historyKey)
 
-		w.Flush()
-		s.Close()
 		sent++
 	}
 
-	pt.log.Info("Finished relaying transaction", "TxID", txID, "NumPeersSentTo", sent)
+	g.log.Info("Finished relaying transaction", "TxID", txID, "NumPeersSentTo", sent)
 
 	return nil
 }

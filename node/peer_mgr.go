@@ -7,9 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
+
+	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/util"
 	ma "github.com/multiformats/go-multiaddr"
@@ -19,27 +22,27 @@ import (
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
-	knownPeerMtx   *sync.Mutex        // known peer mutex
-	generalMtx     *sync.Mutex        // general mutex
-	localNode      *Node              // local node
-	bootstrapNodes map[string]*Node   // bootstrap peers
-	knownPeers     map[string]*Node   // peers known to the peer manager
-	log            logger.Logger      // manager's logger
-	config         *configdir.Config  // manager's configuration
-	connMgr        *ConnectionManager // connection manager
-	getAddrTicker  *time.Ticker       // ticker that sends "getaddr" messages
-	pingTicker     *time.Ticker       // ticker that sends "ping" messages
-	selfAdvTicker  *time.Ticker       // ticker that sends "addr" message for self advertisement
-	cleanUpTicker  *time.Ticker       // ticker that cleans up the peer
-	stop           bool               // signifies the start of the manager
+	knownPeerMtx   *sync.Mutex          // known peer mutex
+	generalMtx     *sync.Mutex          // general mutex
+	localNode      *Node                // local node
+	bootstrapNodes map[string]*Node     // bootstrap peers
+	knownPeers     map[string]*Node     // peers known to the peer manager
+	log            logger.Logger        // manager's logger
+	config         *config.EngineConfig // manager's configuration
+	connMgr        *ConnectionManager   // connection manager
+	getAddrTicker  *time.Ticker         // ticker that sends "getaddr" messages
+	pingTicker     *time.Ticker         // ticker that sends "ping" messages
+	selfAdvTicker  *time.Ticker         // ticker that sends "addr" message for self advertisement
+	cleanUpTicker  *time.Ticker         // ticker that cleans up the peer
+	stop           bool                 // signifies the start of the manager
 }
 
 // NewManager creates an instance of the peer manager
-func NewManager(cfg *configdir.Config, localPeer *Node, log logger.Logger) *Manager {
+func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *Manager {
 
 	if cfg == nil {
-		cfg = &configdir.Config{}
-		cfg.Node = &configdir.PeerConfig{}
+		cfg = &config.EngineConfig{}
+		cfg.Node = &config.PeerConfig{}
 	}
 
 	if !cfg.Node.Dev {
@@ -61,7 +64,6 @@ func NewManager(cfg *configdir.Config, localPeer *Node, log logger.Logger) *Mana
 
 	m.connMgr = NewConnMrg(m, log)
 	m.localNode.host.Network().Notify(m.connMgr)
-
 	return m
 }
 
@@ -436,43 +438,21 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	return err
 }
 
-// serializeActivePeers returns a json encoded list of active
-// peers. This is needed to persist peer addresses along with other
-// state information. Hardcoded peers and peers that are less than
-// 20 minutes old are not saved.
-func (m *Manager) serializeActivePeers() [][]byte {
-
-	peers := m.CopyActivePeers(0)
-	serPeer := [][]byte{}
-
-	for _, p := range peers {
-		if !p.isHardcodedSeed && time.Now().Add(20*time.Minute).Before(p.Timestamp) {
-			bs, _ := json.Marshal(map[string]interface{}{
-				"addr": p.GetMultiAddr(),
-				"ts":   p.Timestamp.Unix(),
-			})
-			serPeer = append(serPeer, bs)
-		}
-	}
-
-	return serPeer
-}
-
 // deserializePeers takes a slice of bytes which was created by
-// serializeActivePeers and create a new remote peer
+// serializeActivePeers and creates new remote node
 func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 
 	var peers = make([]*Node, len(serPeers))
 
 	for i, p := range serPeers {
-		var data map[string]interface{}
+		var data []interface{}
 		if err := json.Unmarshal(p, &data); err != nil {
 			return nil, err
 		}
 
-		addr, _ := ma.NewMultiaddr(data["addr"].(string))
+		addr, _ := ma.NewMultiaddr(data[0].(string))
 		peer := NewRemoteNode(addr, m.localNode)
-		peer.Timestamp = time.Unix(int64(data["ts"].(float64)), 0)
+		peer.Timestamp = time.Unix(int64(data[1].(float64)), 0)
 		peers[i] = peer
 	}
 
@@ -482,44 +462,55 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 // savePeers stores peer addresses to a persistent store
 func (m *Manager) savePeers() error {
 
-	serPeer := m.serializeActivePeers()
+	var numAddrs = 0
+	var objectsToStore []*database.KVObject
 
-	if err := m.localNode.db.Address().ClearAll(); err != nil {
-		m.log.Error("failed to clear persistent addresses", "Err", err.Error(), "NumAddrs", len(serPeer))
-		return fmt.Errorf("failed to clear persistent addresses")
+	// determine the active addresses that are eligible for persistence
+	peers := m.CopyActivePeers(0)
+	for _, p := range peers {
+		if !p.isHardcodedSeed && time.Now().Add(20*time.Minute).Before(p.Timestamp) {
+			key := []byte(util.ToHex([]byte(p.GetMultiAddr())))
+			value := util.StructToBytes(map[string]interface{}{
+				"addr": p.GetMultiAddr(),
+				"ts":   p.Timestamp.Unix(),
+			})
+			objectsToStore = append(objectsToStore, database.NewKVObject(key, value, "address"))
+			numAddrs++
+		}
 	}
 
-	if err := m.localNode.db.Address().SaveAll(serPeer); err != nil {
-		m.log.Error("failed to save addresses to storage", "Err", err.Error(), "NumAddrs", len(serPeer))
-		return fmt.Errorf("failed to clear persistent addresses")
+	var errCh = make(chan error, 1)
+	m.localNode.logicEvt.Publish("objects.put", objectsToStore, errCh)
+	if err := <-errCh; err != nil {
+		return err
 	}
 
-	m.log.Debug("Saved addresses", "NumAddrs", len(serPeer))
+	m.log.Debug("Saved addresses", "NumAddrs", numAddrs)
+
 	return nil
 }
 
 // LoadPeers loads peers stored in the local database
 func (m *Manager) loadPeers() error {
 
-	if m.localNode.db == nil {
-		return fmt.Errorf("db not opened")
-	}
+	// get addresses from database
+	var result = make(chan []*database.KVObject, 1)
+	m.localNode.logicEvt.Publish("objects.get", "address", result)
 
-	peersSer, err := m.localNode.db.Address().GetAll()
-	if err != nil {
-		return fmt.Errorf("failed to load peers. %s", err)
-	}
+	// create remote nodes objects to represent the addresses
+	// and add them to the managers active peer list
+	for _, o := range <-result {
 
-	peers, err := m.deserializePeers(peersSer)
-	if err != nil {
-		return fmt.Errorf("failed to deserialize peers. %s", err)
-	}
+		var addrData map[string]interface{}
+		if err := mapstructure.Decode(o.Value, &addrData); err != nil {
+			return err
+		}
 
-	for _, p := range peers {
-		m.AddOrUpdatePeer(p)
+		addr, _ := ma.NewMultiaddr(addrData["addr"].(string))
+		peer := NewRemoteNode(addr, m.localNode)
+		peer.Timestamp = time.Unix(int64(addrData["ts"].(float64)), 0)
+		m.AddOrUpdatePeer(peer)
 	}
-
-	m.log.Info("Finished loading persisted peer addresses", "NumAddrs", len(peers))
 
 	return nil
 }

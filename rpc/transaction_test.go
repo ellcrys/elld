@@ -3,7 +3,6 @@ package rpc
 import (
 	"time"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -19,7 +18,6 @@ var _ = Describe("Transactions", func() {
 
 	var n *node.Node
 	var err error
-	var bus evbus.Bus
 
 	BeforeEach(func() {
 		var err error
@@ -34,8 +32,8 @@ var _ = Describe("Transactions", func() {
 	BeforeEach(func() {
 		n, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 		Expect(err).To(BeNil())
-		protoc := node.NewInception(n, log)
-		n.SetProtocol(protoc)
+		gossip := node.NewGossip(n, log)
+		n.SetProtocol(gossip)
 	})
 
 	AfterEach(func() {
@@ -46,8 +44,7 @@ var _ = Describe("Transactions", func() {
 		service := new(Service)
 
 		BeforeEach(func() {
-			bus = evbus.New()
-			service.logic = logic.New(n, bus, log)
+			service.logic, _ = logic.New(n, log)
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {
@@ -66,12 +63,14 @@ var _ = Describe("Transactions", func() {
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
+			tx.From = sender.Addr()
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
 			tx.Hash = "invalid_hash"
 
 			payload := map[string]interface{}{
 				"type":         tx.Type,
 				"nonce":        tx.Nonce,
+				"from":         tx.From,
 				"senderPubKey": tx.SenderPubKey,
 				"to":           tx.To,
 				"value":        tx.Value,
@@ -92,12 +91,14 @@ var _ = Describe("Transactions", func() {
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
+			tx.From = sender.Addr()
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
 			tx.Hash = util.ToHex(tx.ComputeHash())
 
 			payload := map[string]interface{}{
 				"type":         tx.Type,
 				"nonce":        tx.Nonce,
+				"from":         tx.From,
 				"senderPubKey": tx.SenderPubKey,
 				"to":           tx.To,
 				"value":        tx.Value,

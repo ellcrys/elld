@@ -3,7 +3,7 @@ package node
 import (
 	"testing"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/util/logger"
 
@@ -12,7 +12,7 @@ import (
 )
 
 var log = logger.NewLogrusNoOp()
-var cfg *configdir.Config
+var cfg *config.EngineConfig
 
 func TestPeer(t *testing.T) {
 	RegisterFailHandler(Fail)

@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 	"github.com/ellcrys/go-ethereum/metrics"
@@ -332,7 +333,8 @@ func (m *Miner) VerifyPoW(header *wire.Header) error {
 	runtime.KeepAlive(cache)
 
 	// check if the mix digest is equivalent to the block Mix Digest
-	if !bytes.Equal(digest, header.MixHash) {
+	mixHash, _ := util.FromHex(header.MixHash)
+	if !bytes.Equal(digest, mixHash) {
 		return errInvalidMixDigest
 	}
 

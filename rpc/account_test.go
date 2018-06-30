@@ -3,9 +3,8 @@ package rpc
 import (
 	"path"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/accountmgr"
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/node"
@@ -18,7 +17,6 @@ var _ = Describe("Accounts", func() {
 
 	var n *node.Node
 	var err error
-	var bus evbus.Bus
 
 	BeforeEach(func() {
 		var err error
@@ -43,8 +41,7 @@ var _ = Describe("Accounts", func() {
 		service := new(Service)
 
 		BeforeEach(func() {
-			bus = evbus.New()
-			service.logic = logic.New(n, bus, log)
+			service.logic, _ = logic.New(n, log)
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {
@@ -58,12 +55,12 @@ var _ = Describe("Accounts", func() {
 		})
 
 		It("should return 1 address", func() {
-			am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+			am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
 			address, _ := crypto.NewKey(nil)
 			err := am.CreateAccount(address, "pass123")
 			Expect(err).To(BeNil())
 
-			payload := GetAccountsPayload{}
+			payload := AccountGetAllPayload{}
 			var result Result
 			err = service.AccountGetAll(payload, &result)
 			Expect(err).To(BeNil())

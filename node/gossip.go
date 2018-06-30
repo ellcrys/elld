@@ -2,6 +2,7 @@ package node
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -16,56 +17,71 @@ import (
 	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-// Inception represents the peer protocol
-type Inception struct {
+// Gossip represents the peer protocol
+type Gossip struct {
 	mtx                         *sync.Mutex         // main mutex
-	arm                         *sync.Mutex         // address relay mutex
 	version                     string              // the protocol version
-	peer                        *Node               // the local peer
+	engine                      *Node               // the local peer
 	log                         logger.Logger       // the logger
-	lastRelayPeersSelectionTime time.Time           // the time the last addr msg relay peers where selected
+	lastRelayPeersSelectionTime time.Time           // the time the last peers responsible for relaying "addr" messages where selected
 	addrRelayPeers              [2]*Node            // peers to relay addr msgs to
 	unsignedTxPool              *txpool.TxPool      // the transaction pool for unsigned transactions
 	openTxSessions              map[string]struct{} // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	txsRelayQueue               *txpool.TxQueue     // stores transactions waiting to be relayed
 }
 
-// NewInception creates a new instance of the protocol codenamed "Inception"
-func NewInception(p *Node, log logger.Logger) *Inception {
-	return &Inception{
-		peer:           p,
+// NewGossip creates a new instance of the protocol codenamed "Gossip"
+func NewGossip(p *Node, log logger.Logger) *Gossip {
+	return &Gossip{
+		engine:         p,
 		log:            log,
 		mtx:            &sync.Mutex{},
-		arm:            &sync.Mutex{},
 		unsignedTxPool: txpool.NewTxPool(p.cfg.TxPool.Capacity),
 		openTxSessions: make(map[string]struct{}),
 		txsRelayQueue:  txpool.NewQueueNoSort(p.cfg.TxPool.Capacity),
 	}
 }
 
-// LocalPeer returns the local peer
-func (protoc *Inception) LocalPeer() *Node {
-	return protoc.peer
+func (g *Gossip) newStream(ctx context.Context, remotePeer *Node, msgVersion string) (net.Stream, error) {
+	return g.engine.addToPeerStore(remotePeer).newStream(ctx, remotePeer.ID(), msgVersion)
+}
+
+func readStream(s net.Stream, dest interface{}) error {
+	return pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(dest)
+}
+
+func writeStream(s net.Stream, msg interface{}) error {
+	w := bufio.NewWriter(s)
+	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
+		return err
+	}
+	w.Flush()
+	return nil
+}
+
+// Engine returns the local node
+func (g *Gossip) Engine() *Node {
+	return g.engine
 }
 
 // PM returns the local peer's peer manager
-func (protoc *Inception) PM() *Manager {
-	if protoc.peer == nil {
+func (g *Gossip) PM() *Manager {
+	if g.engine == nil {
 		return nil
 	}
-	return protoc.peer.PM()
+	return g.engine.PM()
 }
 
 // sign takes an object, marshals it to JSON and signs it
-func (protoc *Inception) sign(msg interface{}) []byte {
+func (g *Gossip) sign(msg interface{}) []byte {
 	bs, _ := json.Marshal(msg)
-	key := protoc.LocalPeer().PrivKey()
+	key := g.Engine().PrivKey()
 	sig, _ := key.Sign(bs)
 	return sig
 }
 
 // verify verifies a signature
-func (protoc *Inception) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
+func (g *Gossip) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
 	bs, _ := json.Marshal(msg)
 	result, err := pKey.Verify(bs, sig)
 	if err != nil {
@@ -78,8 +94,8 @@ func (protoc *Inception) verify(msg interface{}, sig []byte, pKey ic.PubKey) err
 }
 
 // reject sends a reject message.
-// The caller is expected to close the stream
-func (protoc *Inception) reject(s net.Stream, msg string, code int, reason string, extraData []byte) error {
+// The caller is expected to close the stream after the call.
+func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extraData []byte) error {
 	rMsg := wire.NewRejectMsg(msg, int32(code), reason, extraData)
 	w := bufio.NewWriter(s)
 	if err := pc.Multicodec(nil).Encoder(w).Encode(rMsg); err != nil {
@@ -91,11 +107,10 @@ func (protoc *Inception) reject(s net.Stream, msg string, code int, reason strin
 
 // isRejected checks if the message is a `reject`.
 // Returns the message`
-func (protoc *Inception) isRejected(s net.Stream) (*wire.Reject, error) {
+func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
 
 	var msg wire.Reject
-
-	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(&msg); err != nil {
+	if err := readStream(s, &msg); err != nil {
 		return nil, fmt.Errorf("failed to read from stream. %s", err)
 	}
 
@@ -107,11 +122,11 @@ func (protoc *Inception) isRejected(s net.Stream) (*wire.Reject, error) {
 }
 
 // GetUnSignedTxPool returns the unsigned transaction pool
-func (protoc *Inception) GetUnSignedTxPool() *txpool.TxPool {
-	return protoc.unsignedTxPool
+func (g *Gossip) GetUnSignedTxPool() *txpool.TxPool {
+	return g.unsignedTxPool
 }
 
 // GetUnsignedTxRelayQueue returns the unsigned transaction relay queue
-func (protoc *Inception) GetUnsignedTxRelayQueue() *txpool.TxQueue {
-	return protoc.txsRelayQueue
+func (g *Gossip) GetUnsignedTxRelayQueue() *txpool.TxQueue {
+	return g.txsRelayQueue
 }

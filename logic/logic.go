@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"github.com/asaskevich/EventBus"
 	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
@@ -23,14 +24,19 @@ func sendErr(errCh chan error, err error) error {
 
 // New creates a new Logic instance. It will register
 // all public logic handles to evbus.
-func New(engine types.Engine, evbus evbus.Bus, log logger.Logger) *Logic {
+func New(engine types.Engine, log logger.Logger) (*Logic, EventBus.Bus) {
+
 	logic := new(Logic)
 	logic.engine = engine
 	logic.log = log
-	logic.bus = evbus
+	logic.bus = EventBus.New()
 
-	// subscribe to topics
-	evbus.Subscribe("transaction.add", logic.TransactionAdd)
+	// transactions events
+	logic.bus.Subscribe("transaction.add", logic.TransactionAdd)
 
-	return logic
+	// database events
+	logic.bus.Subscribe("objects.put", logic.ObjectsPut)
+	logic.bus.Subscribe("objects.get", logic.ObjectsGet)
+
+	return logic, logic.bus
 }

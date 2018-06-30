@@ -1,4 +1,4 @@
-package configdir
+package leveldb
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestConfigdir(t *testing.T) {
+func TestLeveldb(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Configdir Suite")
+	RunSpecs(t, "Leveldb Suite")
 }

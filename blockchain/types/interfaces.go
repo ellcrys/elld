@@ -1,5 +1,7 @@
 package types
 
+import "github.com/ellcrys/elld/wire"
+
 // Block defines an interface for a block
 type Block interface {
 
@@ -18,7 +20,13 @@ type Store interface {
 	PutBlock(block Block) error
 
 	// GetBlock finds and returns a block
-	GetBlock(number uint64, block Block) error
+	GetBlock(number int64, block Block) error
+
+	// GetCurrentBlockHeader gets the current/tail block header
+	GetBlockHeader(number int64, header *wire.Header) error
+
+	// DropDB deletes the database
+	DropDB() error
 
 	// Close closes the store, freeing resources held.
 	Close() error

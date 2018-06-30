@@ -1,9 +1,9 @@
 package node
 
 import (
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -27,9 +27,9 @@ var _ = Describe("Handshake", func() {
 			It("should return error.Error('handshake failed. failed to connect to peer. dial to self attempted')", func() {
 				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
-				rpProtoc := NewInception(rp, log)
+				rpGossip := NewGossip(rp, log)
 				rp.Host().Close()
-				err = rpProtoc.SendHandshake(rp)
+				err = rpGossip.SendHandshake(rp)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
 			})
@@ -37,15 +37,15 @@ var _ = Describe("Handshake", func() {
 			It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
 				lp, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
-				lpProtoc := NewInception(lp, log)
-				lp.SetProtocol(lpProtoc)
+				lpGossip := NewGossip(lp, log)
+				lp.SetProtocol(lpGossip)
 
 				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
-				rpProtoc := NewInception(rp, log)
-				rp.SetProtocolHandler(util.HandshakeVersion, rpProtoc.OnHandshake)
+				rpGossip := NewGossip(rp, log)
+				rp.SetProtocolHandler(config.HandshakeVersion, rpGossip.OnHandshake)
 
-				err = lpProtoc.SendHandshake(rp)
+				err = lpGossip.SendHandshake(rp)
 				Expect(err).To(BeNil())
 
 				activePeerRp := rp.PM().GetActivePeers(0)

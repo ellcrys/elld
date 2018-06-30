@@ -8,27 +8,25 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-var dbfile = "data%s.db"
+const dbfile = "data%s.db"
 
-// GeneralDB provides local data storage and access for various purpose.
+// LevelDB provides local data storage and functionalities for various purpose.
 // It implements DB interface
-type GeneralDB struct {
-	cfgDir    string
-	ldb       *leveldb.DB
-	addrStore AddrStore
+type LevelDB struct {
+	cfgDir string
+	ldb    *leveldb.DB
 }
 
-// NewGeneralDB creates a new instance of GeneralDB
-func NewGeneralDB(cfgDir string) DB {
-	db := new(GeneralDB)
+// NewLevelDB creates a new instance of LevelDB
+func NewLevelDB(cfgDir string) *LevelDB {
+	db := new(LevelDB)
 	db.cfgDir = cfgDir
-	db.addrStore = NewAddressStore(db)
 	return db
 }
 
 // Open opens the database.
 // namespace is used as a suffix on the database name
-func (db *GeneralDB) Open(namespace string) error {
+func (db *LevelDB) Open(namespace string) error {
 	if namespace != "" {
 		namespace = "_" + namespace
 	}
@@ -41,50 +39,41 @@ func (db *GeneralDB) Open(namespace string) error {
 }
 
 // Close closes the database
-func (db *GeneralDB) Close() error {
+func (db *LevelDB) Close() error {
 	if db.ldb != nil {
 		return db.ldb.Close()
 	}
 	return nil
 }
 
-// WriteBatch writes a slice of byte slices to the database.
-// Length of key and value must be equal
-func (db *GeneralDB) WriteBatch(key [][]byte, value [][]byte) error {
-
-	if len(key) != len(value) {
-		return fmt.Errorf("key and value slices must have equal length")
-	}
+// WriteBatch writes many objects in one request.
+func (db *LevelDB) WriteBatch(objs []*KVObject) error {
 
 	batch := new(leveldb.Batch)
-	for i, k := range key {
-		batch.Put(k, value[i])
+	for _, o := range objs {
+		batch.Put(o.GetKey(), o.Value)
 	}
 
 	return db.ldb.Write(batch, nil)
 }
 
 // GetByPrefix returns keys matching a prefix. Their key and value are returned
-func (db *GeneralDB) GetByPrefix(prefix []byte) (keys [][]byte, values [][]byte) {
+func (db *LevelDB) GetByPrefix(prefix []byte) []*KVObject {
+	var result []*KVObject
+	var key, val []byte
 	iter := db.ldb.NewIterator(util.BytesPrefix(prefix), nil)
 	for iter.Next() {
-		key := iter.Key()
-		val := iter.Value()
-
-		_key := make([]byte, len(key))
-		copy(_key, key)
-		keys = append(keys, _key)
-
-		_val := make([]byte, len(val))
-		copy(_val, val)
-		values = append(values, _val)
+		key = append(key, iter.Key()...)
+		val = append(val, iter.Value()...)
+		result = append(result, FromKeyValue(key, val))
+		key, val = []byte{}, []byte{}
 	}
 	iter.Release()
-	return
+	return result
 }
 
 // DeleteByPrefix deletes items with the matching prefix
-func (db *GeneralDB) DeleteByPrefix(prefix []byte) error {
+func (db *LevelDB) DeleteByPrefix(prefix []byte) error {
 	tx, err := db.ldb.OpenTransaction()
 	if err != nil {
 		return err
@@ -109,9 +98,4 @@ func (db *GeneralDB) DeleteByPrefix(prefix []byte) error {
 	}
 
 	return nil
-}
-
-// Address returns the address store logic
-func (db *GeneralDB) Address() AddrStore {
-	return db.addrStore
 }

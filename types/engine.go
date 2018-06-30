@@ -2,7 +2,8 @@ package types
 
 import (
 	evbus "github.com/asaskevich/EventBus"
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/txpool"
 )
 
@@ -14,5 +15,6 @@ type Engine interface {
 	GetUnsignedTxRelayQueue() *txpool.TxQueue // Returns the unsigned transaction relay queue
 	GetUnSignedTxPool() *txpool.TxPool        // Returns the unsigned transaction pool
 	AddTxSession(txID string)                 // Adds a transaction to the transaction session collection
-	Cfg() *configdir.Config                   // Returns the engine configuration
+	Cfg() *config.EngineConfig                // Returns the engine configuration
+	DB() database.DB                          // The engine's database instance
 }

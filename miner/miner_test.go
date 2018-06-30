@@ -3,6 +3,7 @@ package miner
 import (
 	"runtime"
 
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -87,7 +88,7 @@ var _ = Describe("Miner", func() {
 
 		Context("VerifyPoW err should be nil if all parameters are valid", func() {
 			It("It should be nil", func() {
-				b.Header.MixHash = MixHash
+				b.Header.MixHash = util.ToHex(MixHash)
 				b.Header.Nonce = Nonce
 				errPow := miner.VerifyPoW(b.Header)
 				Expect(errPow).Should(BeNil())
@@ -107,7 +108,7 @@ var _ = Describe("Miner", func() {
 		Context("If PowMode == ModeTest", func() {
 			It("It should not be Nil", func() {
 				miner.config.PowMode = ModeTest
-				b.Header.MixHash = MixHash
+				b.Header.MixHash = util.ToHex(MixHash)
 				b.Header.Nonce = Nonce
 				b.Header.Number = 54
 

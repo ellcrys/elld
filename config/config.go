@@ -1,4 +1,4 @@
-package configdir
+package config
 
 import (
 	"encoding/json"
@@ -16,21 +16,21 @@ import (
 // AccountDirName is the name of the directory for storing accounts
 var AccountDirName = "accounts"
 
-// ConfigDir represents the clients configuration director and
+// Config represents the clients configuration director and
 // provides methods for creating, accessing and manipulating its content
-type ConfigDir struct {
+type Config struct {
 	path string
 }
 
-// NewConfigDir creates a new ConfigDir object
-func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
+// NewConfig creates a new ConfigDir object
+func NewConfig(dirPath string) (cfgDir *Config, err error) {
 
 	// check if dirPath exists
 	if len(strings.TrimSpace(dirPath)) > 0 && !util.IsPathOk(dirPath) {
 		return nil, fmt.Errorf("config directory is not ok; may not exist or we don't have enough permission")
 	}
 
-	cfgDir = new(ConfigDir)
+	cfgDir = new(Config)
 	cfgDir.path = dirPath
 
 	// set default config directory if not provided and attempt to create it
@@ -44,14 +44,14 @@ func NewConfigDir(dirPath string) (cfgDir *ConfigDir, err error) {
 }
 
 // Path returns the config path
-func (cd *ConfigDir) Path() string {
+func (cd *Config) Path() string {
 	return cd.path
 }
 
 // creates the config (ellcrys.json) file if it does not exist.
 // Returns true and nil if config file already exists, false and nil
 // if config file did not exist and was created. Otherwise, returns false and error
-func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
+func (cd *Config) createConfigFileInNotExist() (bool, error) {
 
 	cfgFile := path.Join(cd.path, "ellcrys.json")
 
@@ -75,7 +75,7 @@ func (cd *ConfigDir) createConfigFileInNotExist() (bool, error) {
 }
 
 // Init creates required files and directories
-func (cd *ConfigDir) Init() error {
+func (cd *Config) Init() error {
 
 	var err error
 	if _, err = cd.createConfigFileInNotExist(); err != nil {
@@ -90,8 +90,8 @@ func (cd *ConfigDir) Init() error {
 }
 
 // Load reads the content of the ellcrys.json file into Config struct
-func (cd *ConfigDir) Load() (*Config, error) {
-	var cfg Config
+func (cd *Config) Load() (*EngineConfig, error) {
+	var cfg EngineConfig
 	if err := configor.Load(&cfg, path.Join(cd.path, "ellcrys.json")); err != nil {
 		return nil, fmt.Errorf("failed to parse config file -> %s", err)
 	}
@@ -99,9 +99,9 @@ func (cd *ConfigDir) Load() (*Config, error) {
 }
 
 // LoadCfg loads the config file
-func LoadCfg(cfgDirPath string) (*Config, error) {
+func LoadCfg(cfgDirPath string) (*EngineConfig, error) {
 
-	cfgDir, err := NewConfigDir(cfgDirPath)
+	cfgDir, err := NewConfig(cfgDirPath)
 	if err != nil {
 		return nil, err
 	}

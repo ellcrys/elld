@@ -1,7 +1,7 @@
 package node
 
 // AddTxSession adds a transaction id to the session map
-func (protoc *Inception) AddTxSession(txID string) {
+func (protoc *Gossip) AddTxSession(txID string) {
 	if !protoc.HasTxSession(txID) {
 		protoc.mtx.Lock()
 		protoc.openTxSessions[txID] = struct{}{}
@@ -12,7 +12,7 @@ func (protoc *Inception) AddTxSession(txID string) {
 }
 
 // HasTxSession checks whether a transaction has an open session
-func (protoc *Inception) HasTxSession(txID string) bool {
+func (protoc *Gossip) HasTxSession(txID string) bool {
 	protoc.mtx.Lock()
 	defer protoc.mtx.Unlock()
 	_, has := protoc.openTxSessions[txID]
@@ -20,14 +20,14 @@ func (protoc *Inception) HasTxSession(txID string) bool {
 }
 
 // RemoveTxSession removes a transaction's session entry
-func (protoc *Inception) RemoveTxSession(txID string) {
+func (protoc *Gossip) RemoveTxSession(txID string) {
 	protoc.mtx.Lock()
 	defer protoc.mtx.Unlock()
 	delete(protoc.openTxSessions, txID)
 }
 
 // CountTxSession counts the number of opened transaction sessions
-func (protoc *Inception) CountTxSession() int {
+func (protoc *Gossip) CountTxSession() int {
 	protoc.mtx.Lock()
 	defer protoc.mtx.Unlock()
 	return len(protoc.openTxSessions)

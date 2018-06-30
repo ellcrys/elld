@@ -1,101 +1,103 @@
 package node
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
-	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
-func (pt *Inception) sendPing(remotePeer *Node) error {
+func (g *Gossip) sendPing(remotePeer *Node) error {
+
+	remotePeerIDShort := remotePeer.ShortID()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	remotePeerIDShort := remotePeer.ShortID()
-	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(ctx, remotePeer.ID(), util.PingVersion)
+	// create stream to the remote peer
+	s, err := g.newStream(ctx, remotePeer, config.PingVersion)
 	if err != nil {
-		pt.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
 
-	w := bufio.NewWriter(s)
+	// construct the message and write it to the stream
 	msg := &wire.Ping{}
-	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
+	if err := writeStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Debug("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to write to stream")
 	}
-	w.Flush()
 
-	pt.log.Info("Sent ping to peer", "PeerID", remotePeerIDShort)
+	g.log.Info("Sent ping to peer", "PeerID", remotePeerIDShort)
 
-	// receive pong response
+	// receive pong response from the remote peer
 	pongMsg := &wire.Pong{}
-	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
-	if err := decoder.Decode(pongMsg); err != nil {
+	if err := readStream(s, pongMsg); err != nil {
 		s.Reset()
-		pt.log.Debug("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read pong response")
 	}
 
+	// update the remote peer's timestamp
 	remotePeer.Timestamp = time.Now()
-	pt.PM().AddOrUpdatePeer(remotePeer)
 
-	pt.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
+	// add the remote peer to the peer manager's list
+	g.PM().AddOrUpdatePeer(remotePeer)
+
+	g.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
 
 	return nil
 }
 
 // SendPing sends a ping message
-func (pt *Inception) SendPing(remotePeers []*Node) {
-	pt.log.Info("Sending ping to peer(s)", "NumPeers", len(remotePeers))
+func (g *Gossip) SendPing(remotePeers []*Node) {
+	g.log.Info("Sending ping to peer(s)", "NumPeers", len(remotePeers))
 	for _, remotePeer := range remotePeers {
 		_remotePeer := remotePeer
 		go func() {
-			if err := pt.sendPing(_remotePeer); err != nil {
-				pt.PM().onFailedConnection(_remotePeer)
+			if err := g.sendPing(_remotePeer); err != nil {
+				g.PM().onFailedConnection(_remotePeer)
 			}
 		}()
 	}
 }
 
 // OnPing handles incoming ping message
-func (pt *Inception) OnPing(s net.Stream) {
+func (g *Gossip) OnPing(s net.Stream) {
 
 	defer s.Close()
-	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
+
+	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
-	pt.log.Info("Received ping message", "PeerID", remotePeerIDShort)
+	g.log.Info("Received ping message", "PeerID", remotePeerIDShort)
 
+	// read the message from the stream
 	msg := &wire.Ping{}
-	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+	if err := readStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Error("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
 	// send pong message
 	pongMsg := &wire.Pong{}
-	w := bufio.NewWriter(s)
-	enc := pc.Multicodec(nil).Encoder(w)
-	if err := enc.Encode(pongMsg); err != nil {
+	if err := writeStream(s, pongMsg); err != nil {
 		s.Reset()
-		pt.log.Error("failed to send pong response", "Err", err)
+		g.log.Error("failed to send pong response", "Err", err)
 		return
 	}
 
+	// update the remote peer's timestamp in the peer manager's list
 	remotePeer.Timestamp = time.Now()
-	pt.PM().AddOrUpdatePeer(remotePeer)
-	pt.log.Info("Sent pong response to peer", "PeerID", remotePeerIDShort)
+	g.PM().AddOrUpdatePeer(remotePeer)
 
-	w.Flush()
+	g.log.Info("Sent pong response to peer", "PeerID", remotePeerIDShort)
 }

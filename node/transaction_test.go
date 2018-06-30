@@ -3,6 +3,7 @@ package node
 import (
 	"time"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/util"
 
@@ -37,27 +38,25 @@ var _ = Describe("Transaction", func() {
 		BeforeEach(func() {
 			address, _ = crypto.NewKey(nil)
 			sender, _ = crypto.NewKey(nil)
-			nBus = evbus.New()
-			rpBus = evbus.New()
 		})
 
 		BeforeEach(func() {
 			n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
-			proto = NewInception(n, log)
+			proto = NewGossip(n, log)
 			n.SetProtocol(proto)
+			_, nBus = logic.New(n, log)
 			n.SetLogicBus(nBus)
-			logic.New(n, nBus, log)
 		})
 
 		BeforeEach(func() {
 			rp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
-			rpProto = NewInception(rp, log)
+			rpProto = NewGossip(rp, log)
 			rp.SetProtocol(rpProto)
-			rp.SetProtocolHandler(util.TxVersion, rpProto.OnTx)
+			rp.SetProtocolHandler(config.TxVersion, rpProto.OnTx)
+			_, rpBus = logic.New(rp, log)
 			rp.SetLogicBus(rpBus)
-			logic.New(rp, rpBus, log)
 		})
 
 		AfterEach(func() {
@@ -80,6 +79,7 @@ var _ = Describe("Transaction", func() {
 		It("remote node should add tx in its tx pool", func() {
 
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+			tx.From = sender.Addr()
 			tx.Hash = util.ToHex(tx.ComputeHash())
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
@@ -98,10 +98,12 @@ var _ = Describe("Transaction", func() {
 			rp.SetProtocol(proto)
 
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+			tx.From = sender.Addr()
 			tx.Hash = util.ToHex(tx.ComputeHash())
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
+
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
 

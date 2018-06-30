@@ -1,59 +1,65 @@
 package node
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
-	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
 // sendGetAddr sends a wire.GetAddr message to a remote peer.
 // The remote peer will respond with a wire.Addr message which the function
 // must process using the OnAddr handler and return the response.
-func (pt *Inception) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
+func (g *Gossip) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
 
 	remotePeerIDShort := remotePeer.ShortID()
-	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.GetAddrVersion)
+
+	s, err := g.newStream(context.Background(), remotePeer, config.GetAddrVersion)
 	if err != nil {
-		pt.log.Debug("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
 
-	w := bufio.NewWriter(s)
 	msg := &wire.GetAddr{}
-	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
-		pt.log.Debug("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+	if err := writeStream(s, msg); err != nil {
+		s.Reset()
+		g.log.Debug("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("getaddr failed. failed to write to stream")
 	}
-	w.Flush()
 
-	pt.log.Debug("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
+	g.log.Debug("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
 
-	return pt.onAddr(s)
+	return g.onAddr(s)
 }
 
 // SendGetAddr sends GetAddr message to peers in separate goroutines.
 // GetAddr returns with a list of addr that should be relayed to other peers.
-func (pt *Inception) SendGetAddr(remotePeers []*Node) error {
+func (g *Gossip) SendGetAddr(remotePeers []*Node) error {
 
-	if !pt.PM().NeedMorePeers() {
+	// we need to know if wee need more peers before we requests
+	// more addresses from other peers.
+	if !g.PM().NeedMorePeers() {
 		return nil
 	}
 
+	// for each remore peers, send the GetAddr message in different goroutines
 	for _, remotePeer := range remotePeers {
 		rp := remotePeer
 		go func() {
-			addressToRelay, err := pt.sendGetAddr(rp)
+
+			// send GetAddr and receive a list of address
+			addressToRelay, err := g.sendGetAddr(rp)
 			if err != nil {
 				return
 			}
+
+			// As per discovery protocol, relay the addresses received
 			if len(addressToRelay) > 0 {
-				pt.RelayAddr(addressToRelay)
+				g.RelayAddr(addressToRelay)
 			}
 		}()
 	}
@@ -63,41 +69,44 @@ func (pt *Inception) SendGetAddr(remotePeers []*Node) error {
 
 // OnGetAddr processes a wire.GetAddr request.
 // Sends a list of active addresses to the sender
-func (pt *Inception) OnGetAddr(s net.Stream) {
+func (g *Gossip) OnGetAddr(s net.Stream) {
+
 	defer s.Close()
 
 	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
 	remoteAddr := util.FullRemoteAddressFromStream(s)
-	remotePeer := NewRemoteNode(remoteAddr, pt.LocalPeer())
+	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 
-	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+	// check whether we can interact with this remote peer
+	if yes, reason := g.engine.canAcceptPeer(remotePeer); !yes {
 		s.Reset()
-		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
+		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", reason), "Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
 		return
 	}
 
-	if !remotePeer.IsKnown() && !pt.LocalPeer().isDevMode() {
-		s.Conn().Close()
-		return
-	}
+	g.log.Debug("Received GetAddr message", "PeerID", remotePeerIDShort)
 
-	pt.log.Debug("Received GetAddr message", "PeerID", remotePeerIDShort)
-
+	// read the message
 	msg := &wire.GetAddr{}
-	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+	if err := readStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Error("failed to read getaddr message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read getaddr message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
-	activePeers := pt.PM().GetActivePeers(0)
+	// get active addresses we know about. If we have more 2500
+	// addresses, then we select 2500 randomly
+	activePeers := g.PM().GetActivePeers(0)
 	if len(activePeers) > 2500 {
-		activePeers = pt.PM().GetRandomActivePeers(2500)
+		activePeers = g.PM().GetRandomActivePeers(2500)
 	}
 
+	// Construct an Addr message and add addresses to it
 	addr := &wire.Addr{}
 	for _, peer := range activePeers {
-		if !pt.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.isHardcodedSeed {
+		// Ignore an address if it is the same with the local node
+		// and if it is a hardcoded seed address
+		if !g.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.isHardcodedSeed {
 			addr.Addresses = append(addr.Addresses, &wire.Address{
 				Address:   peer.GetMultiAddr(),
 				Timestamp: peer.Timestamp.Unix(),
@@ -105,14 +114,11 @@ func (pt *Inception) OnGetAddr(s net.Stream) {
 		}
 	}
 
-	w := bufio.NewWriter(s)
-	enc := pc.Multicodec(nil).Encoder(w)
-	if err := enc.Encode(addr); err != nil {
+	if err := writeStream(s, addr); err != nil {
 		s.Reset()
-		pt.log.Error("failed to send GetAddr response", "Err", err)
+		g.log.Error("failed to send GetAddr response", "Err", err)
 		return
 	}
 
-	pt.log.Debug("Sent GetAddr response to peer", "PeerID", remotePeerIDShort)
-	w.Flush()
+	g.log.Debug("Sent GetAddr response to peer", "PeerID", remotePeerIDShort)
 }
