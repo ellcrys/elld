@@ -470,7 +470,7 @@ func (m *Manager) savePeers() error {
 	for _, p := range peers {
 		if !p.isHardcodedSeed && time.Now().Add(20*time.Minute).Before(p.Timestamp) {
 			key := []byte(util.ToHex([]byte(p.GetMultiAddr())))
-			value := util.StructToBytes(map[string]interface{}{
+			value := util.ObjectToBytes(map[string]interface{}{
 				"addr": p.GetMultiAddr(),
 				"ts":   p.Timestamp.Unix(),
 			})

@@ -18,21 +18,28 @@ type KVObject struct {
 	Prefixes []string
 }
 
-// GetKey creates and returns the object key which is combined with the prefixes
-func (o *KVObject) GetKey() []byte {
+// MakePrefix creates a prefix string
+func MakePrefix(prefixes []string) []byte {
+	return []byte(strings.Join(prefixes, PrefixSeparator))
+}
 
+// MakeKey construct a key from the object key and a slice of prefixes
+func MakeKey(key []byte, prefixes []string) []byte {
 	kpSep := KeyPrefixSeparator
 
-	// if no prefix was provided, no need concatenate o.Prefixes
-	var prefix string
-	if len(o.Prefixes) > 0 {
-		prefix = strings.Join(o.Prefixes, PrefixSeparator)
+	var prefix []byte
+	if len(prefixes) > 0 {
+		prefix = MakePrefix(prefixes)
 	} else {
 		kpSep = ""
 	}
 
-	key := fmt.Sprintf("%s%s%s", prefix, kpSep, o.Key)
-	return []byte(key)
+	return []byte(fmt.Sprintf("%s%s%s", prefix, kpSep, key))
+}
+
+// GetKey creates and returns the object key which is combined with the prefixes
+func (o *KVObject) GetKey() []byte {
+	return MakeKey(o.Key, o.Prefixes)
 }
 
 // NewKVObject creates a key value object.
@@ -64,6 +71,22 @@ func FromKeyValue(key []byte, value []byte) *KVObject {
 	}
 }
 
+// Tx represents a database transaction instance
+type Tx interface {
+
+	// Put puts one or more objects
+	Put([]*KVObject) error
+
+	// GetByPrefix gets objects by prefix
+	GetByPrefix([]byte) (result []*KVObject)
+
+	// Commit commits the transaction
+	Commit() error
+
+	// Rollback roles back the transaction
+	Rollback()
+}
+
 // DB describes the database access, model and available functionalities
 type DB interface {
 
@@ -73,12 +96,15 @@ type DB interface {
 	// Close closes the database
 	Close() error
 
-	// WriteBatch writes many objects to the database in one atomic request
-	WriteBatch([]*KVObject) error
+	// Put writes many objects to the database in one atomic request
+	Put([]*KVObject) error
 
 	// GetByPrefix returns keys matching a prefix
 	GetByPrefix([]byte) (result []*KVObject)
 
 	// DeleteByPrefix deletes one or many records by prefix
 	DeleteByPrefix([]byte) error
+
+	// NewTx creates a transaction
+	NewTx() (Tx, error)
 }

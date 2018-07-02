@@ -42,11 +42,6 @@ func (b *Blockchain) Up() error {
 		return fmt.Errorf("store not set")
 	}
 
-	b.log.Info("Initializing blockchain store")
-	if err := b.store.Initialize(); err != nil {
-		return err
-	}
-
 	b.lock.Lock()
 	defer b.lock.Unlock()
 

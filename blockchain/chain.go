@@ -78,7 +78,7 @@ func (c *Chain) init(genesisBlockJSON string) error {
 
 func (c *Chain) getCurrentBlockHeader() (*wire.Header, error) {
 	var h wire.Header
-	if err := c.store.GetBlockHeader(-1, &h); err != nil {
+	if err := c.store.GetBlockHeader(0, &h); err != nil {
 		return nil, err
 	}
 	return &h, nil
@@ -87,7 +87,7 @@ func (c *Chain) getCurrentBlockHeader() (*wire.Header, error) {
 // getMatureTickets returns mature ticket transactions in the
 // last n blocks.
 // This method is safe for concurrent calls.
-func (c *Chain) getMatureTickets(nLastBlocks int64) (mTxs []*wire.Transaction, err error) {
+func (c *Chain) getMatureTickets(nLastBlocks uint64) (mTxs []*wire.Transaction, err error) {
 
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
@@ -98,14 +98,14 @@ func (c *Chain) getMatureTickets(nLastBlocks int64) (mTxs []*wire.Transaction, e
 		return nil, err
 	}
 
-	var startBlock int64
-	var endBlock = int64(curBlockHeader.Number)
+	var startBlock uint64
+	var endBlock = uint64(curBlockHeader.Number)
 
 	// Set startBlock to 1 if the chain height is less or equal to nLastBlocks specified
-	if int64(curBlockHeader.Number) <= nLastBlocks {
+	if curBlockHeader.Number <= nLastBlocks {
 		startBlock = 1
-	} else if int64(curBlockHeader.Number) > nLastBlocks {
-		startBlock = int64(curBlockHeader.Number) - nLastBlocks + 1
+	} else if curBlockHeader.Number > nLastBlocks {
+		startBlock = curBlockHeader.Number - nLastBlocks + 1
 	}
 
 	// Find blocks within this range and get the matured endorsers

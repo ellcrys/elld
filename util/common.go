@@ -30,12 +30,8 @@ func init() {
 	r.Seed(time.Now().UnixNano())
 }
 
-const (
-	AddressLength = 20
-)
-
-// StructToBytes returns json encoded representation of a struct
-func StructToBytes(s interface{}) []byte {
+// ObjectToBytes returns json encoded representation of an object
+func ObjectToBytes(s interface{}) []byte {
 	b, _ := json.Marshal(s)
 	return b
 }

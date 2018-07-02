@@ -46,8 +46,8 @@ func (db *LevelDB) Close() error {
 	return nil
 }
 
-// WriteBatch writes many objects in one request.
-func (db *LevelDB) WriteBatch(objs []*KVObject) error {
+// Put writes many objects in one request.
+func (db *LevelDB) Put(objs []*KVObject) error {
 
 	batch := new(leveldb.Batch)
 	for _, o := range objs {
@@ -98,4 +98,53 @@ func (db *LevelDB) DeleteByPrefix(prefix []byte) error {
 	}
 
 	return nil
+}
+
+// NewTx creates a new transaction
+func (db *LevelDB) NewTx() (Tx, error) {
+	_tx, err := db.ldb.OpenTransaction()
+	if err != nil {
+		return nil, err
+	}
+	tx := Transaction{ldb: _tx}
+	return &tx, nil
+}
+
+// Transaction defines interface for working with a database transaction
+type Transaction struct {
+	ldb *leveldb.Transaction
+}
+
+// Put adds a key and value
+func (tx *Transaction) Put(objs []*KVObject) error {
+	batch := new(leveldb.Batch)
+	for _, obj := range objs {
+		batch.Put(obj.GetKey(), obj.Value)
+	}
+	return tx.ldb.Write(batch, nil)
+}
+
+// GetByPrefix get objects by prefix
+func (tx *Transaction) GetByPrefix(prefix []byte) []*KVObject {
+	var result []*KVObject
+	var key, val []byte
+	iter := tx.ldb.NewIterator(util.BytesPrefix(prefix), nil)
+	for iter.Next() {
+		key = append(key, iter.Key()...)
+		val = append(val, iter.Value()...)
+		result = append(result, FromKeyValue(key, val))
+		key, val = []byte{}, []byte{}
+	}
+	iter.Release()
+	return result
+}
+
+// Commit the transaction
+func (tx *Transaction) Commit() error {
+	return tx.ldb.Commit()
+}
+
+// Rollback discards the transaction
+func (tx *Transaction) Rollback() {
+	tx.ldb.Discard()
 }

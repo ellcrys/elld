@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ellcrys/elld/blockchain/couchdb"
+	"github.com/ellcrys/elld/blockchain/leveldb"
 	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/blockchain/types"
+	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -14,12 +15,10 @@ import (
 )
 
 var _ = Describe("Blockchain", func() {
-
-	var testDB = "testdb"
-	var couchDBAddr = "http://127.0.0.1:5984/"
 	var err error
 	var store types.Store
 	var chain *Chain
+	var db database.DB
 
 	BeforeEach(func() {
 		var err error
@@ -28,20 +27,26 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	BeforeEach(func() {
-		store, err = couchdb.New(testDB, couchDBAddr)
+		db = database.NewLevelDB(cfg.ConfigDir())
+		err = db.Open("")
 		Expect(err).To(BeNil())
-		err = store.Initialize()
+	})
+
+	BeforeEach(func() {
+		store, err = leveldb.New(db)
 		Expect(err).To(BeNil())
+	})
+
+	BeforeEach(func() {
 		chain = NewChain(store, cfg, log)
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		db.Close()
 	})
 
 	AfterEach(func() {
-		err = store.DropDB()
-		Expect(err).To(BeNil())
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
 	Describe(".getMatureTickets", func() {
