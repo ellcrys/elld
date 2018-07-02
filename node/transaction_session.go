@@ -1,34 +1,34 @@
 package node
 
 // AddTxSession adds a transaction id to the session map
-func (protoc *Gossip) AddTxSession(txID string) {
-	if !protoc.HasTxSession(txID) {
-		protoc.mtx.Lock()
-		protoc.openTransactionsSession[txID] = struct{}{}
-		protoc.mtx.Unlock()
-		protoc.log.Info("New transaction session has been opened", "TxID", txID, "NumOpenedSessions", protoc.CountTxSession())
+func (n *Node) AddTxSession(txID string) {
+	if !n.HasTxSession(txID) {
+		n.mtx.Lock()
+		n.openTransactionsSession[txID] = struct{}{}
+		n.mtx.Unlock()
+		n.log.Info("New transaction session has been opened", "TxID", txID, "NumOpenedSessions", n.CountTxSession())
 		return
 	}
 }
 
 // HasTxSession checks whether a transaction has an open session
-func (protoc *Gossip) HasTxSession(txID string) bool {
-	protoc.mtx.Lock()
-	defer protoc.mtx.Unlock()
-	_, has := protoc.openTransactionsSession[txID]
+func (n *Node) HasTxSession(txID string) bool {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	_, has := n.openTransactionsSession[txID]
 	return has
 }
 
 // RemoveTxSession removes a transaction's session entry
-func (protoc *Gossip) RemoveTxSession(txID string) {
-	protoc.mtx.Lock()
-	defer protoc.mtx.Unlock()
-	delete(protoc.openTransactionsSession, txID)
+func (n *Node) RemoveTxSession(txID string) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	delete(n.openTransactionsSession, txID)
 }
 
 // CountTxSession counts the number of opened transaction sessions
-func (protoc *Gossip) CountTxSession() int {
-	protoc.mtx.Lock()
-	defer protoc.mtx.Unlock()
-	return len(protoc.openTransactionsSession)
+func (n *Node) CountTxSession() int {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	return len(n.openTransactionsSession)
 }

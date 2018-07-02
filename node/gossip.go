@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/constants"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
@@ -19,26 +18,20 @@ import (
 
 // Gossip represents the peer protocol
 type Gossip struct {
-	mtx                         *sync.Mutex         // main mutex
-	version                     string              // the protocol version
-	engine                      *Node               // the local peer
-	log                         logger.Logger       // the logger
-	lastRelayPeersSelectionTime time.Time           // the time the last peers responsible for relaying "addr" messages where selected
-	addrRelayPeers              [2]*Node            // peers to relay addr msgs to
-	transactionsPool            *txpool.TxPool      // the transaction pool for unsigned transactions
-	openTransactionsSession     map[string]struct{} // Holds the id of transactions awaiting endorsement. Protected by mtx.
-	txsRelayQueue               *txpool.TxQueue     // stores transactions waiting to be relayed
+	mtx                         *sync.Mutex   // main mutex
+	version                     string        // the protocol version
+	engine                      *Node         // the local peer
+	log                         logger.Logger // the logger
+	lastRelayPeersSelectionTime time.Time     // the time the last peers responsible for relaying "addr" messages where selected
+	addrRelayPeers              [2]*Node      // peers to relay addr msgs to
 }
 
 // NewGossip creates a new instance of the Gossip protocol
 func NewGossip(p *Node, log logger.Logger) *Gossip {
 	return &Gossip{
-		engine:                  p,
-		log:                     log,
-		mtx:                     &sync.Mutex{},
-		transactionsPool:        txpool.NewTxPool(p.cfg.TxPool.Capacity),
-		openTransactionsSession: make(map[string]struct{}),
-		txsRelayQueue:           txpool.NewQueueNoSort(p.cfg.TxPool.Capacity),
+		engine: p,
+		log:    log,
+		mtx:    &sync.Mutex{},
 	}
 }
 
@@ -119,14 +112,4 @@ func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
 	}
 
 	return nil, nil
-}
-
-// GetUnSignedTxPool returns the unsigned transaction pool
-func (g *Gossip) GetUnSignedTxPool() *txpool.TxPool {
-	return g.transactionsPool
-}
-
-// GetUnsignedTxRelayQueue returns the unsigned transaction relay queue
-func (g *Gossip) GetUnsignedTxRelayQueue() *txpool.TxQueue {
-	return g.txsRelayQueue
 }

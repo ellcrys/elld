@@ -88,7 +88,7 @@ var _ = Describe("Transaction", func() {
 			err = n.gProtoc.RelayTx(tx, []*Node{rp})
 			time.Sleep(1 * time.Millisecond)
 			Expect(err).To(BeNil())
-			Expect(rp.gProtoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
+			Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 		})
 
 		It("remote node will fail to add tx if its transaction pool is full", func() {
@@ -108,7 +108,7 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 
 			time.Sleep(1 * time.Millisecond)
-			Expect(rp.gProtoc.GetUnSignedTxPool().Has(tx)).To(BeFalse())
+			Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
 		})
 	})
 })

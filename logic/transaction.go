@@ -36,9 +36,9 @@ func (l *Logic) TransactionAdd(tx *wire.Transaction, errCh chan error) error {
 			return sendErr(errCh, wire.ErrTxInsufficientFee)
 		}
 
-		// Add the transaction to the unsigned transaction pool where
+		// Add the transaction to the transaction pool where
 		// it will be picked and broadcast to other peers
-		if err := l.engine.GetUnSignedTxPool().Put(tx); err != nil {
+		if err := l.engine.GetTxPool().Put(tx); err != nil {
 			return sendErr(errCh, err)
 		}
 

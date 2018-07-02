@@ -36,24 +36,28 @@ import (
 
 // Node represents a network node
 type Node struct {
-	cfg             *config.EngineConfig    // node config
-	address         ma.Multiaddr            // node multiaddr
-	IP              net.IP                  // node ip
-	host            host.Host               // node libp2p host
-	wg              sync.WaitGroup          // wait group for preventing the main thread from exiting
-	localNode       *Node                   // local node
-	peerManager     *Manager                // node manager for managing connections to other remote peers
-	gProtoc         GossipProtocol          // gossip protocol instance
-	remote          bool                    // remote indicates the node represents a remote peer
-	Timestamp       time.Time               // the last time this node was seen/active
-	isHardcodedSeed bool                    // whether the node was hardcoded as a seed
-	stopped         bool                    // flag to tell if node has stopped
-	log             logger.Logger           // node logger
-	rSeed           []byte                  // random 256 bit seed to be used for seed random operations
-	db              database.DB             // used to access and modify local database
-	signatory       *d_crypto.Key           // signatory address used to get node ID and for signing
-	historyCache    *histcache.HistoryCache // Used to track objects and behaviours
-	logicEvt        evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	mtx                     *sync.RWMutex
+	cfg                     *config.EngineConfig    // node config
+	address                 ma.Multiaddr            // node multiaddr
+	IP                      net.IP                  // node ip
+	host                    host.Host               // node libp2p host
+	wg                      sync.WaitGroup          // wait group for preventing the main thread from exiting
+	localNode               *Node                   // local node
+	peerManager             *Manager                // node manager for managing connections to other remote peers
+	gProtoc                 GossipProtocol          // gossip protocol instance
+	remote                  bool                    // remote indicates the node represents a remote peer
+	Timestamp               time.Time               // the last time this node was seen/active
+	isHardcodedSeed         bool                    // whether the node was hardcoded as a seed
+	stopped                 bool                    // flag to tell if node has stopped
+	log                     logger.Logger           // node logger
+	rSeed                   []byte                  // random 256 bit seed to be used for seed random operations
+	db                      database.DB             // used to access and modify local database
+	signatory               *d_crypto.Key           // signatory address used to get node ID and for signing
+	historyCache            *histcache.HistoryCache // Used to track objects and behaviours
+	logicEvt                evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
+	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
+	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
 }
 
 // NewNode creates a node instance at the specified port
@@ -99,6 +103,10 @@ func newNode(db database.DB, config *config.EngineConfig, address string, signat
 		rSeed:     util.RandBytes(64),
 		signatory: signatory,
 		db:        db,
+		mtx:       &sync.RWMutex{},
+		openTransactionsSession: make(map[string]struct{}),
+		transactionsPool:        txpool.NewTxPool(config.TxPool.Capacity),
+		txsRelayQueue:           txpool.NewQueueNoSort(config.TxPool.Capacity),
 	}
 
 	node.localNode = node
@@ -403,15 +411,10 @@ func (n *Node) connectToNode(remote *Node) error {
 	return nil
 }
 
-// GetTxPool returns the transaction pool
-func (n *Node) GetTxPool() *txpool.TxPool {
-	return n.gProtoc.GetUnSignedTxPool()
-}
-
-// relayTx continuously relays unsigned transactions in the tx relay queue
+// relayTx continuously relays transactions in the tx relay queue
 func (n *Node) relayTx() {
 	for !n.stopped {
-		q := n.gProtoc.GetUnsignedTxRelayQueue()
+		q := n.GetTxRelayQueue()
 		if q.Size() == 0 {
 			time.Sleep(5 * time.Second)
 			continue
@@ -434,10 +437,10 @@ func (n *Node) Start() {
 		go n.connectToNode(node)
 	}
 
-	// before an unsigned transaction is added to the unsigned tx pool, it must be successfully
-	// added to the Node's tx relay queue.
-	n.gProtoc.GetUnSignedTxPool().BeforeAppend(func(tx *wire.Transaction) error {
-		if !n.gProtoc.GetUnsignedTxRelayQueue().Append(tx) {
+	// before a transaction is added to the tx pool, it must be successfully
+	// added to the tx relay queue.
+	n.GetTxPool().BeforeAppend(func(tx *wire.Transaction) error {
+		if !n.GetTxRelayQueue().Append(tx) {
 			return txpool.ErrQueueFull
 		}
 		return nil
@@ -533,17 +536,12 @@ func (n *Node) createTx() error {
 	return nil
 }
 
-// GetUnsignedTxRelayQueue returns the transaction relay queue
-func (n *Node) GetUnsignedTxRelayQueue() *txpool.TxQueue {
-	return n.gProtoc.GetUnsignedTxRelayQueue()
+// GetTxRelayQueue returns the transaction relay queue
+func (n *Node) GetTxRelayQueue() *txpool.TxQueue {
+	return n.txsRelayQueue
 }
 
-// GetUnSignedTxPool returns the unsigned transaction pool
-func (n *Node) GetUnSignedTxPool() *txpool.TxPool {
-	return n.gProtoc.GetUnSignedTxPool()
-}
-
-// AddTxSession adds a transaction session
-func (n *Node) AddTxSession(txID string) {
-	n.gProtoc.AddTxSession(txID)
+// GetTxPool returns the unsigned transaction pool
+func (n *Node) GetTxPool() *txpool.TxPool {
+	return n.transactionsPool
 }
