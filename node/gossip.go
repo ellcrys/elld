@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/constants"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
@@ -35,7 +36,7 @@ func NewGossip(p *Node, log logger.Logger) *Gossip {
 	}
 }
 
-func (g *Gossip) newStream(ctx context.Context, remotePeer *Node, msgVersion string) (net.Stream, error) {
+func (g *Gossip) newStream(ctx context.Context, remotePeer types.Engine, msgVersion string) (net.Stream, error) {
 	return g.engine.addToPeerStore(remotePeer).newStream(ctx, remotePeer.ID(), msgVersion)
 }
 

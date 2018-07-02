@@ -10,6 +10,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/ellcrys/elld/config"
@@ -22,19 +23,19 @@ import (
 // It is responsible for initiating the peer discovery process
 // according to the current protocol
 type Manager struct {
-	knownPeerMtx   *sync.Mutex          // known peer mutex
-	generalMtx     *sync.Mutex          // general mutex
-	localNode      *Node                // local node
-	bootstrapNodes map[string]*Node     // bootstrap peers
-	knownPeers     map[string]*Node     // peers known to the peer manager
-	log            logger.Logger        // manager's logger
-	config         *config.EngineConfig // manager's configuration
-	connMgr        *ConnectionManager   // connection manager
-	getAddrTicker  *time.Ticker         // ticker that sends "getaddr" messages
-	pingTicker     *time.Ticker         // ticker that sends "ping" messages
-	selfAdvTicker  *time.Ticker         // ticker that sends "addr" message for self advertisement
-	cleanUpTicker  *time.Ticker         // ticker that cleans up the peer
-	stop           bool                 // signifies the start of the manager
+	knownPeerMtx   *sync.Mutex             // known peer mutex
+	generalMtx     *sync.Mutex             // general mutex
+	localNode      *Node                   // local node
+	bootstrapNodes map[string]types.Engine // bootstrap peers
+	knownPeers     map[string]types.Engine // peers known to the peer manager
+	log            logger.Logger           // manager's logger
+	config         *config.EngineConfig    // manager's configuration
+	connMgr        *ConnectionManager      // connection manager
+	getAddrTicker  *time.Ticker            // ticker that sends "getaddr" messages
+	pingTicker     *time.Ticker            // ticker that sends "ping" messages
+	selfAdvTicker  *time.Ticker            // ticker that sends "addr" message for self advertisement
+	cleanUpTicker  *time.Ticker            // ticker that cleans up the peer
+	stop           bool                    // signifies the start of the manager
 }
 
 // NewManager creates an instance of the peer manager
@@ -57,8 +58,8 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 		generalMtx:     new(sync.Mutex),
 		localNode:      localPeer,
 		log:            log,
-		bootstrapNodes: make(map[string]*Node),
-		knownPeers:     make(map[string]*Node),
+		bootstrapNodes: make(map[string]types.Engine),
+		knownPeers:     make(map[string]types.Engine),
 		config:         cfg,
 	}
 
@@ -76,7 +77,7 @@ func (m *Manager) PeerExist(peerID string) bool {
 }
 
 // GetKnownPeer returns a known peer
-func (m *Manager) GetKnownPeer(peerID string) *Node {
+func (m *Manager) GetKnownPeer(peerID string) types.Engine {
 	if !m.PeerExist(peerID) {
 		return nil
 	}
@@ -109,12 +110,12 @@ func (m *Manager) AddBootstrapPeer(peer *Node) {
 }
 
 // GetBootstrapNodes returns the bootstrap peers
-func (m *Manager) GetBootstrapNodes() map[string]*Node {
+func (m *Manager) GetBootstrapNodes() map[string]types.Engine {
 	return m.bootstrapNodes
 }
 
 // GetBootstrapPeer returns a peer in the boostrap peer list
-func (m *Manager) GetBootstrapPeer(id string) *Node {
+func (m *Manager) GetBootstrapPeer(id string) types.Engine {
 	return m.bootstrapNodes[id]
 }
 
@@ -129,9 +130,9 @@ func (m *Manager) connectToPeer(peerID string) error {
 
 // getUnconnectedPeers returns the peers that are not connected
 // to the local peer. Hardcoded bootstrap peers are not included.
-func (m *Manager) getUnconnectedPeers() (peers []*Node) {
+func (m *Manager) getUnconnectedPeers() (peers []types.Engine) {
 	for _, p := range m.GetActivePeers(0) {
-		if !p.isHardcodedSeed && !p.Connected() {
+		if !p.IsHardcodedSeed() && !p.Connected() {
 			peers = append(peers, p)
 		}
 	}
@@ -197,7 +198,7 @@ func (m *Manager) periodicSelfAdvertisement() {
 		}
 		select {
 		case <-m.selfAdvTicker.C:
-			connectedPeers := []*Node{}
+			connectedPeers := []types.Engine{}
 			for _, p := range m.GetKnownPeers() {
 				if p.Connected() {
 					connectedPeers = append(connectedPeers, p)
@@ -233,7 +234,7 @@ func (m *Manager) periodicCleanUp() {
 //	 over 24 hours, then update the timestamp to 24 hours ago.
 // - else use whatever timestamp is returned
 // - clean old addresses
-func (m *Manager) AddOrUpdatePeer(p *Node) error {
+func (m *Manager) AddOrUpdatePeer(p types.Engine) error {
 
 	defer m.CleanKnownPeers()
 
@@ -261,8 +262,8 @@ func (m *Manager) AddOrUpdatePeer(p *Node) error {
 	defer m.knownPeerMtx.Unlock()
 
 	// set timestamp only if not set by caller or elsewhere
-	if p.Timestamp.IsZero() {
-		p.Timestamp = time.Now()
+	if p.GetTimestamp().IsZero() {
+		p.SetTimestamp(time.Now())
 	}
 
 	existingPeer, exist := m.knownPeers[p.StringID()]
@@ -276,22 +277,22 @@ func (m *Manager) AddOrUpdatePeer(p *Node) error {
 	}
 
 	now := time.Now()
-	if now.Add(-24*time.Hour).Before(p.Timestamp) && now.Add(-60*time.Minute).Before(existingPeer.Timestamp) {
-		existingPeer.Timestamp = now.Add(-60 * time.Minute)
+	if now.Add(-24*time.Hour).Before(p.GetTimestamp()) && now.Add(-60*time.Minute).Before(existingPeer.GetTimestamp()) {
+		existingPeer.SetTimestamp(now.Add(-60 * time.Minute))
 		return nil
 	}
 
-	if !now.Add(-24*time.Hour).Before(p.Timestamp) && !now.Add(-24*time.Hour).Before(existingPeer.Timestamp) {
-		existingPeer.Timestamp = now.Add(-24 * time.Hour)
+	if !now.Add(-24*time.Hour).Before(p.GetTimestamp()) && !now.Add(-24*time.Hour).Before(existingPeer.GetTimestamp()) {
+		existingPeer.SetTimestamp(now.Add(-24 * time.Hour))
 		return nil
 	}
 
-	existingPeer.Timestamp = p.Timestamp
+	existingPeer.SetTimestamp(p.GetTimestamp())
 	return nil
 }
 
 // KnownPeers returns the map of known peers
-func (m *Manager) KnownPeers() map[string]*Node {
+func (m *Manager) KnownPeers() map[string]types.Engine {
 	return m.knownPeers
 }
 
@@ -301,25 +302,25 @@ func (m *Manager) NeedMorePeers() bool {
 }
 
 // IsLocalNode checks if a peer is the local peer
-func (m *Manager) IsLocalNode(p *Node) bool {
+func (m *Manager) IsLocalNode(p types.Engine) bool {
 	return p != nil && m.localNode != nil && p.StringID() == m.localNode.StringID()
 }
 
 // isActive returns true of a peer is considered active.
 // First rule, its timestamp must be within the last 3 hours
-func (m *Manager) isActive(p *Node) bool {
-	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.Timestamp)
+func (m *Manager) isActive(p types.Engine) bool {
+	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.GetTimestamp())
 }
 
 // onFailedConnection sets a new timestamp on a peer by deducting a fixed
 // amount of time from its current timestamp.
 // It will also call CleanKnowPeer. The purpose is to expedite the removal
 // of disconnected
-func (m *Manager) onFailedConnection(remotePeer *Node) error {
+func (m *Manager) onFailedConnection(remotePeer types.Engine) error {
 	if remotePeer == nil {
 		return fmt.Errorf("nil passed")
 	}
-	remotePeer.Timestamp = remotePeer.Timestamp.Add(-1 * time.Hour)
+	remotePeer.SetTimestamp(remotePeer.GetTimestamp().Add(-1 * time.Hour))
 	m.CleanKnownPeers()
 	return nil
 }
@@ -341,7 +342,7 @@ func (m *Manager) CleanKnownPeers() int {
 
 	before := len(m.knownPeers)
 
-	newKnownPeers := make(map[string]*Node)
+	newKnownPeers := make(map[string]types.Engine)
 	for k, p := range m.knownPeers {
 		if m.isActive(p) {
 			newKnownPeers[k] = p
@@ -354,7 +355,7 @@ func (m *Manager) CleanKnownPeers() int {
 }
 
 // GetKnownPeers gets all the known peers (active or inactive)
-func (m *Manager) GetKnownPeers() (peers []*Node) {
+func (m *Manager) GetKnownPeers() (peers []types.Engine) {
 
 	m.knownPeerMtx.Lock()
 	defer m.knownPeerMtx.Unlock()
@@ -368,7 +369,7 @@ func (m *Manager) GetKnownPeers() (peers []*Node) {
 
 // GetActivePeers returns active peers. Passing a zero or negative value
 // as limit means no limit is applied.
-func (m *Manager) GetActivePeers(limit int) (peers []*Node) {
+func (m *Manager) GetActivePeers(limit int) (peers []types.Engine) {
 	m.knownPeerMtx.Lock()
 	defer m.knownPeerMtx.Unlock()
 	for _, p := range m.knownPeers {
@@ -383,16 +384,16 @@ func (m *Manager) GetActivePeers(limit int) (peers []*Node) {
 }
 
 // CopyActivePeers is like GetActivePeers but a different slice is returned
-func (m *Manager) CopyActivePeers(limit int) (peers []*Node) {
+func (m *Manager) CopyActivePeers(limit int) (peers []types.Engine) {
 	activePeers := m.GetActivePeers(limit)
-	copiedActivePeers := make([]*Node, len(activePeers))
+	copiedActivePeers := make([]types.Engine, len(activePeers))
 	copy(copiedActivePeers, activePeers)
 	return copiedActivePeers
 }
 
 // GetRandomActivePeers returns a slice of randomly selected peers
 // whose timestamp is within 3 hours ago.
-func (m *Manager) GetRandomActivePeers(limit int) []*Node {
+func (m *Manager) GetRandomActivePeers(limit int) []types.Engine {
 
 	knownActivePeers := m.CopyActivePeers(0)
 	m.knownPeerMtx.Lock()
@@ -468,11 +469,11 @@ func (m *Manager) savePeers() error {
 	// determine the active addresses that are eligible for persistence
 	peers := m.CopyActivePeers(0)
 	for _, p := range peers {
-		if !p.isHardcodedSeed && time.Now().Add(20*time.Minute).Before(p.Timestamp) {
+		if !p.IsHardcodedSeed() && time.Now().Add(20*time.Minute).Before(p.GetTimestamp()) {
 			key := []byte(util.ToHex([]byte(p.GetMultiAddr())))
 			value := util.ObjectToBytes(map[string]interface{}{
 				"addr": p.GetMultiAddr(),
-				"ts":   p.Timestamp.Unix(),
+				"ts":   p.GetTimestamp().Unix(),
 			})
 			objectsToStore = append(objectsToStore, database.NewKVObject(key, value, "address"))
 			numAddrs++

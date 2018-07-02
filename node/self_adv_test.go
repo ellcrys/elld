@@ -6,6 +6,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,7 +47,7 @@ var _ = Describe("SelfAdv", func() {
 			p2.SetProtocolHandler(config.AddrVersion, pt.OnAddr)
 
 			Expect(p2.PM().knownPeers).To(HaveLen(0))
-			n := lpProtoc.SelfAdvertise([]*Node{p2})
+			n := lpProtoc.SelfAdvertise([]types.Engine{p2})
 			Expect(n).To(Equal(1))
 			time.Sleep(5 * time.Millisecond)
 			Expect(p2.PM().knownPeers).To(HaveLen(1))

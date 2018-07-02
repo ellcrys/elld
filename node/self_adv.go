@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -12,7 +13,7 @@ import (
 // to all connected peers known to the local peer.
 // The caller is responsible for ensuring only connected peers are passed.
 // Returns the number of peers advertised to.
-func (g *Gossip) SelfAdvertise(connectedPeers []*Node) int {
+func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 	msg := &wire.Addr{Addresses: []*wire.Address{{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()}}}
 	successfullySent := 0

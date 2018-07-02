@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-func (g *Gossip) sendPing(remotePeer *Node) error {
+func (g *Gossip) sendPing(remotePeer types.Engine) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
 
@@ -46,7 +47,7 @@ func (g *Gossip) sendPing(remotePeer *Node) error {
 	}
 
 	// update the remote peer's timestamp
-	remotePeer.Timestamp = time.Now()
+	remotePeer.SetTimestamp(time.Now())
 
 	// add the remote peer to the peer manager's list
 	g.PM().AddOrUpdatePeer(remotePeer)
@@ -57,7 +58,7 @@ func (g *Gossip) sendPing(remotePeer *Node) error {
 }
 
 // SendPing sends a ping message
-func (g *Gossip) SendPing(remotePeers []*Node) {
+func (g *Gossip) SendPing(remotePeers []types.Engine) {
 	g.log.Info("Sending ping to peer(s)", "NumPeers", len(remotePeers))
 	for _, remotePeer := range remotePeers {
 		_remotePeer := remotePeer

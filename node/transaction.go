@@ -5,12 +5,13 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/node/histcache"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-func makeTxHistoryKey(tx *wire.Transaction, peer *Node) histcache.MultiKey {
+func makeTxHistoryKey(tx *wire.Transaction, peer types.Engine) histcache.MultiKey {
 	return []interface{}{tx.ID(), peer.StringID()}
 }
 
@@ -57,7 +58,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 }
 
 // RelayTx relays transactions to peers
-func (g *Gossip) RelayTx(tx *wire.Transaction, remotePeers []*Node) error {
+func (g *Gossip) RelayTx(tx *wire.Transaction, remotePeers []types.Engine) error {
 
 	txID := tx.ID()
 	sent := 0

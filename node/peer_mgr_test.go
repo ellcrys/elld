@@ -11,6 +11,7 @@ import (
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -24,7 +25,7 @@ func NewMgr(cfg *config.EngineConfig) *Manager {
 	mgr.knownPeerMtx = &sync.Mutex{}
 	mgr.generalMtx = &sync.Mutex{}
 	mgr.config = cfg
-	mgr.knownPeers = make(map[string]*Node)
+	mgr.knownPeers = make(map[string]types.Engine)
 	mgr.log = log
 	mgr.connMgr = NewConnMrg(mgr, mgr.log)
 	return mgr
@@ -339,7 +340,7 @@ var _ = Describe("PeerManager", func() {
 			peer1 = &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 			peer2 = &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
 			peer3 = &Node{Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Node{
+			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 				"peer2": peer2,
 				"peer3": peer3,
@@ -370,9 +371,9 @@ var _ = Describe("PeerManager", func() {
 
 	Describe(".CopyActivePeers", func() {
 		var mgr = NewMgr(cfg)
-		mgr.knownPeers = make(map[string]*Node)
+		mgr.knownPeers = make(map[string]types.Engine)
 		peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-		mgr.knownPeers = map[string]*Node{
+		mgr.knownPeers = map[string]types.Engine{
 			"peer1": peer1,
 		}
 
@@ -386,17 +387,17 @@ var _ = Describe("PeerManager", func() {
 	Describe(".GetRandomActivePeers", func() {
 
 		It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
-			mgr.knownPeers = make(map[string]*Node)
+			mgr.knownPeers = make(map[string]types.Engine)
 			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 			peer2 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
 			peer3 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Node{
+			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 				"peer2": peer2,
 				"peer3": peer3,
 			}
 
-			var result []*Node
+			var result []types.Engine
 			var sameIndexCount = 0
 			result = mgr.GetRandomActivePeers(3)
 
@@ -412,17 +413,17 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("Should return the limit requested if known active peers are more than limit", func() {
-			mgr.knownPeers = make(map[string]*Node)
+			mgr.knownPeers = make(map[string]types.Engine)
 			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
 			peer2 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
 			peer3 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Node{
+			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 				"peer2": peer2,
 				"peer3": peer3,
 			}
 
-			var result []*Node
+			var result []types.Engine
 			var sameIndexCount = 0
 			result = mgr.GetRandomActivePeers(2)
 
@@ -443,9 +444,9 @@ var _ = Describe("PeerManager", func() {
 
 		It("should return true when peer manager does not have upto 1000 peers and has not reached max connection", func() {
 			cfg.Node.MaxConnections = 120
-			mgr.knownPeers = make(map[string]*Node)
+			mgr.knownPeers = make(map[string]types.Engine)
 			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Node{
+			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 			}
 			Expect(mgr.NeedMorePeers()).To(BeTrue())
@@ -454,9 +455,9 @@ var _ = Describe("PeerManager", func() {
 		It("should return false when peer manager does not have upto 1000 peers and but has reached max connection", func() {
 			cfg.Node.MaxConnections = 10
 			mgr.connMgr.activeConn = 10
-			mgr.knownPeers = make(map[string]*Node)
+			mgr.knownPeers = make(map[string]types.Engine)
 			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-			mgr.knownPeers = map[string]*Node{
+			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 			}
 			Expect(mgr.NeedMorePeers()).To(BeFalse())
@@ -472,9 +473,9 @@ var _ = Describe("PeerManager", func() {
 		})
 
 		It("reduce timestamp by an 3600 seconds", func() {
-			mgr.knownPeers = make(map[string]*Node)
+			mgr.knownPeers = make(map[string]types.Engine)
 			peer1 := &Node{Timestamp: time.Now()}
-			mgr.knownPeers = map[string]*Node{
+			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 			}
 			currentTime := peer1.Timestamp.Unix()

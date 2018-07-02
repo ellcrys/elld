@@ -5,6 +5,7 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/logic"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 
 	evbus "github.com/asaskevich/EventBus"
@@ -31,7 +32,7 @@ var _ = Describe("Transaction", func() {
 
 		var err error
 		var n, rp *Node
-		var proto, rpProto GossipProtocol
+		var proto, rpProto types.Gossip
 		var sender, address *crypto.Key
 		var nBus, rpBus evbus.Bus
 
@@ -70,7 +71,7 @@ var _ = Describe("Transaction", func() {
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
-			err = proto.RelayTx(tx, []*Node{rp})
+			err = proto.RelayTx(tx, []types.Engine{rp})
 			Expect(err).To(BeNil())
 			Expect(n.historyCache.Len()).To(Equal(1))
 			Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
@@ -85,7 +86,7 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
 
-			err = n.gProtoc.RelayTx(tx, []*Node{rp})
+			err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
 			time.Sleep(1 * time.Millisecond)
 			Expect(err).To(BeNil())
 			Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
@@ -104,7 +105,7 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
 
-			err = proto.RelayTx(tx, []*Node{rp})
+			err = proto.RelayTx(tx, []types.Engine{rp})
 			Expect(err).To(BeNil())
 
 			time.Sleep(1 * time.Millisecond)

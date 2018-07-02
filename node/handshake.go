@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
 // SendHandshake sends an introduction message to a peer
-func (g *Gossip) SendHandshake(remotePeer *Node) error {
+func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
 
@@ -45,7 +46,7 @@ func (g *Gossip) SendHandshake(remotePeer *Node) error {
 	}
 
 	// update the timestamp of the peer
-	remotePeer.Timestamp = time.Now()
+	remotePeer.SetTimestamp(time.Now())
 	g.PM().AddOrUpdatePeer(remotePeer)
 
 	g.log.Info("Handshake was successful", "PeerID", remotePeerIDShort, "SubVersion", resp.SubVersion)

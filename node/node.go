@@ -10,6 +10,7 @@ import (
 
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node/histcache"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
@@ -44,7 +45,7 @@ type Node struct {
 	wg                      sync.WaitGroup          // wait group for preventing the main thread from exiting
 	localNode               *Node                   // local node
 	peerManager             *Manager                // node manager for managing connections to other remote peers
-	gProtoc                 GossipProtocol          // gossip protocol instance
+	gProtoc                 types.Gossip            // gossip protocol instance
 	remote                  bool                    // remote indicates the node represents a remote peer
 	Timestamp               time.Time               // the last time this node was seen/active
 	isHardcodedSeed         bool                    // whether the node was hardcoded as a seed
@@ -169,7 +170,7 @@ func (n *Node) DB() database.DB {
 }
 
 // GossipProto returns the set protocol
-func (n *Node) GossipProto() GossipProtocol {
+func (n *Node) GossipProto() types.Gossip {
 	return n.gProtoc
 }
 
@@ -189,8 +190,18 @@ func (n *Node) History() *histcache.HistoryCache {
 }
 
 // IsSame checks if p is the same as node
-func (n *Node) IsSame(node *Node) bool {
+func (n *Node) IsSame(node types.Engine) bool {
 	return n.StringID() == node.StringID()
+}
+
+// IsHardcodedSeed checks whether the node is an hardcoded seed node
+func (n *Node) IsHardcodedSeed() bool {
+	return n.isHardcodedSeed
+}
+
+// SetTimestamp sets the timestamp value
+func (n *Node) SetTimestamp(newTime time.Time) {
+	n.Timestamp = newTime
 }
 
 // DevMode checks whether the node is in dev mode
@@ -233,7 +244,7 @@ func (n *Node) canAcceptPeer(remotePeer *Node) (bool, string) {
 }
 
 // addToPeerStore adds a remote node to the host's peerstore
-func (n *Node) addToPeerStore(remote *Node) *Node {
+func (n *Node) addToPeerStore(remote types.Engine) *Node {
 	n.localNode.Peerstore().AddAddr(remote.ID(), remote.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
 	return n
 }
@@ -244,7 +255,7 @@ func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string)
 }
 
 // SetGossipProtocol sets the gossip protocol implementation
-func (n *Node) SetGossipProtocol(protoc GossipProtocol) {
+func (n *Node) SetGossipProtocol(protoc types.Gossip) {
 	n.gProtoc = protoc
 }
 
@@ -404,9 +415,9 @@ func (n *Node) PeersPublicAddr(peerIDsToIgnore []string) (peerAddrs []ma.Multiad
 
 // connectToNode handshake to each bootstrap peer.
 // Then send GetAddr message if handshake is successful
-func (n *Node) connectToNode(remote *Node) error {
+func (n *Node) connectToNode(remote types.Engine) error {
 	if n.gProtoc.SendHandshake(remote) == nil {
-		return n.gProtoc.SendGetAddr([]*Node{remote})
+		return n.gProtoc.SendGetAddr([]types.Engine{remote})
 	}
 	return nil
 }
@@ -423,6 +434,11 @@ func (n *Node) relayTx() {
 		tx := q.First()
 		n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 	}
+}
+
+// GetTimestamp returns the timestamp
+func (n *Node) GetTimestamp() time.Time {
+	return n.Timestamp
 }
 
 // Start starts the node.

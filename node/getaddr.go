@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
@@ -13,7 +14,7 @@ import (
 // sendGetAddr sends a wire.GetAddr message to a remote peer.
 // The remote peer will respond with a wire.Addr message which the function
 // must process using the OnAddr handler and return the response.
-func (g *Gossip) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
+func (g *Gossip) sendGetAddr(remotePeer types.Engine) ([]*wire.Address, error) {
 
 	remotePeerIDShort := remotePeer.ShortID()
 
@@ -38,7 +39,7 @@ func (g *Gossip) sendGetAddr(remotePeer *Node) ([]*wire.Address, error) {
 
 // SendGetAddr sends GetAddr message to peers in separate goroutines.
 // GetAddr returns with a list of addr that should be relayed to other peers.
-func (g *Gossip) SendGetAddr(remotePeers []*Node) error {
+func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 
 	// we need to know if wee need more peers before we requests
 	// more addresses from other peers.
@@ -106,10 +107,10 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	for _, peer := range activePeers {
 		// Ignore an address if it is the same with the local node
 		// and if it is a hardcoded seed address
-		if !g.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.isHardcodedSeed {
+		if !g.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.IsHardcodedSeed() {
 			addr.Addresses = append(addr.Addresses, &wire.Address{
 				Address:   peer.GetMultiAddr(),
-				Timestamp: peer.Timestamp.Unix(),
+				Timestamp: peer.GetTimestamp().Unix(),
 			})
 		}
 	}
