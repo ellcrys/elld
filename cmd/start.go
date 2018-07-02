@@ -196,7 +196,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	log.Info("Waiting patiently to interact on", "Addr", n.GetMultiAddr(), "Dev", devMode)
 
 	protocol := node.NewGossip(n, log)
-	n.SetProtocol(protocol)
+	n.SetGossipProtocol(protocol)
 	n.SetProtocolHandler(config.HandshakeVersion, protocol.OnHandshake)
 	n.SetProtocolHandler(config.PingVersion, protocol.OnPing)
 	n.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)

@@ -33,7 +33,7 @@ var _ = Describe("Transactions", func() {
 		n, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 		Expect(err).To(BeNil())
 		gossip := node.NewGossip(n, log)
-		n.SetProtocol(gossip)
+		n.SetGossipProtocol(gossip)
 	})
 
 	AfterEach(func() {

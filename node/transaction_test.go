@@ -31,7 +31,7 @@ var _ = Describe("Transaction", func() {
 
 		var err error
 		var n, rp *Node
-		var proto, rpProto Protocol
+		var proto, rpProto GossipProtocol
 		var sender, address *crypto.Key
 		var nBus, rpBus evbus.Bus
 
@@ -44,7 +44,7 @@ var _ = Describe("Transaction", func() {
 			n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			proto = NewGossip(n, log)
-			n.SetProtocol(proto)
+			n.SetGossipProtocol(proto)
 			_, nBus = logic.New(n, log)
 			n.SetLogicBus(nBus)
 		})
@@ -53,7 +53,7 @@ var _ = Describe("Transaction", func() {
 			rp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
 			rpProto = NewGossip(rp, log)
-			rp.SetProtocol(rpProto)
+			rp.SetGossipProtocol(rpProto)
 			rp.SetProtocolHandler(config.TxVersion, rpProto.OnTx)
 			_, rpBus = logic.New(rp, log)
 			rp.SetLogicBus(rpBus)
@@ -85,17 +85,17 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
 
-			err = n.protoc.RelayTx(tx, []*Node{rp})
+			err = n.gProtoc.RelayTx(tx, []*Node{rp})
 			time.Sleep(1 * time.Millisecond)
 			Expect(err).To(BeNil())
-			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
+			Expect(rp.gProtoc.GetUnSignedTxPool().Has(tx)).To(BeTrue())
 		})
 
 		It("remote node will fail to add tx if its transaction pool is full", func() {
 			cfg.TxPool.Capacity = 0
 			rp, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
 			Expect(err).To(BeNil())
-			rp.SetProtocol(proto)
+			rp.SetGossipProtocol(proto)
 
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 			tx.From = sender.Addr()
@@ -108,7 +108,7 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 
 			time.Sleep(1 * time.Millisecond)
-			Expect(rp.protoc.GetUnSignedTxPool().Has(tx)).To(BeFalse())
+			Expect(rp.gProtoc.GetUnSignedTxPool().Has(tx)).To(BeFalse())
 		})
 	})
 })

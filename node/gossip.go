@@ -30,7 +30,7 @@ type Gossip struct {
 	txsRelayQueue               *txpool.TxQueue     // stores transactions waiting to be relayed
 }
 
-// NewGossip creates a new instance of the protocol codenamed "Gossip"
+// NewGossip creates a new instance of the Gossip protocol
 func NewGossip(p *Node, log logger.Logger) *Gossip {
 	return &Gossip{
 		engine:                  p,

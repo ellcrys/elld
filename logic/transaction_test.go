@@ -36,7 +36,7 @@ var _ = Describe("Transaction", func() {
 			n, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
 			gossip := node.NewGossip(n, log)
-			n.SetProtocol(gossip)
+			n.SetGossipProtocol(gossip)
 			logic, _ = New(n, log)
 		})
 
@@ -108,7 +108,7 @@ var _ = Describe("Transaction", func() {
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).To(BeNil())
-			Expect(n.Proto().HasTxSession(tx.ID())).To(BeTrue())
+			Expect(n.GossipProto().HasTxSession(tx.ID())).To(BeTrue())
 		})
 	})
 })

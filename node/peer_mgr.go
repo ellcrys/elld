@@ -167,7 +167,7 @@ func (m *Manager) sendPeriodicGetAddrMsg() {
 		}
 		select {
 		case <-m.getAddrTicker.C:
-			m.localNode.protoc.SendGetAddr(m.GetActivePeers(0))
+			m.localNode.gProtoc.SendGetAddr(m.GetActivePeers(0))
 		}
 	}
 }
@@ -182,7 +182,7 @@ func (m *Manager) periodicPingMsgs() {
 		}
 		select {
 		case <-m.pingTicker.C:
-			m.localNode.protoc.SendPing(m.GetKnownPeers())
+			m.localNode.gProtoc.SendPing(m.GetKnownPeers())
 		}
 	}
 }
@@ -203,7 +203,7 @@ func (m *Manager) periodicSelfAdvertisement() {
 					connectedPeers = append(connectedPeers, p)
 				}
 			}
-			m.localNode.protoc.SelfAdvertise(connectedPeers)
+			m.localNode.gProtoc.SelfAdvertise(connectedPeers)
 			m.CleanKnownPeers()
 		}
 	}

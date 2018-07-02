@@ -35,7 +35,7 @@ var _ = Describe("Addr", func() {
 			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			gossip = NewGossip(lp, log)
-			lp.SetProtocol(gossip)
+			lp.SetGossipProtocol(gossip)
 		})
 
 		When("no relay peer have been stored", func() {
@@ -84,7 +84,7 @@ var _ = Describe("Addr", func() {
 			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			gossip = NewGossip(lp, log)
-			lp.SetProtocol(gossip)
+			lp.SetGossipProtocol(gossip)
 		})
 
 		It("should return err.Error(too many items in addr message) when address is more than 10", func() {
@@ -135,17 +135,17 @@ var _ = Describe("Addr", func() {
 				p, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
 				pt = NewGossip(p, log)
-				p.SetProtocol(pt)
+				p.SetGossipProtocol(pt)
 
 				p2, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
 				Expect(err).To(BeNil())
 				pt2 = NewGossip(p2, log)
-				p2.SetProtocol(pt2)
+				p2.SetGossipProtocol(pt2)
 
 				p3, err = NewNode(cfg, "127.0.0.1:30013", crypto.NewKeyFromIntSeed(3), log)
 				Expect(err).To(BeNil())
 				pt3 = NewGossip(p3, log)
-				p3.SetProtocol(pt3)
+				p3.SetGossipProtocol(pt3)
 			})
 
 			It("should successfully choose relay peers", func() {

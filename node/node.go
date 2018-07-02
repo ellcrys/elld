@@ -43,7 +43,7 @@ type Node struct {
 	wg              sync.WaitGroup          // wait group for preventing the main thread from exiting
 	localNode       *Node                   // local node
 	peerManager     *Manager                // node manager for managing connections to other remote peers
-	protoc          Protocol                // protocol instance
+	gProtoc         GossipProtocol          // gossip protocol instance
 	remote          bool                    // remote indicates the node represents a remote peer
 	Timestamp       time.Time               // the last time this node was seen/active
 	isHardcodedSeed bool                    // whether the node was hardcoded as a seed
@@ -160,9 +160,9 @@ func (n *Node) DB() database.DB {
 	return n.db
 }
 
-// Proto returns the set protocol
-func (n *Node) Proto() Protocol {
-	return n.protoc
+// GossipProto returns the set protocol
+func (n *Node) GossipProto() GossipProtocol {
+	return n.gProtoc
 }
 
 // PM returns the peer manager
@@ -235,9 +235,9 @@ func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string)
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
 }
 
-// SetProtocol sets the protocol implementation
-func (n *Node) SetProtocol(protoc Protocol) {
-	n.protoc = protoc
+// SetGossipProtocol sets the gossip protocol implementation
+func (n *Node) SetGossipProtocol(protoc GossipProtocol) {
+	n.gProtoc = protoc
 }
 
 // GetHost returns the node's host
@@ -375,7 +375,7 @@ func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
 		pAddr, _ := ma.NewMultiaddr(addr)
 		rp := NewRemoteNode(pAddr, n)
 		rp.isHardcodedSeed = hardcoded
-		rp.protoc = n.protoc
+		rp.gProtoc = n.gProtoc
 		n.peerManager.AddBootstrapPeer(rp)
 	}
 	return nil
@@ -397,28 +397,28 @@ func (n *Node) PeersPublicAddr(peerIDsToIgnore []string) (peerAddrs []ma.Multiad
 // connectToNode handshake to each bootstrap peer.
 // Then send GetAddr message if handshake is successful
 func (n *Node) connectToNode(remote *Node) error {
-	if n.protoc.SendHandshake(remote) == nil {
-		return n.protoc.SendGetAddr([]*Node{remote})
+	if n.gProtoc.SendHandshake(remote) == nil {
+		return n.gProtoc.SendGetAddr([]*Node{remote})
 	}
 	return nil
 }
 
 // GetTxPool returns the transaction pool
 func (n *Node) GetTxPool() *txpool.TxPool {
-	return n.protoc.GetUnSignedTxPool()
+	return n.gProtoc.GetUnSignedTxPool()
 }
 
 // relayTx continuously relays unsigned transactions in the tx relay queue
 func (n *Node) relayTx() {
 	for !n.stopped {
-		q := n.protoc.GetUnsignedTxRelayQueue()
+		q := n.gProtoc.GetUnsignedTxRelayQueue()
 		if q.Size() == 0 {
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
 		tx := q.First()
-		n.protoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+		n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 	}
 }
 
@@ -436,8 +436,8 @@ func (n *Node) Start() {
 
 	// before an unsigned transaction is added to the unsigned tx pool, it must be successfully
 	// added to the Node's tx relay queue.
-	n.protoc.GetUnSignedTxPool().BeforeAppend(func(tx *wire.Transaction) error {
-		if !n.protoc.GetUnsignedTxRelayQueue().Append(tx) {
+	n.gProtoc.GetUnSignedTxPool().BeforeAppend(func(tx *wire.Transaction) error {
+		if !n.gProtoc.GetUnsignedTxRelayQueue().Append(tx) {
 			return txpool.ErrQueueFull
 		}
 		return nil
@@ -491,7 +491,7 @@ func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
 	return &Node{
 		address:   nAddr,
 		localNode: n,
-		protoc:    n.protoc,
+		gProtoc:   n.gProtoc,
 		remote:    remote,
 	}, nil
 }
@@ -535,15 +535,15 @@ func (n *Node) createTx() error {
 
 // GetUnsignedTxRelayQueue returns the transaction relay queue
 func (n *Node) GetUnsignedTxRelayQueue() *txpool.TxQueue {
-	return n.protoc.GetUnsignedTxRelayQueue()
+	return n.gProtoc.GetUnsignedTxRelayQueue()
 }
 
 // GetUnSignedTxPool returns the unsigned transaction pool
 func (n *Node) GetUnSignedTxPool() *txpool.TxPool {
-	return n.protoc.GetUnSignedTxPool()
+	return n.gProtoc.GetUnSignedTxPool()
 }
 
 // AddTxSession adds a transaction session
 func (n *Node) AddTxSession(txID string) {
-	n.protoc.AddTxSession(txID)
+	n.gProtoc.AddTxSession(txID)
 }

@@ -38,7 +38,7 @@ var _ = Describe("Handshake", func() {
 				lp, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				lpGossip := NewGossip(lp, log)
-				lp.SetProtocol(lpGossip)
+				lp.SetGossipProtocol(lpGossip)
 
 				rp, err := NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())

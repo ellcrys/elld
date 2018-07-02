@@ -7,8 +7,8 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-// Protocol represents a protocol
-type Protocol interface {
+// GossipProtocol represents a protocol
+type GossipProtocol interface {
 
 	// messaging
 	SendHandshake(*Node) error

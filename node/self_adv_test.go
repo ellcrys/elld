@@ -33,7 +33,7 @@ var _ = Describe("SelfAdv", func() {
 			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			lpProtoc = NewGossip(lp, log)
-			lp.SetProtocol(lpProtoc)
+			lp.SetGossipProtocol(lpProtoc)
 			lp.SetProtocolHandler(config.AddrVersion, lpProtoc.OnAddr)
 		})
 
@@ -42,7 +42,7 @@ var _ = Describe("SelfAdv", func() {
 			Expect(err).To(BeNil())
 			p2.Timestamp = time.Now()
 			pt := NewGossip(p2, log)
-			p2.SetProtocol(pt)
+			p2.SetGossipProtocol(pt)
 			p2.SetProtocolHandler(config.AddrVersion, pt.OnAddr)
 
 			Expect(p2.PM().knownPeers).To(HaveLen(0))
