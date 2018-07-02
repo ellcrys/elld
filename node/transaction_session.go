@@ -4,7 +4,7 @@ package node
 func (protoc *Gossip) AddTxSession(txID string) {
 	if !protoc.HasTxSession(txID) {
 		protoc.mtx.Lock()
-		protoc.openTxSessions[txID] = struct{}{}
+		protoc.openTransactionsSession[txID] = struct{}{}
 		protoc.mtx.Unlock()
 		protoc.log.Info("New transaction session has been opened", "TxID", txID, "NumOpenedSessions", protoc.CountTxSession())
 		return
@@ -15,7 +15,7 @@ func (protoc *Gossip) AddTxSession(txID string) {
 func (protoc *Gossip) HasTxSession(txID string) bool {
 	protoc.mtx.Lock()
 	defer protoc.mtx.Unlock()
-	_, has := protoc.openTxSessions[txID]
+	_, has := protoc.openTransactionsSession[txID]
 	return has
 }
 
@@ -23,12 +23,12 @@ func (protoc *Gossip) HasTxSession(txID string) bool {
 func (protoc *Gossip) RemoveTxSession(txID string) {
 	protoc.mtx.Lock()
 	defer protoc.mtx.Unlock()
-	delete(protoc.openTxSessions, txID)
+	delete(protoc.openTransactionsSession, txID)
 }
 
 // CountTxSession counts the number of opened transaction sessions
 func (protoc *Gossip) CountTxSession() int {
 	protoc.mtx.Lock()
 	defer protoc.mtx.Unlock()
-	return len(protoc.openTxSessions)
+	return len(protoc.openTransactionsSession)
 }

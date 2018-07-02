@@ -43,7 +43,7 @@ var _ = Describe("TransactionSession", func() {
 	Describe(".AddTxSession", func() {
 		It("should successfully add txId to the session map", func() {
 			gossip.AddTxSession("my_id")
-			Expect(gossip.openTxSessions).To(HaveKey("my_id"))
+			Expect(gossip.openTransactionsSession).To(HaveKey("my_id"))
 			Expect(gossip.HasTxSession("my_id")).To(BeTrue())
 		})
 	})
@@ -51,9 +51,9 @@ var _ = Describe("TransactionSession", func() {
 	Describe(".RemoveTxSession", func() {
 		It("should successfully remove txId from the session map", func() {
 			gossip.AddTxSession("my_id")
-			Expect(gossip.openTxSessions).To(HaveKey("my_id"))
+			Expect(gossip.openTransactionsSession).To(HaveKey("my_id"))
 			gossip.RemoveTxSession("my_id")
-			Expect(gossip.openTxSessions).ToNot(HaveKey("my_id"))
+			Expect(gossip.openTransactionsSession).ToNot(HaveKey("my_id"))
 			Expect(gossip.HasTxSession("my_id")).To(BeFalse())
 		})
 	})

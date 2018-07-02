@@ -25,20 +25,20 @@ type Gossip struct {
 	log                         logger.Logger       // the logger
 	lastRelayPeersSelectionTime time.Time           // the time the last peers responsible for relaying "addr" messages where selected
 	addrRelayPeers              [2]*Node            // peers to relay addr msgs to
-	unsignedTxPool              *txpool.TxPool      // the transaction pool for unsigned transactions
-	openTxSessions              map[string]struct{} // Holds the id of transactions awaiting endorsement. Protected by mtx.
+	transactionsPool            *txpool.TxPool      // the transaction pool for unsigned transactions
+	openTransactionsSession     map[string]struct{} // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	txsRelayQueue               *txpool.TxQueue     // stores transactions waiting to be relayed
 }
 
 // NewGossip creates a new instance of the protocol codenamed "Gossip"
 func NewGossip(p *Node, log logger.Logger) *Gossip {
 	return &Gossip{
-		engine:         p,
-		log:            log,
-		mtx:            &sync.Mutex{},
-		unsignedTxPool: txpool.NewTxPool(p.cfg.TxPool.Capacity),
-		openTxSessions: make(map[string]struct{}),
-		txsRelayQueue:  txpool.NewQueueNoSort(p.cfg.TxPool.Capacity),
+		engine:                  p,
+		log:                     log,
+		mtx:                     &sync.Mutex{},
+		transactionsPool:        txpool.NewTxPool(p.cfg.TxPool.Capacity),
+		openTransactionsSession: make(map[string]struct{}),
+		txsRelayQueue:           txpool.NewQueueNoSort(p.cfg.TxPool.Capacity),
 	}
 }
 
@@ -123,7 +123,7 @@ func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
 
 // GetUnSignedTxPool returns the unsigned transaction pool
 func (g *Gossip) GetUnSignedTxPool() *txpool.TxPool {
-	return g.unsignedTxPool
+	return g.transactionsPool
 }
 
 // GetUnsignedTxRelayQueue returns the unsigned transaction relay queue
