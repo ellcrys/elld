@@ -41,15 +41,16 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".PutBlock", func() {
 
+		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   "hash",
 		}
 
 		It("should put block without error", func() {
-			err = store.PutBlock(block)
+			err = store.PutBlock(chainID, block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", "number"}))
+			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock wire.Block
@@ -61,14 +62,14 @@ var _ = Describe("Leveldb", func() {
 		Context("on successful put", func() {
 
 			BeforeEach(func() {
-				err = store.PutBlock(block)
+				err = store.PutBlock(chainID, block)
 				Expect(err).To(BeNil())
-				result := store.db.GetByPrefix(database.MakePrefix([]string{"block", "number"}))
+				result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
 				Expect(result).To(HaveLen(1))
 			})
 
 			It("should update metadata object", func() {
-				result := store.db.GetByPrefix([]byte("meta"))
+				result := store.db.GetByPrefix(database.MakePrefix([]string{"meta", chainID}))
 				Expect(result).ToNot(BeEmpty())
 				var meta types.Meta
 				err := json.Unmarshal(result[0].Value, &meta)
@@ -78,9 +79,9 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should return nil and not add block when another block with same number exists", func() {
-			err = store.PutBlock(block)
+			err = store.PutBlock(chainID, block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", "number"}))
+			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock wire.Block
@@ -93,9 +94,9 @@ var _ = Describe("Leveldb", func() {
 				Hash:   "some_hash",
 			}
 
-			err = store.PutBlock(block2)
+			err = store.PutBlock(chainID, block2)
 			Expect(err).To(BeNil())
-			result = store.db.GetByPrefix(database.MakePrefix([]string{"block", "number"}))
+			result = store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
 			Expect(result).To(HaveLen(1))
 
 			err = json.Unmarshal(result[0].Value, &storedBlock)
@@ -106,40 +107,41 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".GetBlock", func() {
 
+		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   "hash",
 		}
 
 		BeforeEach(func() {
-			err = store.PutBlock(block)
+			err = store.PutBlock(chainID, block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", "number"}))
+			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should get block by number", func() {
 			var storedBlock = &wire.Block{}
-			err = store.GetBlock(block.Header.Number, storedBlock)
+			err = store.GetBlock(chainID, block.Header.Number, storedBlock)
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
 
 		It("should get block by hash", func() {
 			var storedBlock = &wire.Block{}
-			err = store.GetBlockByHash(block.Hash, storedBlock)
+			err = store.GetBlockByHash(chainID, block.Hash, storedBlock)
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
 
 		It("with block hash; return error if block does not exist", func() {
-			err = store.GetBlockByHash("unknown", nil)
+			err = store.GetBlockByHash(chainID, "unknown", nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(types.ErrBlockNotFound))
 		})
 
 		It("with block number; return error if block does not exist", func() {
-			err = store.GetBlock(10000, nil)
+			err = store.GetBlock(chainID, 10000, nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(types.ErrBlockNotFound))
 		})
@@ -149,11 +151,11 @@ var _ = Describe("Leveldb", func() {
 				Header: &wire.Header{Number: 2},
 				Hash:   "hash",
 			}
-			err = store.PutBlock(block2)
+			err = store.PutBlock(chainID, block2)
 			Expect(err).To(BeNil())
 
 			var storedBlock = &wire.Block{}
-			err = store.GetBlock(0, storedBlock)
+			err = store.GetBlock(chainID, 0, storedBlock)
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 			Expect(storedBlock).To(Equal(block2))
@@ -162,21 +164,22 @@ var _ = Describe("Leveldb", func() {
 
 	Describe("GetBlockHeader", func() {
 
+		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   "hash",
 		}
 
 		BeforeEach(func() {
-			err = store.PutBlock(block)
+			err = store.PutBlock(chainID, block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", "number"}))
+			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should get block by number", func() {
 			var storedBlockHeader = &wire.Header{}
-			err = store.GetBlockHeader(block.Header.Number, storedBlockHeader)
+			err = store.GetBlockHeader(chainID, block.Header.Number, storedBlockHeader)
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))
@@ -185,28 +188,30 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".UpdateMetadata", func() {
 
+		var chainID = "main"
 		var meta types.Meta
 
 		It("should successfully update meta", func() {
 			meta = types.Meta{CurrentBlockNumber: 10000}
-			err := store.UpdateMetadata(&meta)
+			err := store.UpdateMetadata(chainID, &meta)
 			Expect(err).To(BeNil())
 		})
 	})
 
 	Describe(".GetMetadata", func() {
 
+		var chainID = "main"
 		var meta types.Meta
 
 		BeforeEach(func() {
 			meta = types.Meta{CurrentBlockNumber: 10000}
-			err := store.UpdateMetadata(&meta)
+			err := store.UpdateMetadata(chainID, &meta)
 			Expect(err).To(BeNil())
 		})
 
 		It("should successfully get meta", func() {
 			var result types.Meta
-			err := store.GetMetadata(&result)
+			err := store.GetMetadata(chainID, &result)
 			Expect(err).To(BeNil())
 			Expect(result.CurrentBlockNumber).To(Equal(meta.CurrentBlockNumber))
 		})

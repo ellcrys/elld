@@ -30,9 +30,9 @@ func New(db database.DB) (*Store, error) {
 }
 
 // hasBlock checks whether a block exists
-func (s *Store) hasBlock(number uint64) (bool, error) {
+func (s *Store) hasBlock(chainID string, number uint64) (bool, error) {
 	var block wire.Block
-	if err := s.getBlock(number, &block); err != nil {
+	if err := s.getBlock(chainID, number, &block); err != nil {
 		if err == types.ErrBlockNotFound {
 			return false, nil
 		}
@@ -43,17 +43,17 @@ func (s *Store) hasBlock(number uint64) (bool, error) {
 
 // getBlock gets a block by the block number.
 // If number is 0, return the current block.
-func (s *Store) getBlock(number uint64, result interface{}) error {
+func (s *Store) getBlock(chainID string, number uint64, result interface{}) error {
 
 	if number == 0 {
 		var meta types.Meta
-		if err := s.GetMetadata(&meta); err != nil {
+		if err := s.GetMetadata(chainID, &meta); err != nil {
 			return fmt.Errorf("failed to get meta: %s", err)
 		}
 		number = meta.CurrentBlockNumber
 	}
 
-	key := database.MakeKey([]byte(fmt.Sprintf("%d", number)), []string{"block", "number"})
+	key := database.MakeKey([]byte(fmt.Sprintf("%d", number)), []string{"block", chainID, "number"})
 	r := s.db.GetByPrefix(key)
 	if len(r) == 0 {
 		return types.ErrBlockNotFound
@@ -63,9 +63,9 @@ func (s *Store) getBlock(number uint64, result interface{}) error {
 }
 
 // getBlockNumberByHash gets a block's block number by its hash
-func (s *Store) getBlockNumberByHash(hash string, result *uint64) error {
+func (s *Store) getBlockNumberByHash(chainID string, hash string, result *uint64) error {
 
-	key := database.MakeKey([]byte(fmt.Sprintf("%s", hash)), []string{"block", "hash"})
+	key := database.MakeKey([]byte(fmt.Sprintf("%s", hash)), []string{"block", chainID, "hash"})
 	r := s.db.GetByPrefix(key)
 	if len(r) == 0 {
 		return types.ErrBlockNotFound
@@ -82,9 +82,9 @@ func (s *Store) getBlockNumberByHash(hash string, result *uint64) error {
 }
 
 // GetBlockHeader the header of the current block
-func (s *Store) GetBlockHeader(number uint64, header *wire.Header) error {
+func (s *Store) GetBlockHeader(chainID string, number uint64, header *wire.Header) error {
 	var block wire.Block
-	if err := s.getBlock(number, &block); err != nil {
+	if err := s.getBlock(chainID, number, &block); err != nil {
 		return err
 	}
 
@@ -94,27 +94,27 @@ func (s *Store) GetBlockHeader(number uint64, header *wire.Header) error {
 
 // GetBlock fetches a block by its block number.
 // If the block number begins with -1, the block with the highest block number is returned.
-func (s *Store) GetBlock(number uint64, result types.Block) error {
-	return s.getBlock(number, result)
+func (s *Store) GetBlock(chainID string, number uint64, result types.Block) error {
+	return s.getBlock(chainID, number, result)
 }
 
 // GetBlockByHash fetches a block by its block hash.
-func (s *Store) GetBlockByHash(hash string, result types.Block) error {
+func (s *Store) GetBlockByHash(chainID string, hash string, result types.Block) error {
 	var blockNum uint64
-	if err := s.getBlockNumberByHash(hash, &blockNum); err != nil {
+	if err := s.getBlockNumberByHash(chainID, hash, &blockNum); err != nil {
 		return err
 	}
 
-	return s.GetBlock(blockNum, result)
+	return s.GetBlock(chainID, blockNum, result)
 }
 
 // PutBlock adds a block to the store.
 // Returns error if a block with same number exists.
-func (s *Store) PutBlock(block types.Block) error {
+func (s *Store) PutBlock(chainID string, block types.Block) error {
 
 	// check if block already exists.
 	// return nil if block exists.
-	hasBlock, err := s.hasBlock(block.GetNumber())
+	hasBlock, err := s.hasBlock(chainID, block.GetNumber())
 	if err != nil {
 		return fmt.Errorf("failed to check block existence: %s", err)
 	} else if hasBlock {
@@ -132,7 +132,7 @@ func (s *Store) PutBlock(block types.Block) error {
 	// store the block with a key format that allows
 	// for query using the block number
 	numKey := []byte(fmt.Sprintf("%d", block.GetNumber()))
-	blockObj := database.NewKVObject(numKey, value, "block", "number")
+	blockObj := database.NewKVObject(numKey, value, "block", chainID, "number")
 	if err := tx.Put([]*database.KVObject{blockObj}); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to put block: %s", err)
@@ -142,7 +142,7 @@ func (s *Store) PutBlock(block types.Block) error {
 	// by block hash. But, do not store the full block, just the number.
 	hashKey := []byte(fmt.Sprintf("%s", block.GetHash()))
 	value = []byte(fmt.Sprintf("%d", block.GetNumber()))
-	blockObj = database.NewKVObject(hashKey, value, "block", "hash")
+	blockObj = database.NewKVObject(hashKey, value, "block", chainID, "hash")
 	if err := tx.Put([]*database.KVObject{blockObj}); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to index block by hash: %s", err)
@@ -150,7 +150,7 @@ func (s *Store) PutBlock(block types.Block) error {
 
 	// get current metadata
 	var meta = &types.Meta{}
-	if err := s.getMetadata(tx, meta); err != nil {
+	if err := s.getMetadata(tx, chainID, meta); err != nil {
 		if err != types.ErrMetadataNotFound {
 			tx.Rollback()
 			return fmt.Errorf("failed to get metadata: %s", err)
@@ -159,7 +159,7 @@ func (s *Store) PutBlock(block types.Block) error {
 
 	// update block number and save the updated meta
 	meta.CurrentBlockNumber = block.GetNumber()
-	if err := s.updateMetadata(tx, meta); err != nil {
+	if err := s.updateMetadata(chainID, tx, meta); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to update metadata: %s", err)
 	}
@@ -167,29 +167,29 @@ func (s *Store) PutBlock(block types.Block) error {
 	return tx.Commit()
 }
 
-func (s *Store) getMetadata(db database.Tx, result *types.Meta) error {
-	objs := db.GetByPrefix([]byte(MetadataKey))
+func (s *Store) getMetadata(db database.Tx, chainID string, result *types.Meta) error {
+	objs := db.GetByPrefix(database.MakePrefix([]string{MetadataKey, chainID}))
 	if len(objs) == 0 {
 		return types.ErrMetadataNotFound
 	}
 	return json.Unmarshal(objs[0].Value, result)
 }
 
-func (s *Store) updateMetadata(db database.Tx, meta *types.Meta) error {
+func (s *Store) updateMetadata(chainID string, db database.Tx, meta *types.Meta) error {
 	value := util.ObjectToBytes(meta)
-	obj := database.NewKVObject([]byte(MetadataKey), value)
+	obj := database.NewKVObject([]byte("_"), value, MetadataKey, chainID)
 	return db.Put([]*database.KVObject{obj})
 }
 
 // GetMetadata gets the metadata and copies it to result
-func (s *Store) GetMetadata(result *types.Meta) error {
+func (s *Store) GetMetadata(chainID string, result *types.Meta) error {
 
 	tx, err := s.db.NewTx()
 	if err != nil {
 		return err
 	}
 
-	if err := s.getMetadata(tx, result); err != nil {
+	if err := s.getMetadata(tx, chainID, result); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -198,14 +198,14 @@ func (s *Store) GetMetadata(result *types.Meta) error {
 }
 
 // UpdateMetadata updates the meta data
-func (s *Store) UpdateMetadata(meta *types.Meta) error {
+func (s *Store) UpdateMetadata(chainID string, meta *types.Meta) error {
 
 	tx, err := s.db.NewTx()
 	if err != nil {
 		return err
 	}
 
-	if err := s.updateMetadata(tx, meta); err != nil {
+	if err := s.updateMetadata(chainID, tx, meta); err != nil {
 		tx.Rollback()
 		return err
 	}

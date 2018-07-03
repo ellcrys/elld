@@ -17,24 +17,24 @@ type Block interface {
 type Store interface {
 
 	// GetMetadata returns the store's metadata
-	GetMetadata(*Meta) error
+	GetMetadata(chainID string, m *Meta) error
 
 	// UpdateMetadata updates the store's metadata
-	UpdateMetadata(*Meta) error
+	UpdateMetadata(chainID string, m *Meta) error
 
 	// PutBlock adds a block to the store
-	PutBlock(block Block) error
+	PutBlock(chainID string, block Block) error
 
-	// GetBlock finds and returns a block
+	// GetBlock finds and returns a block associated with chainID.
 	// When 0 is passed, it should return the block with the highest number
-	GetBlock(number uint64, block Block) error
+	GetBlock(chainID string, number uint64, block Block) error
 
-	// GetBlockByHash finds and returns a block
-	GetBlockByHash(hash string, block Block) error
+	// GetBlockByHash finds and returns a block associated with chainID.
+	GetBlockByHash(chainID string, hash string, block Block) error
 
 	// GetCurrentBlockHeader gets the current/tail block header.
 	// When 0 is passed, it should return the header of the block with the highest number
-	GetBlockHeader(number uint64, header *wire.Header) error
+	GetBlockHeader(chainID string, number uint64, header *wire.Header) error
 }
 
 // Meta includes information about a store
