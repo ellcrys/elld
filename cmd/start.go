@@ -35,14 +35,14 @@ func defaultConfig(cfg *configdir.Config) {
 	cfg.TxPool.Capacity = util.NonZeroOrDefIn64(cfg.TxPool.Capacity, 100)
 }
 
-// loadAccount unlocks an account and returns the underlying address.
+// loadOrCreateAccount unlocks an account and returns the underlying address.
 // - If account is provided, it is fetched and unlocked using the password provided.
 //	 If password is not provided, the is requested through an interactive prompt.
 // - If account is not provided, the default account is fetched and unlocked using
 // 	 the password provided. If password is not set, it is requested via a prompt.
 // - If account is not provided and no default account exists, an interactive account
 // 	 creation session begins.
-func loadAccount(account, password string) (*crypto.Key, error) {
+func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, error) {
 
 	var address *crypto.Key
 	var err error
@@ -75,7 +75,7 @@ func loadAccount(account, password string) (*crypto.Key, error) {
 
 	if storedAccount == nil {
 		fmt.Println("No default account found. Create an account.")
-		address, err = accountMgr.CreateCmd(password)
+		address, err = accountMgr.CreateCmd(seed, password)
 		if err != nil {
 			return nil, err
 		}
@@ -143,6 +143,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
 	account, _ := cmd.Flags().GetString("account")
 	password, _ := cmd.Flags().GetString("pwd")
+	seed, _ := cmd.Flags().GetInt64("seed")
 
 	if devMode {
 		cfg.Node.Dev = devMode
@@ -157,7 +158,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("invalid bind address provided")
 	}
 
-	loadedAddress, err := loadAccount(account, password)
+	loadedAddress, err := loadOrCreateAccount(account, password, seed)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -210,7 +211,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	var cs *console.Console
 	if startConsole {
 
-		cs = console.New(loadedAddress)
+		cs = console.New(loadedAddress, consoleHistoryFilePath)
 
 		if startRPC {
 
@@ -270,7 +271,8 @@ func init() {
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on")
 	startCmd.Flags().Bool("rpc", false, "Launch RPC server")
-	startCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
+	startCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
 	startCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
-	startCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
+	startCmd.Flags().String("pwd", "", "Used as password during initial account creation or to unlock an account")
+	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for account creation (not recommended)")
 }

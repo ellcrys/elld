@@ -13,7 +13,7 @@ import (
 // Spell provides implementation for various node and blockchain service
 type Spell struct {
 	key     *crypto.Key
-	Ell     *ELLService
+	Balance *BalanceService
 	Account *Account
 	client  *rpc.Client
 }
@@ -23,7 +23,7 @@ type Spell struct {
 func NewSpell(key *crypto.Key) *Spell {
 	spell := new(Spell)
 	spell.key = key
-	spell.Ell = NewELL(nil, key)
+	spell.Balance = NewBalanceService(nil, key)
 	spell.Account = NewAccount(nil, key)
 	return spell
 }
@@ -32,14 +32,14 @@ func NewSpell(key *crypto.Key) *Spell {
 // need to interact with the rpc server
 func (spell *Spell) SetClient(c *rpc.Client) {
 	spell.client = c
-	spell.Ell.client = c
+	spell.Balance.client = c
 	spell.Account.client = c
 }
 
 // SetSignatory sets the key to be used to sign transactions
 func (spell *Spell) SetSignatory(key *crypto.Key) {
 	spell.key = key
-	spell.Ell.key = key
+	spell.Balance.key = key
 	spell.Account.key = key
 }
 

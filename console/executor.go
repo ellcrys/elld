@@ -29,8 +29,8 @@ func NewExecutor() *Executor {
 func (e *Executor) PrepareContext() error {
 
 	var spellObj = map[string]interface{}{
-		"ell": map[string]interface{}{
-			"send": e.spell.Ell.Send,
+		"balance": map[string]interface{}{
+			"send": e.spell.Balance.Send,
 		},
 		"account": map[string]interface{}{
 			"getAccounts": e.spell.Account.GetAccounts,
@@ -58,6 +58,7 @@ func (e *Executor) OnInput(in string) {
 	case ".help":
 		e.help()
 	default:
+		
 		e.exec(in)
 	}
 }

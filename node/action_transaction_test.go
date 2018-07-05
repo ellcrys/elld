@@ -96,7 +96,7 @@ var _ = Describe("ActionTransaction", func() {
 		It("should err = 'signature verification failed' when signature is not set or is invalid", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "0", "0.1", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "0", "0.1", time.Now().Unix())
 			tx.Sig = []byte("invalid")
 			err := n.ActionAddTx(tx)
 			Expect(err).ToNot(BeNil())
@@ -106,7 +106,7 @@ var _ = Describe("ActionTransaction", func() {
 		It("should return err = 'value must be greater than zero' when tx type is wire.TxTypeA2A and has <= 0 value", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "0", "0.1", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "0", "0.1", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 
@@ -118,7 +118,7 @@ var _ = Describe("ActionTransaction", func() {
 		It("should return err = 'insufficient fee' when tx type is wire.TxTypeA2A and fee is less than min fee", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "10", "0.0000000001", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "0.0000000001", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 

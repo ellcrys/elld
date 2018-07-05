@@ -46,6 +46,7 @@ var _ = Describe("Transaction", func() {
 			rp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
 			rpProto := NewInception(rp, log)
+			rp.SetProtocol(rpProto)
 			rp.SetProtocolHandler(util.TxVersion, rpProto.OnTx)
 		})
 
@@ -55,7 +56,7 @@ var _ = Describe("Transaction", func() {
 		})
 
 		It("should return nil and history key of transaction should be in HistoryCache", func() {
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			err = proto.RelayTx(tx, []*Node{rp})
 			Expect(err).To(BeNil())
@@ -64,7 +65,7 @@ var _ = Describe("Transaction", func() {
 		})
 
 		It("remote node should add tx in its tx pool", func() {
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			err = proto.RelayTx(tx, []*Node{rp})
@@ -74,7 +75,7 @@ var _ = Describe("Transaction", func() {
 		})
 
 		It("remote node should add tx in its tx pool", func() {
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			err = proto.RelayTx(tx, []*Node{rp})
@@ -88,7 +89,7 @@ var _ = Describe("Transaction", func() {
 			rp, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
 			Expect(err).To(BeNil())
 
-			tx := wire.NewTransaction(wire.TxTypeA2A, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 			tx.Sig, err = wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			err = proto.RelayTx(tx, []*Node{rp})
