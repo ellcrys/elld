@@ -46,7 +46,7 @@ func (s *Store) hasBlock(chainID string, number uint64) (bool, error) {
 func (s *Store) getBlock(chainID string, number uint64, result interface{}) error {
 
 	if number == 0 {
-		var meta types.Meta
+		var meta types.ChainMeta
 		if err := s.GetMetadata(chainID, &meta); err != nil {
 			return fmt.Errorf("failed to get meta: %s", err)
 		}
@@ -85,6 +85,17 @@ func (s *Store) getBlockNumberByHash(chainID string, hash string, result *uint64
 func (s *Store) GetBlockHeader(chainID string, number uint64, header *wire.Header) error {
 	var block wire.Block
 	if err := s.getBlock(chainID, number, &block); err != nil {
+		return err
+	}
+
+	*header = *block.Header
+	return nil
+}
+
+// GetBlockHeaderByHash returns the header of a block by searching using its hash
+func (s *Store) GetBlockHeaderByHash(chainID string, hash string, header *wire.Header) error {
+	var block wire.Block
+	if err := s.GetBlockByHash(chainID, hash, &block); err != nil {
 		return err
 	}
 
@@ -149,7 +160,7 @@ func (s *Store) PutBlock(chainID string, block types.Block) error {
 	}
 
 	// get current metadata
-	var meta = &types.Meta{}
+	var meta = &types.ChainMeta{}
 	if err := s.getMetadata(tx, chainID, meta); err != nil {
 		if err != types.ErrMetadataNotFound {
 			tx.Rollback()
@@ -167,29 +178,29 @@ func (s *Store) PutBlock(chainID string, block types.Block) error {
 	return tx.Commit()
 }
 
-func (s *Store) getMetadata(db database.Tx, chainID string, result *types.Meta) error {
-	objs := db.GetByPrefix(database.MakePrefix([]string{MetadataKey, chainID}))
+func (s *Store) getMetadata(db database.Tx, name string, result types.Object) error {
+	objs := db.GetByPrefix(database.MakePrefix([]string{MetadataKey, name}))
 	if len(objs) == 0 {
 		return types.ErrMetadataNotFound
 	}
 	return json.Unmarshal(objs[0].Value, result)
 }
 
-func (s *Store) updateMetadata(chainID string, db database.Tx, meta *types.Meta) error {
+func (s *Store) updateMetadata(name string, db database.Tx, meta types.Object) error {
 	value := util.ObjectToBytes(meta)
-	obj := database.NewKVObject([]byte("_"), value, MetadataKey, chainID)
+	obj := database.NewKVObject([]byte("_"), value, MetadataKey, name)
 	return db.Put([]*database.KVObject{obj})
 }
 
 // GetMetadata gets the metadata and copies it to result
-func (s *Store) GetMetadata(chainID string, result *types.Meta) error {
+func (s *Store) GetMetadata(name string, result types.Object) error {
 
 	tx, err := s.db.NewTx()
 	if err != nil {
 		return err
 	}
 
-	if err := s.getMetadata(tx, chainID, result); err != nil {
+	if err := s.getMetadata(tx, name, result); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -198,17 +209,33 @@ func (s *Store) GetMetadata(chainID string, result *types.Meta) error {
 }
 
 // UpdateMetadata updates the meta data
-func (s *Store) UpdateMetadata(chainID string, meta *types.Meta) error {
+func (s *Store) UpdateMetadata(name string, meta types.Object) error {
 
 	tx, err := s.db.NewTx()
 	if err != nil {
 		return err
 	}
 
-	if err := s.updateMetadata(chainID, tx, meta); err != nil {
+	if err := s.updateMetadata(name, tx, meta); err != nil {
 		tx.Rollback()
 		return err
 	}
 
 	return tx.Commit()
+}
+
+// Put stores an object
+func (s *Store) Put(key []byte, value []byte) error {
+	obj := database.NewKVObject(key, value)
+	if err := s.db.Put([]*database.KVObject{obj}); err != nil {
+		return fmt.Errorf("failed to put object: %s", err)
+	}
+	return nil
+}
+
+// Get an object by key (and optionally by prefixes)
+func (s *Store) Get(key []byte, result interface{}) error {
+	r := s.db.GetByPrefix(key)
+	rBytes := util.ObjectToBytes(r)
+	return json.Unmarshal(rBytes, result)
 }

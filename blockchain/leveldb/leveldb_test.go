@@ -71,7 +71,7 @@ var _ = Describe("Leveldb", func() {
 			It("should update metadata object", func() {
 				result := store.db.GetByPrefix(database.MakePrefix([]string{"meta", chainID}))
 				Expect(result).ToNot(BeEmpty())
-				var meta types.Meta
+				var meta types.ChainMeta
 				err := json.Unmarshal(result[0].Value, &meta)
 				Expect(err).To(BeNil())
 				Expect(meta.CurrentBlockNumber).To(Equal(block.Header.Number))
@@ -186,13 +186,36 @@ var _ = Describe("Leveldb", func() {
 		})
 	})
 
+	Describe(".GetBlockHeaderByHash", func() {
+		var chainID = "main"
+		var block = &wire.Block{
+			Header: &wire.Header{Number: 1},
+			Hash:   "hash",
+		}
+
+		BeforeEach(func() {
+			err = store.PutBlock(chainID, block)
+			Expect(err).To(BeNil())
+			result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
+			Expect(result).To(HaveLen(1))
+		})
+
+		It("should get block by number", func() {
+			var storedBlockHeader = &wire.Header{}
+			err = store.GetBlockHeaderByHash(chainID, block.Hash, storedBlockHeader)
+			Expect(err).To(BeNil())
+			Expect(storedBlockHeader).ToNot(BeNil())
+			Expect(storedBlockHeader).To(Equal(block.Header))
+		})
+	})
+
 	Describe(".UpdateMetadata", func() {
 
 		var chainID = "main"
-		var meta types.Meta
+		var meta types.ChainMeta
 
 		It("should successfully update meta", func() {
-			meta = types.Meta{CurrentBlockNumber: 10000}
+			meta = types.ChainMeta{CurrentBlockNumber: 10000}
 			err := store.UpdateMetadata(chainID, &meta)
 			Expect(err).To(BeNil())
 		})
@@ -201,19 +224,55 @@ var _ = Describe("Leveldb", func() {
 	Describe(".GetMetadata", func() {
 
 		var chainID = "main"
-		var meta types.Meta
+		var meta types.ChainMeta
 
 		BeforeEach(func() {
-			meta = types.Meta{CurrentBlockNumber: 10000}
+			meta = types.ChainMeta{CurrentBlockNumber: 10000}
 			err := store.UpdateMetadata(chainID, &meta)
 			Expect(err).To(BeNil())
 		})
 
 		It("should successfully get meta", func() {
-			var result types.Meta
+			var result types.ChainMeta
 			err := store.GetMetadata(chainID, &result)
 			Expect(err).To(BeNil())
 			Expect(result.CurrentBlockNumber).To(Equal(meta.CurrentBlockNumber))
+		})
+	})
+
+	Describe(".Put", func() {
+		It("should successfully store object", func() {
+			key := database.MakeKey([]byte("my_key"), []string{"block", "account"})
+			err = store.Put(key, []byte("stuff"))
+			Expect(err).To(BeNil())
+		})
+	})
+
+	Describe(".Get", func() {
+
+		It("should successfully get object by prefix", func() {
+			key := database.MakeKey([]byte("my_key"), []string{"an_obj", "account"})
+			err = store.Put(key, []byte("stuff"))
+			Expect(err).To(BeNil())
+
+			var result []interface{}
+			err = store.Get([]byte("an_obj"), &result)
+			Expect(err).To(BeNil())
+			Expect(result).To(HaveLen(1))
+
+			err = store.Get(database.MakePrefix([]string{"an_obj", "account"}), &result)
+			Expect(err).To(BeNil())
+			Expect(result).To(HaveLen(1))
+		})
+
+		It("should successfully get object by key", func() {
+			key := database.MakeKey([]byte("my_key"), []string{"block", "account"})
+			err = store.Put(key, []byte("stuff"))
+			Expect(err).To(BeNil())
+			var result []interface{}
+			err = store.Get(key, &result)
+			Expect(err).To(BeNil())
+			Expect(result).To(HaveLen(1))
 		})
 	})
 })
