@@ -1,6 +1,0 @@
-package: github.com/ellcrys/go.stub
-import:
-- package: github.com/googollee/go-socket.io
-testImport:
-- package: github.com/onsi/ginkgo
-- package: github.com/onsi/gomega
