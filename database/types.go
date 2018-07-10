@@ -13,9 +13,9 @@ const KeyPrefixSeparator = ":"
 
 // KVObject represents an item in the database
 type KVObject struct {
-	Key      []byte
-	Value    []byte
-	Prefixes []string
+	Key      []byte   `json:"key"`
+	Value    []byte   `json:"value"`
+	Prefixes []string `json:"prefixes"`
 }
 
 // MakePrefix creates a prefix string
@@ -56,6 +56,7 @@ func FromKeyValue(key []byte, value []byte) *KVObject {
 	// break down the key to determine the prefixes and the original key
 	parts := strings.Split(string(key), KeyPrefixSeparator)
 	if len(parts) > 2 {
+		fmt.Println(parts)
 		panic("invalid key format")
 	} else if len(parts) == 2 {
 		prefixes = strings.Split(parts[0], PrefixSeparator)

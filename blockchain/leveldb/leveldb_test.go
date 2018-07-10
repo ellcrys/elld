@@ -200,7 +200,7 @@ var _ = Describe("Leveldb", func() {
 			Expect(result).To(HaveLen(1))
 		})
 
-		It("should get block by number", func() {
+		It("should get block by hash", func() {
 			var storedBlockHeader = &wire.Header{}
 			err = store.GetBlockHeaderByHash(chainID, block.Hash, storedBlockHeader)
 			Expect(err).To(BeNil())

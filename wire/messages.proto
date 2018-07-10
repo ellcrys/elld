@@ -111,20 +111,19 @@ message SignedTransaction {
     SignTxData sigData = 2;
 }
 
-// BlockcodeObject represents objects belonging to a blockcode
+// BlockcodeObject represents objects belonging to a blockcodeInfo
 message BlockcodeObject {
     string data = 1;
 }
 
-// BlockcodeData represent data belonging to a blockcode
-message BlockcodeData {
+// BlockcodeInfo represent data belonging to a blockcode
+message BlockcodeInfo {
     string byteCode = 1;
     map<string,BlockcodeObject> data = 2;    
 }
 
-// AccountData represents the data specific to a regular account
-message AccountData {
-    string balance = 1;
+// AccountInfo represents the data specific to a regular account
+message AccountInfo {
 }
 
 // GitBundle represents a git bundle
@@ -138,18 +137,16 @@ message RepoBundles {
     repeated GitBundle bundles = 1;
 }
 
-// RepoData represents a git repository data
-message RepoData {
-    string balance = 1;
-    map<string, RepoBundles> branches = 3;  
+// RepoInfo represents a git repository data
+message RepoInfo {
+    map<string, RepoBundles> branches = 1;  
 }
 
 // Account represents an entity on the network.
 message Account {
     int32 type = 1;
     string address = 2;
-    string hash = 3;
-    BlockcodeData blockcodeData = 4;
-    AccountData  accountData = 5;
-    RepoData repoData = 6;
+    string balance = 3;
+    AccountInfo  accountInfo = 4;
+    RepoInfo repoInfo = 5;
 }

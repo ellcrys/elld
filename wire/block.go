@@ -3,6 +3,7 @@ package wire
 import (
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -10,6 +11,17 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"gopkg.in/asaskevich/govalidator.v4"
 )
+
+// NilHeader represents a zero value header
+var NilHeader = Header{}
+
+// BlockFromString unmarshal a json string into a Block
+func BlockFromString(str string) (*Block, error) {
+	var block Block
+	var err error
+	err = json.Unmarshal([]byte(str), &block)
+	return &block, err
+}
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
 func (h *Header) HashNoNonce() Hash {
@@ -103,11 +115,12 @@ func (h *Header) Bytes() []byte {
 	})
 }
 
-// ComputeHash returns the SHA256 hash of the header
-func (h *Header) ComputeHash() []byte {
+// ComputeHash returns the SHA256 hash of the header as a hex string
+// prefixed by '0x'
+func (h *Header) ComputeHash() string {
 	bs := h.Bytes()
 	hash := sha256.Sum256(bs)
-	return hash[:]
+	return ToHex(hash[:])
 }
 
 // Bytes returns the ANS1 bytes equivalent of the block data.
@@ -125,11 +138,12 @@ func (b *Block) Bytes() []byte {
 	})
 }
 
-// ComputeHash computes the SHA256 hash of block
-func (b *Block) ComputeHash() []byte {
+// ComputeHash returns the SHA256 hash of the header as a hex string
+// prefixed by '0x'
+func (b *Block) ComputeHash() string {
 	bs := b.Bytes()
 	hash := sha256.Sum256(bs)
-	return hash[:]
+	return ToHex(hash[:])
 }
 
 // Validate validates the block
@@ -154,7 +168,7 @@ func (b *Block) Validate() error {
 	}
 
 	// Ensure the block hash is valid
-	if b.Hash != ToHex(b.ComputeHash()) {
+	if b.Hash != b.ComputeHash() {
 		return fmt.Errorf("block error: hash not valid")
 	}
 

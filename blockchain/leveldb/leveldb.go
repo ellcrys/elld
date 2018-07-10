@@ -151,7 +151,7 @@ func (s *Store) PutBlock(chainID string, block types.Block) error {
 
 	// also index the block with a hash key to allow query
 	// by block hash. But, do not store the full block, just the number.
-	hashKey := []byte(fmt.Sprintf("%s", block.GetHash()))
+	hashKey := []byte(block.ComputeHash())
 	value = []byte(fmt.Sprintf("%d", block.GetNumber()))
 	blockObj = database.NewKVObject(hashKey, value, "block", chainID, "hash")
 	if err := tx.Put([]*database.KVObject{blockObj}); err != nil {

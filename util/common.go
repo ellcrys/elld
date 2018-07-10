@@ -189,3 +189,11 @@ func StructToMap(s interface{}) map[string]interface{} {
 	_s.TagName = "json"
 	return _s.Map()
 }
+
+// StrToDecimal returns decimal representation of a numeric string value
+func StrToDecimal(v string) (decimal.Decimal, error) {
+	if v == "" {
+		v = "0"
+	}
+	return decimal.NewFromString(v)
+}

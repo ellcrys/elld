@@ -67,6 +67,9 @@ type EngineConfig struct {
 	// Consensus holds consensus related configurations
 	Consensus *ConsensusConfig `json:"consensus"`
 
+	// Chain holds blockchain related configurations
+	Chain *ChainConfig `json:"chain"`
+
 	// configDir is where the node's config and data is stored
 	configDir string
 }
@@ -79,6 +82,26 @@ func (c *EngineConfig) SetConfigDir(d string) {
 // ConfigDir returns the config directory
 func (c *EngineConfig) ConfigDir() string {
 	return c.configDir
+}
+
+// CheckPoint describes a point on the chain. We use it to prevent
+// blocks dated far back in the history of the chain from causing a
+// chain reorganization.
+type CheckPoint struct {
+	Number uint64 `json:"number"`
+	Hash   string `json:"hash"`
+}
+
+// ChainConfig includes parameters for the chain
+type ChainConfig struct {
+
+	// Checkpoints includes a collection of points on the chain of
+	// which blocks are supposed to exists after or before.
+	Checkpoints []*CheckPoint `json:"checkpoints"`
+
+	// TargetHybridModeBlock indicates the block number from which the client
+	// begins to use the hybrid consensus and block processing model.
+	TargetHybridModeBlock uint64 `json:"targetHybridModeBlock"`
 }
 
 var defaultConfig = EngineConfig{}
@@ -102,5 +125,10 @@ func init() {
 
 	defaultConfig.TxPool = &TxPoolConfig{
 		Capacity: 1000,
+	}
+
+	defaultConfig.Chain = &ChainConfig{
+		Checkpoints:           nil,
+		TargetHybridModeBlock: 80640,
 	}
 }

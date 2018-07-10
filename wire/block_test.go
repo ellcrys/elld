@@ -2,6 +2,7 @@ package wire
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/crypto"
 
@@ -78,10 +79,8 @@ var _ = Describe("Block & Header", func() {
 				Difficulty:       "1",
 				Timestamp:        1500000,
 			}
-			expected := []byte{48, 190, 182, 18, 132, 249, 106, 152, 219, 18, 16, 240, 124, 67, 67, 13, 99, 219, 221, 138, 244, 47, 21, 148, 100, 224, 223, 11, 240, 110, 170, 141}
 			actual := h.ComputeHash()
-			Expect(actual).To(HaveLen(32))
-			Expect(actual).To(Equal(expected))
+			Expect(actual).To(Equal("0x30beb61284f96a98db1210f07c43430d63dbdd8af42f159464e0df0bf06eaa8d"))
 		})
 	})
 
@@ -116,7 +115,7 @@ var _ = Describe("Block & Header", func() {
 			Expect(err).To(BeNil())
 			t1.Sig = ToHex(t1Sig)
 
-			b.Hash = ToHex(b.ComputeHash())
+			b.Hash = b.ComputeHash()
 			bs, err := BlockSign(&b, key.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			Expect(bs).ToNot(BeEmpty())
@@ -185,7 +184,7 @@ var _ = Describe("Block & Header", func() {
 			Expect(err).To(BeNil())
 			t1.Sig = ToHex(t1Sig)
 
-			b.Hash = ToHex(b.ComputeHash())
+			b.Hash = b.ComputeHash()
 
 			b.Sig = ToHex([]byte("invalid"))
 			err = BlockVerify(&b)
@@ -211,7 +210,7 @@ var _ = Describe("Block & Header", func() {
 			Expect(err).To(BeNil())
 			t1.Sig = ToHex(t1Sig)
 
-			b.Hash = ToHex(b.ComputeHash())
+			b.Hash = b.ComputeHash()
 			bs, err := BlockSign(&b, key.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			Expect(bs).ToNot(BeEmpty())
@@ -248,10 +247,8 @@ var _ = Describe("Block & Header", func() {
 				},
 			}
 
-			expected := []byte{5, 236, 131, 96, 62, 243, 139, 34, 105, 148, 195, 110, 75, 224, 235, 236, 185, 177, 70, 149, 60, 32, 164, 91, 36, 10, 61, 63, 36, 173, 112, 241}
 			actual := b.ComputeHash()
-			Expect(actual).To(HaveLen(32))
-			Expect(actual).To(Equal(expected))
+			Expect(actual).To(Equal("0x05ec83603ef38b226994c36e4be0ebecb9b146953c20a45b240a3d3f24ad70f1"))
 		})
 	})
 
@@ -302,6 +299,7 @@ var _ = Describe("Block & Header", func() {
 
 		It("should return err when transaction fails validation", func() {
 
+			now := time.Now().Unix()
 			b := Block{
 				Transactions: []*Transaction{
 					&Transaction{Type: TxTypeBalance,
@@ -309,14 +307,14 @@ var _ = Describe("Block & Header", func() {
 						To:           "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
 						From:         "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq",
 						Value:        "100.30",
-						Timestamp:    1529670647,
+						Timestamp:    now,
 						Fee:          "0.10"},
 					&Transaction{Type: TxTypeBalance,
 						SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw",
 						To:           "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
 						From:         "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq",
 						Value:        "100.30",
-						Timestamp:    1529670647,
+						Timestamp:    now,
 						Fee:          "0.10"},
 				},
 				Header: header1,
@@ -349,11 +347,12 @@ var _ = Describe("Block & Header", func() {
 
 			err := b.Validate()
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("transaction{0} error: transaction verification failed"))
+			Expect(err.Error()).To(Equal("transaction{0} error: field:timestamp, error:timestamp cannot over 7 days ago"))
 		})
 
 		It("should return err when block hash is not valid", func() {
 
+			now := time.Now().Unix()
 			b := Block{
 				Transactions: []*Transaction{
 					&Transaction{Type: TxTypeBalance,
@@ -361,7 +360,7 @@ var _ = Describe("Block & Header", func() {
 						To:           "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
 						From:         key.Addr(),
 						Value:        "100.30",
-						Timestamp:    1529670647,
+						Timestamp:    now,
 						Fee:          "0.10"},
 				},
 				Header: header1,
@@ -382,6 +381,7 @@ var _ = Describe("Block & Header", func() {
 
 		It("should return err when block signature is not set", func() {
 
+			now := time.Now().Unix()
 			b := Block{
 				Transactions: []*Transaction{
 					&Transaction{Type: TxTypeBalance,
@@ -389,7 +389,7 @@ var _ = Describe("Block & Header", func() {
 						To:           "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
 						From:         key.Addr(),
 						Value:        "100.30",
-						Timestamp:    1529670647,
+						Timestamp:    now,
 						Fee:          "0.10"},
 				},
 				Header: header1,
@@ -403,7 +403,7 @@ var _ = Describe("Block & Header", func() {
 			Expect(err).To(BeNil())
 			t1.Sig = ToHex(t1Sig)
 
-			b.Hash = ToHex(b.ComputeHash())
+			b.Hash = b.ComputeHash()
 
 			err = b.Validate()
 			Expect(err).ToNot(BeNil())
