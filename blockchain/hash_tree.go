@@ -2,12 +2,9 @@ package blockchain
 
 import (
 	"context"
-	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
 
 	"github.com/ellcrys/elld/blockchain/types"
-	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/go-merkle-tree"
 )
 
@@ -48,9 +45,28 @@ func NewHashTree(chainID string, store types.Store) *HashTree {
 	return ht
 }
 
-// Root returns the root of the tree
-func (ht *HashTree) Root() ([]byte, error) {
-	return ht.treeStore.LookupRoot(context.TODO())
+// NewMemHashTree is like NewMemHashTree but it creates a HashTree instance backed by
+// a memory storage engine. It also supports setting an initial root hash and node so
+// that we can build off from a previous tree state.
+func NewMemHashTree(initialRootHash []byte, initialRootNode []byte) *HashTree {
+	ht := new(HashTree)
+	ht.treeStore = NewMemEngine(initialRootHash, initialRootNode)
+	config := merkleTree.NewConfig(merkleTree.SHA512Hasher{}, 256, 512, new(ByteVal))
+	ht.tree = merkleTree.NewTree(ht.treeStore, config)
+	return ht
+}
+
+// Root returns the root of the tree as well as the serialized root node.
+func (ht *HashTree) Root() (key []byte, node []byte, err error) {
+	key, err = ht.treeStore.LookupRoot(context.TODO())
+	if err != nil {
+		return nil, nil, err
+	}
+	node, err = ht.treeStore.LookupNode(context.TODO(), key)
+	if err != nil {
+		return nil, nil, err
+	}
+	return key, node, nil
 }
 
 // Upsert updates a node on the tree or creates a new node if no matching node is found
@@ -69,61 +85,4 @@ func (ht *HashTree) Find(key []byte) (interface{}, error) {
 		return nil, fmt.Errorf("not found")
 	}
 	return v, nil
-}
-
-// NewTreeStorage creates an instance of TreeStorage
-func NewTreeStorage(chainID string, store types.Store) *TreeStorage {
-	return &TreeStorage{
-		store: store,
-	}
-}
-
-// CommitRoot "commits" the root ot the blessed memory slot
-func (ts *TreeStorage) CommitRoot(_ context.Context, prev merkleTree.Hash, curr merkleTree.Hash, txinfo merkleTree.TxInfo) error {
-	rootKey := database.MakePrefix([]string{"tree", "root", ts.chainID})
-	return ts.store.Put(rootKey, curr)
-}
-
-// Hash runs SHA512
-func (ts *TreeStorage) Hash(_ context.Context, d []byte) merkleTree.Hash {
-	sum := sha512.Sum512(d)
-	return merkleTree.Hash(sum[:])
-}
-
-// LookupNode looks up a MerkleTree node by hash
-func (ts *TreeStorage) LookupNode(_ context.Context, h merkleTree.Hash) (b []byte, err error) {
-	nodeKey := database.MakePrefix([]string{"tree", "node", ts.chainID, hex.EncodeToString(h)})
-
-	var result []database.KVObject
-
-	if err := ts.store.Get(nodeKey, &result); err != nil {
-		return nil, err
-	}
-	if len(result) == 0 {
-		return nil, fmt.Errorf("root not found")
-	}
-
-	return result[0].Value, nil
-}
-
-// LookupRoot fetches the root of the in-memory tree back out
-func (ts *TreeStorage) LookupRoot(_ context.Context) (merkleTree.Hash, error) {
-	rootKey := database.MakePrefix([]string{"tree", "root", ts.chainID})
-
-	var result []database.KVObject
-
-	if err := ts.store.Get(rootKey, &result); err != nil {
-		return nil, err
-	}
-	if len(result) == 0 {
-		return nil, nil
-	}
-
-	return result[0].Value, nil
-}
-
-// StoreNode stores the given node under the given key.
-func (ts *TreeStorage) StoreNode(_ context.Context, key merkleTree.Hash, b []byte) error {
-	nodeKey := database.MakePrefix([]string{"tree", "node", ts.chainID, hex.EncodeToString(key)})
-	return ts.store.Put(nodeKey, b)
 }

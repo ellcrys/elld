@@ -85,16 +85,19 @@ var _ = Describe("Blockchain", func() {
 			err = hashTree.Upsert(key, []byte(value))
 			Expect(err).To(BeNil())
 
-			root, err := hashTree.Root()
+			rootKey, rootNode, err := hashTree.Root()
+			Expect(err).To(BeNil())
+			Expect(rootNode).ToNot(BeEmpty())
+
 			expected := "0xcf7929487dad938befb80fd788e48952a6500d07c9e442c6e3534f065461e5abc5380dd8ad7a81bffe5408b9355f2d227d69ae2702adec9f0ce05e9e48b84851"
 			Expect(err).To(BeNil())
-			Expect(util.ToHex(root)).To(Equal(expected))
+			Expect(util.ToHex(rootKey)).To(Equal(expected))
 		})
 	})
 
 	Describe(".NewHashTree", func() {
 
-		var root []byte
+		var rootKey, rootNode []byte
 
 		BeforeEach(func() {
 			err = hashTree.Upsert([]byte("k1"), []byte("a"))
@@ -103,18 +106,47 @@ var _ = Describe("Blockchain", func() {
 			Expect(err).To(BeNil())
 			err = hashTree.Upsert([]byte("k6"), []byte("cs"))
 			Expect(err).To(BeNil())
-			root, err = hashTree.Root()
+			rootKey, rootNode, err = hashTree.Root()
 			Expect(err).To(BeNil())
+			Expect(rootNode).ToNot(BeEmpty())
 		})
 
 		Context("with chain ID of existing tree", func() {
-
 			It("should load existing tree with matching root", func() {
 				existingTree := NewHashTree(chainID, store)
-				existingTreeRoot, err := existingTree.Root()
+				existingTreeRoot, existingTreeRootNode, err := existingTree.Root()
 				Expect(err).To(BeNil())
-				Expect(existingTreeRoot).To(Equal(root))
+				Expect(existingTreeRoot).To(Equal(rootKey))
+				Expect(existingTreeRootNode).ToNot(BeEmpty())
 			})
 		})
+	})
+
+	Describe(".NewMemHashTree and .NewHashTree", func() {
+		It(".NewMemHashTree and .NewHashTree should both return same root when same values are inserted", func() {
+
+			var key1, key2 = []byte("name"), []byte("age")
+			var val1, val2 = []byte("ben"), []byte("100")
+
+			ht := NewHashTree("chainID", store)
+			err = ht.Upsert(key1, val1)
+			Expect(err).To(BeNil())
+			err = ht.Upsert(key2, val2)
+			Expect(err).To(BeNil())
+			r, _, err := ht.Root()
+			Expect(err).To(BeNil())
+
+			ht2 := NewMemHashTree(nil, nil)
+			err = ht2.Upsert(key1, val1)
+			Expect(err).To(BeNil())
+			err = ht2.Upsert(key2, val2)
+			Expect(err).To(BeNil())
+			r2, _, err := ht2.Root()
+
+			Expect(r).To(Equal(r2))
+
+		})
+
+		// It(".NewMemHashTree instance")
 	})
 })
