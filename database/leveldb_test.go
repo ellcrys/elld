@@ -11,15 +11,16 @@ var _ = Describe("Database", func() {
 
 	var testCfgDir = "/Users/ncodes/.ellcrys_test"
 	var db DB
+	var err error
 
 	BeforeEach(func() {
-		err := os.Mkdir(testCfgDir, 0700)
+		err = os.Mkdir(testCfgDir, 0700)
 		Expect(err).To(BeNil())
 	})
 
 	BeforeEach(func() {
 		db = NewLevelDB(testCfgDir)
-		err := db.Open("")
+		err = db.Open("")
 		Expect(err).To(BeNil())
 	})
 
@@ -28,14 +29,14 @@ var _ = Describe("Database", func() {
 	})
 
 	AfterEach(func() {
-		err := os.RemoveAll(testCfgDir)
+		err = os.RemoveAll(testCfgDir)
 		Expect(err).To(BeNil())
 	})
 
 	Describe(".Open", func() {
 		It("should return error if unable to open database", func() {
 			db = NewLevelDB("/*^&^")
-			err := db.Open("")
+			err = db.Open("")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to create database. mkdir /*^&^: permission denied"))
 		})
@@ -43,7 +44,7 @@ var _ = Describe("Database", func() {
 
 	Describe(".WriteBatch", func() {
 		It("should successfully write several objects", func() {
-			err := db.Put([]*KVObject{
+			err = db.Put([]*KVObject{
 				NewKVObject([]byte("object_1"), []byte("value1")),
 				NewKVObject([]byte("object_2"), []byte("value2")),
 			})
@@ -57,7 +58,7 @@ var _ = Describe("Database", func() {
 				NewKVObject([]byte("object_1"), []byte("value1")),
 				NewKVObject([]byte("object_2"), []byte("value2")),
 			}
-			err := db.Put(objs)
+			err = db.Put(objs)
 			Expect(err).To(BeNil())
 			results := db.GetByPrefix([]byte("obj"))
 			Expect(results).To(HaveLen(2))
@@ -83,6 +84,32 @@ var _ = Describe("Database", func() {
 
 			objs = db.GetByPrefix([]byte("an"))
 			Expect(objs).To(HaveLen(1))
+		})
+	})
+
+	Describe(".GetFirstOrLast", func() {
+
+		var key, val, key2, val2 []byte
+
+		BeforeEach(func() {
+			key, val = []byte("age"), []byte("20")
+			key2, val2 = []byte("age"), []byte("20")
+			err = db.Put([]*KVObject{NewKVObject(key, val, "namespace.1")})
+			Expect(err).To(BeNil())
+			err = db.Put([]*KVObject{NewKVObject(key2, val2, "namespace.2")})
+			Expect(err).To(BeNil())
+		})
+
+		It("should get the first item when first arg is set to true", func() {
+			obj := db.GetFirstOrLast([]byte("namespace"), true)
+			Expect(obj.Key).To(Equal(key))
+			Expect(obj.Value).To(Equal(val))
+		})
+
+		It("should get the last item when first arg is set to false", func() {
+			obj := db.GetFirstOrLast([]byte("namespace"), false)
+			Expect(obj.Key).To(Equal(key2))
+			Expect(obj.Value).To(Equal(val2))
 		})
 	})
 

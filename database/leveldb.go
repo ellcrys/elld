@@ -72,6 +72,30 @@ func (db *LevelDB) GetByPrefix(prefix []byte) []*KVObject {
 	return result
 }
 
+// GetFirstOrLast returns one value matching a prefix.
+// Set first to return the first value we find or false if the last.
+func (db *LevelDB) GetFirstOrLast(prefix []byte, first bool) *KVObject {
+	var result *KVObject
+	var key, val []byte
+	iter := db.ldb.NewIterator(util.BytesPrefix(prefix), nil)
+
+	var f = iter.First
+	if !first {
+		f = iter.Last
+	}
+
+	for f() {
+		key = append(key, iter.Key()...)
+		val = append(val, iter.Value()...)
+		result = FromKeyValue(key, val)
+		key, val = []byte{}, []byte{}
+		break
+	}
+
+	iter.Release()
+	return result
+}
+
 // DeleteByPrefix deletes items with the matching prefix
 func (db *LevelDB) DeleteByPrefix(prefix []byte) error {
 	tx, err := db.ldb.OpenTransaction()

@@ -56,7 +56,6 @@ func FromKeyValue(key []byte, value []byte) *KVObject {
 	// break down the key to determine the prefixes and the original key
 	parts := strings.Split(string(key), KeyPrefixSeparator)
 	if len(parts) > 2 {
-		fmt.Println(parts)
 		panic("invalid key format")
 	} else if len(parts) == 2 {
 		prefixes = strings.Split(parts[0], PrefixSeparator)
@@ -100,8 +99,12 @@ type DB interface {
 	// Put writes many objects to the database in one atomic request
 	Put([]*KVObject) error
 
-	// GetByPrefix returns keys matching a prefix
+	// GetByPrefix returns valyes matching a prefix
 	GetByPrefix([]byte) (result []*KVObject)
+
+	// GetFirstOrLast returns one value matching a prefix.
+	// Set first to return the first value we find or false if the last.
+	GetFirstOrLast(prefix []byte, first bool) *KVObject
 
 	// DeleteByPrefix deletes one or many records by prefix
 	DeleteByPrefix([]byte) error
