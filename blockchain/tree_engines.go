@@ -4,7 +4,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 
-	"github.com/ellcrys/elld/blockchain/types"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/go-merkle-tree"
 
@@ -58,7 +58,7 @@ func (m *MemEngine) StoreNode(_ context.Context, key merkleTree.Hash, b []byte) 
 }
 
 // NewTreeStorage creates an instance of TreeStorage
-func NewTreeStorage(chainID string, store types.Store) *TreeStorage {
+func NewTreeStorage(chainID string, store common.Store) *TreeStorage {
 	return &TreeStorage{
 		store: store,
 	}
@@ -80,10 +80,8 @@ func (ts *TreeStorage) Hash(_ context.Context, d []byte) merkleTree.Hash {
 func (ts *TreeStorage) LookupNode(_ context.Context, h merkleTree.Hash) (b []byte, err error) {
 
 	nodeKey := database.MakePrefix([]string{"tree", "node", ts.chainID, hex.EncodeToString(h)})
-	var result []database.KVObject
-	if err := ts.store.Get(nodeKey, &result); err != nil {
-		return nil, err
-	}
+	var result []*database.KVObject
+	ts.store.Get(nodeKey, &result)
 	if len(result) == 0 {
 		return nil, nil
 	}
@@ -95,10 +93,8 @@ func (ts *TreeStorage) LookupNode(_ context.Context, h merkleTree.Hash) (b []byt
 func (ts *TreeStorage) LookupRoot(_ context.Context) (merkleTree.Hash, error) {
 
 	rootKey := database.MakePrefix([]string{"tree", "root", ts.chainID})
-	var result []database.KVObject
-	if err := ts.store.Get(rootKey, &result); err != nil {
-		return nil, err
-	}
+	var result []*database.KVObject
+	ts.store.Get(rootKey, &result)
 	if len(result) == 0 {
 		return nil, nil
 	}

@@ -37,4 +37,69 @@ var _ = Describe("Types", func() {
 			})
 		})
 	})
+
+	Describe(".MakePrefix", func() {
+		It("should return 'prefixA~prefixB'", func() {
+			actual := MakePrefix([]string{"prefixA", "prefixB"})
+			Expect(string(actual)).To(Equal("prefixA~prefixB"))
+		})
+
+		It("should return 'prefixA'", func() {
+			actual := MakePrefix([]string{"prefixA"})
+			Expect(string(actual)).To(Equal("prefixA"))
+		})
+
+		It("should return empty string when prefixes are not provided", func() {
+			actual := MakePrefix([]string{})
+			Expect(string(actual)).To(Equal(""))
+		})
+	})
+
+	Describe(".MakeKey", func() {
+		It("should return 'prefixA~prefixB:age' when key and prefixes are provided", func() {
+			actual := MakeKey([]byte("age"), []string{"prefixA", "prefixB"})
+			Expect(string(actual)).To(Equal("prefixA~prefixB:age"))
+		})
+
+		It("should return only concatenated prefixes 'prefixA~prefixB' when key is not provided", func() {
+			actual := MakeKey(nil, []string{"prefixA", "prefixB"})
+			Expect(string(actual)).To(Equal("prefixA~prefixB"))
+		})
+
+		It("should return only key when prefixes are not provided", func() {
+			actual := MakeKey([]byte("age"), nil)
+			Expect(string(actual)).To(Equal("age"))
+		})
+
+		It("should return empty string when key and prefixes are not provided", func() {
+			actual := MakeKey(nil, nil)
+			Expect(string(actual)).To(Equal(""))
+		})
+	})
+
+	Describe("NewKVObject.GetKey vs .MakeKey", func() {
+		It("should return same result when key and prefixes are provided", func() {
+			kv := NewKVObject([]byte("age"), []byte("value"), "prefixA", "prefixB")
+			key := MakeKey([]byte("age"), []string{"prefixA", "prefixB"})
+			Expect(kv.GetKey()).To(Equal(key))
+		})
+
+		It("should return same result when key is not provided", func() {
+			kv := NewKVObject(nil, []byte("value"), "prefixA", "prefixB")
+			key := MakeKey(nil, []string{"prefixA", "prefixB"})
+			Expect(kv.GetKey()).To(Equal(key))
+		})
+
+		It("should return same result when prefixes are not provided", func() {
+			kv := NewKVObject([]byte("age"), nil)
+			key := MakeKey([]byte("age"), nil)
+			Expect(kv.GetKey()).To(Equal(key))
+		})
+
+		It("should return empty string when key and prefixes are not provided", func() {
+			kv := NewKVObject(nil, nil)
+			key := MakeKey(nil, nil)
+			Expect(kv.GetKey()).To(Equal(key))
+		})
+	})
 })

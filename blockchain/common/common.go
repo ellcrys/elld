@@ -1,4 +1,4 @@
-package types
+package common
 
 // DocType represents a document type
 type DocType int

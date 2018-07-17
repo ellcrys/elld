@@ -34,6 +34,10 @@ func MakeKey(key []byte, prefixes []string) []byte {
 		kpSep = ""
 	}
 
+	if len(key) == 0 {
+		kpSep = ""
+	}
+
 	return []byte(fmt.Sprintf("%s%s%s", prefix, kpSep, key))
 }
 

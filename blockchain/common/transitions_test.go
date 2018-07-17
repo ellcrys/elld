@@ -1,6 +1,7 @@
-package types
+package common
 
 import (
+	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,19 +26,19 @@ var _ = Describe("Transitions", func() {
 	Describe("OpNewAccountBalance.Equal", func() {
 
 		It("it should return true", func() {
-			o := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Amount: "100"}
-			o2 := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Amount: "300"}
+			o := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Account: &wire.Account{Balance: "300"}}
+			o2 := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Account: &wire.Account{Balance: "300"}}
 			Expect(o.Equal(o2)).To(BeTrue())
 		})
 
 		It("it should return false if addresses are not the same", func() {
-			o := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Amount: "100"}
-			o2 := &OpNewAccountBalance{OpBase: &OpBase{Addr: "xyz"}, Amount: "300"}
+			o := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Account: &wire.Account{Balance: "100"}}
+			o2 := &OpNewAccountBalance{OpBase: &OpBase{Addr: "xyz"}, Account: &wire.Account{Balance: "300"}}
 			Expect(o.Equal(o2)).To(BeFalse())
 		})
 
 		It("it should return false if types are different", func() {
-			o := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Amount: "100"}
+			o := &OpNewAccountBalance{OpBase: &OpBase{Addr: "abc"}, Account: &wire.Account{Balance: "100"}}
 			o2 := &OpBase{Addr: "xyz"}
 			Expect(o.Equal(o2)).To(BeFalse())
 		})

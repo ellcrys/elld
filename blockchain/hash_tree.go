@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ellcrys/elld/blockchain/types"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/go-merkle-tree"
 )
 
@@ -30,13 +30,13 @@ type HashTree struct {
 // storage mechanism for a merkle tree.
 type TreeStorage struct {
 	chainID string
-	store   types.Store
+	store   common.Store
 }
 
 // NewHashTree creates a HashTree instance which includes an initialized
 // merkle tree for the chainID specified. Merkle tree is initialized with a
 // TreeStorage engine allow access to previously stored tree elements.
-func NewHashTree(chainID string, store types.Store) *HashTree {
+func NewHashTree(chainID string, store common.Store) *HashTree {
 	ht := new(HashTree)
 	ht.chainID = chainID
 	ht.treeStore = NewTreeStorage(chainID, store)

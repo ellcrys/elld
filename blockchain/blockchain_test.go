@@ -1,11 +1,9 @@
 package blockchain
 
 import (
-	"fmt"
-
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/leveldb"
 	"github.com/ellcrys/elld/blockchain/testdata"
-	"github.com/ellcrys/elld/blockchain/types"
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/wire"
@@ -16,11 +14,12 @@ import (
 var _ = Describe("Blockchain", func() {
 
 	var err error
-	var store types.Store
+	var store common.Store
 	var db database.DB
 	var bc *Blockchain
 	var chainID = "chain1"
 	var chain *Chain
+	var genesisBlock *wire.Block
 
 	BeforeEach(func() {
 		var err error
@@ -45,8 +44,9 @@ var _ = Describe("Blockchain", func() {
 		chain, err = NewChain(chainID, store, cfg, log)
 		Expect(err).To(BeNil())
 		bc.addChain(chain)
-		err = chain.init(testdata.TestBlock1)
+		err = chain.init(testdata.BlockchainDotGoJSON[0])
 		Expect(err).To(BeNil())
+		genesisBlock, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
 	})
 
 	AfterEach(func() {
@@ -95,6 +95,10 @@ var _ = Describe("Blockchain", func() {
 
 	Describe(".Up", func() {
 
+		BeforeEach(func() {
+			bc.chains = nil
+		})
+
 		It("should return error if store is not set", func() {
 			bc := New(cfg, log)
 			err = bc.Up()
@@ -110,24 +114,32 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		It("should load all chains", func() {
-			bc.UpdateMeta(&types.BlockchainMeta{Chains: []string{"chain_2", "chain_3"}})
+			// bc.updateMeta(&common.BlockchainMeta{Chains: []string{"chain_2", "chain_3"}})
+			bc.updateMeta(&common.BlockchainMeta{
+				Chains: []*common.ChainInfo{
+					&common.ChainInfo{ID: "chain_2"},
+					&common.ChainInfo{ID: "chain_3"},
+				},
+			})
 			err = bc.Up()
 			Expect(err).To(BeNil())
-			Expect(bc.chains).To(HaveLen(3))
-			// Expect(bc.chains[0].id).To(Equal("chain_1"))
-			// Expect(bc.chains[1].id).To(Equal("chain_2"))
+			Expect(bc.chains).To(HaveLen(2))
+			Expect(bc.chains[0].id).To(Equal("chain_2"))
+			Expect(bc.chains[1].id).To(Equal("chain_3"))
 		})
 	})
 
 	Context("Metadata", func() {
 
-		var meta = types.BlockchainMeta{
-			Chains: []string{"chain_id"},
+		var meta = common.BlockchainMeta{
+			Chains: []*common.ChainInfo{
+				&common.ChainInfo{ID: "chain_id"},
+			},
 		}
 
 		Describe(".UpdateMeta", func() {
 			It("should successfully save metadata", func() {
-				err = bc.UpdateMeta(&meta)
+				err = bc.updateMeta(&meta)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -135,13 +147,12 @@ var _ = Describe("Blockchain", func() {
 		Describe(".GetMeta", func() {
 
 			BeforeEach(func() {
-				err = bc.UpdateMeta(&meta)
+				err = bc.updateMeta(&meta)
 				Expect(err).To(BeNil())
 			})
 
 			It("should return metadata", func() {
-				result, err := bc.GetMeta()
-				Expect(err).To(BeNil())
+				result := bc.GetMeta()
 				Expect(result).To(Equal(&meta))
 			})
 		})
@@ -172,12 +183,12 @@ var _ = Describe("Blockchain", func() {
 		var block *wire.Block
 
 		BeforeEach(func() {
-			block, err = wire.BlockFromString(testdata.TestBlock2)
+			block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
 			Expect(err).To(BeNil())
 		})
 
 		It("should return false when block does not exist in any known chain", func() {
-			has, err := bc.HasBlock(block.ComputeHash())
+			has, err := bc.HaveBlock(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(has).To(BeFalse())
 		})
@@ -185,7 +196,7 @@ var _ = Describe("Blockchain", func() {
 		It("should return true of block exists in a chain", func() {
 			chain2, err := NewChain("chain2", store, cfg, log)
 			Expect(err).To(BeNil())
-			err = chain2.init(testdata.TestBlock1)
+			err = chain2.init(testdata.BlockchainDotGoJSON[1])
 			Expect(err).To(BeNil())
 
 			err = bc.addChain(chain2)
@@ -193,7 +204,7 @@ var _ = Describe("Blockchain", func() {
 			err = chain2.store.PutBlock(chain2.id, block)
 			Expect(err).To(BeNil())
 
-			has, err := bc.HasBlock(block.ComputeHash())
+			has, err := bc.HaveBlock(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(has).To(BeTrue())
 		})
@@ -205,33 +216,98 @@ var _ = Describe("Blockchain", func() {
 		var chain2 *Chain
 
 		BeforeEach(func() {
-			block, err = wire.BlockFromString(testdata.TestBlock2)
+			block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
 			Expect(err).To(BeNil())
-		})
 
-		BeforeEach(func() {
 			chain2, err = NewChain("chain2", store, cfg, log)
 			Expect(err).To(BeNil())
-			err = chain2.init(testdata.TestBlock2)
+
+			err = chain2.init(testdata.BlockchainDotGoJSON[1])
 			Expect(err).To(BeNil())
 
 			err = bc.addChain(chain2)
 			Expect(err).To(BeNil())
+
 			err = chain2.store.PutBlock(chain2.id, block)
 			Expect(err).To(BeNil())
 		})
 
-		It("should return nil if no chain hash its last block equal to the hash", func() {
-			chain, err := bc.findChainByTipHash("unknown")
+		It("should return chain=nil, header=nil, err=nil if no block on the chain matches the hash", func() {
+			_block, chain, header, err := bc.findBlockChainByHash("unknown")
 			Expect(err).To(BeNil())
+			Expect(_block).To(BeNil())
+			Expect(header).To(BeNil())
 			Expect(chain).To(BeNil())
 		})
 
-		It("should return expected chain if its last block's hash is equal to the hash provided", func() {
-			chain, err := bc.findChainByTipHash(block.ComputeHash())
-			// Expect(err).To(BeNil())
-			// Expect(chain.id).To(Equal(chain2.id))
-			fmt.Println(chain, err)
+		Context("when the hash maps to the highest block in chain2", func() {
+			It("should return chain2 and header matching the header of the recently added block", func() {
+				_block, chain, header, err := bc.findBlockChainByHash(block.GetHash())
+				Expect(err).To(BeNil())
+				Expect(block).To(Equal(_block))
+				Expect(chain.id).To(Equal(chain2.id))
+				Expect(header.ComputeHash()).To(Equal(block.Header.ComputeHash()))
+			})
+		})
+
+		Context("when the hash maps to a block that is not the highest block", func() {
+
+			var block2 *wire.Block
+
+			BeforeEach(func() {
+				block2, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+				Expect(err).To(BeNil())
+
+				err = chain2.store.PutBlock(chain2.id, block2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return chain (not chain2) and header matching the header of the recently aded block", func() {
+				_block, chain, tipHeader, err := bc.findBlockChainByHash(block.GetHash())
+				Expect(err).To(BeNil())
+				Expect(block).To(Equal(_block))
+				Expect(chain.id).To(Equal(chain2.id))
+				Expect(tipHeader.ComputeHash()).To(Equal(block2.Header.ComputeHash()))
+			})
+		})
+	})
+
+	Describe(".newTree", func() {
+
+		It("should return error if block is nil", func() {
+			_, err := bc.newTree(nil, nil)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("stale block cannot be nil"))
+		})
+
+		It("should return error if stale block parent is nil", func() {
+			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
+			_, err := bc.newTree(staleBlock, nil)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("stale block parent cannot be nil"))
+		})
+
+		It("should return error if stale block and parent are not related", func() {
+			staleBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
+			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+			_, err = bc.newTree(staleBlock, staleBlockParent)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("stale block and parent are not related"))
+		})
+
+		It("should successfully return a new chain", func() {
+			staleBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
+			chain, err := bc.newTree(staleBlock, staleBlockParent)
+			Expect(err).To(BeNil())
+			Expect(chain).ToNot(BeNil())
+			Expect(chain.parentBlock).To(Equal(staleBlockParent))
+
+			Describe("metadata must have the new chain stored in the list of known chains", func() {
+				meta := bc.GetMeta()
+				Expect(meta.Chains).To(HaveLen(1))
+				Expect(meta.Chains[0].ID).To(Equal(chain.id))
+			})
 		})
 	})
 })

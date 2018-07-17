@@ -1,9 +1,11 @@
 package blockchain
 
 import (
+	"bytes"
 	"fmt"
+	"sort"
 
-	"github.com/ellcrys/elld/blockchain/types"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
@@ -12,13 +14,22 @@ import (
 // validateBlock handles block validation. A block that successfully
 // passes this validation is considered safe to add to the chain.
 func (b *Blockchain) validateBlock(block *wire.Block) error {
+
+	// validate the block
 	if err := block.Validate(); err != nil {
 		return fmt.Errorf("failed block validation: %s", err)
 	}
 
+	// check if the signature of the block is valid and signed by the block creator.
 	if err := wire.BlockVerify(block); err != nil {
 		return fmt.Errorf("failed block signature verification: %s", err)
 	}
+
+	// validate the transaction root
+	if block.Header.TransactionsRoot == util.ToHex(ComputeTxsRoot(block.Transactions)) {
+		return fmt.Errorf("failed transaction root check")
+	}
+
 	return nil
 }
 
@@ -28,8 +39,8 @@ func (b *Blockchain) validateBlock(block *wire.Block) error {
 // @ops 	The current list of operations to add to.
 // @op 		The operation to be added
 // @returns	A new slice of operations with op included
-func addOp(ops []types.Transition, op types.Transition) []types.Transition {
-	var newOps []types.Transition
+func addOp(ops []common.Transition, op common.Transition) []common.Transition {
+	var newOps []common.Transition
 	for _, _op := range ops {
 		if !_op.Equal(op) {
 			newOps = append(newOps, _op)
@@ -46,10 +57,10 @@ func addOp(ops []types.Transition, op types.Transition) []types.Transition {
 // @ops: 	The list of current operations generated from other transactions of same block as tx.
 //			We use ops to check the latest proposed operation of an account initiated by other transactions.
 // @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
-func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []types.Transition) ([]types.Transition, error) {
-
+func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transition, chain *Chain) ([]common.Transition, error) {
 	var err error
-	var txOps []types.Transition
+	var txOps []common.Transition
+	var senderAcct, recipientAcct *wire.Account
 	var senderAcctBalance = decimal.Zero
 	var recipientAcctBalance = decimal.Zero
 
@@ -58,42 +69,54 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []types.Transiti
 	// updated by an previous transaction, the new balance will be found in the ops list.
 	for _, prevOp := range ops {
 		// check for balance change for the sender
-		if opNewBalance, yes := prevOp.(*types.OpNewAccountBalance); yes && opNewBalance.Address() == tx.From {
-			senderAcctBalance, _ = util.StrToDecimal(opNewBalance.Amount)
+		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.From {
+			senderAcctBalance, _ = util.StrToDecimal(opNewBalance.Account.Balance)
 		}
 		// check for balance change for the recipient
-		if opNewBalance, yes := prevOp.(*types.OpNewAccountBalance); yes && opNewBalance.Address() == tx.To {
-			recipientAcctBalance, _ = util.StrToDecimal(opNewBalance.Amount)
+		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.To {
+			recipientAcctBalance, _ = util.StrToDecimal(opNewBalance.Account.Balance)
 		}
 	}
 
-	// if we are unable to learn about the sender's latest balance in the ops list,
-	// then we can fetch the account
+	// find the sender account. Return error if sender account
+	// does not exist. This should never happen here as the caller must
+	// have validated all transactions in the containing block.
+	senderAcct, err = b.GetAccount(chain, tx.From)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sender's account: %s", err)
+	}
+
+	// if we were unable to learn about the sender's latest balance from the ops list
+	// as a result of previous transactions in same block, then we use the current account balance.
 	if senderAcctBalance.Equals(decimal.Zero) {
-		// find the sender account. Return error if sender account
-		// does not exist. This should never happen here as the caller must
-		// have validated all transactions in the containing block.
-		senderAcct, err := b.GetAccount(tx.From)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get sender's account: %s", err)
-		}
 		senderAcctBalance, _ = util.StrToDecimal(senderAcct.Balance)
 	}
 
-	// if we are unable to learn about the recipient's latest balance in the ops list,
-	// then we can fetch the account
-	if recipientAcctBalance.Equals(decimal.Zero) {
-		// find the account of the recipient. If the recipient account does not
-		// exists, then we must create a OpCreateAccount transition for the address
-		recipientAcct, err := b.GetAccount(tx.To)
-		if err != nil {
-			if err != ErrAccountNotFound {
-				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
-			}
-			txOps = append(txOps, &types.OpCreateAccount{
-				OpBase: &types.OpBase{Addr: tx.To},
-			})
+	// find the account of the recipient. If the recipient account does not
+	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
+	recipientAcct, err = b.GetAccount(chain, tx.To)
+	if err != nil {
+		if err != ErrAccountNotFound {
+			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
 		}
+		txOps = append(txOps, &common.OpCreateAccount{
+			OpBase: &common.OpBase{Addr: tx.To},
+			Account: &wire.Account{
+				Type:    wire.AccountTypeBalance,
+				Address: tx.To,
+				Balance: "0",
+			},
+		})
+		recipientAcct = &wire.Account{
+			Type:    wire.AccountTypeBalance,
+			Address: tx.To,
+			Balance: "0",
+		}
+	}
+
+	// if we are unable to learn about the recipient's latest balance from the ops list as
+	// then we can use the balance of the recipient account
+	if recipientAcctBalance.Equals(decimal.Zero) {
 		recipientAcctBalance, _ = util.StrToDecimal(recipientAcct.Balance)
 	}
 
@@ -109,27 +132,55 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []types.Transiti
 	}
 
 	// add an operation to set a new account balance for the sender
-	txOps = append(txOps, &types.OpNewAccountBalance{
-		OpBase: &types.OpBase{Addr: tx.From},
-		Amount: senderAcctBalance.Sub(sendingAmount).String(),
+	senderAcct.Balance = senderAcctBalance.Sub(sendingAmount).String()
+	txOps = append(txOps, &common.OpNewAccountBalance{
+		OpBase:  &common.OpBase{Addr: tx.From},
+		Account: senderAcct,
 	})
 
 	// add an operation to set a new balance of the recipient
-	txOps = append(txOps, &types.OpNewAccountBalance{
-		OpBase: &types.OpBase{Addr: tx.To},
-		Amount: recipientAcctBalance.Add(sendingAmount).String(),
+	recipientAcct.Balance = recipientAcctBalance.Add(sendingAmount).String()
+	txOps = append(txOps, &common.OpNewAccountBalance{
+		OpBase:  &common.OpBase{Addr: tx.To},
+		Account: recipientAcct,
 	})
 
 	return txOps, nil
 }
 
-// processTransactions executes all transactions in the block and verifies that
-// the state of the state root after execution matches the one set in the block header.
-//
-// Expects the caller to ensure that all transactions are valid.
-func (b *Blockchain) processTransactions(txs []*wire.Transaction) error {
+// opsToKVObjects takes a slice of operations and apply them to the provided chain
+func (b *Blockchain) opsToStateObjects(block *wire.Block, chain *Chain, ops []common.Transition) ([]*common.StateObject, error) {
 
-	var ops []types.Transition
+	stateObjs := []*common.StateObject{}
+
+	for _, op := range ops {
+		switch _op := op.(type) {
+
+		case *common.OpCreateAccount:
+			stateObjs = append(stateObjs, &common.StateObject{
+				Key:   common.MakeAccountKey(block.GetNumber(), chain.id, _op.Address()),
+				Value: util.ObjectToBytes(_op.Account),
+			})
+
+		case *common.OpNewAccountBalance:
+			stateObjs = append(stateObjs, &common.StateObject{
+				Key:   common.MakeAccountKey(block.GetNumber(), chain.id, _op.Address()),
+				Value: util.ObjectToBytes(_op.Account),
+			})
+
+		default:
+			return nil, fmt.Errorf("unknown transition sub-type")
+		}
+	}
+
+	return stateObjs, nil
+}
+
+// processTransactions computes the operations that must be applied to the
+// hash tree and world state.
+func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain *Chain) ([]common.Transition, error) {
+
+	var ops []common.Transition
 
 	// here we will process each transaction and attempt
 	// to decide what should happen to the chain state by
@@ -138,9 +189,9 @@ func (b *Blockchain) processTransactions(txs []*wire.Transaction) error {
 		switch tx.Type {
 
 		case wire.TxTypeBalance:
-			newOps, err := b.processBalanceTx(tx, ops)
+			newOps, err := b.processBalanceTx(tx, ops, chain)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			for _, op := range newOps {
 				ops = addOp(ops, op)
@@ -148,7 +199,31 @@ func (b *Blockchain) processTransactions(txs []*wire.Transaction) error {
 		}
 	}
 
-	return nil
+	return ops, nil
+}
+
+// ComputeTxsRoot computes the merkle root of a set of transactions.
+// Transactions are first lexicographically sorted and added to a
+// brand new tree. Returns the tree root.
+func ComputeTxsRoot(txs []*wire.Transaction) []byte {
+
+	sort.Slice(txs, func(i, j int) bool {
+		iBytes, _ := util.FromHex(txs[i].Hash)
+		jBytes, _ := util.FromHex(txs[j].Hash)
+		return bytes.Compare(iBytes, jBytes) == -1
+	})
+
+	tree := NewMemHashTree(nil, nil)
+	for _, tx := range txs {
+		tree.Upsert([]byte(tx.GetHash()), []byte(""))
+	}
+
+	root, _, _ := tree.Root()
+	return root
+}
+
+func (b *Blockchain) isStaleBlock(block *wire.Block) {
+
 }
 
 // ProcessBlock takes a block and attempts to add it to the
@@ -157,53 +232,149 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) error {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
+	b.log.Debug("Processing block", "Hash", block.Hash)
+
 	// validate the content and format of the block as well as the signature.
 	// if err := b.validateBlock(block); err != nil {
 	// 	return nil
 	// }
 
-	blockHash := block.ComputeHash()
+	blockHash := block.Hash
 
-	b.log.Debug("Processing block", "Hash", block.ComputeHash())
-
-	// do not process if it is a known orphan
-	if _, exist := b.orphanBlocks[blockHash]; exist {
-		return types.ErrOrphanBlock
+	// if the block has been previously rejected, return err
+	if b.isRejected(block) {
+		return common.ErrBlockRejected
 	}
 
 	// check if any of the chain have a block with the matching hash
-	exists, err := b.HasBlock(blockHash)
+	exists, err := b.HaveBlock(blockHash)
 	if err != nil {
 		return fmt.Errorf("failed to check block existence: %s", err)
 	}
 	if exists {
 		b.log.Debug("Block already exists", "Hash", blockHash)
-		return types.ErrBlockExists
+		return common.ErrBlockExists
 	}
 
-	// find the chain to which this block can be appended to. We do this by finding the chain
-	// where the most recent block is the parent of the block in question.
-	// If we are unable to find a chain, the block is considered an orphan block.
-	chain, err := b.findChainByTipHash(block.Header.ParentHash)
+	// check if the block has previously been detected as an orphan.
+	// We do not need to go reprocess this block if it is an orphan.
+	if b.isOrphanBlock(blockHash) {
+		return common.ErrOrphanBlock
+	}
+
+	// find the chain where the parent of the block exists on. If a chain is not found,
+	// then the block is considered an orphan. If the chain is found but the block at the tip
+	// is has the same or a greater block number compared to the new block, it is considered a stale block.
+	parentBlock, chain, chainTip, err := b.findBlockChainByHash(block.Header.ParentHash)
 	if err != nil {
-		return fmt.Errorf("failed to find chain: %s", err)
+		b.log.Debug("failed to find chain", "Err", err.Error())
+		return err
+
 	} else if chain == nil {
-		b.orphanBlocks[blockHash] = block
-		return b.processOrphanBlocks()
+		b.addOrphanBlock(block)
+		return nil
+
+	} else if block.Header.Number < chainTip.Number {
+		// This is a much older stale block. We only support stale blocks of same height
+		// as the current block on the chain.
+		b.addRejectedBlock(block)
+		return common.ErrVeryStaleBlock
+
+	} else if block.GetNumber() == chainTip.Number {
+		// create the new tree chain, set its root to the parent of the stale block
+		// and also add the stale block to it.
+		if _, err := b.newTree(block, parentBlock); err != nil {
+			return fmt.Errorf("failed to create subtree out of stale block")
+		}
+
+		return nil
+	} else if block.GetNumber()-chainTip.Number != 1 {
+		b.addRejectedBlock(block)
+		return common.ErrBlockFailedValidation
+	}
+	// Mock execute block to derive the state objects and the resulting
+	// state root should the state object be applied to the blockchain state tree.
+	mockRoot, stateObjs, err := b.MockExecBlock(chain, block)
+	if err != nil {
+		return err
 	}
 
-	// TODO: Perform checkpoint check
-
-	// execute the block transactions and verify that the state root matches
-	// the state root value set in the block header
-	if err := b.processTransactions(block.Transactions); err != nil {
-		return fmt.Errorf("failed to process transactions: rejected: %s", err)
+	// Compare the state root in the block header with the root obtained
+	// from the mock execution of the block.
+	if block.Header.StateRoot != util.ToHex(mockRoot) {
+		return common.ErrBlockStateRootInvalid
 	}
 
+	tx := chain.store.NewTx()
+
+	// Next we need to update the blockchain objects in the store
+	// as described by the state objects
+	for _, so := range stateObjs {
+		if err := chain.store.PutWithTx(tx, so.Key, so.Value); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed to add state object to store: %s", err)
+		}
+	}
+
+	// At this point, the block is good to go. We add it to the chain
+	if err := chain.appendBlockWithTx(tx, block); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to add block: %s", err)
+	}
+
+	// Commit the transaction
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return fmt.Errorf("commit error: %s", err)
+	}
+
+	b.processOrphanBlocks(blockHash)
 	return nil
 }
 
+// MockExecBlock performs a mock execution of the blocks to output
+// the resulting state objects and state root without making permanent
+// commits to the current blockchain state. chain is the specific chain
+// to perform this execution against.
+func (b *Blockchain) MockExecBlock(chain *Chain, block *wire.Block) (root []byte, stateObjs []*common.StateObject, err error) {
+
+	// Process the transactions to produce a series of transitions
+	// that must be applied to the blockchain state.
+	ops, err := b.processTransactions(block.Transactions, chain)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to process transactions: rejected: %s", err)
+	}
+
+	// Create state objects from the transition objects. State objects when written
+	// to the blockchain state (store and tree) change the values of data.
+	stateObjs, err = b.opsToStateObjects(block, chain, ops)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get the current root hash and node of the chain.
+	rootHash, rootNode, err := chain.stateTree.Root()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get root of chain")
+	}
+
+	// Create a new memory-backed state tree and set its initial root to the
+	// last root information of the chain.
+	stateTree := NewMemHashTree(rootHash, rootNode)
+	for _, so := range stateObjs {
+		if err := stateTree.Upsert(so.Value, so.Value); err != nil {
+			return nil, nil, fmt.Errorf("failed to add state object to state hash tree: %s", err)
+		}
+	}
+
+	if root, _, err = stateTree.Root(); err != nil {
+		return nil, nil, err
+	}
+
+	return
+}
+
 // processOrphanBlocks
-func (b *Blockchain) processOrphanBlocks() error {
+func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 	return nil
 }

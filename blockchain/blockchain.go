@@ -3,18 +3,27 @@ package blockchain
 import (
 	"fmt"
 	"sync"
+	"time"
 
-	"github.com/ellcrys/elld/blockchain/types"
+	"github.com/hashicorp/golang-lru/simplelru"
+
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 )
 
-// MainChainID is the unique ID of the main chain
-const MainChainID = "main"
+const (
+	// MainChainID is the unique ID of the main chain
+	MainChainID = "main"
 
-// BlockchainMetaName is the name of the meta information for the entire blockchain
-const BlockchainMetaName = "blockchain_meta"
+	// MaxOrphanBlocksCacheSize is the number of blocks we can keep in the orphan block cache
+	MaxOrphanBlocksCacheSize = 500
+
+	// MaxRejectedBlocksCacheSize is the number of blocks we can keep in the rejected block cache
+	MaxRejectedBlocksCacheSize = 100
+)
 
 // Blockchain represents the Ellcrys blockchain. It provides
 // functionalities for interacting with the underlying database
@@ -34,7 +43,7 @@ type Blockchain struct {
 	log logger.Logger
 
 	// store is the the database where block data and other meta data are stored
-	store types.Store
+	store common.Store
 
 	// bestChain is the chain considered to be the true chain.
 	// It is protected by lock
@@ -44,7 +53,11 @@ type Blockchain struct {
 	chains []*Chain
 
 	// orphanBlocks stores blocks whose parents are unknown
-	orphanBlocks map[string]*wire.Block
+	orphanBlocks *simplelru.LRU
+
+	// rejectedBlocks stores collection of blocks that have been deemed invalid.
+	// This allows us to quickly learn and discard blocks that are found here.
+	rejectedBlocks *simplelru.LRU
 }
 
 // New creates a Blockchain instance.
@@ -53,11 +66,14 @@ func New(cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc.log = log
 	bc.cfg = cfg
 	bc.lock = &sync.RWMutex{}
+	bc.mLock = &sync.Mutex{}
+	bc.orphanBlocks, _ = simplelru.NewLRU(MaxOrphanBlocksCacheSize, nil)
+	bc.rejectedBlocks, _ = simplelru.NewLRU(MaxRejectedBlocksCacheSize, nil)
 	return bc
 }
 
 // SetStore sets the store to use
-func (b *Blockchain) SetStore(store types.Store) {
+func (b *Blockchain) SetStore(store common.Store) {
 	b.store = store
 }
 
@@ -72,43 +88,52 @@ func (b *Blockchain) Up() error {
 	}
 
 	// get the blockchain main metadata
-	blockchainMeta, err := b.GetMeta()
-	if err != nil {
-		if err != types.ErrMetadataNotFound {
-			return fmt.Errorf("failed to get blockchain meta: %s", err)
-		}
+	meta := b.GetMeta()
+	if meta == nil {
+		meta = &common.BlockchainMeta{}
 	}
 
-	knownChains := blockchainMeta.Chains
+	// If there are no known chains described in the metadata and none
+	// in the cache, then we create a new chain.
+	if len(meta.Chains) == 0 && len(b.chains) == 0 {
 
-	// since no chain exists, we must create a chain and consider it the best chain.
-	// Also add the new chain to the list of chains.
-	if len(knownChains) == 0 {
-		b.log.Debug("No existing chain found. Creating new chain")
+		b.log.Debug("No existing chain found. Creating genesis chain")
 
+		// create the new chain
 		b.bestChain, err = NewChain(MainChainID, b.store, b.cfg, b.log)
 		if err != nil {
 			return fmt.Errorf("failed to create new chain: %s", err)
 		}
+
+		// initialize the chain with the genesis block
 		if err := b.bestChain.init(GenesisBlock); err != nil {
 			return fmt.Errorf("failed to initialize new chain: %s", err)
+		}
+
+		// save the chain in the meta data
+		meta.Chains = append(meta.Chains, &common.ChainInfo{
+			ID:           b.bestChain.id,
+			ParentNumber: 0,
+		})
+		if err := b.updateMeta(meta); err != nil {
+			return fmt.Errorf("failed to save metadata: %s", err)
 		}
 
 		b.addChain(b.bestChain)
 		return nil
 	}
 
-	// at this point, some chains already exists, so we must create chain objects representing
-	// these chains.
-	for _, chainID := range knownChains {
-		chain, err := NewChain(chainID, b.store, b.cfg, b.log)
+	// At this point, some chains already exists, so we must create
+	// chain objects representing these chains.
+	for _, c := range meta.Chains {
+		chain, err := NewChain(c.ID, b.store, b.cfg, b.log)
 		if err != nil {
 			return fmt.Errorf(fmt.Sprintf("failed to load chain {%s}: %s", chain.id, err))
 		}
 		b.addChain(chain)
 	}
 
-	// using the best chain rule, we mush select the best chain
+	// Using the best chain rule, we mush select the best chain
 	// and set it as the current bestChain.
 	b.bestChain, err = b.chooseBestChain()
 	if err != nil {
@@ -132,12 +157,12 @@ func (b *Blockchain) hasChain(chain *Chain) bool {
 	return false
 }
 
-// addChain adds a new chain to the list of chains.
-// It returns an error if the chain already exists
+// addChain adds a new chain to the list of chains and saves
+// a reference in the meta data. It returns an error if the chain already exists.
 func (b *Blockchain) addChain(chain *Chain) error {
 
 	if b.hasChain(chain) {
-		return types.ErrChainAlreadyKnown
+		return common.ErrChainAlreadyKnown
 	}
 
 	b.lock.Lock()
@@ -147,24 +172,6 @@ func (b *Blockchain) addChain(chain *Chain) error {
 	return nil
 }
 
-// IsEndorser takes an address and checks whether it has an active endorser ticket
-func (b *Blockchain) IsEndorser(address string) bool {
-	return false
-}
-
-// GetMeta gets the information about the blockchain
-func (b *Blockchain) GetMeta() (*types.BlockchainMeta, error) {
-	var err error
-	var meta types.BlockchainMeta
-	err = b.store.GetMetadata(BlockchainMetaName, &meta)
-	return &meta, err
-}
-
-// UpdateMeta updates the meta information of the blockchain
-func (b *Blockchain) UpdateMeta(meta *types.BlockchainMeta) error {
-	return b.store.UpdateMetadata(BlockchainMetaName, meta)
-}
-
 // HybridMode checks whether the blockchain is a point where hybrid consensus
 // can be utilized. Hybrid consensus mode allows consensus and blocks processed differently
 // from standard block processing model. This mode is activated when we reach a target block height.
@@ -172,7 +179,7 @@ func (b *Blockchain) HybridMode() (bool, error) {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
-	h, err := b.bestChain.getCurrentBlockHeader()
+	h, err := b.bestChain.getTipHeader()
 	if err != nil {
 		return false, err
 	}
@@ -180,9 +187,9 @@ func (b *Blockchain) HybridMode() (bool, error) {
 	return h.Number >= b.cfg.Chain.TargetHybridModeBlock, nil
 }
 
-// HasBlock checks whether we have a block in the
+// HaveBlock checks whether we have a block in the
 // main chain or other chains.
-func (b *Blockchain) HasBlock(hash string) (bool, error) {
+func (b *Blockchain) HaveBlock(hash string) (bool, error) {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 	for _, chain := range b.chains {
@@ -197,25 +204,31 @@ func (b *Blockchain) HasBlock(hash string) (bool, error) {
 	return false, nil
 }
 
-// findChainByTipHash finds the chain whether the last block hash is the
-// same as the @hash arg provided.
-func (b *Blockchain) findChainByTipHash(hash string) (*Chain, error) {
+// findBlockChainByHash finds the chain where the block with the hash
+// provided hash exist on. It also returns the header of highest block of the chain.
+func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
 
 	for _, chain := range b.chains {
-		header, err := chain.getCurrentBlockHeader()
+		block, err := chain.getBlockByHash(hash)
 		if err != nil {
-			if err == types.ErrBlockNotFound {
-				continue
+			if err != common.ErrBlockNotFound {
+				return nil, nil, nil, err
 			}
-			return nil, err
+			continue
 		}
-		if header.ComputeHash() == hash {
-			return chain, nil
+
+		// get the header of the highest block
+		chainTipHeader, err := chain.getTipHeader()
+		if err != nil {
+			return nil, nil, nil, err
 		}
+
+		return block, chain, chainTipHeader, nil
 	}
-	return nil, nil
+
+	return nil, nil, nil, nil
 }
 
 // chooseBestChain returns the chain that is considered the
@@ -230,9 +243,9 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 	var curBest *Chain
 	var curHeight uint64
 	for _, chain := range b.chains {
-		header, err := chain.getCurrentBlockHeader()
+		header, err := chain.getTipHeader()
 		if err != nil {
-			if err == types.ErrBlockNotFound {
+			if err == common.ErrBlockNotFound {
 				continue
 			}
 			return nil, err
@@ -243,4 +256,96 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 		}
 	}
 	return curBest, nil
+}
+
+func (b *Blockchain) addRejectedBlock(block *wire.Block) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	b.rejectedBlocks.Add(block.GetHash(), struct{}{})
+}
+
+func (b *Blockchain) isRejected(block *wire.Block) bool {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return b.rejectedBlocks.Contains(block.GetHash())
+}
+
+// addOrphanBlock adds a block to the collection of orphaned blocks.
+func (b *Blockchain) addOrphanBlock(block common.Block) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	// Remove expired blocks
+	for _, key := range b.orphanBlocks.Keys() {
+		oBlock, _ := b.orphanBlocks.Get(key)
+		if time.Now().After(oBlock.(*common.OrphanBlock).Expiration) {
+			b.orphanBlocks.Remove(key)
+		}
+	}
+
+	// Insert the block to the cache with a 1 hour expiration
+	b.orphanBlocks.Add(block.GetHash(), common.OrphanBlock{
+		Block:      block,
+		Expiration: time.Now().Add(time.Hour),
+	})
+}
+
+// isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
+func (b *Blockchain) isOrphanBlock(blockHash string) bool {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	return b.orphanBlocks.Contains(blockHash)
+}
+
+// newTree creates a new chain which represents a subtree.
+// staleBlock is the block that caused the need for a new subtree and
+// staleBlockParent is the parent of the stale block.
+func (b *Blockchain) newTree(staleBlock, staleBlockParent *wire.Block) (*Chain, error) {
+
+	// stale block and its parent must be provided. They must also
+	// be related through the stableBlock referencing the parent block's hash.
+	if staleBlock == nil {
+		return nil, fmt.Errorf("stale block cannot be nil")
+	} else if staleBlockParent == nil {
+		return nil, fmt.Errorf("stale block parent cannot be nil")
+	} else if staleBlock.Header.ParentHash != staleBlockParent.Hash {
+		return nil, fmt.Errorf("stale block and parent are not related")
+	}
+
+	tx := b.store.NewTx()
+
+	// create a new chain. Assign a unique and random id to it
+	tree, err := NewChainWithTx(tx, util.RandString(32), b.store, b.cfg, b.log)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	tree.setParentBlock(staleBlockParent)
+
+	// add the stale block to the new chain
+	if err := tree.appendBlockWithTx(tx, staleBlock); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	// update the blockchain-wide chain record to include
+	// this new chain. This allows us to be able to quickly learn
+	// about all the known chains
+	b.lock.Lock()
+	bMeta := b.GetMeta()
+	bMeta.Chains = append(bMeta.Chains, &common.ChainInfo{ID: tree.id, ParentNumber: staleBlockParent.GetNumber()})
+	if err := b.updateMetaWithTx(tx, bMeta); err != nil {
+		tx.Rollback()
+		b.lock.Unlock()
+		return nil, err
+	}
+	b.lock.Unlock()
+
+	// add the tree in the chain cache
+	if err := b.addChain(tree); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	return tree, tx.Commit()
 }

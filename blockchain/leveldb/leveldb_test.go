@@ -3,7 +3,7 @@ package leveldb
 import (
 	"encoding/json"
 
-	"github.com/ellcrys/elld/blockchain/types"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/testutil"
@@ -59,25 +59,6 @@ var _ = Describe("Leveldb", func() {
 			Expect(&storedBlock).To(Equal(block))
 		})
 
-		Context("on successful put", func() {
-
-			BeforeEach(func() {
-				err = store.PutBlock(chainID, block)
-				Expect(err).To(BeNil())
-				result := store.db.GetByPrefix(database.MakePrefix([]string{"block", chainID, "number"}))
-				Expect(result).To(HaveLen(1))
-			})
-
-			It("should update metadata object", func() {
-				result := store.db.GetByPrefix(database.MakePrefix([]string{"meta", chainID}))
-				Expect(result).ToNot(BeEmpty())
-				var meta types.ChainMeta
-				err := json.Unmarshal(result[0].Value, &meta)
-				Expect(err).To(BeNil())
-				Expect(meta.CurrentBlockNumber).To(Equal(block.Header.Number))
-			})
-		})
-
 		It("should return nil and not add block when another block with same number exists", func() {
 			err = store.PutBlock(chainID, block)
 			Expect(err).To(BeNil())
@@ -105,6 +86,20 @@ var _ = Describe("Leveldb", func() {
 		})
 	})
 
+	Describe(".PutBlockWithTx", func() {
+		var chainID = "main"
+		var block = &wire.Block{
+			Header: &wire.Header{Number: 1},
+			Hash:   "hash",
+		}
+
+		It("should put block without error", func() {
+			tx := store.NewTx()
+			err = store.PutBlockWithTx(tx, chainID, block)
+			Expect(err).To(BeNil())
+		})
+	})
+
 	Describe(".GetBlock", func() {
 
 		var chainID = "main"
@@ -129,7 +124,7 @@ var _ = Describe("Leveldb", func() {
 
 		It("should get block by hash", func() {
 			var storedBlock = &wire.Block{}
-			err = store.GetBlockByHash(chainID, block.Hash, storedBlock)
+			err = store.GetBlockByHash(chainID, block.GetHash(), storedBlock)
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
@@ -137,13 +132,13 @@ var _ = Describe("Leveldb", func() {
 		It("with block hash; return error if block does not exist", func() {
 			err = store.GetBlockByHash(chainID, "unknown", nil)
 			Expect(err).ToNot(BeNil())
-			Expect(err).To(Equal(types.ErrBlockNotFound))
+			Expect(err).To(Equal(common.ErrBlockNotFound))
 		})
 
 		It("with block number; return error if block does not exist", func() {
 			err = store.GetBlock(chainID, 10000, nil)
 			Expect(err).ToNot(BeNil())
-			Expect(err).To(Equal(types.ErrBlockNotFound))
+			Expect(err).To(Equal(common.ErrBlockNotFound))
 		})
 
 		It("should return the block with the hightest number if 0 is passed", func() {
@@ -202,41 +197,10 @@ var _ = Describe("Leveldb", func() {
 
 		It("should get block by hash", func() {
 			var storedBlockHeader = &wire.Header{}
-			err = store.GetBlockHeaderByHash(chainID, block.Hash, storedBlockHeader)
+			err = store.GetBlockHeaderByHash(chainID, block.GetHash(), storedBlockHeader)
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))
-		})
-	})
-
-	Describe(".UpdateMetadata", func() {
-
-		var chainID = "main"
-		var meta types.ChainMeta
-
-		It("should successfully update meta", func() {
-			meta = types.ChainMeta{CurrentBlockNumber: 10000}
-			err := store.UpdateMetadata(chainID, &meta)
-			Expect(err).To(BeNil())
-		})
-	})
-
-	Describe(".GetMetadata", func() {
-
-		var chainID = "main"
-		var meta types.ChainMeta
-
-		BeforeEach(func() {
-			meta = types.ChainMeta{CurrentBlockNumber: 10000}
-			err := store.UpdateMetadata(chainID, &meta)
-			Expect(err).To(BeNil())
-		})
-
-		It("should successfully get meta", func() {
-			var result types.ChainMeta
-			err := store.GetMetadata(chainID, &result)
-			Expect(err).To(BeNil())
-			Expect(result.CurrentBlockNumber).To(Equal(meta.CurrentBlockNumber))
 		})
 	})
 
@@ -248,6 +212,16 @@ var _ = Describe("Leveldb", func() {
 		})
 	})
 
+	Describe(".PutTx", func() {
+
+		It("should successfully store object", func() {
+			tx := store.NewTx()
+			key := database.MakeKey([]byte("my_key"), []string{"block", "account"})
+			err = store.PutWithTx(tx, key, []byte("stuff"))
+			Expect(err).To(BeNil())
+		})
+	})
+
 	Describe(".Get", func() {
 
 		It("should successfully get object by prefix", func() {
@@ -255,13 +229,12 @@ var _ = Describe("Leveldb", func() {
 			err = store.Put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
-			var result []interface{}
-			err = store.Get([]byte("an_obj"), &result)
-			Expect(err).To(BeNil())
+			var result = []*database.KVObject{}
+			store.Get([]byte("an_obj"), &result)
 			Expect(result).To(HaveLen(1))
 
-			err = store.Get(database.MakePrefix([]string{"an_obj", "account"}), &result)
-			Expect(err).To(BeNil())
+			result = []*database.KVObject{}
+			store.Get(database.MakePrefix([]string{"an_obj", "account"}), &result)
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -269,10 +242,39 @@ var _ = Describe("Leveldb", func() {
 			key := database.MakeKey([]byte("my_key"), []string{"block", "account"})
 			err = store.Put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
-			var result []interface{}
-			err = store.Get(key, &result)
-			Expect(err).To(BeNil())
+
+			var result = []*database.KVObject{}
+			store.Get(key, &result)
 			Expect(result).To(HaveLen(1))
+		})
+	})
+
+	Describe(".GetFirstOrLast", func() {
+
+		var key, key2 []byte
+
+		BeforeEach(func() {
+			key = database.MakeKey([]byte("my_key"), []string{"an_obj", "account", "1"})
+			err = store.Put(key, []byte("stuff"))
+			Expect(err).To(BeNil())
+
+			key2 = database.MakeKey([]byte("my_key"), []string{"an_obj", "account", "2"})
+			err = store.Put(key2, []byte("stuff2"))
+			Expect(err).To(BeNil())
+		})
+
+		It("should return the first object when first arg. is true", func() {
+			var result = &database.KVObject{}
+			store.GetFirstOrLast(true, []byte("an_obj"), result)
+			Expect(result).ToNot(BeNil())
+			Expect(result.GetKey()).To(Equal(key))
+		})
+
+		It("should return the last object when last arg. is false", func() {
+			var result = &database.KVObject{}
+			store.GetFirstOrLast(false, []byte("an_obj"), result)
+			Expect(result).ToNot(BeNil())
+			Expect(result.GetKey()).To(Equal(key2))
 		})
 	})
 })

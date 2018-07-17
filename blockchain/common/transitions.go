@@ -1,4 +1,6 @@
-package types
+package common
+
+import "github.com/ellcrys/elld/wire"
 
 // Transition represents a mutation to the state of a chain
 type Transition interface {
@@ -28,6 +30,7 @@ func (o *OpBase) Equal(t Transition) bool {
 // OpCreateAccount describes a transition to create an account
 type OpCreateAccount struct {
 	*OpBase
+	Account *wire.Account
 }
 
 // Equal checks whether a Transition t is equal to o
@@ -41,7 +44,7 @@ func (o *OpCreateAccount) Equal(t Transition) bool {
 // OpNewAccountBalance represents a transition to a new account balance
 type OpNewAccountBalance struct {
 	*OpBase
-	Amount string
+	Account *wire.Account
 }
 
 // Equal checks whether a Transition t is equal to o

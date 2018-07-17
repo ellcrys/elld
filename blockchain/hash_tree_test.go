@@ -1,8 +1,8 @@
 package blockchain
 
 import (
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/leveldb"
-	"github.com/ellcrys/elld/blockchain/types"
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/util"
@@ -13,7 +13,7 @@ import (
 var _ = Describe("Blockchain", func() {
 
 	var err error
-	var store types.Store
+	var store common.Store
 	var db database.DB
 	var chainID = "chain1"
 	var hashTree *HashTree
