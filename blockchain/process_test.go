@@ -297,89 +297,89 @@ var _ = Describe("Blockchain", func() {
 
 		var block *wire.Block
 
-		// It("should reject the block if it has been added to the rejected cache", func() {
-		// 	block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
-		// 	bc.rejectedBlocks.Add(block.GetHash(), struct{}{})
-		// 	err = bc.ProcessBlock(block)
-		// 	Expect(err).ToNot(BeNil())
-		// 	Expect(err).To(Equal(common.ErrBlockRejected))
-		// })
+		It("should reject the block if it has been added to the rejected cache", func() {
+			block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
+			bc.rejectedBlocks.Add(block.GetHash(), struct{}{})
+			err = bc.ProcessBlock(block)
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(common.ErrBlockRejected))
+		})
 
-		// It("should return error if block already exists in one of the known chains", func() {
-		// 	block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
-		// 	err = chain.appendBlock(block)
-		// 	Expect(err).To(BeNil())
-		// 	err = bc.ProcessBlock(block)
-		// 	Expect(err).ToNot(BeNil())
-		// 	Expect(err).To(Equal(common.ErrBlockExists))
-		// })
+		It("should return error if block already exists in one of the known chains", func() {
+			block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
+			err = chain.appendBlock(block)
+			Expect(err).To(BeNil())
+			err = bc.ProcessBlock(block)
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(common.ErrBlockExists))
+		})
 
-		// It("should return error if block has been added to the orphaned cache", func() {
-		// 	block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
-		// 	bc.orphanBlocks.Add(block.GetHash(), block)
-		// 	err = bc.ProcessBlock(block)
-		// 	Expect(err).ToNot(BeNil())
-		// 	Expect(err).To(Equal(common.ErrOrphanBlock))
-		// })
+		It("should return error if block has been added to the orphaned cache", func() {
+			block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
+			bc.orphanBlocks.Add(block.GetHash(), block)
+			err = bc.ProcessBlock(block)
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(common.ErrOrphanBlock))
+		})
 
-		// When("a block's parent does not exist in any chain", func() {
-		// 	It("should return nil and add be added to the orphan block cache", func() {
-		// 		block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
-		// 		err = bc.ProcessBlock(block)
-		// 		Expect(err).To(BeNil())
-		// 		Expect(bc.orphanBlocks.Contains(block.GetHash())).To(BeTrue())
-		// 	})
-		// })
+		When("a block's parent does not exist in any chain", func() {
+			It("should return nil and add be added to the orphan block cache", func() {
+				block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
+				err = bc.ProcessBlock(block)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Contains(block.GetHash())).To(BeTrue())
+			})
+		})
 
-		// Describe("how stale blocks are handled", func() {
-		// 	When("a block's parent exists in a chain", func() {
-		// 		var genesis, block2, chainTip, veryStaleBlock, staleBlock, futureNumberedBlock *wire.Block
+		Describe("how stale blocks are handled", func() {
+			When("a block's parent exists in a chain", func() {
+				var genesis, block2, chainTip, veryStaleBlock, staleBlock, futureNumberedBlock *wire.Block
 
-		// 		BeforeEach(func() {
-		// 			genesis, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[0])
-		// 			block2, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[1])
-		// 			chainTip, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[2])
-		// 			veryStaleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[3])
-		// 			staleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[4])
-		// 			futureNumberedBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[5])
-		// 			err = chain.appendBlock(genesis)
-		// 			Expect(err).To(BeNil())
-		// 			err = chain.appendBlock(block2)
-		// 			Expect(err).To(BeNil())
-		// 			err = chain.appendBlock(chainTip)
-		// 			Expect(err).To(BeNil())
-		// 		})
+				BeforeEach(func() {
+					genesis, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[0])
+					block2, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[1])
+					chainTip, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[2])
+					veryStaleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[3])
+					staleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[4])
+					futureNumberedBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[5])
+					err = chain.appendBlock(genesis)
+					Expect(err).To(BeNil())
+					err = chain.appendBlock(block2)
+					Expect(err).To(BeNil())
+					err = chain.appendBlock(chainTip)
+					Expect(err).To(BeNil())
+				})
 
-		// 		It("should return ErrVeryStaleBlock when block number less than the latest block", func() {
-		// 			err = bc.ProcessBlock(veryStaleBlock)
-		// 			Expect(err).ToNot(BeNil())
-		// 			Expect(err).To(Equal(common.ErrVeryStaleBlock))
-		// 		})
+				It("should return ErrVeryStaleBlock when block number less than the latest block", func() {
+					err = bc.ProcessBlock(veryStaleBlock)
+					Expect(err).ToNot(BeNil())
+					Expect(err).To(Equal(common.ErrVeryStaleBlock))
+				})
 
-		// 		When("stale block has same number as the chainTip", func() {
+				When("stale block has same number as the chainTip", func() {
 
-		// 			BeforeEach(func() {
-		// 				Expect(bc.chains).To(HaveLen(1))
-		// 			})
+					BeforeEach(func() {
+						Expect(bc.chains).To(HaveLen(1))
+					})
 
-		// 			It("should create a new chain tree; return nil; new tree's parent should be expected; tree must include the new block", func() {
-		// 				err = bc.ProcessBlock(staleBlock)
-		// 				Expect(err).To(BeNil())
-		// 				Expect(bc.chains).To(HaveLen(2))
-		// 				Expect(bc.chains[1].parentBlock.Hash).To(Equal(block2.Hash))
-		// 				hasBlock, err := bc.chains[1].hasBlock(staleBlock.GetHash())
-		// 				Expect(err).To(BeNil())
-		// 				Expect(hasBlock).To(BeTrue())
-		// 			})
-		// 		})
+					It("should create a new chain tree; return nil; new tree's parent should be expected; tree must include the new block", func() {
+						err = bc.ProcessBlock(staleBlock)
+						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(2))
+						Expect(bc.chains[1].parentBlock.Hash).To(Equal(block2.Hash))
+						hasBlock, err := bc.chains[1].hasBlock(staleBlock.GetHash())
+						Expect(err).To(BeNil())
+						Expect(hasBlock).To(BeTrue())
+					})
+				})
 
-		// 		It("should return error when the difference between block number and chain  block number is greater than 1", func() {
-		// 			err = bc.ProcessBlock(futureNumberedBlock)
-		// 			Expect(err).ToNot(BeNil())
-		// 			Expect(err).To(Equal(common.ErrBlockFailedValidation))
-		// 		})
-		// 	})
-		// })
+				It("should return error when the difference between block number and chain  block number is greater than 1", func() {
+					err = bc.ProcessBlock(futureNumberedBlock)
+					Expect(err).ToNot(BeNil())
+					Expect(err).To(Equal(common.ErrBlockFailedValidation))
+				})
+			})
+		})
 
 		Context("state root comparison", func() {
 
