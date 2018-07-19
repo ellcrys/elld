@@ -222,10 +222,6 @@ func ComputeTxsRoot(txs []*wire.Transaction) []byte {
 	return root
 }
 
-func (b *Blockchain) isStaleBlock(block *wire.Block) {
-
-}
-
 // ProcessBlock takes a block and attempts to add it to the
 // tip of the blockchain.
 func (b *Blockchain) ProcessBlock(block *wire.Block) error {
@@ -281,9 +277,9 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) error {
 		return common.ErrVeryStaleBlock
 
 	} else if block.GetNumber() == chainTip.Number {
-		// create the new tree chain, set its root to the parent of the stale block
+		// create the new chain, set its root to the parent of the stale block
 		// and also add the stale block to it.
-		if _, err := b.newTree(block, parentBlock); err != nil {
+		if _, err := b.newChain(block, parentBlock); err != nil {
 			return fmt.Errorf("failed to create subtree out of stale block")
 		}
 
@@ -292,6 +288,7 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) error {
 		b.addRejectedBlock(block)
 		return common.ErrBlockFailedValidation
 	}
+
 	// Mock execute block to derive the state objects and the resulting
 	// state root should the state object be applied to the blockchain state tree.
 	mockRoot, stateObjs, err := b.MockExecBlock(chain, block)
@@ -376,5 +373,12 @@ func (b *Blockchain) MockExecBlock(chain *Chain, block *wire.Block) (root []byte
 
 // processOrphanBlocks
 func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
+
+	// find an orphan block with a parent hash same has the latestBlockHash
+	// for _, oBKey := range b.orphanBlocks.Keys() {
+	// 	if orphanBlock, ok := b.orphanBlocks.Peek(); ok {
+
+	// 	}
+	// }
 	return nil
 }

@@ -272,17 +272,17 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
-	Describe(".newTree", func() {
+	Describe(".newChain", func() {
 
 		It("should return error if block is nil", func() {
-			_, err := bc.newTree(nil, nil)
+			_, err := bc.newChain(nil, nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("stale block cannot be nil"))
 		})
 
 		It("should return error if stale block parent is nil", func() {
 			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
-			_, err := bc.newTree(staleBlock, nil)
+			_, err := bc.newChain(staleBlock, nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("stale block parent cannot be nil"))
 		})
@@ -290,7 +290,7 @@ var _ = Describe("Blockchain", func() {
 		It("should return error if stale block and parent are not related", func() {
 			staleBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
 			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
-			_, err = bc.newTree(staleBlock, staleBlockParent)
+			_, err = bc.newChain(staleBlock, staleBlockParent)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("stale block and parent are not related"))
 		})
@@ -298,7 +298,7 @@ var _ = Describe("Blockchain", func() {
 		It("should successfully return a new chain", func() {
 			staleBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
 			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
-			chain, err := bc.newTree(staleBlock, staleBlockParent)
+			chain, err := bc.newChain(staleBlock, staleBlockParent)
 			Expect(err).To(BeNil())
 			Expect(chain).ToNot(BeNil())
 			Expect(chain.parentBlock).To(Equal(staleBlockParent))
@@ -310,4 +310,5 @@ var _ = Describe("Blockchain", func() {
 			})
 		})
 	})
+
 })

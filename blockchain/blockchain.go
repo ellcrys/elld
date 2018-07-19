@@ -5,14 +5,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/golang-lru/simplelru"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 )
+
+// FuncOpts represents options to be passed to a function
+type FuncOpts interface{}
+
+// DBTxOpt is an option describing a transaction to be used by a function
+type DBTxOpt struct {
+	Tx          database.Tx
+	CanFinalize bool
+}
 
 const (
 	// MainChainID is the unique ID of the main chain
@@ -53,11 +61,11 @@ type Blockchain struct {
 	chains []*Chain
 
 	// orphanBlocks stores blocks whose parents are unknown
-	orphanBlocks *simplelru.LRU
+	orphanBlocks *Cache
 
 	// rejectedBlocks stores collection of blocks that have been deemed invalid.
 	// This allows us to quickly learn and discard blocks that are found here.
-	rejectedBlocks *simplelru.LRU
+	rejectedBlocks *Cache
 }
 
 // New creates a Blockchain instance.
@@ -67,8 +75,8 @@ func New(cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc.cfg = cfg
 	bc.lock = &sync.RWMutex{}
 	bc.mLock = &sync.Mutex{}
-	bc.orphanBlocks, _ = simplelru.NewLRU(MaxOrphanBlocksCacheSize, nil)
-	bc.rejectedBlocks, _ = simplelru.NewLRU(MaxRejectedBlocksCacheSize, nil)
+	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
+	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
 	return bc
 }
 
@@ -267,40 +275,28 @@ func (b *Blockchain) addRejectedBlock(block *wire.Block) {
 func (b *Blockchain) isRejected(block *wire.Block) bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return b.rejectedBlocks.Contains(block.GetHash())
+	return b.rejectedBlocks.Has(block.GetHash())
 }
 
 // addOrphanBlock adds a block to the collection of orphaned blocks.
 func (b *Blockchain) addOrphanBlock(block common.Block) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-
-	// Remove expired blocks
-	for _, key := range b.orphanBlocks.Keys() {
-		oBlock, _ := b.orphanBlocks.Get(key)
-		if time.Now().After(oBlock.(*common.OrphanBlock).Expiration) {
-			b.orphanBlocks.Remove(key)
-		}
-	}
-
 	// Insert the block to the cache with a 1 hour expiration
-	b.orphanBlocks.Add(block.GetHash(), common.OrphanBlock{
-		Block:      block,
-		Expiration: time.Now().Add(time.Hour),
-	})
+	b.orphanBlocks.AddWithExp(block.GetHash(), block, time.Now().Add(time.Hour))
 }
 
 // isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
 func (b *Blockchain) isOrphanBlock(blockHash string) bool {
 	b.lock.Lock()
 	defer b.lock.Unlock()
-	return b.orphanBlocks.Contains(blockHash)
+	return b.orphanBlocks.Get(blockHash) != nil
 }
 
-// newTree creates a new chain which represents a subtree.
-// staleBlock is the block that caused the need for a new subtree and
+// newChain creates a new chain which represents a fork.
+// staleBlock is the block that caused the need for a new chain and
 // staleBlockParent is the parent of the stale block.
-func (b *Blockchain) newTree(staleBlock, staleBlockParent *wire.Block) (*Chain, error) {
+func (b *Blockchain) newChain(staleBlock, staleBlockParent *wire.Block) (*Chain, error) {
 
 	// stale block and its parent must be provided. They must also
 	// be related through the stableBlock referencing the parent block's hash.
@@ -315,15 +311,20 @@ func (b *Blockchain) newTree(staleBlock, staleBlockParent *wire.Block) (*Chain, 
 	tx := b.store.NewTx()
 
 	// create a new chain. Assign a unique and random id to it
-	tree, err := NewChainWithTx(tx, util.RandString(32), b.store, b.cfg, b.log)
+	chain, err := NewChainWithTx(tx, util.RandString(32), b.store, b.cfg, b.log)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	tree.setParentBlock(staleBlockParent)
+	chain.setParentBlock(staleBlockParent)
 
-	// add the stale block to the new chain
-	if err := tree.appendBlockWithTx(tx, staleBlock); err != nil {
+	// Stale blocks in a new tree are not a source of truth about the world state since
+	// they only serve to increase network security. We do not need to waste storage by
+	// keeping the transactions.
+	staleBlock.Transactions = nil
+
+	// add the stale block to the new chain.
+	if err := chain.appendBlockWithTx(tx, staleBlock); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -333,7 +334,7 @@ func (b *Blockchain) newTree(staleBlock, staleBlockParent *wire.Block) (*Chain, 
 	// about all the known chains
 	b.lock.Lock()
 	bMeta := b.GetMeta()
-	bMeta.Chains = append(bMeta.Chains, &common.ChainInfo{ID: tree.id, ParentNumber: staleBlockParent.GetNumber()})
+	bMeta.Chains = append(bMeta.Chains, &common.ChainInfo{ID: chain.id, ParentNumber: staleBlockParent.GetNumber()})
 	if err := b.updateMetaWithTx(tx, bMeta); err != nil {
 		tx.Rollback()
 		b.lock.Unlock()
@@ -342,10 +343,10 @@ func (b *Blockchain) newTree(staleBlock, staleBlockParent *wire.Block) (*Chain, 
 	b.lock.Unlock()
 
 	// add the tree in the chain cache
-	if err := b.addChain(tree); err != nil {
+	if err := b.addChain(chain); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
-	return tree, tx.Commit()
+	return chain, tx.Commit()
 }

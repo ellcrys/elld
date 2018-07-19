@@ -327,7 +327,7 @@ var _ = Describe("Blockchain", func() {
 				block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
 				err = bc.ProcessBlock(block)
 				Expect(err).To(BeNil())
-				Expect(bc.orphanBlocks.Contains(block.GetHash())).To(BeTrue())
+				Expect(bc.orphanBlocks.Has(block.GetHash())).To(BeTrue())
 			})
 		})
 
@@ -435,6 +435,12 @@ var _ = Describe("Blockchain", func() {
 					}
 				})
 			})
+		})
+	})
+
+	Describe(".processOrphanBlocks", func() {
+		It("should", func() {
+
 		})
 	})
 })
