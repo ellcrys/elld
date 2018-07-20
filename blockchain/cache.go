@@ -94,3 +94,8 @@ func (c *Cache) Remove(key interface{}) {
 func (c *Cache) Has(key interface{}) bool {
 	return c.container.Contains(key)
 }
+
+// Len returns the length of the cache
+func (c *Cache) Len() int {
+	return c.container.Len()
+}

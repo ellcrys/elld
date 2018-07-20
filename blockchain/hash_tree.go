@@ -17,7 +17,7 @@ func (s ByteVal) Construct() interface{} {
 }
 
 // HashTree uses an underlying merkle tree for the purpose of
-// storing object hashes. We use the HashTree to track object
+// storing state object hashes. We use the HashTree to track object
 // changes and to verify stateRoot of blocks. The actual
 // object values are stored elsewhere.
 type HashTree struct {

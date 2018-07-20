@@ -222,41 +222,7 @@ func ComputeTxsRoot(txs []*wire.Transaction) []byte {
 	return root
 }
 
-// ProcessBlock takes a block and attempts to add it to the
-// tip of the blockchain.
-func (b *Blockchain) ProcessBlock(block *wire.Block) error {
-	b.mLock.Lock()
-	defer b.mLock.Unlock()
-
-	b.log.Debug("Processing block", "Hash", block.Hash)
-
-	// validate the content and format of the block as well as the signature.
-	// if err := b.validateBlock(block); err != nil {
-	// 	return nil
-	// }
-
-	blockHash := block.Hash
-
-	// if the block has been previously rejected, return err
-	if b.isRejected(block) {
-		return common.ErrBlockRejected
-	}
-
-	// check if any of the chain have a block with the matching hash
-	exists, err := b.HaveBlock(blockHash)
-	if err != nil {
-		return fmt.Errorf("failed to check block existence: %s", err)
-	}
-	if exists {
-		b.log.Debug("Block already exists", "Hash", blockHash)
-		return common.ErrBlockExists
-	}
-
-	// check if the block has previously been detected as an orphan.
-	// We do not need to go reprocess this block if it is an orphan.
-	if b.isOrphanBlock(blockHash) {
-		return common.ErrOrphanBlock
-	}
+func (b *Blockchain) maybeAcceptBlock(block *wire.Block) error {
 
 	// find the chain where the parent of the block exists on. If a chain is not found,
 	// then the block is considered an orphan. If the chain is found but the block at the tip
@@ -291,7 +257,7 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) error {
 
 	// Mock execute block to derive the state objects and the resulting
 	// state root should the state object be applied to the blockchain state tree.
-	mockRoot, stateObjs, err := b.MockExecBlock(chain, block)
+	mockRoot, stateObjs, err := b.mockExecBlock(chain, block)
 	if err != nil {
 		return err
 	}
@@ -325,15 +291,59 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) error {
 		return fmt.Errorf("commit error: %s", err)
 	}
 
-	b.processOrphanBlocks(blockHash)
 	return nil
 }
 
-// MockExecBlock performs a mock execution of the blocks to output
+// ProcessBlock takes a block and attempts to add it to the
+// tip of the blockchain.
+func (b *Blockchain) ProcessBlock(block *wire.Block) error {
+	b.mLock.Lock()
+	defer b.mLock.Unlock()
+
+	b.log.Debug("Processing block", "Hash", block.Hash)
+
+	// validate the content and format of the block as well as the signature.
+	// if err := b.validateBlock(block); err != nil {
+	// 	return nil
+	// }
+
+	// if the block has been previously rejected, return err
+	if b.isRejected(block) {
+		return common.ErrBlockRejected
+	}
+
+	// check if the block has previously been detected as an orphan.
+	// We do not need to go re-process this block if it is an orphan.
+	if b.isOrphanBlock(block.Hash) {
+		return common.ErrOrphanBlock
+	}
+
+	// check if the block exists in any known chain
+	exists, err := b.HaveBlock(block.Hash)
+	if err != nil {
+		return fmt.Errorf("failed to check block existence: %s", err)
+	}
+	if exists {
+		b.log.Debug("Block already exists", "Hash", block.Hash)
+		return common.ErrBlockExists
+	}
+
+	// attempt to add the block to a chain
+	if err := b.maybeAcceptBlock(block); err != nil {
+		return err
+	}
+
+	// process any remaining orphan blocks
+	b.processOrphanBlocks(block.Hash)
+
+	return nil
+}
+
+// mockExecBlock performs a mock execution of the blocks to output
 // the resulting state objects and state root without making permanent
 // commits to the current blockchain state. chain is the specific chain
 // to perform this execution against.
-func (b *Blockchain) MockExecBlock(chain *Chain, block *wire.Block) (root []byte, stateObjs []*common.StateObject, err error) {
+func (b *Blockchain) mockExecBlock(chain *Chain, block *wire.Block) (root []byte, stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
@@ -371,14 +381,52 @@ func (b *Blockchain) MockExecBlock(chain *Chain, block *wire.Block) (root []byte
 	return
 }
 
-// processOrphanBlocks
+// processOrphanBlocks finds orphan blocks in the cache and attempts
+// to re-process the blocks that are parented by the latestBlockHash.
+//
+// This method is not protected by any lock. It must be called with
+// the chain lock held.
 func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 
-	// find an orphan block with a parent hash same has the latestBlockHash
-	// for _, oBKey := range b.orphanBlocks.Keys() {
-	// 	if orphanBlock, ok := b.orphanBlocks.Peek(); ok {
+	// Add the passed block hash to this internal slice. This is
+	// the slice we will use to perform repetitive orphan processing
+	// without needing to recursively call this method at the end.
+	var parentHashes = []string{latestBlockHash}
 
-	// 	}
-	// }
+	// As long as we have parent hashes, We will continuously pick a
+	// parent hash and try to find an orphan block that references the parent hash.
+	for len(parentHashes) > 0 {
+		// pick the next parent hash and remove it from the slice
+		curParentHash := parentHashes[0]
+		parentHashes[0] = ""
+		parentHashes = parentHashes[1:]
+
+		// Retrieve the keys of blocks in the orphan cache.
+		// Go through them and attempt to append them to a chain
+		// using maybeAcceptBlock.
+		orphansKey := b.orphanBlocks.Keys()
+		for i := 0; i < len(orphansKey); i++ {
+
+			oBKey := orphansKey[i]
+
+			// find an orphan block with a parent hash that
+			// is same has the latestBlockHash
+			orphanBlock := b.orphanBlocks.Peek(oBKey).(*wire.Block)
+			if orphanBlock.Header.ParentHash != curParentHash {
+				continue
+			}
+
+			// remove from the orphan from the cache
+			b.orphanBlocks.Remove(orphanBlock.GetHash())
+
+			// re-attempt to process the block
+			if err := b.maybeAcceptBlock(orphanBlock); err != nil {
+				return err
+			}
+
+			parentHashes = append(parentHashes, orphanBlock.Hash)
+		}
+	}
+
 	return nil
 }

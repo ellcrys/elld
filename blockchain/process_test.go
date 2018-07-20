@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"fmt"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/leveldb"
 	"github.com/ellcrys/elld/blockchain/testdata"
@@ -92,136 +94,136 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
-	// Describe(".processTransactions", func() {
+	Describe(".processTransactions", func() {
 
-	// 	var block2, block3, block4, block5, block6, block7, block8 *wire.Block
-	// 	var key, key2, key3 = crypto.NewKeyFromIntSeed(1), crypto.NewKeyFromIntSeed(2), crypto.NewKeyFromIntSeed(3)
-	// 	var account, account2, account3 *wire.Account
+		var block2, block3, block4, block5, block6, block7, block8 *wire.Block
+		var key, key2, key3 = crypto.NewKeyFromIntSeed(1), crypto.NewKeyFromIntSeed(2), crypto.NewKeyFromIntSeed(3)
+		var account, account2, account3 *wire.Account
 
-	// 	BeforeEach(func() {
-	// 		block2, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[1])
-	// 		block3, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[2])
-	// 		block4, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[3])
-	// 		block5, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[4])
-	// 		block6, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[5])
-	// 		block7, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[6])
-	// 		block8, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[7])
-	// 	})
+		BeforeEach(func() {
+			block2, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[1])
+			block3, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[2])
+			block4, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[3])
+			block5, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[4])
+			block6, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[5])
+			block7, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[6])
+			block8, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[7])
+		})
 
-	// 	BeforeEach(func() {
-	// 		err = chain.init(testdata.TestGenesisBlock)
-	// 		Expect(err).To(BeNil())
-	// 	})
+		BeforeEach(func() {
+			err = chain.init(testdata.TestGenesisBlock)
+			Expect(err).To(BeNil())
+		})
 
-	// 	BeforeEach(func() {
-	// 		account = &wire.Account{Type: wire.AccountTypeBalance, Address: key.Addr(), Balance: "0"}
-	// 		err = bc.putAccount(1, chain, account)
-	// 		Expect(err).To(BeNil())
-	// 		account2 = &wire.Account{Type: wire.AccountTypeBalance, Address: key2.Addr(), Balance: "10"}
-	// 		err = bc.putAccount(1, chain, account2)
-	// 		Expect(err).To(BeNil())
-	// 		account3 = &wire.Account{Type: wire.AccountTypeBalance, Address: key3.Addr(), Balance: "5"}
-	// 		err = bc.putAccount(1, chain, account3)
-	// 		Expect(err).To(BeNil())
-	// 	})
+		BeforeEach(func() {
+			account = &wire.Account{Type: wire.AccountTypeBalance, Address: key.Addr(), Balance: "0"}
+			err = bc.putAccount(1, chain, account)
+			Expect(err).To(BeNil())
+			account2 = &wire.Account{Type: wire.AccountTypeBalance, Address: key2.Addr(), Balance: "10"}
+			err = bc.putAccount(1, chain, account2)
+			Expect(err).To(BeNil())
+			account3 = &wire.Account{Type: wire.AccountTypeBalance, Address: key3.Addr(), Balance: "5"}
+			err = bc.putAccount(1, chain, account3)
+			Expect(err).To(BeNil())
+		})
 
-	// 	It("should return error if sender does not exist in the best chain", func() {
-	// 		_, err := bc.processTransactions(block2.Transactions, chain)
-	// 		Expect(err).ToNot(BeNil())
-	// 		Expect(err.Error()).To(Equal("failed to get sender's account: account not found"))
-	// 	})
+		It("should return error if sender does not exist in the best chain", func() {
+			_, err := bc.processTransactions(block2.Transactions, chain)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("failed to get sender's account: account not found"))
+		})
 
-	// 	It("should return error if sender account has insufficient value", func() {
-	// 		_, err := bc.processTransactions(block3.Transactions, chain)
-	// 		Expect(err).ToNot(BeNil())
-	// 		Expect(err.Error()).To(Equal("insufficient sender account balance"))
-	// 	})
+		It("should return error if sender account has insufficient value", func() {
+			_, err := bc.processTransactions(block3.Transactions, chain)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("insufficient sender account balance"))
+		})
 
-	// 	It("should return error if sender value is invalid", func() {
-	// 		_, err := bc.processTransactions(block4.Transactions, chain)
-	// 		Expect(err).ToNot(BeNil())
-	// 		Expect(err.Error()).To(Equal("sending amount error: can't convert 100_333 to decimal"))
-	// 	})
+		It("should return error if sender value is invalid", func() {
+			_, err := bc.processTransactions(block4.Transactions, chain)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("sending amount error: can't convert 100_333 to decimal"))
+		})
 
-	// 	Context("recipient does not have an account", func() {
+		Context("recipient does not have an account", func() {
 
-	// 		It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient) and 2 OpNewAccountBalance (sender and recipient);
-	// 		1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
-	// 			ops, err := bc.processTransactions(block5.Transactions, chain)
-	// 			Expect(err).To(BeNil())
-	// 			Expect(ops).To(HaveLen(3))
+			It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient) and 2 OpNewAccountBalance (sender and recipient);
+			1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
+				ops, err := bc.processTransactions(block5.Transactions, chain)
+				Expect(err).To(BeNil())
+				Expect(ops).To(HaveLen(3))
 
-	// 			Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpCreateAccount{}))
-	// 			Expect(ops[0].Address()).To(Equal(block5.Transactions[0].To))
+				Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpCreateAccount{}))
+				Expect(ops[0].Address()).To(Equal(block5.Transactions[0].To))
 
-	// 			Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 			Expect(ops[1].Address()).To(Equal(block5.Transactions[0].From))
-	// 			Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("9"))
+				Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+				Expect(ops[1].Address()).To(Equal(block5.Transactions[0].From))
+				Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("9"))
 
-	// 			Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 			Expect(ops[2].Address()).To(Equal(block5.Transactions[0].To))
-	// 			Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal("1"))
-	// 		})
-	// 	})
+				Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+				Expect(ops[2].Address()).To(Equal(block5.Transactions[0].To))
+				Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal("1"))
+			})
+		})
 
-	// 	Context("recipient has an account", func() {
+		Context("recipient has an account", func() {
 
-	// 		It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
-	// 			1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 6`, func() {
-	// 			ops, err := bc.processTransactions(block6.Transactions, chain)
-	// 			Expect(err).To(BeNil())
-	// 			Expect(ops).To(HaveLen(2))
+			It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
+				1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 6`, func() {
+				ops, err := bc.processTransactions(block6.Transactions, chain)
+				Expect(err).To(BeNil())
+				Expect(ops).To(HaveLen(2))
 
-	// 			Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 			Expect(ops[0].Address()).To(Equal(block6.Transactions[0].From))
-	// 			Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal("9"))
+				Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+				Expect(ops[0].Address()).To(Equal(block6.Transactions[0].From))
+				Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal("9"))
 
-	// 			Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 			Expect(ops[1].Address()).To(Equal(block6.Transactions[0].To))
-	// 			Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("6"))
-	// 		})
-	// 	})
+				Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+				Expect(ops[1].Address()).To(Equal(block6.Transactions[0].To))
+				Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("6"))
+			})
+		})
 
-	// 	Context("sender has two transactions sending to a recipient", func() {
+		Context("sender has two transactions sending to a recipient", func() {
 
-	// 		Context("recipient has an account", func() {
-	// 			It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
-	// 			1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
-	// 				ops, err := bc.processTransactions(block7.Transactions, chain)
-	// 				Expect(err).To(BeNil())
-	// 				Expect(ops).To(HaveLen(2))
+			Context("recipient has an account", func() {
+				It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
+				1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
+					ops, err := bc.processTransactions(block7.Transactions, chain)
+					Expect(err).To(BeNil())
+					Expect(ops).To(HaveLen(2))
 
-	// 				Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 				Expect(ops[0].Address()).To(Equal(block7.Transactions[0].From))
-	// 				Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal("8"))
+					Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+					Expect(ops[0].Address()).To(Equal(block7.Transactions[0].From))
+					Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal("8"))
 
-	// 				Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 				Expect(ops[1].Address()).To(Equal(block7.Transactions[0].To))
-	// 				Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("7"))
-	// 			})
-	// 		})
+					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+					Expect(ops[1].Address()).To(Equal(block7.Transactions[0].To))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("7"))
+				})
+			})
 
-	// 		Context("recipient does not have an account", func() {
-	// 			It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient), 2 OpNewAccountBalance (sender and recipient);
-	// 			1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
-	// 				ops, err := bc.processTransactions(block8.Transactions, chain)
-	// 				Expect(err).To(BeNil())
-	// 				Expect(ops).To(HaveLen(3))
+			Context("recipient does not have an account", func() {
+				It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient), 2 OpNewAccountBalance (sender and recipient);
+				1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
+					ops, err := bc.processTransactions(block8.Transactions, chain)
+					Expect(err).To(BeNil())
+					Expect(ops).To(HaveLen(3))
 
-	// 				Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpCreateAccount{}))
-	// 				Expect(ops[0].Address()).To(Equal(block8.Transactions[0].To))
+					Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpCreateAccount{}))
+					Expect(ops[0].Address()).To(Equal(block8.Transactions[0].To))
 
-	// 				Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 				Expect(ops[1].Address()).To(Equal(block8.Transactions[0].From))
-	// 				Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("8"))
+					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+					Expect(ops[1].Address()).To(Equal(block8.Transactions[0].From))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal("8"))
 
-	// 				Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-	// 				Expect(ops[2].Address()).To(Equal(block8.Transactions[0].To))
-	// 				Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal("2"))
-	// 			})
-	// 		})
-	// 	})
-	// })
+					Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+					Expect(ops[2].Address()).To(Equal(block8.Transactions[0].To))
+					Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal("2"))
+				})
+			})
+		})
+	})
 
 	Describe(".ComputeTxsRoot", func() {
 		It("should return expected root", func() {
@@ -247,7 +249,7 @@ var _ = Describe("Blockchain", func() {
 			})
 
 			It("should return err ", func() {
-				_, _, err := bc.MockExecBlock(chain, block)
+				_, _, err := bc.mockExecBlock(chain, block)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("failed to process transactions: rejected: failed to get sender's account: account not found"))
 			})
@@ -279,7 +281,7 @@ var _ = Describe("Blockchain", func() {
 				Expect(curRoot).To(BeNil())
 				Expect(curRootNode).To(BeNil())
 
-				root, stateObjs, _ := bc.MockExecBlock(chain, block)
+				root, stateObjs, _ := bc.mockExecBlock(chain, block)
 				Expect(stateObjs).To(HaveLen(3))
 				Expect(root).ToNot(BeEmpty())
 				Expect(root).To(HaveLen(64))
@@ -414,7 +416,7 @@ var _ = Describe("Blockchain", func() {
 				block.Transactions[0].From = sender.Addr()
 				block.Transactions[0].To = recipient.Addr()
 
-				root, stateObjs, err := bc.MockExecBlock(chain, block)
+				root, stateObjs, err := bc.mockExecBlock(chain, block)
 				Expect(err).To(BeNil())
 				block.Header.StateRoot = util.ToHex(root)
 
@@ -439,8 +441,81 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	Describe(".processOrphanBlocks", func() {
-		It("should", func() {
 
+		var parent1, orphanParent, orphan, orphan2 *wire.Block
+
+		BeforeEach(func() {
+			parent1, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[0])
+			orphanParent, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[1])
+			orphan, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[2])
+			orphan2, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[3])
+			chain.appendBlock(parent1)
+		})
+
+		Context("with one orphan block", func() {
+
+			BeforeEach(func() {
+				err = bc.ProcessBlock(orphan)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Len()).To(Equal(1))
+			})
+
+			BeforeEach(func() {
+				err = chain.appendBlock(orphanParent)
+				Expect(err).To(BeNil())
+				Expect(chain.hasBlock(orphanParent.Hash)).To(BeTrue())
+			})
+
+			It("should add orphan when its parent exists in a chain", func() {
+				err = bc.processOrphanBlocks(orphanParent.Hash)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Len()).To(Equal(0))
+
+				Describe("chain must contain the previously orphaned block as the tip", func() {
+					has, err := chain.hasBlock(orphan.Hash)
+					Expect(err).To(BeNil())
+					Expect(has).To(BeTrue())
+					tipHeader, err := chain.getTipHeader()
+					Expect(err).To(BeNil())
+					Expect(tipHeader.ComputeHash()).To(Equal(orphan.Header.ComputeHash()))
+				})
+			})
+		})
+
+		Context("with more than one orphan block", func() {
+
+			// add orphan blocks
+			BeforeEach(func() {
+				err = bc.ProcessBlock(orphan)
+				Expect(err).To(BeNil())
+				err = bc.ProcessBlock(orphan2)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Len()).To(Equal(2))
+			})
+
+			// add the parent that is linked by one of the orphan
+			BeforeEach(func() {
+				err = chain.appendBlock(orphanParent)
+				Expect(err).To(BeNil())
+				Expect(chain.hasBlock(orphanParent.Hash)).To(BeTrue())
+			})
+
+			It("should recursively add all orphans when their parent exists in a chain", func() {
+				err = bc.processOrphanBlocks(orphanParent.Hash)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Len()).To(Equal(0))
+
+				Describe("chain must contain the previously orphaned blocks and orphan2 as the tip", func() {
+					has, err := chain.hasBlock(orphan.Hash)
+					Expect(err).To(BeNil())
+					Expect(has).To(BeTrue())
+					tipHeader, err := chain.getTipHeader()
+					Expect(err).To(BeNil())
+					Expect(tipHeader.ComputeHash()).To(Equal(orphan2.Header.ComputeHash()))
+					root, rn, err := chain.stateTree.Root()
+					fmt.Println(root, rn, err)
+				})
+			})
 		})
 	})
 })

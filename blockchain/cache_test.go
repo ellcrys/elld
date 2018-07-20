@@ -113,4 +113,12 @@ var _ = Describe("Cache", func() {
 			Expect(cache.Has("k2")).To(BeTrue())
 		})
 	})
+
+	Describe(".Len", func() {
+		It("should successfully return length = 2", func() {
+			cache.Add("k1", "some_value")
+			cache.Add("k2", "some_value2")
+			Expect(cache.Len()).To(Equal(2))
+		})
+	})
 })

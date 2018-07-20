@@ -38,8 +38,8 @@ const (
 // and primitives.
 type Blockchain struct {
 
-	// lock is a general purpose lock for store, bestChain, chains etc
-	lock *sync.RWMutex
+	// chainLock is a general purpose chainLock for store, bestChain, chains etc
+	chainLock *sync.RWMutex
 
 	// mLock is used to lock methods that should be called completely atomically
 	mLock *sync.Mutex
@@ -73,7 +73,7 @@ func New(cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.log = log
 	bc.cfg = cfg
-	bc.lock = &sync.RWMutex{}
+	bc.chainLock = &sync.RWMutex{}
 	bc.mLock = &sync.Mutex{}
 	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
@@ -153,8 +153,8 @@ func (b *Blockchain) Up() error {
 
 // hasChain checks whether a chain exists.
 func (b *Blockchain) hasChain(chain *Chain) bool {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
 
 	for _, c := range b.chains {
 		if chain.id == c.id {
@@ -173,9 +173,9 @@ func (b *Blockchain) addChain(chain *Chain) error {
 		return common.ErrChainAlreadyKnown
 	}
 
-	b.lock.Lock()
+	b.chainLock.Lock()
 	b.chains = append(b.chains, chain)
-	b.lock.Unlock()
+	b.chainLock.Unlock()
 
 	return nil
 }
@@ -184,8 +184,8 @@ func (b *Blockchain) addChain(chain *Chain) error {
 // can be utilized. Hybrid consensus mode allows consensus and blocks processed differently
 // from standard block processing model. This mode is activated when we reach a target block height.
 func (b *Blockchain) HybridMode() (bool, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 
 	h, err := b.bestChain.getTipHeader()
 	if err != nil {
@@ -198,8 +198,8 @@ func (b *Blockchain) HybridMode() (bool, error) {
 // HaveBlock checks whether we have a block in the
 // main chain or other chains.
 func (b *Blockchain) HaveBlock(hash string) (bool, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 	for _, chain := range b.chains {
 		has, err := chain.hasBlock(hash)
 		if err != nil {
@@ -215,8 +215,8 @@ func (b *Blockchain) HaveBlock(hash string) (bool, error) {
 // findBlockChainByHash finds the chain where the block with the hash
 // provided hash exist on. It also returns the header of highest block of the chain.
 func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 
 	for _, chain := range b.chains {
 		block, err := chain.getBlockByHash(hash)
@@ -245,8 +245,8 @@ func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain
 // TODO: For hybrid mode, the longest chain with the most amount of endorser ticket value
 // should be the main chain. If we are implementing GHOST protocol, then this becomes more complicated.
 func (b *Blockchain) chooseBestChain() (*Chain, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 
 	var curBest *Chain
 	var curHeight uint64
@@ -267,29 +267,29 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 }
 
 func (b *Blockchain) addRejectedBlock(block *wire.Block) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
 	b.rejectedBlocks.Add(block.GetHash(), struct{}{})
 }
 
 func (b *Blockchain) isRejected(block *wire.Block) bool {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 	return b.rejectedBlocks.Has(block.GetHash())
 }
 
 // addOrphanBlock adds a block to the collection of orphaned blocks.
 func (b *Blockchain) addOrphanBlock(block common.Block) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration
 	b.orphanBlocks.AddWithExp(block.GetHash(), block, time.Now().Add(time.Hour))
 }
 
 // isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
 func (b *Blockchain) isOrphanBlock(blockHash string) bool {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
 	return b.orphanBlocks.Get(blockHash) != nil
 }
 
@@ -332,15 +332,15 @@ func (b *Blockchain) newChain(staleBlock, staleBlockParent *wire.Block) (*Chain,
 	// update the blockchain-wide chain record to include
 	// this new chain. This allows us to be able to quickly learn
 	// about all the known chains
-	b.lock.Lock()
+	b.chainLock.Lock()
 	bMeta := b.GetMeta()
 	bMeta.Chains = append(bMeta.Chains, &common.ChainInfo{ID: chain.id, ParentNumber: staleBlockParent.GetNumber()})
 	if err := b.updateMetaWithTx(tx, bMeta); err != nil {
 		tx.Rollback()
-		b.lock.Unlock()
+		b.chainLock.Unlock()
 		return nil, err
 	}
-	b.lock.Unlock()
+	b.chainLock.Unlock()
 
 	// add the tree in the chain cache
 	if err := b.addChain(chain); err != nil {
