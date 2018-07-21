@@ -325,32 +325,33 @@ func (b *Blockchain) recordChain(tx database.Tx, chain *Chain, parentBlockNumber
 }
 
 // newChain creates a new chain which represents a fork.
-// staleBlock is the block that caused the need for a new chain and
-// staleBlockParent is the parent of the stale block.
-func (b *Blockchain) newChain(tx database.Tx, staleBlock, staleBlockParent *wire.Block) (*Chain, error) {
+// initialBlock is the block that will be added to this chain (a genesis block).
+// parentBlock is the block that is the parent of the initialBlock. The parentBlock
+// will be a block in another chain if this chain represents a fork.
+func (b *Blockchain) newChain(tx database.Tx, initialBlock, parentBlock *wire.Block) (*Chain, error) {
 
 	// stale block and its parent must be provided. They must also
 	// be related through the stableBlock referencing the parent block's hash.
-	if staleBlock == nil {
-		return nil, fmt.Errorf("stale block cannot be nil")
+	if initialBlock == nil {
+		return nil, fmt.Errorf("initial block cannot be nil")
 	}
-	if staleBlockParent == nil {
-		return nil, fmt.Errorf("stale block parent cannot be nil")
+	if parentBlock == nil {
+		return nil, fmt.Errorf("initial block parent cannot be nil")
 	}
-	if staleBlock.Header.ParentHash != staleBlockParent.Hash {
-		return nil, fmt.Errorf("stale block and parent are not related")
+	if initialBlock.Header.ParentHash != parentBlock.Hash {
+		return nil, fmt.Errorf("initial block and parent are not related")
 	}
 
 	// create a new chain. Assign a unique and random id to it
 	chain := NewChain(util.RandString(32), b.store, b.cfg, b.log)
-	chain.setParentBlock(staleBlockParent)
+	chain.setParentBlock(parentBlock)
 
 	// add the stale block to the new chain.
-	if err := chain.appendBlockWithTx(tx, staleBlock); err != nil {
+	if err := chain.appendBlockWithTx(tx, initialBlock); err != nil {
 		return nil, err
 	}
 
-	b.recordChain(tx, chain, staleBlockParent.GetNumber())
+	b.recordChain(tx, chain, parentBlock.GetNumber())
 
 	return chain, nil
 }

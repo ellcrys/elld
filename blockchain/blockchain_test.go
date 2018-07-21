@@ -286,40 +286,34 @@ var _ = Describe("Blockchain", func() {
 		It("should return error if block is nil", func() {
 			_, err := bc.newChain(nil, nil, nil)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("stale block cannot be nil"))
+			Expect(err.Error()).To(Equal("initial block cannot be nil"))
 		})
 
-		It("should return error if stale block parent is nil", func() {
-			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
-			_, err := bc.newChain(nil, staleBlock, nil)
+		It("should return error if initial block parent is nil", func() {
+			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
+			_, err := bc.newChain(nil, initialBlock, nil)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("stale block parent cannot be nil"))
+			Expect(err.Error()).To(Equal("initial block parent cannot be nil"))
 		})
 
-		It("should return error if stale block and parent are not related", func() {
-			staleBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
-			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
-			_, err = bc.newChain(nil, staleBlock, staleBlockParent)
+		It("should return error if initial block and parent are not related", func() {
+			initialBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
+			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+			_, err = bc.newChain(nil, initialBlock, initialBlockParent)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("stale block and parent are not related"))
+			Expect(err.Error()).To(Equal("initial block and parent are not related"))
 		})
 
 		It("should successfully return a new chain", func() {
-			staleBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
-			staleBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
+			initialBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
 
 			tx := chain.store.NewTx()
-			chain, err := bc.newChain(tx, staleBlock, staleBlockParent)
+			chain, err := bc.newChain(tx, initialBlock, initialBlockParent)
 			Expect(err).To(BeNil())
 			Expect(chain).ToNot(BeNil())
-			Expect(chain.parentBlock).To(Equal(staleBlockParent))
+			Expect(chain.parentBlock).To(Equal(initialBlockParent))
 			tx.Commit()
-
-			Describe("metadata must have the new chain stored in the list of known chains", func() {
-				// meta := bc.GetMeta()
-				// Expect(meta.Chains).To(HaveLen(1))
-				// Expect(meta.Chains[0].ID).To(Equal(chain.id))
-			})
 		})
 	})
 
