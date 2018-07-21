@@ -123,22 +123,4 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
-	// Describe(".getMatureTickets", func() {
-
-	// 	BeforeEach(func() {
-	// 		for _, b := range testdata.TestBlocks {
-	// 			var block wire.Block
-	// 			err := json.Unmarshal([]byte(b), &block)
-	// 			Expect(err).To(BeNil())
-	// 			err = store.PutBlock(chainID, &block)
-	// 			Expect(err).To(BeNil())
-	// 		}
-	// 	})
-
-	// 	It("", func() {
-	// 		ticketTxs, err := chain.getMatureTickets(4)
-	// 		Expect(err).To(BeNil())
-	// 		fmt.Println(ticketTxs)
-	// 	})
-	// })
 })

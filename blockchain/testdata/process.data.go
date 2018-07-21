@@ -330,7 +330,7 @@ var ProcessStaleOrInvalidBlockData = []string{
             "parentHash": "hash_2",
             "creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
             "number": 3,
-            "stateRoot": "abc",
+            "stateRoot": "0x",
             "transactionsRoot": "ahshgde3i9nfi",
             "nonce": 0,
             "mixHash": "",

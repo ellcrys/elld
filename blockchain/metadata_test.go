@@ -59,11 +59,7 @@ var _ = Describe("Blockchain", func() {
 
 	Context("Metadata", func() {
 
-		var meta = common.BlockchainMeta{
-			Chains: []*common.ChainInfo{
-				&common.ChainInfo{ID: "chain_id"},
-			},
-		}
+		var meta = common.BlockchainMeta{}
 
 		Describe(".UpdateMeta", func() {
 			It("should successfully save metadata", func() {

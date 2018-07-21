@@ -91,7 +91,6 @@ type ChainInfo struct {
 
 // BlockchainMeta includes information about the blockchain
 type BlockchainMeta struct {
-	Chains []*ChainInfo `json:"chains"`
 }
 
 // JSON returns the JSON encoded equivalent

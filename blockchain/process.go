@@ -222,7 +222,11 @@ func ComputeTxsRoot(txs []*wire.Transaction) []byte {
 	return root
 }
 
-func (b *Blockchain) maybeAcceptBlock(block *wire.Block) error {
+// maybeAcceptBlock attempts to append a block to a current chain
+// or a newly forked chain. It returns the chain in which the block was
+// appended to.
+// NOTE: It must be called with chain lock held by the caller.
+func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 
 	// find the chain where the parent of the block exists on. If a chain is not found,
 	// then the block is considered an orphan. If the chain is found but the block at the tip
@@ -230,75 +234,83 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) error {
 	parentBlock, chain, chainTip, err := b.findBlockChainByHash(block.Header.ParentHash)
 	if err != nil {
 		if err != common.ErrBlockNotFound {
-			return err
+			return nil, err
 		}
 		b.log.Debug("Block not compatible with any chain", "Err", err.Error())
 
 	} else if chain == nil {
 		b.addOrphanBlock(block)
-		return nil
+		return nil, nil
 
 	} else if block.Header.Number < chainTip.Number {
 		// This is a much older stale block. We only support stale blocks of same height
 		// as the current block on the chain.
+		// TODO: This should be a fork too; New chain should be created
 		b.addRejectedBlock(block)
-		return common.ErrVeryStaleBlock
+		return nil, common.ErrVeryStaleBlock
 
-	} else if block.GetNumber() == chainTip.Number {
+	} else if block.GetNumber()-chainTip.Number > 1 {
+		b.addRejectedBlock(block)
+		return nil, common.ErrBlockFailedValidation
+	}
+
+	tx := chain.store.NewTx()
+
+	// If the block number is the same as the chainTip, then this
+	// is a fork and as such creates a new chain.
+	if block.GetNumber() == chainTip.Number {
 		// create the new chain, set its root to the parent of the stale block
 		// and also add the stale block to it.
-		if _, err := b.newChain(block, parentBlock); err != nil {
-			return fmt.Errorf("failed to create subtree out of stale block")
+		if chain, err = b.newChain(tx, block, parentBlock); err != nil {
+			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
-
-		return nil
-	} else if block.GetNumber()-chainTip.Number != 1 {
-		b.addRejectedBlock(block)
-		return common.ErrBlockFailedValidation
 	}
 
 	// Mock execute block to derive the state objects and the resulting
 	// state root should the state object be applied to the blockchain state tree.
 	mockRoot, stateObjs, err := b.mockExecBlock(chain, block)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Compare the state root in the block header with the root obtained
 	// from the mock execution of the block.
 	if block.Header.StateRoot != util.ToHex(mockRoot) {
-		return common.ErrBlockStateRootInvalid
+		return nil, common.ErrBlockStateRootInvalid
 	}
-
-	tx := chain.store.NewTx()
 
 	// Next we need to update the blockchain objects in the store
 	// as described by the state objects
 	for _, so := range stateObjs {
 		if err := chain.store.Put(so.Key, so.Value, common.TxOp{Tx: tx}); err != nil {
 			tx.Rollback()
-			return fmt.Errorf("failed to add state object to store: %s", err)
+			return nil, fmt.Errorf("failed to add state object to store: %s", err)
 		}
 	}
 
 	// At this point, the block is good to go. We add it to the chain
 	if err := chain.appendBlockWithTx(tx, block); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to add block: %s", err)
+		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("commit error: %s", err)
+		return nil, fmt.Errorf("commit error: %s", err)
 	}
 
-	return nil
+	// If the chain is new, add it to the chain cache
+	// if it has not been added.
+	b.addChain(chain)
+
+	return chain, nil
 }
 
 // ProcessBlock takes a block and attempts to add it to the
-// tip of the blockchain.
-func (b *Blockchain) ProcessBlock(block *wire.Block) error {
+// tip of one of the known chains (main chain or forked chain). It returns
+// the chain where the block was appended to.
+func (b *Blockchain) ProcessBlock(block *wire.Block) (*Chain, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
@@ -311,34 +323,35 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) error {
 
 	// if the block has been previously rejected, return err
 	if b.isRejected(block) {
-		return common.ErrBlockRejected
+		return nil, common.ErrBlockRejected
 	}
 
 	// check if the block has previously been detected as an orphan.
 	// We do not need to go re-process this block if it is an orphan.
 	if b.isOrphanBlock(block.Hash) {
-		return common.ErrOrphanBlock
+		return nil, common.ErrOrphanBlock
 	}
 
 	// check if the block exists in any known chain
 	exists, err := b.HaveBlock(block.Hash)
 	if err != nil {
-		return fmt.Errorf("failed to check block existence: %s", err)
+		return nil, fmt.Errorf("failed to check block existence: %s", err)
 	}
 	if exists {
 		b.log.Debug("Block already exists", "Hash", block.Hash)
-		return common.ErrBlockExists
+		return nil, common.ErrBlockExists
 	}
 
 	// attempt to add the block to a chain
-	if err := b.maybeAcceptBlock(block); err != nil {
-		return err
+	chain, err := b.maybeAcceptBlock(block)
+	if err != nil {
+		return nil, err
 	}
 
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.Hash)
 
-	return nil
+	return chain, nil
 }
 
 // mockExecBlock performs a mock execution of the blocks to output
@@ -422,7 +435,7 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 			b.orphanBlocks.Remove(orphanBlock.GetHash())
 
 			// re-attempt to process the block
-			if err := b.maybeAcceptBlock(orphanBlock); err != nil {
+			if _, err := b.maybeAcceptBlock(orphanBlock); err != nil {
 				return err
 			}
 

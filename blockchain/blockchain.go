@@ -58,7 +58,7 @@ type Blockchain struct {
 	bestChain *Chain
 
 	// chains holds all known chains
-	chains []*Chain
+	chains map[string]*Chain
 
 	// orphanBlocks stores blocks whose parents are unknown
 	orphanBlocks *Cache
@@ -75,6 +75,7 @@ func New(cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc.cfg = cfg
 	bc.chainLock = &sync.RWMutex{}
 	bc.mLock = &sync.Mutex{}
+	bc.chains = make(map[string]*Chain)
 	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
 	return bc
@@ -85,6 +86,21 @@ func (b *Blockchain) SetStore(store common.Store) {
 	b.store = store
 }
 
+// getChains return all known chains from the store
+func (b *Blockchain) getChains() (chainsInfo []*common.ChainInfo, err error) {
+	var result []*database.KVObject
+	chainsKey := common.MakeChainsQueryKey()
+	b.store.Get(chainsKey, &result)
+	for _, r := range result {
+		var ci common.ChainInfo
+		if err = util.BytesToObject(r.Value, &ci); err != nil {
+			return nil, err
+		}
+		chainsInfo = append(chainsInfo, &ci)
+	}
+	return
+}
+
 // Up opens the database, initializes the store and
 // creates the genesis block (if required)
 func (b *Blockchain) Up() error {
@@ -92,18 +108,18 @@ func (b *Blockchain) Up() error {
 	var err error
 
 	if b.store == nil {
-		return fmt.Errorf("store not set")
+		return fmt.Errorf("store has not been initialized")
 	}
 
-	// get the blockchain main metadata
-	meta := b.GetMeta()
-	if meta == nil {
-		meta = &common.BlockchainMeta{}
+	// get known chains
+	chains, err := b.getChains()
+	if err != nil {
+		return err
 	}
 
 	// If there are no known chains described in the metadata and none
 	// in the cache, then we create a new chain.
-	if len(meta.Chains) == 0 && len(b.chains) == 0 {
+	if len(chains) == 0 && len(b.chains) == 0 {
 
 		b.log.Debug("No existing chain found. Creating genesis chain")
 
@@ -115,11 +131,12 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("failed to initialize new chain: %s", err)
 		}
 
-		// save the chain in the meta data
-		meta.Chains = append(meta.Chains, &common.ChainInfo{ID: b.bestChain.id, ParentNumber: 0})
-		if err := b.updateMeta(meta); err != nil {
-			return fmt.Errorf("failed to save metadata: %s", err)
+		tx := b.store.NewTx()
+		if err := b.recordChain(tx, b.bestChain, 0); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("failed save new chain: %s", err)
 		}
+		tx.Commit()
 
 		b.addChain(b.bestChain)
 		return nil
@@ -127,7 +144,7 @@ func (b *Blockchain) Up() error {
 
 	// At this point, some chains already exists, so we must create
 	// chain objects representing these chains.
-	for _, c := range meta.Chains {
+	for _, c := range chains {
 		chain := NewChain(c.ID, b.store, b.cfg, b.log)
 		b.addChain(chain)
 	}
@@ -147,13 +164,8 @@ func (b *Blockchain) hasChain(chain *Chain) bool {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 
-	for _, c := range b.chains {
-		if chain.id == c.id {
-			return true
-		}
-	}
-
-	return false
+	_, ok := b.chains[chain.id]
+	return ok
 }
 
 // addChain adds a new chain to the list of chains and saves
@@ -165,10 +177,19 @@ func (b *Blockchain) addChain(chain *Chain) error {
 	}
 
 	b.chainLock.Lock()
-	b.chains = append(b.chains, chain)
+	b.chains[chain.id] = chain
 	b.chainLock.Unlock()
 
 	return nil
+}
+
+func (b *Blockchain) removeChain(chain *Chain) {
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
+	if _, ok := b.chains[chain.id]; ok {
+		delete(b.chains, chain.id)
+	}
+	return
 }
 
 // HybridMode checks whether the blockchain is a point where hybrid consensus
@@ -291,57 +312,45 @@ func (b *Blockchain) isOrphanBlock(blockHash string) bool {
 	return b.orphanBlocks.Get(blockHash) != nil
 }
 
+// recordChain store a record about this new chain
+func (b *Blockchain) recordChain(tx database.Tx, chain *Chain, parentBlockNumber uint64) error {
+	chainKey := common.MakeChainKey(chain.id)
+	tx.Put([]*database.KVObject{
+		database.NewKVObject(chainKey, util.ObjectToBytes(common.ChainInfo{
+			ID:           chain.id,
+			ParentNumber: parentBlockNumber,
+		})),
+	})
+	return nil
+}
+
 // newChain creates a new chain which represents a fork.
 // staleBlock is the block that caused the need for a new chain and
 // staleBlockParent is the parent of the stale block.
-func (b *Blockchain) newChain(staleBlock, staleBlockParent *wire.Block) (*Chain, error) {
+func (b *Blockchain) newChain(tx database.Tx, staleBlock, staleBlockParent *wire.Block) (*Chain, error) {
 
 	// stale block and its parent must be provided. They must also
 	// be related through the stableBlock referencing the parent block's hash.
 	if staleBlock == nil {
 		return nil, fmt.Errorf("stale block cannot be nil")
-	} else if staleBlockParent == nil {
+	}
+	if staleBlockParent == nil {
 		return nil, fmt.Errorf("stale block parent cannot be nil")
-	} else if staleBlock.Header.ParentHash != staleBlockParent.Hash {
+	}
+	if staleBlock.Header.ParentHash != staleBlockParent.Hash {
 		return nil, fmt.Errorf("stale block and parent are not related")
 	}
-
-	tx := b.store.NewTx()
 
 	// create a new chain. Assign a unique and random id to it
 	chain := NewChain(util.RandString(32), b.store, b.cfg, b.log)
 	chain.setParentBlock(staleBlockParent)
 
-	// Stale blocks in a new tree are not a source of truth about the world state since
-	// they only serve to increase network security. We do not need to waste storage by
-	// keeping the transactions.
-	staleBlock.Transactions = nil
-
 	// add the stale block to the new chain.
 	if err := chain.appendBlockWithTx(tx, staleBlock); err != nil {
-		tx.Rollback()
 		return nil, err
 	}
 
-	// update the blockchain-wide chain record to include
-	// this new chain. This allows us to be able to quickly learn
-	// about all the known chains
-	b.chainLock.Lock()
-	bMeta := b.GetMeta()
-	bMeta.Chains = append(bMeta.Chains, &common.ChainInfo{ID: chain.id, ParentNumber: staleBlockParent.GetNumber()})
-	if err := b.updateMetaWithTx(tx, bMeta); err != nil {
-		tx.Rollback()
-		b.chainLock.Unlock()
-		return nil, err
-	}
-	b.chainLock.Unlock()
+	b.recordChain(tx, chain, staleBlockParent.GetNumber())
 
-	// add the tree in the chain cache
-	if err := b.addChain(chain); err != nil {
-
-		tx.Rollback()
-		return nil, err
-	}
-
-	return chain, tx.Commit()
+	return chain, nil
 }

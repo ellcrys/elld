@@ -125,6 +125,5 @@ var _ = Describe("Blockchain", func() {
 				Expect(a.Balance).To(Equal("100"))
 			})
 		})
-
 	})
 })
