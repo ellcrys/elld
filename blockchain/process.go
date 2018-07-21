@@ -229,8 +229,10 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) error {
 	// is has the same or a greater block number compared to the new block, it is considered a stale block.
 	parentBlock, chain, chainTip, err := b.findBlockChainByHash(block.Header.ParentHash)
 	if err != nil {
-		b.log.Debug("failed to find chain", "Err", err.Error())
-		return err
+		if err != common.ErrBlockNotFound {
+			return err
+		}
+		b.log.Debug("Block not compatible with any chain", "Err", err.Error())
 
 	} else if chain == nil {
 		b.addOrphanBlock(block)
@@ -273,7 +275,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) error {
 	// Next we need to update the blockchain objects in the store
 	// as described by the state objects
 	for _, so := range stateObjs {
-		if err := chain.store.PutWithTx(tx, so.Key, so.Value); err != nil {
+		if err := chain.store.Put(so.Key, so.Value, common.TxOp{Tx: tx}); err != nil {
 			tx.Rollback()
 			return fmt.Errorf("failed to add state object to store: %s", err)
 		}

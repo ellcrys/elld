@@ -36,6 +36,11 @@ func ObjectToBytes(s interface{}) []byte {
 	return b
 }
 
+// BytesToObject converts byte slice to an object
+func BytesToObject(bs []byte, dest interface{}) error {
+	return json.Unmarshal(bs, dest)
+}
+
 // RandString is like RandBytes but returns string
 func RandString(n int) string {
 	return string(RandBytes(n))

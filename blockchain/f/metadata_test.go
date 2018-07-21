@@ -41,7 +41,7 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	BeforeEach(func() {
-		chain, err = NewChain(chainID, store, cfg, log)
+		chain = NewChain(chainID, store, cfg, log)
 		Expect(err).To(BeNil())
 		bc.addChain(chain)
 		err = chain.init(testdata.TestBlock1)

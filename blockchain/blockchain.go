@@ -108,10 +108,7 @@ func (b *Blockchain) Up() error {
 		b.log.Debug("No existing chain found. Creating genesis chain")
 
 		// create the new chain
-		b.bestChain, err = NewChain(MainChainID, b.store, b.cfg, b.log)
-		if err != nil {
-			return fmt.Errorf("failed to create new chain: %s", err)
-		}
+		b.bestChain = NewChain(MainChainID, b.store, b.cfg, b.log)
 
 		// initialize the chain with the genesis block
 		if err := b.bestChain.init(GenesisBlock); err != nil {
@@ -119,10 +116,7 @@ func (b *Blockchain) Up() error {
 		}
 
 		// save the chain in the meta data
-		meta.Chains = append(meta.Chains, &common.ChainInfo{
-			ID:           b.bestChain.id,
-			ParentNumber: 0,
-		})
+		meta.Chains = append(meta.Chains, &common.ChainInfo{ID: b.bestChain.id, ParentNumber: 0})
 		if err := b.updateMeta(meta); err != nil {
 			return fmt.Errorf("failed to save metadata: %s", err)
 		}
@@ -134,10 +128,7 @@ func (b *Blockchain) Up() error {
 	// At this point, some chains already exists, so we must create
 	// chain objects representing these chains.
 	for _, c := range meta.Chains {
-		chain, err := NewChain(c.ID, b.store, b.cfg, b.log)
-		if err != nil {
-			return fmt.Errorf(fmt.Sprintf("failed to load chain {%s}: %s", chain.id, err))
-		}
+		chain := NewChain(c.ID, b.store, b.cfg, b.log)
 		b.addChain(chain)
 	}
 
@@ -219,6 +210,10 @@ func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain
 	defer b.chainLock.RUnlock()
 
 	for _, chain := range b.chains {
+
+		// Find the block by its hash. If we don't
+		// find the block in this chain, we continue to the
+		// next chain.
 		block, err := chain.getBlockByHash(hash)
 		if err != nil {
 			if err != common.ErrBlockNotFound {
@@ -227,10 +222,13 @@ func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain
 			continue
 		}
 
-		// get the header of the highest block
+		// At the point, we have found chain the block belongs to.
+		// Next we get the header of the block at the tip of the chain.
 		chainTipHeader, err := chain.getTipHeader()
 		if err != nil {
-			return nil, nil, nil, err
+			if err != common.ErrBlockNotFound {
+				return nil, nil, nil, err
+			}
 		}
 
 		return block, chain, chainTipHeader, nil
@@ -311,11 +309,7 @@ func (b *Blockchain) newChain(staleBlock, staleBlockParent *wire.Block) (*Chain,
 	tx := b.store.NewTx()
 
 	// create a new chain. Assign a unique and random id to it
-	chain, err := NewChainWithTx(tx, util.RandString(32), b.store, b.cfg, b.log)
-	if err != nil {
-		tx.Rollback()
-		return nil, err
-	}
+	chain := NewChain(util.RandString(32), b.store, b.cfg, b.log)
 	chain.setParentBlock(staleBlockParent)
 
 	// Stale blocks in a new tree are not a source of truth about the world state since
@@ -344,6 +338,7 @@ func (b *Blockchain) newChain(staleBlock, staleBlockParent *wire.Block) (*Chain,
 
 	// add the tree in the chain cache
 	if err := b.addChain(chain); err != nil {
+
 		tx.Rollback()
 		return nil, err
 	}

@@ -41,8 +41,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		bc = New(cfg, log)
 		bc.SetStore(store)
-		chain, err = NewChain(chainID, store, cfg, log)
-		Expect(err).To(BeNil())
+		chain = NewChain(chainID, store, cfg, log)
 		bc.bestChain = chain
 	})
 

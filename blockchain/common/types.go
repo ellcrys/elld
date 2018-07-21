@@ -27,35 +27,45 @@ type OrphanBlock struct {
 	Expiration time.Time
 }
 
+// CallOp describes an interface to be used to define store method options
+type CallOp interface {
+	GetName() string
+}
+
+// TxOp defines a method option for passing external transactions
+type TxOp struct {
+	Tx        database.Tx
+	CanFinish bool
+}
+
+// GetName returns the name of the op
+func (t TxOp) GetName() string {
+	return "TxOp"
+}
+
 // Store defines an interface for storing objects and metadata
 // of the blockchain.
 type Store interface {
 
 	// PutBlock adds a block to the store
-	PutBlock(chainID string, block Block) error
+	PutBlock(chainID string, block *wire.Block, opts ...CallOp) error
 
 	// GetBlock finds and returns a block associated with chainID.
 	// When 0 is passed, it should return the block with the highest number
-	GetBlock(chainID string, number uint64, block Block) error
-
-	// GetBlockWithTx is like GetBlock except it accepts a transaction
-	GetBlockWithTx(tx database.Tx, chainID string, number uint64, block Block) error
+	GetBlock(chainID string, number uint64, opts ...CallOp) (*wire.Block, error)
 
 	// GetBlockByHash finds and returns a block associated with chainID.
-	GetBlockByHash(chainID string, hash string, block Block) error
+	GetBlockByHash(chainID string, hash string, opts ...CallOp) (*wire.Block, error)
 
 	// GetBlockHeader gets the header of a block.
 	// When 0 is passed, it should return the header of the block with the highest number
-	GetBlockHeader(chainID string, number uint64, header *wire.Header) error
+	GetBlockHeader(chainID string, number uint64) (*wire.Header, error)
 
 	// GetBlockHeaderByHash finds and returns the header of a block matching hash
-	GetBlockHeaderByHash(chainID string, hash string, header *wire.Header) error
+	GetBlockHeaderByHash(chainID string, hash string) (*wire.Header, error)
 
 	// Put store an arbitrary value
-	Put(key []byte, value []byte) error
-
-	// PutWithTx is like Put but accepts a transaction
-	PutWithTx(tx database.Tx, key []byte, value []byte) error
+	Put(key []byte, value []byte, opts ...CallOp) error
 
 	// Get retrieves an arbitrary value
 	Get(key []byte, result *[]*database.KVObject)
@@ -66,23 +76,11 @@ type Store interface {
 
 	// NewTx creates and returns a transaction
 	NewTx() database.Tx
-
-	// PutBlockWithTx is like PutBlock but accepts a transaction
-	PutBlockWithTx(tx database.Tx, chainID string, block Block) error
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice
 type Object interface {
 	JSON() ([]byte, error)
-}
-
-// ChainMeta includes information about a chain
-type ChainMeta struct {
-}
-
-// JSON returns the JSON encoded equivalent
-func (m *ChainMeta) JSON() ([]byte, error) {
-	return json.Marshal(m)
 }
 
 // ChainInfo describes a chain

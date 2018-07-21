@@ -187,4 +187,46 @@ var _ = Describe("Database", func() {
 			})
 		})
 	})
+
+	Describe(".Iterate", func() {
+
+		BeforeEach(func() {
+			err = db.Put([]*KVObject{NewKVObject([]byte("some_key"), []byte("a"), "namespace.1")})
+			Expect(err).To(BeNil())
+			err = db.Put([]*KVObject{NewKVObject([]byte("some_key"), []byte("b"), "namespace.2")})
+			Expect(err).To(BeNil())
+			err = db.Put([]*KVObject{NewKVObject([]byte("some_key"), []byte("c"), "namespace.3")})
+			Expect(err).To(BeNil())
+		})
+
+		It("should find items in this order namespace.1, namespace.2, namespace.3", func() {
+			var itemsKey []string
+			db.Iterate([]byte("namespace"), true, func(kv *KVObject) bool {
+				itemsKey = append(itemsKey, kv.Prefixes[0])
+				return false
+			})
+			Expect(itemsKey).To(Equal([]string{"namespace.1", "namespace.2", "namespace.3"}))
+		})
+
+		It("should find items in this order namespace.3, namespace.2, namespace.1", func() {
+			var itemsKey []string
+			db.Iterate([]byte("namespace"), false, func(kv *KVObject) bool {
+				itemsKey = append(itemsKey, kv.Prefixes[0])
+				return false
+			})
+			Expect(itemsKey).To(Equal([]string{"namespace.3", "namespace.2", "namespace.1"}))
+		})
+
+		It("should find item namespace.2 only", func() {
+			var itemsKey []string
+			db.Iterate([]byte("namespace"), true, func(kv *KVObject) bool {
+				if kv.Prefixes[0] == "namespace.2" {
+					itemsKey = append(itemsKey, kv.Prefixes[0])
+					return true
+				}
+				return false
+			})
+			Expect(itemsKey).To(Equal([]string{"namespace.2"}))
+		})
+	})
 })

@@ -1,8 +1,6 @@
 package blockchain
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/leveldb"
 	"github.com/ellcrys/elld/blockchain/testdata"
@@ -44,7 +42,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		bc = New(cfg, log)
 		bc.SetStore(store)
-		chain, err = NewChain(chainID, store, cfg, log)
+		chain = NewChain(chainID, store, cfg, log)
 		Expect(err).To(BeNil())
 		bc.bestChain = chain
 		bc.addChain(chain)
@@ -292,7 +290,6 @@ var _ = Describe("Blockchain", func() {
 				Expect(curRootNode).To(BeNil())
 			})
 		})
-
 	})
 
 	Describe(".ProcessBlock", func() {
@@ -325,7 +322,7 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		When("a block's parent does not exist in any chain", func() {
-			It("should return nil and add be added to the orphan block cache", func() {
+			It("should return nil and be added to the orphan block cache", func() {
 				block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
 				err = bc.ProcessBlock(block)
 				Expect(err).To(BeNil())
@@ -512,8 +509,6 @@ var _ = Describe("Blockchain", func() {
 					tipHeader, err := chain.getTipHeader()
 					Expect(err).To(BeNil())
 					Expect(tipHeader.ComputeHash()).To(Equal(orphan2.Header.ComputeHash()))
-					root, rn, err := chain.stateTree.Root()
-					fmt.Println(root, rn, err)
 				})
 			})
 		})

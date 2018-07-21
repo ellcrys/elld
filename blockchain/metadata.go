@@ -29,5 +29,5 @@ func (b *Blockchain) updateMeta(upd *common.BlockchainMeta) error {
 func (b *Blockchain) updateMetaWithTx(tx database.Tx, upd *common.BlockchainMeta) error {
 	existingMeta := b.GetMeta()
 	mergo.Merge(existingMeta, upd)
-	return b.store.PutWithTx(tx, common.MakeBlockchainMetadataKey(), util.ObjectToBytes(existingMeta))
+	return b.store.Put(common.MakeBlockchainMetadataKey(), util.ObjectToBytes(existingMeta), common.TxOp{Tx: tx})
 }

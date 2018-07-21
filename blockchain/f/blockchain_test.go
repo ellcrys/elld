@@ -41,7 +41,7 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	BeforeEach(func() {
-		chain, err = NewChain(chainID, store, cfg, log)
+		chain = NewChain(chainID, store, cfg, log)
 		Expect(err).To(BeNil())
 		bc.addChain(chain)
 		err = chain.init(testdata.BlockchainDotGoJSON[0])
@@ -67,7 +67,7 @@ var _ = Describe("Blockchain", func() {
 
 	Describe(".addChain", func() {
 		It("should add chain", func() {
-			chain, err := NewChain("chain_id", store, cfg, log)
+			chain := NewChain("chain_id", store, cfg, log)
 			Expect(err).To(BeNil())
 			Expect(bc.chains).To(HaveLen(1))
 			err = bc.addChain(chain)
@@ -81,7 +81,7 @@ var _ = Describe("Blockchain", func() {
 		var chain *Chain
 
 		BeforeEach(func() {
-			chain, err = NewChain("chain_id", store, cfg, log)
+			chain = NewChain("chain_id", store, cfg, log)
 			Expect(err).To(BeNil())
 		})
 
@@ -194,7 +194,7 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		It("should return true of block exists in a chain", func() {
-			chain2, err := NewChain("chain2", store, cfg, log)
+			chain2 := NewChain("chain2", store, cfg, log)
 			Expect(err).To(BeNil())
 			err = chain2.init(testdata.BlockchainDotGoJSON[1])
 			Expect(err).To(BeNil())
@@ -219,7 +219,7 @@ var _ = Describe("Blockchain", func() {
 			block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
 			Expect(err).To(BeNil())
 
-			chain2, err = NewChain("chain2", store, cfg, log)
+			chain2 = NewChain("chain2", store, cfg, log)
 			Expect(err).To(BeNil())
 
 			err = chain2.init(testdata.BlockchainDotGoJSON[1])

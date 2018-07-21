@@ -18,11 +18,6 @@ func QueryAccountKey(chainID, address string) []byte {
 	return database.MakePrefix([]string{chainID, "account", address})
 }
 
-// MakeChainMetadataKey constructs a key for storing chain metadata
-func MakeChainMetadataKey(chainID string) []byte {
-	return database.MakeKey([]byte(chainID), []string{"meta", "chain"})
-}
-
 // MakeBlockchainMetadataKey constructs a key for storing blockchain-wide metadata
 func MakeBlockchainMetadataKey() []byte {
 	return database.MakeKey([]byte("_"), []string{"meta", "blockchain"})
@@ -31,13 +26,12 @@ func MakeBlockchainMetadataKey() []byte {
 // MakeBlockKey constructs a key for storing a block
 func MakeBlockKey(chainID string, blockNo uint64) []byte {
 	key := []byte(fmt.Sprintf("%d", blockNo))
-	return database.MakeKey(key, []string{"block", chainID, "number"})
+	return database.MakeKey(key, []string{"chain", chainID, "block"})
 }
 
-// MakeBlockHashKey constructs a key for storing a block using the block hash
-func MakeBlockHashKey(chainID string, blockHash string) []byte {
-	key := []byte(blockHash)
-	return database.MakeKey(key, []string{"block", chainID, "hash"})
+// MakeBlocksQueryKey constructs a key for storing a block
+func MakeBlocksQueryKey(chainID string) []byte {
+	return database.MakeKey(nil, []string{"chain", chainID, "block"})
 }
 
 // MakeChainKey constructs a key for storing a chain

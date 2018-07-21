@@ -5,6 +5,7 @@ import (
 	path "path/filepath"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -59,17 +60,16 @@ func (db *LevelDB) Put(objs []*KVObject) error {
 
 // GetByPrefix returns keys matching a prefix. Their key and value are returned
 func (db *LevelDB) GetByPrefix(prefix []byte) []*KVObject {
-	var result []*KVObject
-	var key, val []byte
 	iter := db.ldb.NewIterator(util.BytesPrefix(prefix), nil)
-	for iter.Next() {
-		key = append(key, iter.Key()...)
-		val = append(val, iter.Value()...)
-		result = append(result, FromKeyValue(key, val))
-		key, val = []byte{}, []byte{}
-	}
-	iter.Release()
-	return result
+	return getByPrefix(iter)
+}
+
+// Iterate finds a set of objects by prefix and passes them ro iterFunc
+// for further processing. If iterFunc returns true, the iterator is immediately released.
+// If first is set to true, it begins from the first item, otherwise, the last
+func (db *LevelDB) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
+	iter := db.ldb.NewIterator(util.BytesPrefix(prefix), nil)
+	iterate(iter, prefix, first, iterFunc)
 }
 
 // GetFirstOrLast returns one value matching a prefix.
@@ -150,17 +150,16 @@ func (tx *Transaction) Put(objs []*KVObject) error {
 
 // GetByPrefix get objects by prefix
 func (tx *Transaction) GetByPrefix(prefix []byte) []*KVObject {
-	var result []*KVObject
-	var key, val []byte
 	iter := tx.ldb.NewIterator(util.BytesPrefix(prefix), nil)
-	for iter.Next() {
-		key = append(key, iter.Key()...)
-		val = append(val, iter.Value()...)
-		result = append(result, FromKeyValue(key, val))
-		key, val = []byte{}, []byte{}
-	}
-	iter.Release()
-	return result
+	return getByPrefix(iter)
+}
+
+// Iterate finds a set of objects by prefix and passes them ro iterFunc
+// for further processing. If iterFunc returns true, the iterator is immediately released.
+// If first is set to true, it begins from the first item, otherwise, the last
+func (tx *Transaction) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
+	iter := tx.ldb.NewIterator(util.BytesPrefix(prefix), nil)
+	iterate(iter, prefix, first, iterFunc)
 }
 
 // Commit the transaction
@@ -171,4 +170,38 @@ func (tx *Transaction) Commit() error {
 // Rollback discards the transaction
 func (tx *Transaction) Rollback() {
 	tx.ldb.Discard()
+}
+
+func getByPrefix(iter iterator.Iterator) []*KVObject {
+	var result []*KVObject
+	var key, val []byte
+	for iter.Next() {
+		key = append(key, iter.Key()...)
+		val = append(val, iter.Value()...)
+		result = append(result, FromKeyValue(key, val))
+		key, val = []byte{}, []byte{}
+	}
+	iter.Release()
+	return result
+}
+
+func iterate(iter iterator.Iterator, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
+	var key, val []byte
+
+	var f, f2 = iter.First, iter.Next
+	if !first {
+		f, f2 = iter.Last, iter.Prev
+	}
+
+	for f() {
+		key = append(key, iter.Key()...)
+		val = append(val, iter.Value()...)
+		if iterFunc(FromKeyValue(key, val)) {
+			break
+		}
+		key, val = []byte{}, []byte{}
+		f = f2
+	}
+
+	iter.Release()
 }
