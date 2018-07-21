@@ -289,7 +289,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 	}
 
 	// At this point, the block is good to go. We add it to the chain
-	if err := chain.appendBlockWithTx(tx, block); err != nil {
+	if err := chain.append(block, common.TxOp{Tx: tx, CanFinish: false}); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}

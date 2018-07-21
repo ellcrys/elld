@@ -347,7 +347,7 @@ func (b *Blockchain) newChain(tx database.Tx, initialBlock, parentBlock *wire.Bl
 	chain.setParentBlock(parentBlock)
 
 	// add the stale block to the new chain.
-	if err := chain.appendBlockWithTx(tx, initialBlock); err != nil {
+	if err := chain.append(initialBlock, common.TxOp{Tx: tx, CanFinish: false}); err != nil {
 		return nil, err
 	}
 

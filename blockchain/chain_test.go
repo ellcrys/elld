@@ -59,13 +59,13 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		It("should return err when the block's parent hash does not match the hash of the current tail block", func() {
-			err = chain.appendBlock(block)
+			err = chain.append(block)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unable to append block: parent hash does not match the hash of the current block"))
 		})
 
 		It("should return no error", func() {
-			err = chain.appendBlock(block2)
+			err = chain.append(block2)
 			Expect(err).To(BeNil())
 		})
 	})

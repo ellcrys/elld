@@ -306,7 +306,7 @@ var _ = Describe("Blockchain", func() {
 
 		It("should return error if block already exists in one of the known chains", func() {
 			block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
-			err = chain.appendBlock(block)
+			err = chain.append(block)
 			Expect(err).To(BeNil())
 			_, err = bc.ProcessBlock(block)
 			Expect(err).ToNot(BeNil())
@@ -340,11 +340,11 @@ var _ = Describe("Blockchain", func() {
 					veryStaleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[3])
 					staleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[4])
 					futureNumberedBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[5])
-					err = chain.appendBlock(genesis)
+					err = chain.append(genesis)
 					Expect(err).To(BeNil())
-					err = chain.appendBlock(block2)
+					err = chain.append(block2)
 					Expect(err).To(BeNil())
-					err = chain.appendBlock(chainTip)
+					err = chain.append(chainTip)
 					Expect(err).To(BeNil())
 				})
 
@@ -387,7 +387,7 @@ var _ = Describe("Blockchain", func() {
 			BeforeEach(func() {
 				genesis, _ = wire.BlockFromString(testdata.ProcessStateRootData[1])
 				block, _ = wire.BlockFromString(testdata.ProcessStateRootData[2])
-				chain.appendBlock(genesis)
+				chain.append(genesis)
 			})
 
 			BeforeEach(func() {
@@ -445,7 +445,7 @@ var _ = Describe("Blockchain", func() {
 			orphanParent, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[1])
 			orphan, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[2])
 			orphan2, _ = wire.BlockFromString(testdata.ProcessOrphanBlockData[3])
-			chain.appendBlock(parent1)
+			chain.append(parent1)
 		})
 
 		Context("with one orphan block", func() {
@@ -457,7 +457,7 @@ var _ = Describe("Blockchain", func() {
 			})
 
 			BeforeEach(func() {
-				err = chain.appendBlock(orphanParent)
+				err = chain.append(orphanParent)
 				Expect(err).To(BeNil())
 				Expect(chain.hasBlock(orphanParent.Hash)).To(BeTrue())
 			})
@@ -491,7 +491,7 @@ var _ = Describe("Blockchain", func() {
 
 			// add the parent that is linked by one of the orphan
 			BeforeEach(func() {
-				err = chain.appendBlock(orphanParent)
+				err = chain.append(orphanParent)
 				Expect(err).To(BeNil())
 				Expect(chain.hasBlock(orphanParent.Hash)).To(BeTrue())
 			})

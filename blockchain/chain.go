@@ -68,11 +68,14 @@ func (c *Chain) init(block string) error {
 		return fmt.Errorf("failed to unmarshal genesis block data: %s", err)
 	}
 
-	return c.appendBlock(genBlock)
+	return c.append(genBlock)
 }
 
 // getTipHeader returns the header of the highest block on this chain
 func (c *Chain) getTipHeader() (*wire.Header, error) {
+	c.chainLock.RLock()
+	defer c.chainLock.RUnlock()
+
 	h, err := c.store.GetBlockHeader(c.id, 0)
 	if err != nil {
 		return nil, err
@@ -121,39 +124,54 @@ func (c *Chain) getBlockByHash(hash string) (*wire.Block, error) {
 	return block, nil
 }
 
-// appendBlock adds a block to the tail of the chain. It returns
+// append adds a block to the tail of the chain. It returns
 // error if the previous block hash in the header is not the hash
 // of the current block. If there is no block on the chain yet,
 // then we assume this to be the first block of a fork.
-func (c *Chain) appendBlock(block *wire.Block) error {
-	tx := c.store.NewTx()
-	if err := c.appendBlockWithTx(tx, block); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit()
-}
-
-// appendBlockWithTx is like appendBlock except it accepts a transaction object
-func (c *Chain) appendBlockWithTx(tx database.Tx, block *wire.Block) error {
+func (c *Chain) append(block *wire.Block, opts ...common.CallOp) error {
 	c.chainLock.Lock()
 	defer c.chainLock.Unlock()
 
-	// ensure it passes validation
-	// 	if err := genBlock.Validate(); err != nil {
-	// 		return fmt.Errorf("genesis block failed validation: %s", err)
-	// 	}
+	var err error
+	var tx database.Tx
+	var canFinish = true
 
-	// 	// verify the block
-	// 	if err := wire.BlockVerify(genBlock); err != nil {
-	// 		return fmt.Errorf("genesis block signature is not valid: %s", err)
+	if len(opts) > 0 {
+		for _, op := range opts {
+			switch _op := op.(type) {
+			case common.TxOp:
+				tx = _op.Tx
+				canFinish = _op.CanFinish
+			}
+		}
+	} else if tx == nil {
+		tx = c.store.NewTx()
+	}
+
+	// ensure it passes validation
+	// if err := block.Validate(); err != nil {
+	// 	if canFinish {
+	// 		tx.Rollback()
 	// 	}
+	// 	return fmt.Errorf("genesis block failed validation: %s", err)
+	// }
+
+	// // verify the block
+	// if err := wire.BlockVerify(block); err != nil {
+	// 	if canFinish {
+	// 		tx.Rollback()
+	// 	}
+	// 	return fmt.Errorf("genesis block signature is not valid: %s", err)
+	// }
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
 	curBlock, err := c.store.GetBlock(c.id, 0, common.TxOp{Tx: tx})
 	if err != nil {
 		if err != common.ErrBlockNotFound {
+			if canFinish {
+				tx.Rollback()
+			}
 			return err
 		}
 	}
@@ -161,8 +179,11 @@ func (c *Chain) appendBlockWithTx(tx database.Tx, block *wire.Block) error {
 	// If we found the current curBlock and its hash does not correspond with the
 	// hash of the block we are trying to append, then we return an error.
 	if curBlock != nil && curBlock.Hash != block.Header.ParentHash {
+		if canFinish {
+			tx.Rollback()
+		}
 		return fmt.Errorf("unable to append block: parent hash does not match the hash of the current block")
 	}
 
-	return c.store.PutBlock(c.id, block, common.TxOp{Tx: tx})
+	return c.store.PutBlock(c.id, block, common.TxOp{Tx: tx, CanFinish: canFinish})
 }
