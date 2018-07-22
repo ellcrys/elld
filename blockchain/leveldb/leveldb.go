@@ -71,20 +71,38 @@ func (s *Store) getBlock(tx database.Tx, chainID string, number uint64) (*wire.B
 }
 
 // GetBlockHeader the header of the current block
-func (s *Store) GetBlockHeader(chainID string, number uint64) (*wire.Header, error) {
+func (s *Store) GetBlockHeader(chainID string, number uint64, opts ...common.CallOp) (*wire.Header, error) {
 
-	tx, err := s.db.NewTx()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create transaction")
+	var tx database.Tx
+	var canFinish = true
+	var err error
+
+	if len(opts) > 0 {
+		for _, op := range opts {
+			switch _op := op.(type) {
+			case common.TxOp:
+				tx = _op.Tx
+				canFinish = _op.CanFinish
+			}
+		}
+	} else if tx == nil {
+		tx, err = s.db.NewTx()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create transaction")
+		}
 	}
 
 	block, err := s.getBlock(tx, chainID, number)
 	if err != nil {
-		tx.Rollback()
+		if canFinish {
+			tx.Rollback()
+		}
 		return nil, err
 	}
 
-	tx.Commit()
+	if canFinish {
+		return block.Header, tx.Commit()
+	}
 
 	return block.Header, nil
 }

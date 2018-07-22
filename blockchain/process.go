@@ -213,13 +213,13 @@ func ComputeTxsRoot(txs []*wire.Transaction) []byte {
 		return bytes.Compare(iBytes, jBytes) == -1
 	})
 
-	tree := NewMemHashTree(nil, nil)
+	tree := NewTree()
 	for _, tx := range txs {
-		tree.Upsert([]byte(tx.GetHash()), []byte(""))
+		tree.Add(TreeItem([]byte(tx.GetHash())))
 	}
 
-	root, _, _ := tree.Root()
-	return root
+	tree.Build()
+	return tree.Root()
 }
 
 // maybeAcceptBlock attempts to append a block to a current chain
@@ -255,41 +255,45 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 	}
 
 	tx := chain.store.NewTx()
+	txOp := common.TxOp{Tx: tx, CanFinish: false}
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
 	if block.GetNumber() == chainTip.Number {
 		// create the new chain, set its root to the parent of the stale block
 		// and also add the stale block to it.
-		if chain, err = b.newChain(tx, block, parentBlock); err != nil {
+		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
+			tx.Rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
 	}
 
 	// Mock execute block to derive the state objects and the resulting
 	// state root should the state object be applied to the blockchain state tree.
-	mockRoot, stateObjs, err := b.mockExecBlock(chain, block)
+	mockRoot, stateObjs, err := b.mockExecBlock(chain, block, txOp)
 	if err != nil {
+		tx.Rollback()
 		return nil, err
 	}
 
 	// Compare the state root in the block header with the root obtained
 	// from the mock execution of the block.
 	if block.Header.StateRoot != util.ToHex(mockRoot) {
+		tx.Rollback()
 		return nil, common.ErrBlockStateRootInvalid
 	}
 
 	// Next we need to update the blockchain objects in the store
 	// as described by the state objects
 	for _, so := range stateObjs {
-		if err := chain.store.Put(so.Key, so.Value, common.TxOp{Tx: tx}); err != nil {
+		if err := chain.store.Put(so.Key, so.Value, txOp); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to add state object to store: %s", err)
 		}
 	}
 
 	// At this point, the block is good to go. We add it to the chain
-	if err := chain.append(block, common.TxOp{Tx: tx, CanFinish: false}); err != nil {
+	if err := chain.append(block, txOp); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
@@ -358,7 +362,7 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (*Chain, error) {
 // the resulting state objects and state root without making permanent
 // commits to the current blockchain state. chain is the specific chain
 // to perform this execution against.
-func (b *Blockchain) mockExecBlock(chain *Chain, block *wire.Block) (root []byte, stateObjs []*common.StateObject, err error) {
+func (b *Blockchain) mockExecBlock(chain *Chain, block *wire.Block, opts ...common.CallOp) (root []byte, stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
@@ -374,24 +378,23 @@ func (b *Blockchain) mockExecBlock(chain *Chain, block *wire.Block) (root []byte
 		return nil, nil, err
 	}
 
-	// Get the current root hash and node of the chain.
-	rootHash, rootNode, err := chain.stateTree.Root()
+	// Get a new state tree. The tree is seeded with the state root of the parent block
+	tree, err := chain.NewStateTree(false, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get root of chain")
+		return nil, nil, fmt.Errorf("failed to create new state tree: %s", err)
 	}
 
-	// Create a new memory-backed state tree and set its initial root to the
-	// last root information of the chain.
-	stateTree := NewMemHashTree(rootHash, rootNode)
+	// Add the state objects into the tree. Contantenate the key and value into a TreeItem
 	for _, so := range stateObjs {
-		if err := stateTree.Upsert(so.Value, so.Value); err != nil {
-			return nil, nil, fmt.Errorf("failed to add state object to state hash tree: %s", err)
-		}
+		tree.Add(TreeItem(bytes.Join([][]byte{so.Key, so.Value}, nil)))
 	}
 
-	if root, _, err = stateTree.Root(); err != nil {
+	// Build the tree and compute new state root
+	if err = tree.Build(); err != nil {
 		return nil, nil, err
 	}
+
+	root = tree.Root()
 
 	return
 }

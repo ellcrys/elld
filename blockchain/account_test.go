@@ -40,7 +40,7 @@ var _ = Describe("Blockchain", func() {
 
 	BeforeEach(func() {
 		bc = New(cfg, log)
-		bc.SetStore(store)
+		bc.setStore(store)
 		chain = NewChain(chainID, store, cfg, log)
 		bc.bestChain = chain
 	})

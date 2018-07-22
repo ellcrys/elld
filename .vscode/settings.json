@@ -19,6 +19,7 @@
         "leveldb",
         "libp",
         "maddr",
+        "merkletree",
         "mrand",
         "notif",
         "protoc"

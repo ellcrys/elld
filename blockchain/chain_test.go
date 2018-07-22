@@ -49,6 +49,73 @@ var _ = Describe("Blockchain", func() {
 		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
+	Describe(".NewStateTree", func() {
+
+		var emptyChainRoot = []uint8{4, 1, 123, 153, 29, 46, 145, 109, 24, 125, 58, 216, 184, 21, 82, 235, 52, 105, 246, 181, 195, 203, 61, 165, 193, 22, 243, 98, 55, 44, 162, 75}
+		var item1 = TreeItem([]byte("age"))
+		var item2 = TreeItem([]byte("sex"))
+
+		Context("with empty chain", func() {
+			When("and back linking enabled", func() {
+				It("should successfully create a tree and return root", func() {
+					newChain := NewChain("my_chain", store, cfg, log)
+					tree, err := newChain.NewStateTree(false)
+					Expect(err).To(BeNil())
+					tree.Add(item1)
+					tree.Add(item2)
+
+					err = tree.Build()
+					Expect(err).To(BeNil())
+					Expect(tree.Root()).To(Equal(emptyChainRoot))
+				})
+			})
+
+			When("and back linking disabled", func() {
+				It("should successfully create a tree and same root as an empty chain", func() {
+					newChain := NewChain("my_chain", store, cfg, log)
+					tree, err := newChain.NewStateTree(true)
+					Expect(err).To(BeNil())
+					tree.Add(item1)
+					tree.Add(item2)
+
+					err = tree.Build()
+					Expect(err).To(BeNil())
+					Expect(tree.Root()).To(Equal(emptyChainRoot))
+				})
+			})
+		})
+
+		Context("with a non-empty chain", func() {
+			When("and back linking enabled", func() {
+				It("should successfully create without seed a new state tree and return its root", func() {
+					tree, err := chain.NewStateTree(false)
+					Expect(err).To(BeNil())
+					tree.Add(item1)
+					tree.Add(item2)
+
+					err = tree.Build()
+					Expect(err).To(BeNil())
+					Expect(tree.Root()).NotTo(Equal(emptyChainRoot))
+					expected := []uint8{191, 47, 2, 172, 153, 59, 66, 122, 196, 204, 250, 4, 210, 29, 53, 102, 49, 94, 168, 246, 156, 182, 191, 115, 39, 232, 105, 68, 116, 238, 91, 160}
+					Expect(tree.Root()).To(Equal(expected))
+				})
+			})
+
+			When("and back linking disabled", func() {
+				It("should successfully create without seed a new state tree and return its root", func() {
+					tree, err := chain.NewStateTree(true)
+					Expect(err).To(BeNil())
+					tree.Add(item1)
+					tree.Add(item2)
+
+					err = tree.Build()
+					Expect(err).To(BeNil())
+					Expect(tree.Root()).To(Equal(emptyChainRoot))
+				})
+			})
+		})
+	})
+
 	Describe(".appendBlock", func() {
 
 		var block, block2 *wire.Block

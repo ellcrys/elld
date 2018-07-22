@@ -59,7 +59,7 @@ type Store interface {
 
 	// GetBlockHeader gets the header of a block.
 	// When 0 is passed, it should return the header of the block with the highest number
-	GetBlockHeader(chainID string, number uint64) (*wire.Header, error)
+	GetBlockHeader(chainID string, number uint64, opts ...CallOp) (*wire.Header, error)
 
 	// GetBlockHeaderByHash finds and returns the header of a block matching hash
 	GetBlockHeaderByHash(chainID string, hash string) (*wire.Header, error)
@@ -85,8 +85,9 @@ type Object interface {
 
 // ChainInfo describes a chain
 type ChainInfo struct {
-	ID           string `json:"id"`
-	ParentNumber uint64 `json:"parentNumber"`
+	ID                string `json:"id"`
+	ParentChainID     string `json:"parentChainID"`
+	ParentBlockNumber uint64 `json:"parentBlockNumber"`
 }
 
 // BlockchainMeta includes information about the blockchain

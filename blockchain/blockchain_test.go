@@ -36,7 +36,7 @@ var _ = Describe("Blockchain", func() {
 		store, err = leveldb.New(db)
 		Expect(err).To(BeNil())
 		bc = New(cfg, log)
-		bc.SetStore(store)
+		bc.setStore(store)
 	})
 
 	BeforeEach(func() {
@@ -62,7 +62,7 @@ var _ = Describe("Blockchain", func() {
 	Describe(".SetStore", func() {
 		It("should set store", func() {
 			bc := New(cfg, log)
-			bc.SetStore(store)
+			bc.setStore(store)
 			Expect(bc.store).ToNot(BeNil())
 		})
 	})
@@ -75,6 +75,25 @@ var _ = Describe("Blockchain", func() {
 			err = bc.addChain(chain)
 			Expect(err).To(BeNil())
 			Expect(bc.chains).To(HaveLen(2))
+		})
+	})
+
+	Describe(".removeChain", func() {
+
+		var chain *Chain
+
+		BeforeEach(func() {
+			chain = NewChain("chain_id", store, cfg, log)
+			Expect(err).To(BeNil())
+			err = bc.addChain(chain)
+			Expect(err).To(BeNil())
+			Expect(bc.chains).To(HaveLen(2))
+		})
+
+		It("should remove chain", func() {
+			bc.removeChain(chain)
+			Expect(bc.chains).To(HaveLen(1))
+			Expect(bc.chains[chain.id]).To(BeNil())
 		})
 	})
 
@@ -112,33 +131,23 @@ var _ = Describe("Blockchain", func() {
 			err = bc.Up()
 			Expect(err).To(BeNil())
 			Expect(bc.bestChain).ToNot(BeNil())
-			Expect(bc.bestChain.id).To(Equal(MainChainID))
 		})
 
 		It("should load all chains", func() {
-			tx := store.NewTx()
-
 			c1 := NewChain("c1", store, cfg, log)
 			c2 := NewChain("c2", store, cfg, log)
 
-			err = bc.recordChain(tx, c1, 127)
-			if err != nil {
-				tx.Rollback()
-			}
+			err = bc.saveChain(c1, "", 0)
 			Expect(err).To(BeNil())
 
-			err = bc.recordChain(tx, c2, 37)
-			if err != nil {
-				tx.Rollback()
-			}
+			err = bc.saveChain(c2, "", 0)
 			Expect(err).To(BeNil())
 
-			tx.Commit()
 			err = bc.Up()
 			Expect(err).To(BeNil())
 			Expect(bc.chains).To(HaveLen(2))
-			Expect(bc.chains["c1"]).To(Equal(c1))
-			Expect(bc.chains["c2"]).To(Equal(c2))
+			Expect(bc.chains["c1"].id).To(Equal(c1.id))
+			Expect(bc.chains["c2"].id).To(Equal(c2.id))
 		})
 	})
 
@@ -281,17 +290,93 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
+	Describe(".loadChain", func() {
+		var block *wire.Block
+		var chain, subChain *Chain
+
+		BeforeEach(func() {
+			chain = NewChain("chain_2", store, cfg, log)
+			subChain = NewChain("sub_chain", store, cfg, log)
+
+			block, err = wire.BlockFromString(testdata.LoadChainData[0])
+			Expect(err).To(BeNil())
+
+			err := bc.saveChain(chain, "", 0)
+			Expect(err).To(BeNil())
+			err = chain.append(block)
+			Expect(err).To(BeNil())
+
+			err = bc.saveChain(subChain, chain.id, block.GetNumber())
+			Expect(err).To(BeNil())
+		})
+
+		It("should return error when only ParentBlockNumber is set but ParentChainID is unset", func() {
+			err = bc.loadChain(&common.ChainInfo{ID: chain.id, ParentBlockNumber: 1})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("chain load failed: parent chain id and parent block id are both required"))
+		})
+
+		It("should return error when only ParentChainID is set but ParentBlockNumber is unset", func() {
+			err = bc.loadChain(&common.ChainInfo{ID: chain.id, ParentChainID: "some_id"})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("chain load failed: parent chain id and parent block id are both required"))
+		})
+
+		It("should return error when parent block does not exist", func() {
+			err = bc.loadChain(&common.ChainInfo{ID: chain.id, ParentChainID: "some_id", ParentBlockNumber: 100})
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("chain load failed: parent block {100} of chain {chain_2} not found"))
+		})
+
+		It("should successfully load chain with no parent into the cache", func() {
+			err = bc.loadChain(&common.ChainInfo{ID: chain.id})
+			Expect(err).To(BeNil())
+			Expect(bc.chains).To(HaveLen(2))
+			Expect(bc.chains[chain.id]).ToNot(BeNil())
+		})
+
+		It("should successfully load chain into the cache with parent block and chain info set", func() {
+			err = bc.loadChain(&common.ChainInfo{ID: subChain.id, ParentChainID: chain.id, ParentBlockNumber: block.GetNumber()})
+			Expect(err).To(BeNil())
+			Expect(bc.chains).To(HaveLen(2))
+			Expect(bc.chains[subChain.id]).ToNot(BeNil())
+		})
+	})
+
+	Describe(".findChainInfo", func() {
+
+		var chain *Chain
+
+		BeforeEach(func() {
+			chain = NewChain("chain_a", store, cfg, log)
+			err := bc.saveChain(chain, "", 0)
+			Expect(err).To(BeNil())
+		})
+
+		It("should find chain with id = chain_a", func() {
+			chInfo, err := bc.findChainInfo("chain_a")
+			Expect(err).To(BeNil())
+			Expect(chInfo.ID).To(Equal(chain.id))
+		})
+
+		It("should return err = 'chain not found' if chain does not exist", func() {
+			_, err := bc.findChainInfo("chain_b")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("chain not found"))
+		})
+	})
+
 	Describe(".newChain", func() {
 
 		It("should return error if block is nil", func() {
-			_, err := bc.newChain(nil, nil, nil)
+			_, err := bc.newChain(nil, nil, nil, nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("initial block cannot be nil"))
 		})
 
 		It("should return error if initial block parent is nil", func() {
 			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
-			_, err := bc.newChain(nil, initialBlock, nil)
+			_, err := bc.newChain(nil, initialBlock, nil, nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("initial block parent cannot be nil"))
 		})
@@ -299,7 +384,7 @@ var _ = Describe("Blockchain", func() {
 		It("should return error if initial block and parent are not related", func() {
 			initialBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
 			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
-			_, err = bc.newChain(nil, initialBlock, initialBlockParent)
+			_, err = bc.newChain(nil, initialBlock, initialBlockParent, nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("initial block and parent are not related"))
 		})
@@ -309,12 +394,11 @@ var _ = Describe("Blockchain", func() {
 			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
 
 			tx := chain.store.NewTx()
-			chain, err := bc.newChain(tx, initialBlock, initialBlockParent)
+			chain, err := bc.newChain(tx, initialBlock, initialBlockParent, nil)
 			Expect(err).To(BeNil())
 			Expect(chain).ToNot(BeNil())
 			Expect(chain.parentBlock).To(Equal(initialBlockParent))
 			tx.Commit()
-
 		})
 	})
 

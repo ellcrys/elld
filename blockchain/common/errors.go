@@ -14,6 +14,9 @@ var (
 	// ErrChainAlreadyKnown means a chain is already known to the blockchain manager
 	ErrChainAlreadyKnown = fmt.Errorf("chain already known")
 
+	// ErrChainNotFound means a chain does not exist
+	ErrChainNotFound = fmt.Errorf("chain not found")
+
 	// ErrBlockExists means a block exists
 	ErrBlockExists = fmt.Errorf("block already exists")
 

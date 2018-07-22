@@ -37,7 +37,7 @@ var _ = Describe("Blockchain", func() {
 		store, err = leveldb.New(db)
 		Expect(err).To(BeNil())
 		bc = New(cfg, log)
-		bc.SetStore(store)
+		bc.setStore(store)
 	})
 
 	BeforeEach(func() {

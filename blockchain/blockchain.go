@@ -13,19 +13,7 @@ import (
 	"github.com/ellcrys/elld/wire"
 )
 
-// FuncOpts represents options to be passed to a function
-type FuncOpts interface{}
-
-// DBTxOpt is an option describing a transaction to be used by a function
-type DBTxOpt struct {
-	Tx          database.Tx
-	CanFinalize bool
-}
-
 const (
-	// MainChainID is the unique ID of the main chain
-	MainChainID = "main"
-
 	// MaxOrphanBlocksCacheSize is the number of blocks we can keep in the orphan block cache
 	MaxOrphanBlocksCacheSize = 500
 
@@ -81,72 +69,47 @@ func New(cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	return bc
 }
 
-// SetStore sets the store to use
-func (b *Blockchain) SetStore(store common.Store) {
-	b.store = store
-}
-
-// getChains return all known chains from the store
-func (b *Blockchain) getChains() (chainsInfo []*common.ChainInfo, err error) {
-	var result []*database.KVObject
-	chainsKey := common.MakeChainsQueryKey()
-	b.store.Get(chainsKey, &result)
-	for _, r := range result {
-		var ci common.ChainInfo
-		if err = util.BytesToObject(r.Value, &ci); err != nil {
-			return nil, err
-		}
-		chainsInfo = append(chainsInfo, &ci)
-	}
-	return
-}
-
 // Up opens the database, initializes the store and
 // creates the genesis block (if required)
 func (b *Blockchain) Up() error {
 
 	var err error
 
+	// We cannot boot up the blockchain manager if a common.Store
+	// implementation has not been set.
 	if b.store == nil {
 		return fmt.Errorf("store has not been initialized")
 	}
 
-	// get known chains
+	// Get known chains
 	chains, err := b.getChains()
 	if err != nil {
 		return err
 	}
 
 	// If there are no known chains described in the metadata and none
-	// in the cache, then we create a new chain.
+	// in the cache, then we create a new chain and save it
 	if len(chains) == 0 && len(b.chains) == 0 {
 
 		b.log.Debug("No existing chain found. Creating genesis chain")
 
-		// create the new chain
-		b.bestChain = NewChain(MainChainID, b.store, b.cfg, b.log)
-
-		// initialize the chain with the genesis block
+		b.bestChain = NewChain(util.RandString(32), b.store, b.cfg, b.log)
 		if err := b.bestChain.init(GenesisBlock); err != nil {
 			return fmt.Errorf("failed to initialize new chain: %s", err)
 		}
-
-		tx := b.store.NewTx()
-		if err := b.recordChain(tx, b.bestChain, 0); err != nil {
-			tx.Rollback()
+		if err := b.saveChain(b.bestChain, "", 0); err != nil {
 			return fmt.Errorf("failed save new chain: %s", err)
 		}
-		tx.Commit()
 
 		b.addChain(b.bestChain)
 		return nil
 	}
 
-	// At this point, some chains already exists, so we must create
-	// chain objects representing these chains.
-	for _, c := range chains {
-		chain := NewChain(c.ID, b.store, b.cfg, b.log)
-		b.addChain(chain)
+	// Load all known chains
+	for _, chainInfo := range chains {
+		if err := b.loadChain(chainInfo); err != nil {
+			return err
+		}
 	}
 
 	// Using the best chain rule, we mush select the best chain
@@ -159,28 +122,46 @@ func (b *Blockchain) Up() error {
 	return nil
 }
 
-// hasChain checks whether a chain exists.
-func (b *Blockchain) hasChain(chain *Chain) bool {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+// loadChain finds and load a chain into the chain cache. It
+// can be used to find both standalone chain and child chains.
+func (b *Blockchain) loadChain(chainInfo *common.ChainInfo) error {
 
-	_, ok := b.chains[chain.id]
-	return ok
-}
+	chain := NewChain(chainInfo.ID, b.store, b.cfg, b.log)
 
-// addChain adds a new chain to the list of chains and saves
-// a reference in the meta data. It returns an error if the chain already exists.
-func (b *Blockchain) addChain(chain *Chain) error {
-
-	if b.hasChain(chain) {
-		return common.ErrChainAlreadyKnown
+	// Parent chain id and parent block number
+	// are required to find a parent block.
+	if (len(chainInfo.ParentChainID) != 0 && chainInfo.ParentBlockNumber == 0) ||
+		(len(chainInfo.ParentChainID) == 0 && chainInfo.ParentBlockNumber != 0) {
+		return fmt.Errorf("chain load failed: parent chain id and parent block id are both required")
 	}
 
 	b.chainLock.Lock()
-	b.chains[chain.id] = chain
-	b.chainLock.Unlock()
 
-	return nil
+	// For a chain with a parent chain and block.
+	// We can attempt to find the parent block
+	if len(chainInfo.ParentChainID) > 0 && chainInfo.ParentBlockNumber != 0 {
+
+		parentBlock, err := b.store.GetBlock(chainInfo.ParentChainID, chainInfo.ParentBlockNumber)
+		if err != nil {
+			b.chainLock.Unlock()
+			if err == common.ErrBlockNotFound {
+				return fmt.Errorf(fmt.Sprintf("chain load failed: parent block {%d} of chain {%s} not found", chainInfo.ParentBlockNumber, chain.id))
+			}
+			return err
+		}
+
+		// set the parent block and chain info
+		chain.parentBlock = parentBlock
+		chain.info = chainInfo
+	}
+
+	b.chainLock.Unlock()
+	return b.addChain(chain)
+}
+
+// setStore sets the store to use
+func (b *Blockchain) setStore(store common.Store) {
+	b.store = store
 }
 
 func (b *Blockchain) removeChain(chain *Chain) {
@@ -312,26 +293,107 @@ func (b *Blockchain) isOrphanBlock(blockHash string) bool {
 	return b.orphanBlocks.Get(blockHash) != nil
 }
 
-// recordChain store a record about this new chain
-func (b *Blockchain) recordChain(tx database.Tx, chain *Chain, parentBlockNumber uint64) error {
+// findChainInfo finds information about chain
+func (b *Blockchain) findChainInfo(chainID string) (*common.ChainInfo, error) {
+
+	var result database.KVObject
+	var chainInfo common.ChainInfo
+	var chainKey = common.MakeChainKey(chainID)
+
+	b.store.GetFirstOrLast(true, chainKey, &result)
+	if len(result.Value) == 0 {
+		return nil, common.ErrChainNotFound
+	}
+	if err := util.BytesToObject(result.Value, &chainInfo); err != nil {
+		return nil, err
+	}
+
+	return &chainInfo, nil
+}
+
+// saveChain store a record about this new chain on the database.
+// It will also cache the chain in memory that future query will be faster.
+func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNumber uint64, opts ...common.CallOp) error {
+
+	var err error
+	var tx database.Tx
+	var canFinish = true
+
+	if len(opts) > 0 {
+		for _, op := range opts {
+			switch _op := op.(type) {
+			case common.TxOp:
+				tx = _op.Tx
+				canFinish = _op.CanFinish
+			}
+		}
+	} else if tx == nil {
+		tx = b.store.NewTx()
+	}
+
+	chain.info = &common.ChainInfo{
+		ID:                chain.id,
+		ParentBlockNumber: parentBlockNumber,
+		ParentChainID:     parentChainID,
+	}
+
 	chainKey := common.MakeChainKey(chain.id)
-	tx.Put([]*database.KVObject{
-		database.NewKVObject(chainKey, util.ObjectToBytes(common.ChainInfo{
-			ID:           chain.id,
-			ParentNumber: parentBlockNumber,
-		})),
-	})
+	err = tx.Put([]*database.KVObject{database.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
+	if err != nil {
+		if canFinish {
+			tx.Rollback()
+		}
+		return err
+	}
+
+	if canFinish {
+		return tx.Commit()
+	}
+
+	return b.addChain(chain)
+}
+
+// getChains return all known chains
+func (b *Blockchain) getChains() (chainsInfo []*common.ChainInfo, err error) {
+	var result []*database.KVObject
+	chainsKey := common.MakeChainsQueryKey()
+	b.store.Get(chainsKey, &result)
+	for _, r := range result {
+		var ci common.ChainInfo
+		if err = util.BytesToObject(r.Value, &ci); err != nil {
+			return nil, err
+		}
+		chainsInfo = append(chainsInfo, &ci)
+	}
+	return
+}
+
+// hasChain checks whether a chain exists.
+func (b *Blockchain) hasChain(chain *Chain) bool {
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
+
+	_, ok := b.chains[chain.id]
+	return ok
+}
+
+// addChain adds a new chain to the list of chains.
+func (b *Blockchain) addChain(chain *Chain) error {
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
+	b.chains[chain.id] = chain
 	return nil
 }
 
-// newChain creates a new chain which represents a fork.
+// newChain creates a new chain which may represent a fork.
 // initialBlock is the block that will be added to this chain (a genesis block).
 // parentBlock is the block that is the parent of the initialBlock. The parentBlock
-// will be a block in another chain if this chain represents a fork.
-func (b *Blockchain) newChain(tx database.Tx, initialBlock, parentBlock *wire.Block) (*Chain, error) {
+// will be a block in another chain if this chain represents a fork. While
+// parentChain is the chain on which the parent block sits in.
+func (b *Blockchain) newChain(tx database.Tx, initialBlock *wire.Block, parentBlock *wire.Block, parentChain *Chain) (*Chain, error) {
 
-	// stale block and its parent must be provided. They must also
-	// be related through the stableBlock referencing the parent block's hash.
+	// The block and its parent must be provided. They must also
+	// be related through the initialBlock referencing the parent block's hash.
 	if initialBlock == nil {
 		return nil, fmt.Errorf("initial block cannot be nil")
 	}
@@ -343,15 +405,22 @@ func (b *Blockchain) newChain(tx database.Tx, initialBlock, parentBlock *wire.Bl
 	}
 
 	// create a new chain. Assign a unique and random id to it
+	// set the parent block and chain on the new chain
 	chain := NewChain(util.RandString(32), b.store, b.cfg, b.log)
-	chain.setParentBlock(parentBlock)
+	chain.parentBlock = parentBlock
 
-	// add the stale block to the new chain.
+	// append the initial block to the new chain.
 	if err := chain.append(initialBlock, common.TxOp{Tx: tx, CanFinish: false}); err != nil {
 		return nil, err
 	}
 
-	b.recordChain(tx, chain, parentBlock.GetNumber())
+	var parentChainID string
+	if parentChain != nil {
+		parentChainID = parentChain.id
+	}
+
+	// store a record of this chain in the store
+	b.saveChain(chain, parentChainID, parentBlock.GetNumber(), common.TxOp{Tx: tx, CanFinish: false})
 
 	return chain, nil
 }

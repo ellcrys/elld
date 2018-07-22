@@ -6,7 +6,7 @@ var ChainDotJSON = []string{
 			"parentHash": null,
 			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
 			"number": 1,
-			"stateRoot": "abc",
+			"stateRoot": "0x10",
 			"transactionsRoot": "jsjhf9e3i9nfi",
 			"nonce": 0,
 			"mixHash": "",

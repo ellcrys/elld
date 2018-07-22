@@ -7,6 +7,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 )
@@ -17,9 +18,12 @@ type Chain struct {
 	// id represents the identifier of this chain
 	id string
 
-	// parentBlock represents the block from which this chain was formed.
+	// parentBlock represents the block from which this chain is formed.
 	// A chain that is not a subtree of another chain will have this set to nil.
 	parentBlock *wire.Block
+
+	// info holds information about the chain
+	info *common.ChainInfo
 
 	// cfg includes configuration parameters of the client
 	cfg *config.EngineConfig
@@ -33,11 +37,6 @@ type Chain struct {
 
 	// log is used for logging
 	log logger.Logger
-
-	// stateTree is used to store the hashes of all objects in the chain
-	// such that the transition of objects from one state to another
-	// is deterministically verifiable.
-	stateTree *HashTree
 }
 
 // NewChain creates an instance of a chain. It will create metadata object for the
@@ -49,37 +48,30 @@ func NewChain(id string, store common.Store, cfg *config.EngineConfig, log logge
 	chain.store = store
 	chain.chainLock = &sync.RWMutex{}
 	chain.log = log
-	chain.stateTree = NewHashTree(id, store)
 	return chain
-}
-
-func (c *Chain) setParentBlock(b *wire.Block) {
-	c.parentBlock = b
 }
 
 // init initializes a new chain with a block. The block becomes the "genesis"
 // block of the chain if no block already exists or attempts to append the block
 // to the current block at the time.
 func (c *Chain) init(block string) error {
-
-	// Unmarshal the genesis block JSON data to wire.Block
-	genBlock, err := wire.BlockFromString(block)
+	b, err := wire.BlockFromString(block)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal genesis block data: %s", err)
+		return fmt.Errorf("failed to unmarshal block data: %s", err)
 	}
-
-	return c.append(genBlock)
+	return c.append(b)
 }
 
 // getTipHeader returns the header of the highest block on this chain
-func (c *Chain) getTipHeader() (*wire.Header, error) {
+func (c *Chain) getTipHeader(opts ...common.CallOp) (*wire.Header, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
-	h, err := c.store.GetBlockHeader(c.id, 0)
+	h, err := c.store.GetBlockHeader(c.id, 0, opts...)
 	if err != nil {
 		return nil, err
 	}
+
 	return h, nil
 }
 
@@ -186,4 +178,43 @@ func (c *Chain) append(block *wire.Block, opts ...common.CallOp) error {
 	}
 
 	return c.store.PutBlock(c.id, block, common.TxOp{Tx: tx, CanFinish: canFinish})
+}
+
+// NewStateTree creates a new tree. When backLinked is set to true
+// the root of the previous block is included as the first entry to the tree.
+func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*Tree, error) {
+
+	var prevRoot []byte
+
+	// Get the root of the block at the tip. If no block was found, it means the chain is empty.
+	// In this case, if the chain has a parent block, we use the parent block stateRoot.
+	tipHeader, err := c.getTipHeader(opts...)
+	if err != nil {
+		if err != common.ErrBlockNotFound {
+			return nil, err
+		}
+		if c.parentBlock != nil {
+			prevRoot, err = util.FromHex(c.parentBlock.Header.StateRoot)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode parent state root")
+			}
+		}
+	} else {
+		// Decode the state root to byte equivalent
+		prevRoot, err = util.FromHex(tipHeader.StateRoot)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode chain tip state root")
+		}
+	}
+
+	// Create the new tree and seed it by adding the root
+	// of the previous block as the first item. This ensures
+	// cryptographic, backward linkage with previous blocks. No need do
+	// this if no tip block or noBackLink is true
+	tree := NewTree()
+	if !noBackLink && len(prevRoot) > 0 {
+		tree.Add(TreeItem(prevRoot))
+	}
+
+	return tree, nil
 }
