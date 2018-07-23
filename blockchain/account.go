@@ -2,16 +2,12 @@ package blockchain
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/ellcrys/druid/util"
 	common "github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/wire"
 )
-
-// ErrAccountNotFound refers to a missing account
-var ErrAccountNotFound = fmt.Errorf("account not found")
 
 func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Account) error {
 	b.chainLock.Lock()
@@ -31,7 +27,7 @@ func (b *Blockchain) GetAccount(chain *Chain, address string) (*wire.Account, er
 	var result database.KVObject
 	chain.store.GetFirstOrLast(false, common.QueryAccountKey(chain.id, address), &result)
 	if len(result.Key) == 0 {
-		return nil, ErrAccountNotFound
+		return nil, common.ErrAccountNotFound
 	}
 
 	var account wire.Account

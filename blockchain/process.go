@@ -96,7 +96,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
 	recipientAcct, err = b.GetAccount(chain, tx.To)
 	if err != nil {
-		if err != ErrAccountNotFound {
+		if err != common.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
 		}
 		txOps = append(txOps, &common.OpCreateAccount{

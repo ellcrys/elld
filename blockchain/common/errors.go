@@ -35,4 +35,7 @@ var (
 
 	// ErrBlockFailedValidation means a block failed validation
 	ErrBlockFailedValidation = fmt.Errorf("block failed validation")
+
+	// ErrAccountNotFound refers to a missing account
+	ErrAccountNotFound = fmt.Errorf("account not found")
 )

@@ -105,25 +105,25 @@ var _ = Describe("Blockchain", func() {
 			})
 		})
 
-		Context("with more that one object matching the account prefix but differ by block number", func() {
+		// Context("with more that one object matching the account prefix but differ by block number", func() {
 
-			BeforeEach(func() {
-				err = bc.putAccount(1, chain, account)
-				Expect(err).To(BeNil())
+		// 	BeforeEach(func() {
+		// 		err = bc.putAccount(1, chain, account)
+		// 		Expect(err).To(BeNil())
 
-				// update account
-				account.Balance = "100"
-				err = bc.putAccount(2, chain, account)
-				Expect(err).To(BeNil())
-			})
+		// 		// update account
+		// 		account.Balance = "100"
+		// 		err = bc.putAccount(2, chain, account)
+		// 		Expect(err).To(BeNil())
+		// 	})
 
-			It("should return the account with the highest block number", func() {
-				a, err := bc.GetAccount(chain, account.Address)
-				Expect(err).To(BeNil())
-				Expect(a).ToNot(BeNil())
-				Expect(a).To(Equal(account))
-				Expect(a.Balance).To(Equal("100"))
-			})
-		})
+		// 	It("should return the account with the highest block number", func() {
+		// 		a, err := bc.GetAccount(chain, account.Address)
+		// 		Expect(err).To(BeNil())
+		// 		Expect(a).ToNot(BeNil())
+		// 		Expect(a).To(Equal(account))
+		// 		Expect(a.Balance).To(Equal("100"))
+		// 	})
+		// })
 	})
 })

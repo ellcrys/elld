@@ -10,12 +10,12 @@ import (
 // MakeAccountKey constructs a key for an account
 func MakeAccountKey(blockNum uint64, chainID, address string) []byte {
 	bn := strconv.FormatUint(blockNum, 10)
-	return database.MakeKey([]byte(bn), []string{chainID, "account", address})
+	return database.MakeKey([]byte(bn), []string{"chain", chainID, "account", address})
 }
 
 // QueryAccountKey constructs a key for finding account data in the store and hash tree.
 func QueryAccountKey(chainID, address string) []byte {
-	return database.MakePrefix([]string{chainID, "account", address})
+	return database.MakePrefix([]string{"chain", chainID, "account", address})
 }
 
 // MakeBlockchainMetadataKey constructs a key for storing blockchain-wide metadata
