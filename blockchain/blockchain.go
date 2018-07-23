@@ -240,30 +240,44 @@ func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain
 }
 
 // chooseBestChain returns the chain that is considered the
-// legitimate chain. For now, we will stick to the longest
-// chain being the best.
-// TODO: For hybrid mode, the longest chain with the most amount of endorser ticket value
-// should be the main chain. If we are implementing GHOST protocol, then this becomes more complicated.
+// legitimate chain. The longest chain is considered the best chain.
 func (b *Blockchain) chooseBestChain() (*Chain, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	var curBest *Chain
+	var bestChains []*Chain
 	var curHeight uint64
+
+	// If no chain exists on the blockchain, return nil
+	if len(b.chains) == 0 {
+		return nil, nil
+	}
+
+	// for each known chains, we must find the longest chain and
+	// add to bestChain. If two chains are of same height, then that indicates
+	// a tie and as such the bestChain will include these chains.
 	for _, chain := range b.chains {
-		header, err := chain.getTipHeader()
+		height, err := chain.height()
 		if err != nil {
-			if err == common.ErrBlockNotFound {
-				continue
-			}
 			return nil, err
 		}
-		if header.Number > curHeight {
-			curHeight = header.Number
-			curBest = chain
+		if height > curHeight {
+			curHeight = height
+			bestChains = []*Chain{chain}
+		} else if height == curHeight {
+			bestChains = append(bestChains, chain)
 		}
 	}
-	return curBest, nil
+
+	// When there is a definite best chain, we return it immediately
+	if len(bestChains) == 1 {
+		return bestChains[0], nil
+	}
+
+	// TODO: At this point there is a tie between two or more chains.
+	// We need to perform tie breaker algorithms.
+
+	return bestChains[0], nil
 }
 
 func (b *Blockchain) addRejectedBlock(block *wire.Block) {
@@ -347,7 +361,9 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 	}
 
 	if canFinish {
-		return tx.Commit()
+		if err = tx.Commit(); err != nil {
+			return err
+		}
 	}
 
 	return b.addChain(chain)

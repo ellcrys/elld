@@ -17,7 +17,7 @@ var _ = Describe("Blockchain", func() {
 	var chain *Chain
 	var db database.DB
 	var chainID = "main"
-	var genesisBlock *wire.Block
+	var block *wire.Block
 
 	BeforeEach(func() {
 		var err error
@@ -41,7 +41,7 @@ var _ = Describe("Blockchain", func() {
 		Expect(err).To(BeNil())
 		err = chain.init(testdata.ChainDotJSON[0])
 		Expect(err).To(BeNil())
-		genesisBlock, _ = wire.BlockFromString(testdata.ChainDotJSON[0])
+		block, _ = wire.BlockFromString(testdata.ChainDotJSON[0])
 	})
 
 	AfterEach(func() {
@@ -116,16 +116,23 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
-	Describe(".appendBlock", func() {
+	Describe(".append", func() {
 
-		var block, block2 *wire.Block
+		var block, block2, block3 *wire.Block
 
 		BeforeEach(func() {
 			block, _ = wire.BlockFromString(testdata.ChainDotJSON[1])
 			block2, _ = wire.BlockFromString(testdata.ChainDotJSON[2])
+			block3, _ = wire.BlockFromString(testdata.ChainDotJSON[3])
 		})
 
-		It("should return err when the block's parent hash does not match the hash of the current tail block", func() {
+		It("should return err when the block number does not serial match the current tip number", func() {
+			err = chain.append(block3)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("unable to append: candidate block number {1} is not the expected block number {expected=2}"))
+		})
+
+		It("should return err when the block's parent hash does not match the hash of the current tip block", func() {
 			err = chain.append(block)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unable to append block: parent hash does not match the hash of the current block"))
@@ -139,25 +146,41 @@ var _ = Describe("Blockchain", func() {
 
 	Describe(".hashBlock", func() {
 
-		var block *wire.Block
-
-		BeforeEach(func() {
-			block, err = wire.BlockFromString(testdata.ChainDotJSON[1])
-			Expect(err).To(BeNil())
-		})
-
 		It("should return false if block does not exist in the chain", func() {
-			exist, err := chain.hasBlock(block.GetHash())
+			exist, err := chain.hasBlock("some_unknown_hash")
 			Expect(err).To(BeNil())
 			Expect(exist).To(BeFalse())
 		})
 
 		It("should return true if block exist in the chain", func() {
-			var r []*database.KVObject
-			chain.store.Get([]byte("block"), &r)
-			exist, err := chain.hasBlock(genesisBlock.GetHash())
+			exist, err := chain.hasBlock(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(exist).To(BeTrue())
+		})
+	})
+
+	Describe(".height", func() {
+
+		var chain *Chain
+
+		BeforeEach(func() {
+			chain = NewChain("chain_a", store, cfg, log)
+		})
+
+		It("should return zero if chain has no block", func() {
+			height, err := chain.height()
+			Expect(err).To(BeNil())
+			Expect(height).To(Equal(uint64(0)))
+		})
+
+		It("should return 1 if chain contains 1 block", func() {
+			block, _ := wire.BlockFromString(testdata.ChainDotJSON[3])
+			err := chain.append(block)
+			Expect(err).To(BeNil())
+
+			height, err := chain.height()
+			Expect(err).To(BeNil())
+			Expect(height).To(Equal(uint64(1)))
 		})
 	})
 
@@ -170,7 +193,7 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		It("should successfully get block header by hash", func() {
-			header, err := chain.getBlockHeaderByHash(genesisBlock.GetHash())
+			header, err := chain.getBlockHeaderByHash(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(header).ToNot(BeNil())
 		})
@@ -184,7 +207,7 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		It("should successfully get block by hash", func() {
-			block, err := chain.getBlockByHash(genesisBlock.GetHash())
+			block, err := chain.getBlockByHash(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(block).ToNot(BeNil())
 		})

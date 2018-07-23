@@ -268,9 +268,9 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 		}
 	}
 
-	// Mock execute block to derive the state objects and the resulting
+	// Execute block to derive the state objects and the resulting
 	// state root should the state object be applied to the blockchain state tree.
-	mockRoot, stateObjs, err := b.mockExecBlock(chain, block, txOp)
+	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -278,7 +278,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 
 	// Compare the state root in the block header with the root obtained
 	// from the mock execution of the block.
-	if block.Header.StateRoot != util.ToHex(mockRoot) {
+	if block.Header.StateRoot != util.ToHex(newStateRoot) {
 		tx.Rollback()
 		return nil, common.ErrBlockStateRootInvalid
 	}
@@ -358,11 +358,9 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (*Chain, error) {
 	return chain, nil
 }
 
-// mockExecBlock performs a mock execution of the blocks to output
-// the resulting state objects and state root without making permanent
-// commits to the current blockchain state. chain is the specific chain
-// to perform this execution against.
-func (b *Blockchain) mockExecBlock(chain *Chain, block *wire.Block, opts ...common.CallOp) (root []byte, stateObjs []*common.StateObject, err error) {
+// execBlock execute the transactions of the blocks to
+// output the resulting state objects and state root.
+func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.CallOp) (root []byte, stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.

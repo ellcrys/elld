@@ -138,3 +138,40 @@ var LoadChainData = []string{
 		"sig": "abc"
 	}`,
 }
+
+var ChooseBestChainData = []string{
+	`{
+		"header": {
+			"parentHash": null,
+			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
+			"number": 1,
+			"stateRoot": "abcd",
+			"transactionsRoot": "jsjhf9e3i9nfi",
+			"nonce": 0,
+			"mixHash": "",
+			"difficulty": "500000",
+			"timestamp": 0
+		},
+		"transactions": [
+		],
+		"hash": "hash_1",
+		"sig": "abc"
+	}`,
+	`{
+		"header": {
+			"parentHash": "hash_1",
+			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
+			"number": 2,
+			"stateRoot": "abcd",
+			"transactionsRoot": "jsjhf9e3i9nfi",
+			"nonce": 0,
+			"mixHash": "",
+			"difficulty": "500000",
+			"timestamp": 0
+		},
+		"transactions": [
+		],
+		"hash": "hash_2",
+		"sig": "abc"
+	}`,
+}

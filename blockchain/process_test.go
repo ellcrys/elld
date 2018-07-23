@@ -247,7 +247,7 @@ var _ = Describe("Blockchain", func() {
 			})
 
 			It("should return err ", func() {
-				_, _, err := bc.mockExecBlock(chain, block)
+				_, _, err := bc.execBlock(chain, block)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("failed to process transactions: rejected: failed to get sender's account: account not found"))
 			})
@@ -374,7 +374,7 @@ var _ = Describe("Blockchain", func() {
 				block.Transactions[0].From = sender.Addr()
 				block.Transactions[0].To = recipient.Addr()
 
-				root, stateObjs, err := bc.mockExecBlock(chain, block)
+				root, stateObjs, err := bc.execBlock(chain, block)
 				Expect(err).To(BeNil())
 				block.Header.StateRoot = util.ToHex(root)
 
@@ -424,20 +424,20 @@ var _ = Describe("Blockchain", func() {
 				Expect(chain.hasBlock(orphanParent.Hash)).To(BeTrue())
 			})
 
-			// It("should add orphan when its parent exists in a chain", func() {
-			// 	err = bc.processOrphanBlocks(orphanParent.Hash)
-			// 	Expect(err).To(BeNil())
-			// 	Expect(bc.orphanBlocks.Len()).To(Equal(0))
+			It("should add orphan when its parent exists in a chain", func() {
+				err = bc.processOrphanBlocks(orphanParent.Hash)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Len()).To(Equal(0))
 
-			// 	Describe("chain must contain the previously orphaned block as the tip", func() {
-			// 		has, err := chain.hasBlock(orphan.Hash)
-			// 		Expect(err).To(BeNil())
-			// 		Expect(has).To(BeTrue())
-			// 		tipHeader, err := chain.getTipHeader()
-			// 		Expect(err).To(BeNil())
-			// 		Expect(tipHeader.ComputeHash()).To(Equal(orphan.Header.ComputeHash()))
-			// 	})
-			// })
+				Describe("chain must contain the previously orphaned block as the tip", func() {
+					has, err := chain.hasBlock(orphan.Hash)
+					Expect(err).To(BeNil())
+					Expect(has).To(BeTrue())
+					tipHeader, err := chain.getTipHeader()
+					Expect(err).To(BeNil())
+					Expect(tipHeader.ComputeHash()).To(Equal(orphan.Header.ComputeHash()))
+				})
+			})
 		})
 
 		Context("with more than one orphan block", func() {
@@ -458,20 +458,20 @@ var _ = Describe("Blockchain", func() {
 				Expect(chain.hasBlock(orphanParent.Hash)).To(BeTrue())
 			})
 
-			// It("should recursively add all orphans when their parent exists in a chain", func() {
-			// 	err = bc.processOrphanBlocks(orphanParent.Hash)
-			// 	Expect(err).To(BeNil())
-			// 	Expect(bc.orphanBlocks.Len()).To(Equal(0))
+			It("should recursively add all orphans when their parent exists in a chain", func() {
+				err = bc.processOrphanBlocks(orphanParent.Hash)
+				Expect(err).To(BeNil())
+				Expect(bc.orphanBlocks.Len()).To(Equal(0))
 
-			// 	Describe("chain must contain the previously orphaned blocks and orphan2 as the tip", func() {
-			// 		has, err := chain.hasBlock(orphan.Hash)
-			// 		Expect(err).To(BeNil())
-			// 		Expect(has).To(BeTrue())
-			// 		tipHeader, err := chain.getTipHeader()
-			// 		Expect(err).To(BeNil())
-			// 		Expect(tipHeader.ComputeHash()).To(Equal(orphan2.Header.ComputeHash()))
-			// 	})
-			// })
+				Describe("chain must contain the previously orphaned blocks and orphan2 as the tip", func() {
+					has, err := chain.hasBlock(orphan.Hash)
+					Expect(err).To(BeNil())
+					Expect(has).To(BeTrue())
+					tipHeader, err := chain.getTipHeader()
+					Expect(err).To(BeNil())
+					Expect(tipHeader.ComputeHash()).To(Equal(orphan2.Header.ComputeHash()))
+				})
+			})
 		})
 	})
 })

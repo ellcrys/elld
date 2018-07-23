@@ -295,6 +295,10 @@ var _ = Describe("Blockchain", func() {
 		var chain, subChain *Chain
 
 		BeforeEach(func() {
+			bc.chains = make(map[string]*Chain)
+		})
+
+		BeforeEach(func() {
 			chain = NewChain("chain_2", store, cfg, log)
 			subChain = NewChain("sub_chain", store, cfg, log)
 
@@ -402,4 +406,83 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
+	Describe(".chooseBestChain", func() {
+
+		// Context("with one highest block", func() {
+
+		// 	var chainA, chainB *Chain
+
+		// 	BeforeEach(func() {
+		// 		bc.chains = make(map[string]*Chain)
+		// 	})
+
+		// 	BeforeEach(func() {
+		// 		chainA = NewChain("chain_a", store, cfg, log)
+		// 		err := bc.saveChain(chainA, "", 0)
+		// 		Expect(err).To(BeNil())
+		// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+		// 		err = chainA.append(block)
+		// 		Expect(err).To(BeNil())
+		// 	})
+
+		// 	BeforeEach(func() {
+		// 		chainB = NewChain("chain_b", store, cfg, log)
+		// 		err := bc.saveChain(chainB, "", 0)
+		// 		Expect(err).To(BeNil())
+		// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+		// 		err = chainB.append(block)
+		// 		Expect(err).To(BeNil())
+		// 	})
+
+		// 	It("should", func() {
+		// 		bc.chooseBestChain()
+		// 		_ = 2
+		// 	})
+
+		// })
+		Context("with one highest block", func() {
+
+			var chainA, chainB, chainC *Chain
+
+			BeforeEach(func() {
+				bc.chains = make(map[string]*Chain)
+			})
+
+			BeforeEach(func() {
+				chainA = NewChain("chain_a", store, cfg, log)
+				err := bc.saveChain(chainA, "", 0)
+				Expect(err).To(BeNil())
+				block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+				err = chainA.append(block)
+				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				chainB = NewChain("chain_b", store, cfg, log)
+				err := bc.saveChain(chainB, "", 0)
+				Expect(err).To(BeNil())
+				block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+				err = chainB.append(block)
+				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				chainC = NewChain("chain_c", store, cfg, log)
+				err := bc.saveChain(chainC, "", 0)
+				Expect(err).To(BeNil())
+				block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+				block2, err := wire.BlockFromString(testdata.ChooseBestChainData[1])
+				err = chainC.append(block)
+				Expect(err).To(BeNil())
+				err = chainC.append(block2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return 'chain_c' as the highest block", func() {
+				bestChain, err := bc.chooseBestChain()
+				Expect(err).To(BeNil())
+				Expect(bestChain).To(Equal(chainC))
+			})
+		})
+	})
 })

@@ -52,4 +52,38 @@ var ChainDotJSON = []string{
 		"hash": "hash_2",
 		"sig": "abc"
 	}`,
+	`{
+		"header": {
+			"parentHash": null,
+			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
+			"number": 1,
+			"stateRoot": "abc",
+			"transactionsRoot": "sjifhahe3i9nfi",
+			"nonce": 0,
+			"mixHash": "",
+			"difficulty": "500000",
+			"timestamp": 0
+		},
+		"transactions": [
+		],
+		"hash": "hash_1",
+		"sig": "abc"
+	}`,
+	`{
+		"header": {
+			"parentHash": null,
+			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
+			"number": 3,
+			"stateRoot": "abc",
+			"transactionsRoot": "sjifhahe3i9nfi",
+			"nonce": 0,
+			"mixHash": "",
+			"difficulty": "500000",
+			"timestamp": 0
+		},
+		"transactions": [
+		],
+		"hash": "hash_1",
+		"sig": "abc"
+	}`,
 }

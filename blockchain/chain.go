@@ -75,6 +75,20 @@ func (c *Chain) getTipHeader(opts ...common.CallOp) (*wire.Header, error) {
 	return h, nil
 }
 
+// height returns the height of this chain. The height can
+// be deduced by fetching the number of the most recent block
+// added to the chain.
+func (c *Chain) height(opts ...common.CallOp) (uint64, error) {
+	tip, err := c.getTipHeader(opts...)
+	if err != nil {
+		if err != common.ErrBlockNotFound {
+			return 0, err
+		}
+		return 0, nil
+	}
+	return tip.GetNumber(), nil
+}
+
 // hasBlock checks if a block with the provided hash exists on this chain
 func (c *Chain) hasBlock(hash string) (bool, error) {
 	c.chainLock.RLock()
@@ -118,9 +132,10 @@ func (c *Chain) getBlockByHash(hash string) (*wire.Block, error) {
 
 // append adds a block to the tail of the chain. It returns
 // error if the previous block hash in the header is not the hash
-// of the current block. If there is no block on the chain yet,
-// then we assume this to be the first block of a fork.
-func (c *Chain) append(block *wire.Block, opts ...common.CallOp) error {
+// of the current block and if the difference between the chain tip
+// and the candidate block number is not 1. If there is no block on
+// the chain yet, then we assume this to be the first block of a fork.
+func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	c.chainLock.Lock()
 	defer c.chainLock.Unlock()
 
@@ -158,7 +173,7 @@ func (c *Chain) append(block *wire.Block, opts ...common.CallOp) error {
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
-	curBlock, err := c.store.GetBlock(c.id, 0, common.TxOp{Tx: tx})
+	chainTip, err := c.store.GetBlock(c.id, 0, common.TxOp{Tx: tx})
 	if err != nil {
 		if err != common.ErrBlockNotFound {
 			if canFinish {
@@ -168,16 +183,26 @@ func (c *Chain) append(block *wire.Block, opts ...common.CallOp) error {
 		}
 	}
 
-	// If we found the current curBlock and its hash does not correspond with the
+	// If the difference between the tip's block number and the new block number
+	// is not 1, then this new block will not satisfy the serial numbering of blocks.
+	if chainTip != nil && (candidate.GetNumber()-chainTip.GetNumber()) != 1 {
+		if canFinish {
+			tx.Rollback()
+		}
+		return fmt.Errorf(fmt.Sprintf("unable to append: candidate block number {%d} "+
+			"is not the expected block number {expected=%d}", candidate.GetNumber(), chainTip.GetNumber()+1))
+	}
+
+	// If we found the current chainTip and its hash does not correspond with the
 	// hash of the block we are trying to append, then we return an error.
-	if curBlock != nil && curBlock.Hash != block.Header.ParentHash {
+	if chainTip != nil && chainTip.Hash != candidate.Header.ParentHash {
 		if canFinish {
 			tx.Rollback()
 		}
 		return fmt.Errorf("unable to append block: parent hash does not match the hash of the current block")
 	}
 
-	return c.store.PutBlock(c.id, block, common.TxOp{Tx: tx, CanFinish: canFinish})
+	return c.store.PutBlock(c.id, candidate, common.TxOp{Tx: tx, CanFinish: canFinish})
 }
 
 // NewStateTree creates a new tree. When backLinked is set to true
