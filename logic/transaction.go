@@ -32,7 +32,7 @@ func (l *Logic) TransactionAdd(tx *wire.Transaction, errCh chan error) error {
 		// Do not allow a transaction with fee below the minimum
 		// network transaction fee.
 		fee, _ := decimal.NewFromString(tx.Fee)
-		if fee.Cmp(constants.A2AMinimumTxFee) == -1 {
+		if fee.Cmp(constants.BalanceTxMinimumFee) == -1 {
 			return sendErr(errCh, wire.ErrTxInsufficientFee)
 		}
 
