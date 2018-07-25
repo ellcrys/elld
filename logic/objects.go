@@ -5,8 +5,8 @@ import (
 )
 
 // ObjectsPut store objects
-func (l *Logic) ObjectsPut(addresses []*database.KVObject, errCh chan error) error {
-	err := l.engine.DB().Put(addresses)
+func (l *Logic) ObjectsPut(objs []*database.KVObject, errCh chan error) error {
+	err := l.engine.DB().Put(objs)
 	return sendErr(errCh, err)
 }
 

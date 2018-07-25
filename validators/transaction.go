@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/txpool"
 
 	"github.com/shopspring/decimal"
@@ -29,6 +30,10 @@ type TxsValidator struct {
 
 	// txpool refers to the transaction pool
 	txpool *txpool.TxPool
+
+	// bchain is the blockchain manager. We use it
+	// to query transactions
+	bchain *blockchain.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in

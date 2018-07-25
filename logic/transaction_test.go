@@ -108,7 +108,6 @@ var _ = Describe("Transaction", func() {
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).To(BeNil())
-			Expect(n.GossipProto().HasTxSession(tx.ID())).To(BeTrue())
 		})
 	})
 })
