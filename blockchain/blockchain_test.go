@@ -397,7 +397,7 @@ var _ = Describe("Blockchain", func() {
 			initialBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
 			initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
 
-			tx := chain.store.NewTx()
+			tx, _ := chain.store.NewTx()
 			chain, err := bc.newChain(tx, initialBlock, initialBlockParent, nil)
 			Expect(err).To(BeNil())
 			Expect(chain).ToNot(BeNil())

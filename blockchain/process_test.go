@@ -394,6 +394,15 @@ var _ = Describe("Blockchain", func() {
 						Expect(result).To(HaveLen(1))
 					}
 				})
+
+				Describe("all transactions must be persisted", func() {
+					for _, tx := range block.Transactions {
+						txKey := common.MakeTxKey(chain.id, tx.ID())
+						var result []*database.KVObject
+						store.Get(txKey, &result)
+						Expect(result).To(HaveLen(1))
+					}
+				})
 			})
 		})
 	})

@@ -254,7 +254,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 		return nil, common.ErrBlockFailedValidation
 	}
 
-	tx := chain.store.NewTx()
+	tx, _ := chain.store.NewTx()
 	txOp := common.TxOp{Tx: tx, CanFinish: false}
 
 	// If the block number is the same as the chainTip, then this
@@ -296,6 +296,12 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 	if err := chain.append(block, txOp); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
+	}
+
+	// Index the transactions so they can be queried directly
+	if err := chain.putTransactions(block.Transactions, txOp); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("put transaction failed: %s", err)
 	}
 
 	// Commit the transaction

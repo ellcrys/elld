@@ -75,7 +75,7 @@ type Store interface {
 	GetFirstOrLast(first bool, key []byte, result *database.KVObject)
 
 	// NewTx creates and returns a transaction
-	NewTx() database.Tx
+	NewTx() (database.Tx, error)
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice

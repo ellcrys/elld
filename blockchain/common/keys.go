@@ -43,3 +43,8 @@ func MakeChainKey(chainID string) []byte {
 func MakeChainsQueryKey() []byte {
 	return database.MakePrefix([]string{"chainInfo"})
 }
+
+// MakeTxKey constructs a key for storing a transaction
+func MakeTxKey(chainID, txHash string) []byte {
+	return database.MakeKey([]byte(chainID), []string{"chain", chainID, "tx", txHash})
+}

@@ -126,3 +126,9 @@ type DB interface {
 	// NewTx creates a transaction
 	NewTx() (Tx, error)
 }
+
+// TxCreator defines an interface for creating database transaction
+type TxCreator interface {
+	// NewTx creates a transaction
+	NewTx() (Tx, error)
+}

@@ -140,20 +140,7 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	defer c.chainLock.Unlock()
 
 	var err error
-	var tx database.Tx
-	var canFinish = true
-
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx = c.store.NewTx()
-	}
+	var txOp = common.GetTxOp(c.store, opts...)
 
 	// ensure it passes validation
 	// if err := block.Validate(); err != nil {
@@ -173,11 +160,11 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
-	chainTip, err := c.store.GetBlock(c.id, 0, common.TxOp{Tx: tx})
+	chainTip, err := c.store.GetBlock(c.id, 0, common.TxOp{Tx: txOp.Tx})
 	if err != nil {
 		if err != common.ErrBlockNotFound {
-			if canFinish {
-				tx.Rollback()
+			if txOp.CanFinish {
+				txOp.Tx.Rollback()
 			}
 			return err
 		}
@@ -186,8 +173,8 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	// If the difference between the tip's block number and the new block number
 	// is not 1, then this new block will not satisfy the serial numbering of blocks.
 	if chainTip != nil && (candidate.GetNumber()-chainTip.GetNumber()) != 1 {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return fmt.Errorf(fmt.Sprintf("unable to append: candidate block number {%d} "+
 			"is not the expected block number {expected=%d}", candidate.GetNumber(), chainTip.GetNumber()+1))
@@ -196,13 +183,13 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	// If we found the current chainTip and its hash does not correspond with the
 	// hash of the block we are trying to append, then we return an error.
 	if chainTip != nil && chainTip.Hash != candidate.Header.ParentHash {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return fmt.Errorf("unable to append block: parent hash does not match the hash of the current block")
 	}
 
-	return c.store.PutBlock(c.id, candidate, common.TxOp{Tx: tx, CanFinish: canFinish})
+	return c.store.PutBlock(c.id, candidate, txOp)
 }
 
 // NewStateTree creates a new tree. When backLinked is set to true
@@ -242,4 +229,29 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*Tree, err
 	}
 
 	return tree, nil
+}
+
+// putTransactions stores the provided transactions
+// under the namespace of the chain.
+func (c *Chain) putTransactions(txs []*wire.Transaction, opts ...common.CallOp) error {
+	c.chainLock.Lock()
+	defer c.chainLock.Unlock()
+
+	var txOp = common.GetTxOp(c.store, opts...)
+
+	for i, tx := range txs {
+		txKey := common.MakeTxKey(c.id, tx.ID())
+		if err := txOp.Tx.Put([]*database.KVObject{database.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
+			if txOp.CanFinish {
+				txOp.Tx.Rollback()
+			}
+			return fmt.Errorf("index %d: %s", i, err)
+		}
+	}
+
+	if txOp.CanFinish {
+		return txOp.Tx.Commit()
+	}
+
+	return nil
 }

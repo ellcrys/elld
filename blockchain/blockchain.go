@@ -330,20 +330,7 @@ func (b *Blockchain) findChainInfo(chainID string) (*common.ChainInfo, error) {
 func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNumber uint64, opts ...common.CallOp) error {
 
 	var err error
-	var tx database.Tx
-	var canFinish = true
-
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx = b.store.NewTx()
-	}
+	var txOp = common.GetTxOp(b.store, opts...)
 
 	chain.info = &common.ChainInfo{
 		ID:                chain.id,
@@ -352,16 +339,16 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 	}
 
 	chainKey := common.MakeChainKey(chain.id)
-	err = tx.Put([]*database.KVObject{database.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
+	err = txOp.Tx.Put([]*database.KVObject{database.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
 	if err != nil {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return err
 	}
 
-	if canFinish {
-		if err = tx.Commit(); err != nil {
+	if txOp.CanFinish {
+		if err = txOp.Tx.Commit(); err != nil {
 			return err
 		}
 	}

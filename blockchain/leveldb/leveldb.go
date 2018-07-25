@@ -73,35 +73,19 @@ func (s *Store) getBlock(tx database.Tx, chainID string, number uint64) (*wire.B
 // GetBlockHeader the header of the current block
 func (s *Store) GetBlockHeader(chainID string, number uint64, opts ...common.CallOp) (*wire.Header, error) {
 
-	var tx database.Tx
-	var canFinish = true
 	var err error
+	var txOp = common.GetTxOp(s.db, opts...)
 
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx, err = s.db.NewTx()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create transaction")
-		}
-	}
-
-	block, err := s.getBlock(tx, chainID, number)
+	block, err := s.getBlock(txOp.Tx, chainID, number)
 	if err != nil {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return nil, err
 	}
 
-	if canFinish {
-		return block.Header, tx.Commit()
+	if txOp.CanFinish {
+		return block.Header, txOp.Tx.Commit()
 	}
 
 	return block.Header, nil
@@ -122,35 +106,19 @@ func (s *Store) GetBlockHeaderByHash(chainID string, hash string) (*wire.Header,
 // If the block number begins with -1, the block with the highest block number is returned.
 func (s *Store) GetBlock(chainID string, number uint64, opts ...common.CallOp) (*wire.Block, error) {
 
-	var tx database.Tx
-	var canFinish = true
 	var err error
+	var txOp = common.GetTxOp(s.db, opts...)
 
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx, err = s.db.NewTx()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create transaction")
-		}
-	}
-
-	block, err := s.getBlock(tx, chainID, number)
+	block, err := s.getBlock(txOp.Tx, chainID, number)
 	if err != nil {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return nil, err
 	}
 
-	if canFinish {
-		return block, tx.Commit()
+	if txOp.CanFinish {
+		return block, txOp.Tx.Commit()
 	}
 
 	return block, nil
@@ -159,30 +127,14 @@ func (s *Store) GetBlock(chainID string, number uint64, opts ...common.CallOp) (
 // GetBlockByHash fetches a block by its block hash.
 func (s *Store) GetBlockByHash(chainID string, hash string, opts ...common.CallOp) (*wire.Block, error) {
 
-	var tx database.Tx
-	var canFinish = true
 	var err error
-
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx, err = s.db.NewTx()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create transaction")
-		}
-	}
+	var txOp = common.GetTxOp(s.db, opts...)
 
 	// iterate over the blocks in the chain and locate the block
 	// matching the specified hash
 	var block wire.Block
 	var found = false
-	tx.Iterate(common.MakeBlocksQueryKey(chainID), true, func(kv *database.KVObject) bool {
+	txOp.Tx.Iterate(common.MakeBlocksQueryKey(chainID), true, func(kv *database.KVObject) bool {
 		if err = util.BytesToObject(kv.Value, &block); err != nil {
 			return true
 		}
@@ -190,21 +142,21 @@ func (s *Store) GetBlockByHash(chainID string, hash string, opts ...common.CallO
 		return found
 	})
 	if err != nil {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return nil, err
 	}
 
 	if !found {
-		if canFinish {
-			tx.Rollback()
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return nil, common.ErrBlockNotFound
 	}
 
-	if canFinish {
-		return &block, tx.Commit()
+	if txOp.CanFinish {
+		return &block, txOp.Tx.Commit()
 	}
 
 	return &block, nil
@@ -214,34 +166,17 @@ func (s *Store) GetBlockByHash(chainID string, hash string, opts ...common.CallO
 // Returns error if a block with same number exists.
 func (s *Store) PutBlock(chainID string, block *wire.Block, opts ...common.CallOp) error {
 
-	var tx database.Tx
-	var canFinish = true
-	var err error
+	var txOp = common.GetTxOp(s.db, opts...)
 
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx, err = s.db.NewTx()
-		if err != nil {
-			return fmt.Errorf("failed to create transaction")
-		}
-	}
-
-	if err := s.putBlock(tx, chainID, block); err != nil {
-		if canFinish {
-			tx.Rollback()
+	if err := s.putBlock(txOp.Tx, chainID, block); err != nil {
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return err
 	}
 
-	if canFinish {
-		return tx.Commit()
+	if txOp.CanFinish {
+		return txOp.Tx.Commit()
 	}
 
 	return nil
@@ -275,35 +210,18 @@ func (s *Store) putBlock(tx database.Tx, chainID string, block *wire.Block) erro
 // Put stores an object
 func (s *Store) Put(key []byte, value []byte, opts ...common.CallOp) error {
 
-	var tx database.Tx
-	var canFinish = true
-	var err error
-
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case common.TxOp:
-				tx = _op.Tx
-				canFinish = _op.CanFinish
-			}
-		}
-	} else if tx == nil {
-		tx, err = s.db.NewTx()
-		if err != nil {
-			return fmt.Errorf("failed to create transaction")
-		}
-	}
+	var txOp = common.GetTxOp(s.db, opts...)
 
 	obj := database.NewKVObject(key, value)
-	if err := tx.Put([]*database.KVObject{obj}); err != nil {
-		if canFinish {
-			tx.Rollback()
+	if err := txOp.Tx.Put([]*database.KVObject{obj}); err != nil {
+		if txOp.CanFinish {
+			txOp.Tx.Rollback()
 		}
 		return fmt.Errorf("failed to put object: %s", err)
 	}
 
-	if canFinish {
-		return tx.Commit()
+	if txOp.CanFinish {
+		return txOp.Tx.Commit()
 	}
 
 	return nil
@@ -329,12 +247,12 @@ func (s *Store) GetFirstOrLast(first bool, key []byte, result *database.KVObject
 }
 
 // NewTx creates and returns a transaction
-func (s *Store) NewTx() database.Tx {
+func (s *Store) NewTx() (database.Tx, error) {
 
 	tx, err := s.db.NewTx()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return tx
+	return tx, nil
 }
