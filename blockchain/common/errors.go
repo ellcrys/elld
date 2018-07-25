@@ -38,4 +38,10 @@ var (
 
 	// ErrAccountNotFound refers to a missing account
 	ErrAccountNotFound = fmt.Errorf("account not found")
+
+	// ErrBestChainUnknown means the best/main chain is yet to be determined
+	ErrBestChainUnknown = fmt.Errorf("best chain unknown")
+
+	// ErrTxNotFound means a transaction was not found
+	ErrTxNotFound = fmt.Errorf("transaction not found")
 )

@@ -427,3 +427,29 @@ func (b *Blockchain) newChain(tx database.Tx, initialBlock *wire.Block, parentBl
 
 	return chain, nil
 }
+
+// GetTransaction finds a transaction in the main chain and returns it
+func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	if b.bestChain == nil {
+		return nil, common.ErrBestChainUnknown
+	}
+
+	// Construct transaction key and find it on the main chain
+	var txKey = common.MakeTxKey(b.bestChain.id, hash)
+	var result []*database.KVObject
+	b.bestChain.store.Get(txKey, &result)
+
+	if len(result) == 0 {
+		return nil, common.ErrTxNotFound
+	}
+
+	var tx wire.Transaction
+	if err := util.BytesToObject(result[0].Value, &tx); err != nil {
+		return nil, err
+	}
+
+	return &tx, nil
+}

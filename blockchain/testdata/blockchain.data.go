@@ -175,3 +175,53 @@ var ChooseBestChainData = []string{
 		"sig": "abc"
 	}`,
 }
+
+var GetTransactionData = []string{
+	`{
+		"header": {
+			"parentHash": null,
+			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
+			"number": 1,
+			"stateRoot": "abcd",
+			"transactionsRoot": "jsjhf9e3i9nfi",
+			"nonce": 0,
+			"mixHash": "",
+			"difficulty": "500000",
+			"timestamp": 0
+		},
+		"transactions": [
+		],
+		"hash": "hash_1",
+		"sig": "abc"
+	}`,
+	`{
+		"header": {
+			"parentHash": "hash_1",
+			"creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
+			"number": 2,
+			"stateRoot": "abcd",
+			"transactionsRoot": "jsjhf9e3i9nfi",
+			"nonce": 0,
+			"mixHash": "",
+			"difficulty": "500000",
+			"timestamp": 0
+		},
+		"transactions": [
+			{
+				"type": 1,
+				"nonce": 2,
+				"to": "efjshfhh389djn29snmnvuis",
+				"senderPubKey": "xsj2909jfhhjskmj99k",
+				"from": "",
+				"value": "100.333",
+				"timestamp": 1508673895,
+				"fee": "0.00003",
+				"invokeArgs": null,
+				"sig": "93udndte7hxbvhivmnzbzguruhcbybcdbxcbyulmxsncs",
+				"hash": "93udndte7hxbvhivmnzbzguruhcbybcdbxcbyulmxsncs"
+			}
+		],
+		"hash": "hash_2",
+		"sig": "abc"
+	}`,
+}

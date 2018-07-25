@@ -406,6 +406,40 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
+	Describe(".GetTransaction", func() {
+		var block *wire.Block
+		var chain *Chain
+
+		BeforeEach(func() {
+			chain = NewChain("chain_a", store, cfg, log)
+			block, _ = wire.BlockFromString(testdata.GetTransactionData[1])
+			chain.append(block)
+			err = chain.putTransactions(block.Transactions)
+			Expect(err).To(BeNil())
+		})
+
+		It("should return err = 'best chain unknown' if the best chain has not been decided", func() {
+			_, err := bc.GetTransaction(block.Transactions[0].ID())
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(common.ErrBestChainUnknown))
+		})
+
+		It("should return transaction and no error", func() {
+			bc.bestChain = chain
+			tx, err := bc.GetTransaction(block.Transactions[0].ID())
+			Expect(err).To(BeNil())
+			Expect(tx).To(Equal(block.Transactions[0]))
+		})
+
+		It("should return err = 'transaction not found' when main chain does not have the transaction", func() {
+			bc.bestChain = chain
+			tx, err := bc.GetTransaction("unknown")
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(common.ErrTxNotFound))
+			Expect(tx).To(BeNil())
+		})
+	})
+
 	Describe(".chooseBestChain", func() {
 
 		// Context("with one highest block", func() {
