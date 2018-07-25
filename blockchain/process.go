@@ -185,13 +185,13 @@ func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain *Chain) 
 	// here we will process each transaction and attempt
 	// to decide what should happen to the chain state by
 	// producing transition objects.
-	for _, tx := range txs {
+	for i, tx := range txs {
 		switch tx.Type {
 
 		case wire.TxTypeBalance:
 			newOps, err := b.processBalanceTx(tx, ops, chain)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("index{%d}: %s", i, err)
 			}
 			for _, op := range newOps {
 				ops = addOp(ops, op)
@@ -222,36 +222,48 @@ func ComputeTxsRoot(txs []*wire.Transaction) []byte {
 	return tree.Root()
 }
 
-// maybeAcceptBlock attempts to append a block to a current chain
-// or a newly forked chain. It returns the chain in which the block was
-// appended to.
-// NOTE: It must be called with chain lock held by the caller.
-func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
+// maybeAcceptBlock attempts to determine the suitable chain for the
+// provided block, execute the block's transactions to derive the
+// new set of state objects. The state objects and transactions are
+// then stored to the store.
+//
+// If a chain is passed as parameter, no attempt to determine the chain
+// is taken. Instead, the block will be processed for inclusion in the
+// passed chain. This should only be used for the genesis block.
+//
+// NOTE: This method must be called with chain lock held by the caller.
+func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, error) {
 
-	// find the chain where the parent of the block exists on. If a chain is not found,
-	// then the block is considered an orphan. If the chain is found but the block at the tip
-	// is has the same or a greater block number compared to the new block, it is considered a stale block.
-	parentBlock, chain, chainTip, err := b.findBlockChainByHash(block.Header.ParentHash)
-	if err != nil {
-		if err != common.ErrBlockNotFound {
-			return nil, err
+	var parentBlock *wire.Block
+	var chainTip *wire.Header
+	var err error
+
+	if chain == nil {
+		// find the chain where the parent of the block exists on. If a chain is not found,
+		// then the block is considered an orphan. If the chain is found but the block at the tip
+		// is has the same or a greater block number compared to the new block, it is considered a stale block.
+		parentBlock, chain, chainTip, err = b.findBlockChainByHash(block.Header.ParentHash)
+		if err != nil {
+			if err != common.ErrBlockNotFound {
+				return nil, err
+			}
+			b.log.Debug("Block not compatible with any chain", "Err", err.Error())
+
+		} else if chain == nil {
+			b.addOrphanBlock(block)
+			return nil, nil
+
+		} else if block.Header.Number < chainTip.Number {
+			// This is a much older stale block. We only support stale blocks of same height
+			// as the current block on the chain.
+			// TODO: This should be a fork too; New chain should be created
+			b.addRejectedBlock(block)
+			return nil, common.ErrVeryStaleBlock
+
+		} else if block.GetNumber()-chainTip.Number > 1 {
+			b.addRejectedBlock(block)
+			return nil, common.ErrBlockFailedValidation
 		}
-		b.log.Debug("Block not compatible with any chain", "Err", err.Error())
-
-	} else if chain == nil {
-		b.addOrphanBlock(block)
-		return nil, nil
-
-	} else if block.Header.Number < chainTip.Number {
-		// This is a much older stale block. We only support stale blocks of same height
-		// as the current block on the chain.
-		// TODO: This should be a fork too; New chain should be created
-		b.addRejectedBlock(block)
-		return nil, common.ErrVeryStaleBlock
-
-	} else if block.GetNumber()-chainTip.Number > 1 {
-		b.addRejectedBlock(block)
-		return nil, common.ErrBlockFailedValidation
 	}
 
 	tx, _ := chain.store.NewTx()
@@ -259,7 +271,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block) (*Chain, error) {
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
-	if block.GetNumber() == chainTip.Number {
+	if chainTip != nil && block.GetNumber() == chainTip.Number {
 		// create the new chain, set its root to the parent of the stale block
 		// and also add the stale block to it.
 		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
@@ -353,7 +365,7 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (*Chain, error) {
 	}
 
 	// attempt to add the block to a chain
-	chain, err := b.maybeAcceptBlock(block)
+	chain, err := b.maybeAcceptBlock(block, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +384,7 @@ func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.C
 	// that must be applied to the blockchain state.
 	ops, err := b.processTransactions(block.Transactions, chain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to process transactions: rejected: %s", err)
+		return nil, nil, fmt.Errorf("transaction error: %s", err)
 	}
 
 	// Create state objects from the transition objects. State objects when written
@@ -442,7 +454,7 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 			b.orphanBlocks.Remove(orphanBlock.GetHash())
 
 			// re-attempt to process the block
-			if _, err := b.maybeAcceptBlock(orphanBlock); err != nil {
+			if _, err := b.maybeAcceptBlock(orphanBlock, nil); err != nil {
 				return err
 			}
 

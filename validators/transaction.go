@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/blockchain"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/txpool"
 
 	"github.com/shopspring/decimal"
@@ -47,13 +48,13 @@ type TxsValidator struct {
 }
 
 // NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool, allowDupCheck bool) *TxsValidator {
-	return &TxsValidator{txs: txs, txpool: txPool, allowDuplicateCheck: allowDupCheck}
+func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool, bchain *blockchain.Blockchain, allowDupCheck bool) *TxsValidator {
+	return &TxsValidator{txs: txs, txpool: txPool, bchain: bchain, allowDuplicateCheck: allowDupCheck}
 }
 
 // NewTxValidator is like NewTxsValidator except it accepts a single transaction
-func NewTxValidator(tx *wire.Transaction, txPool *txpool.TxPool, allowDupCheck bool) *TxsValidator {
-	return &TxsValidator{txs: []*wire.Transaction{tx}, txpool: txPool, allowDuplicateCheck: allowDupCheck}
+func NewTxValidator(tx *wire.Transaction, txPool *txpool.TxPool, bchain *blockchain.Blockchain, allowDupCheck bool) *TxsValidator {
+	return &TxsValidator{txs: []*wire.Transaction{tx}, txpool: txPool, bchain: bchain, allowDuplicateCheck: allowDupCheck}
 }
 
 // Validate execute validation checks on the
@@ -160,7 +161,13 @@ func (v *TxsValidator) checkFormatAndValue(tx *wire.Transaction) (errs []error) 
 // checkSignature checks whether the signature is valid.
 // Expects the transaction to have a valid sender public key
 func (v *TxsValidator) checkSignature(tx *wire.Transaction) (errs []error) {
-	pubKey, _ := crypto.PubKeyFromBase58(tx.SenderPubKey)
+
+	pubKey, err := crypto.PubKeyFromBase58(tx.SenderPubKey)
+	if err != nil {
+		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", err.Error()))
+		return
+	}
+
 	decSig, _ := util.FromHex(tx.Sig)
 	valid, err := pubKey.Verify(tx.Bytes(), decSig)
 	if err != nil {
@@ -176,10 +183,23 @@ func (v *TxsValidator) checkSignature(tx *wire.Transaction) (errs []error) {
 // other components that do not accept duplicates. E.g transaction
 // pool, chains etc
 func (v *TxsValidator) duplicationCheck(tx *wire.Transaction) (errs []error) {
-	if v.txpool.Has(tx) {
-		errs = append(errs, fmt.Errorf("transaction already included in transactions pool"))
+
+	if v.txpool != nil && v.txpool.Has(tx) {
+		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop, "", "transaction already exist in tx pool"))
 		return
 	}
+
+	if v.bchain != nil {
+		_, err := v.bchain.GetTransaction(tx.Hash)
+		if err != nil {
+			if err != common.ErrTxNotFound {
+				errs = append(errs, fmt.Errorf("get transaction error: %s", err))
+			}
+		} else {
+			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop, "", "transaction already exist in main chain"))
+		}
+	}
+
 	return
 }
 

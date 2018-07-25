@@ -4,9 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/elld/txpool"
-
+	"github.com/ellcrys/elld/blockchain"
+	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/leveldb"
+	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/wire"
@@ -15,6 +20,51 @@ import (
 )
 
 var _ = Describe("Transaction", func() {
+
+	var err error
+	var store common.Store
+	var bchain *blockchain.Blockchain
+	var db database.DB
+	var genesisBlock *wire.Block
+
+	BeforeEach(func() {
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
+	})
+
+	BeforeEach(func() {
+		db = database.NewLevelDB(cfg.ConfigDir())
+		err = db.Open("")
+		Expect(err).To(BeNil())
+	})
+
+	BeforeEach(func() {
+		store, err = leveldb.New(db)
+		Expect(err).To(BeNil())
+	})
+
+	BeforeEach(func() {
+		blockchain.GenesisBlock = testdata.TestGenesisBlock
+		genesisBlock, _ = wire.BlockFromString(blockchain.GenesisBlock)
+		err = blockchain.SeedTestGenesisState(store, genesisBlock)
+		Expect(err).To(BeNil())
+	})
+
+	BeforeEach(func() {
+		bchain = blockchain.New(cfg, log)
+		bchain.SetStore(store)
+		err = bchain.Up()
+		Expect(err).To(BeNil())
+	})
+
+	AfterEach(func() {
+		db.Close()
+	})
+
+	AfterEach(func() {
+		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+	})
 
 	Describe(".checkFormatAndValue", func() {
 
@@ -50,7 +100,7 @@ var _ = Describe("Transaction", func() {
 				&wire.Transaction{}:                                              fmt.Errorf("index:0, field:sig, error:signature is required"),
 			}
 			for tx, err := range cases {
-				validator = NewTxsValidator([]*wire.Transaction{tx}, nil, false)
+				validator = NewTxsValidator([]*wire.Transaction{tx}, nil, bchain, false)
 				errs := validator.checkFormatAndValue(tx)
 				Expect(errs).To(ContainElement(err))
 			}
@@ -80,10 +130,22 @@ var _ = Describe("Transaction", func() {
 			err = txp.Put(tx)
 			Expect(err).To(BeNil())
 
-			validator = NewTxsValidator([]*wire.Transaction{tx}, txp, true)
+			validator = NewTxsValidator([]*wire.Transaction{tx}, txp, bchain, true)
 			errs := validator.Validate()
 			Expect(errs).To(HaveLen(1))
-			Expect(errs).To(ContainElement(fmt.Errorf("transaction already included in transactions pool")))
+			Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in tx pool")))
+		})
+
+		Context("transaction in main chain", func() {
+			It("should return error if transaction already", func() {
+				var result []*database.KVObject
+				store.Get(nil, &result)
+				tx := genesisBlock.Transactions[0]
+				validator = NewTxsValidator([]*wire.Transaction{tx}, nil, bchain, true)
+				errs := validator.Validate()
+				Expect(errs).To(HaveLen(1))
+				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in main chain")))
+			})
 		})
 	})
 
@@ -93,6 +155,14 @@ var _ = Describe("Transaction", func() {
 
 		BeforeEach(func() {
 			sender, receiver = crypto.NewKeyFromIntSeed(1), crypto.NewKeyFromIntSeed(2)
+		})
+
+		It("should return err if sender pub key is invalid", func() {
+			tx := &wire.Transaction{SenderPubKey: "incorrect"}
+			validator := NewTxsValidator(nil, nil, bchain, false)
+			errs := validator.checkSignature(tx)
+			Expect(errs).To(HaveLen(1))
+			Expect(errs).To(ContainElement(fmt.Errorf("index:0, field:senderPubKey, error:checksum error")))
 		})
 
 		It("should return err if signature is not correct", func() {
@@ -108,7 +178,7 @@ var _ = Describe("Transaction", func() {
 				Hash:         "some_hash",
 				Sig:          "invalid",
 			}
-			validator := NewTxsValidator(nil, nil, false)
+			validator := NewTxsValidator(nil, nil, bchain, false)
 			errs := validator.checkSignature(tx)
 			Expect(errs).To(HaveLen(1))
 			Expect(errs).To(ContainElement(fmt.Errorf("index:0, field:sig, error:signature is not valid")))
@@ -130,7 +200,7 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 			tx.Sig = util.ToHex(sig)
 
-			validator := NewTxsValidator(nil, nil, false)
+			validator := NewTxsValidator(nil, nil, bchain, false)
 			errs := validator.checkSignature(tx)
 			Expect(errs).To(HaveLen(0))
 		})

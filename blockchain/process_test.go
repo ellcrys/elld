@@ -18,9 +18,9 @@ var _ = Describe("Blockchain", func() {
 	var err error
 	var store common.Store
 	var db database.DB
-	var chainID = "chain1"
 	var chain *Chain
 	var bc *Blockchain
+	var genesisBlock *wire.Block
 
 	BeforeEach(func() {
 		var err error
@@ -40,12 +40,18 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	BeforeEach(func() {
-		bc = New(cfg, log)
-		bc.setStore(store)
-		chain = NewChain(chainID, store, cfg, log)
+		GenesisBlock = testdata.TestGenesisBlock
+		genesisBlock, _ = wire.BlockFromString(GenesisBlock)
+		err = SeedTestGenesisState(store, genesisBlock)
 		Expect(err).To(BeNil())
-		bc.bestChain = chain
-		bc.addChain(chain)
+	})
+
+	BeforeEach(func() {
+		bc = New(cfg, log)
+		bc.SetStore(store)
+		err = bc.Up()
+		Expect(err).To(BeNil())
+		chain = bc.bestChain
 	})
 
 	AfterEach(func() {
@@ -109,11 +115,6 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		BeforeEach(func() {
-			err = chain.init(testdata.TestGenesisBlock)
-			Expect(err).To(BeNil())
-		})
-
-		BeforeEach(func() {
 			account = &wire.Account{Type: wire.AccountTypeBalance, Address: key.Addr(), Balance: "0"}
 			err = bc.putAccount(1, chain, account)
 			Expect(err).To(BeNil())
@@ -128,25 +129,25 @@ var _ = Describe("Blockchain", func() {
 		It("should return error if sender does not exist in the best chain", func() {
 			_, err := bc.processTransactions(block2.Transactions, chain)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("failed to get sender's account: account not found"))
+			Expect(err.Error()).To(Equal("index{0}: failed to get sender's account: account not found"))
 		})
 
 		It("should return error if sender account has insufficient value", func() {
 			_, err := bc.processTransactions(block3.Transactions, chain)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("insufficient sender account balance"))
+			Expect(err.Error()).To(Equal("index{0}: insufficient sender account balance"))
 		})
 
 		It("should return error if sender value is invalid", func() {
 			_, err := bc.processTransactions(block4.Transactions, chain)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("sending amount error: can't convert 100_333 to decimal"))
+			Expect(err.Error()).To(Equal("index{0}: sending amount error: can't convert 100_333 to decimal"))
 		})
 
 		Context("recipient does not have an account", func() {
 
 			It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient) and 2 OpNewAccountBalance (sender and recipient);
-			1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
+				1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
 				ops, err := bc.processTransactions(block5.Transactions, chain)
 				Expect(err).To(BeNil())
 				Expect(ops).To(HaveLen(3))
@@ -165,9 +166,8 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		Context("recipient has an account", func() {
-
 			It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
-				1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 6`, func() {
+						1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 6`, func() {
 				ops, err := bc.processTransactions(block6.Transactions, chain)
 				Expect(err).To(BeNil())
 				Expect(ops).To(HaveLen(2))
@@ -186,7 +186,7 @@ var _ = Describe("Blockchain", func() {
 
 			Context("recipient has an account", func() {
 				It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
-				1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
+						1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
 					ops, err := bc.processTransactions(block7.Transactions, chain)
 					Expect(err).To(BeNil())
 					Expect(ops).To(HaveLen(2))
@@ -203,7 +203,7 @@ var _ = Describe("Blockchain", func() {
 
 			Context("recipient does not have an account", func() {
 				It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient), 2 OpNewAccountBalance (sender and recipient);
-				1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
+						1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 7`, func() {
 					ops, err := bc.processTransactions(block8.Transactions, chain)
 					Expect(err).To(BeNil())
 					Expect(ops).To(HaveLen(3))
@@ -236,7 +236,7 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
-	Describe(".MockExecBlock", func() {
+	Describe(".execBlock", func() {
 
 		var block *wire.Block
 
@@ -249,7 +249,7 @@ var _ = Describe("Blockchain", func() {
 			It("should return err ", func() {
 				_, _, err := bc.execBlock(chain, block)
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("failed to process transactions: rejected: failed to get sender's account: account not found"))
+				Expect(err.Error()).To(Equal("transaction error: index{0}: failed to get sender's account: account not found"))
 			})
 		})
 	})
@@ -286,6 +286,7 @@ var _ = Describe("Blockchain", func() {
 		When("a block's parent does not exist in any chain", func() {
 			It("should return nil and be added to the orphan block cache", func() {
 				block, _ = wire.BlockFromString(testdata.ProcessDotGoJSON[0])
+				block.Header.ParentHash = "does_not_exist"
 				_, err = bc.ProcessBlock(block)
 				Expect(err).To(BeNil())
 				Expect(bc.orphanBlocks.Has(block.GetHash())).To(BeTrue())
@@ -293,17 +294,15 @@ var _ = Describe("Blockchain", func() {
 		})
 
 		Describe("how stale blocks are handled", func() {
+
 			When("a block's parent exists in a chain", func() {
-				var genesis, block2, chainTip, veryStaleBlock, staleBlock, futureNumberedBlock *wire.Block
+				var block2, chainTip, veryStaleBlock, staleBlock, futureNumberedBlock *wire.Block
 				BeforeEach(func() {
-					genesis, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[0])
 					block2, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[1])
 					chainTip, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[2])
 					veryStaleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[3])
 					staleBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[4])
 					futureNumberedBlock, _ = wire.BlockFromString(testdata.ProcessStaleOrInvalidBlockData[5])
-					err = chain.append(genesis)
-					Expect(err).To(BeNil())
 					err = chain.append(block2)
 					Expect(err).To(BeNil())
 					err = chain.append(chainTip)

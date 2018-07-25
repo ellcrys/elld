@@ -89,20 +89,27 @@ func (b *Blockchain) Up() error {
 
 	// If there are no known chains described in the metadata and none
 	// in the cache, then we create a new chain and save it
-	if len(chains) == 0 && len(b.chains) == 0 {
+	if len(chains) == 0 {
 
 		b.log.Debug("No existing chain found. Creating genesis chain")
 
-		b.bestChain = NewChain(util.RandString(32), b.store, b.cfg, b.log)
-		if err := b.bestChain.init(GenesisBlock); err != nil {
-			return fmt.Errorf("failed to initialize new chain: %s", err)
-		}
-		if err := b.saveChain(b.bestChain, "", 0); err != nil {
-			return fmt.Errorf("failed save new chain: %s", err)
+		// Create the genesis chain and the genesis block.
+		// The ID of the genesis chain is the hash of the genesis block hash.
+		gBlock, _ := wire.BlockFromString(GenesisBlock)
+		gChainID := util.ToHex(util.Blake2b256([]byte(gBlock.Hash)))
+		gChain := NewChain(gChainID, b.store, b.cfg, b.log)
+
+		// Save the chain the chain (which also adds it to the chain cache)
+		if err := b.saveChain(gChain, "", 0); err != nil {
+			return fmt.Errorf("failed to save genesis chain: %s", err)
 		}
 
-		b.addChain(b.bestChain)
-		return nil
+		// Process the genesis block.
+		if _, err := b.maybeAcceptBlock(gBlock, gChain); err != nil {
+			return fmt.Errorf("genesis block error: %s", err)
+		}
+
+		b.bestChain = gChain
 	}
 
 	// Load all known chains
@@ -159,8 +166,8 @@ func (b *Blockchain) loadChain(chainInfo *common.ChainInfo) error {
 	return b.addChain(chain)
 }
 
-// setStore sets the store to use
-func (b *Blockchain) setStore(store common.Store) {
+// SetStore sets the store to use
+func (b *Blockchain) SetStore(store common.Store) {
 	b.store = store
 }
 
@@ -445,7 +452,6 @@ func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
 	if len(result) == 0 {
 		return nil, common.ErrTxNotFound
 	}
-
 	var tx wire.Transaction
 	if err := util.BytesToObject(result[0].Value, &tx); err != nil {
 		return nil, err

@@ -1,7 +1,7 @@
 package blockchain
 
 // GenesisBlock describes the first block
-const GenesisBlock = `{
+var GenesisBlock = `{
     "header": {
         "parentHash": null,
         "creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
@@ -22,7 +22,7 @@ const GenesisBlock = `{
             "from": "",
             "value": "100.333",
             "timestamp": 1508673895,
-            "fee": "0.00003",
+            "fee": "0.1",
             "invokeArgs": null,
             "sig": "93udndte7hxbvhivmnzbzguruhcbybcdbxcbyulmxsncs",
             "hash": "93udndte7hxbvhivmnzbzguruhcbybcdbxcbyulmxsncs"
@@ -35,7 +35,7 @@ const GenesisBlock = `{
             "from": "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
             "value": "10",
             "timestamp": 1508673895,
-            "fee": "0.00003",
+            "fee": "0.1",
             "invokeArgs": null,
             "sig": "93udndte7hxbvhivmnzbzguruhcbybcdbxcbyulmxsncs",
             "hash": "shhfd7387ydhudhsy8ehhhfjsg748hd"

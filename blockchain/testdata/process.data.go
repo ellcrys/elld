@@ -3,9 +3,9 @@ package testdata
 var ProcessDotGoJSON = []string{
 	`{
         "header": {
-            "parentHash": null,
+            "parentHash": "hash_1",
             "creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
-            "number": 1,
+            "number": 2,
             "stateRoot": "abc",
             "transactionsRoot": "jsjhf9e3i9nfi",
             "nonce": 0,
@@ -15,7 +15,7 @@ var ProcessDotGoJSON = []string{
         },
         "transactions": [
         ],
-        "hash": "hash_1",
+        "hash": "hash_2",
         "sig": "abc"
     }`,
 	`{
@@ -259,7 +259,7 @@ var ProcessDotGoJSON = []string{
 var ProcessStaleOrInvalidBlockData = []string{
 	`{
         "header": {
-            "parentHash": null,
+            "parentHash": "hash_1",
             "creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
             "number": 1,
             "stateRoot": "0x",
@@ -271,7 +271,7 @@ var ProcessStaleOrInvalidBlockData = []string{
         },
         "transactions": [
         ],
-        "hash": "hash_1",
+        "hash": "hash_2",
         "sig": "abc"
     }`,
 	`{
@@ -445,7 +445,7 @@ var ProcessMockBlockData = []string{
             {
                 "type": 1,
                 "nonce": 1,
-                "to": "",
+                "to": "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
                 "senderPubKey": "",
                 "from": "",
                 "value": "1",

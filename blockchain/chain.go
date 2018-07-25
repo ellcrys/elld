@@ -51,17 +51,6 @@ func NewChain(id string, store common.Store, cfg *config.EngineConfig, log logge
 	return chain
 }
 
-// init initializes a new chain with a block. The block becomes the "genesis"
-// block of the chain if no block already exists or attempts to append the block
-// to the current block at the time.
-func (c *Chain) init(block string) error {
-	b, err := wire.BlockFromString(block)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal block data: %s", err)
-	}
-	return c.append(b)
-}
-
 // getTipHeader returns the header of the highest block on this chain
 func (c *Chain) getTipHeader(opts ...common.CallOp) (*wire.Header, error) {
 	c.chainLock.RLock()

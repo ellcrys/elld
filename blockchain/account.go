@@ -13,6 +13,9 @@ import (
 func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Account) error {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
+
+	// validate account
+
 	key := common.MakeAccountKey(blockNo, chain.id, account.Address)
 	return chain.store.Put(key, util.StructToBytes(account))
 }
@@ -23,6 +26,10 @@ func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Acco
 func (b *Blockchain) GetAccount(chain *Chain, address string) (*wire.Account, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
+
+	if address == "" {
+		return nil, common.ErrAccountNotFound // Test this
+	}
 
 	// make an account key, then query the database for an account
 	// matching the key

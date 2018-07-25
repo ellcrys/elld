@@ -9,8 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var cfg *config.EngineConfig
 var log logger.Logger
+var cfg *config.EngineConfig
 
 func TestBlockchain(t *testing.T) {
 	log = logger.NewLogrusNoOp()

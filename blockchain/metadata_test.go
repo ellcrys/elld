@@ -37,16 +37,16 @@ var _ = Describe("Blockchain", func() {
 		store, err = leveldb.New(db)
 		Expect(err).To(BeNil())
 		bc = New(cfg, log)
-		bc.setStore(store)
+		bc.SetStore(store)
 	})
 
 	BeforeEach(func() {
 		chain = NewChain(chainID, store, cfg, log)
 		Expect(err).To(BeNil())
 		bc.addChain(chain)
-		err = chain.init(testdata.TestBlock1)
+		genesisBlock, _ = wire.BlockFromString(testdata.TestBlock1)
+		err = chain.append(genesisBlock)
 		Expect(err).To(BeNil())
-		genesisBlock, err = wire.BlockFromString(testdata.TestBlock1)
 	})
 
 	AfterEach(func() {

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
@@ -59,6 +60,7 @@ type Node struct {
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
+	bchain                  *blockchain.Blockchain  // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port

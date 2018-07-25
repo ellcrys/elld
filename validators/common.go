@@ -7,5 +7,9 @@ func fieldError(field, err string) error {
 }
 
 func fieldErrorWithIndex(index int, field, err string) error {
-	return fmt.Errorf(fmt.Sprintf("index:%d, field:%s, error:%s", index, field, err))
+	var fieldArg = "field:%s, "
+	if field == "" {
+		fieldArg = "%s"
+	}
+	return fmt.Errorf(fmt.Sprintf("index:%d, "+fieldArg+"error:%s", index, field, err))
 }

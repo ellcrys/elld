@@ -36,7 +36,7 @@ var _ = Describe("Blockchain", func() {
 		store, err = leveldb.New(db)
 		Expect(err).To(BeNil())
 		bc = New(cfg, log)
-		bc.setStore(store)
+		bc.SetStore(store)
 	})
 
 	BeforeEach(func() {
@@ -62,7 +62,7 @@ var _ = Describe("Blockchain", func() {
 	Describe(".SetStore", func() {
 		It("should set store", func() {
 			bc := New(cfg, log)
-			bc.setStore(store)
+			bc.SetStore(store)
 			Expect(bc.store).ToNot(BeNil())
 		})
 	})
@@ -127,10 +127,26 @@ var _ = Describe("Blockchain", func() {
 			Expect(err.Error()).To(Equal("store has not been initialized"))
 		})
 
-		It("should assign new chain as the best chain if no chain is known", func() {
-			err = bc.Up()
-			Expect(err).To(BeNil())
-			Expect(bc.bestChain).ToNot(BeNil())
+		When("genesis block is not valid", func() {
+			It("should return error if a transaction's sender does not exists", func() {
+				err = bc.Up()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
+			})
+		})
+
+		When("genesis block is valid", func() {
+
+			BeforeEach(func() {
+				GenesisBlock = testdata.TestGenesisBlock
+				genesisBlock, _ := wire.BlockFromString(GenesisBlock)
+				SeedTestGenesisState(store, genesisBlock)
+			})
+			It("should assign new chain as the best chain if no chain is known", func() {
+				err = bc.Up()
+				Expect(err).To(BeNil())
+				Expect(bc.bestChain).ToNot(BeNil())
+			})
 		})
 
 		It("should load all chains", func() {
@@ -214,7 +230,7 @@ var _ = Describe("Blockchain", func() {
 		It("should return true of block exists in a chain", func() {
 			chain2 := NewChain("chain2", store, cfg, log)
 			Expect(err).To(BeNil())
-			err = chain2.init(testdata.BlockchainDotGoJSON[1])
+			err = chain2.append(block)
 			Expect(err).To(BeNil())
 
 			err = bc.addChain(chain2)
@@ -239,8 +255,7 @@ var _ = Describe("Blockchain", func() {
 
 			chain2 = NewChain("chain2", store, cfg, log)
 			Expect(err).To(BeNil())
-
-			err = chain2.init(testdata.BlockchainDotGoJSON[1])
+			err = chain2.append(block)
 			Expect(err).To(BeNil())
 
 			err = bc.addChain(chain2)
