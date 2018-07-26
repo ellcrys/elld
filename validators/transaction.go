@@ -79,9 +79,9 @@ func (v *TxsValidator) Validate() (errs []error) {
 	return
 }
 
-// checkFormatAndValue checks the field and their values and
+// statelessChecks checks the field and their values and
 // does no integration checks with other components.
-func (v *TxsValidator) checkFormatAndValue(tx *wire.Transaction) (errs []error) {
+func (v *TxsValidator) statelessChecks(tx *wire.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -242,7 +242,7 @@ func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
 // ValidateTx validates a single transaction coming received
 // by the gossip handler..
 func (v *TxsValidator) ValidateTx(tx *wire.Transaction) []error {
-	errs := v.checkFormatAndValue(tx)
+	errs := v.statelessChecks(tx)
 	errs = append(errs, v.checkSignature(tx)...)
 	if v.allowDuplicateCheck {
 		errs = append(errs, v.duplicateCheck(tx)...)

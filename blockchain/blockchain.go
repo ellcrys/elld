@@ -212,6 +212,25 @@ func (b *Blockchain) HaveBlock(hash string) (bool, error) {
 	return false, nil
 }
 
+// IsKnownBlock checks whether a block with the has exists
+// in at least one of all block chains and caches (e.g orphan)
+func (b *Blockchain) IsKnownBlock(hash string) (bool, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	var have bool
+
+	have, err := b.HaveBlock(hash)
+	if err != nil {
+		return false, err
+	}
+
+	if !have {
+		have = b.isOrphanBlock(hash)
+	}
+
+	return have, nil
+}
+
 // findBlockChainByHash finds the chain where the block with the hash
 // provided hash exist on. It also returns the header of highest block of the chain.
 func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
@@ -309,8 +328,8 @@ func (b *Blockchain) addOrphanBlock(block common.Block) {
 
 // isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
 func (b *Blockchain) isOrphanBlock(blockHash string) bool {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 	return b.orphanBlocks.Get(blockHash) != nil
 }
 

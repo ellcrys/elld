@@ -16,9 +16,9 @@ import (
 func (b *Blockchain) validateBlock(block *wire.Block) error {
 
 	// validate the block
-	if err := block.Validate(); err != nil {
-		return fmt.Errorf("failed block validation: %s", err)
-	}
+	// if err := block.Validate(); err != nil {
+	// 	return fmt.Errorf("failed block validation: %s", err)
+	// }
 
 	// check if the signature of the block is valid and signed by the block creator.
 	if err := wire.BlockVerify(block); err != nil {

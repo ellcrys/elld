@@ -12,9 +12,6 @@ import (
 	"gopkg.in/asaskevich/govalidator.v4"
 )
 
-// NilHeader represents a zero value header
-var NilHeader = Header{}
-
 // BlockFromString unmarshal a json string into a Block
 func BlockFromString(str string) (*Block, error) {
 	var block Block

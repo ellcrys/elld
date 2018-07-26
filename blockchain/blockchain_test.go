@@ -244,6 +244,44 @@ var _ = Describe("Blockchain", func() {
 		})
 	})
 
+	Describe(".IsKnownBlock", func() {
+		var block *wire.Block
+
+		BeforeEach(func() {
+			block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+			Expect(err).To(BeNil())
+		})
+
+		It("should return false when block does not exist in any known chain or caches", func() {
+			known, err := bc.IsKnownBlock(block.GetHash())
+			Expect(err).To(BeNil())
+			Expect(known).To(BeFalse())
+		})
+
+		It("should return true when block exists in a chain", func() {
+			chain2 := NewChain("chain2", store, cfg, log)
+			Expect(err).To(BeNil())
+			err = chain2.append(block)
+			Expect(err).To(BeNil())
+
+			err = bc.addChain(chain2)
+			Expect(err).To(BeNil())
+			err = chain2.store.PutBlock(chain2.id, block)
+			Expect(err).To(BeNil())
+
+			has, err := bc.HaveBlock(block.GetHash())
+			Expect(err).To(BeNil())
+			Expect(has).To(BeTrue())
+		})
+
+		It("should return true when block exist as an orphan", func() {
+			bc.addOrphanBlock(block)
+			known, err := bc.IsKnownBlock(block.GetHash())
+			Expect(err).To(BeNil())
+			Expect(known).To(BeTrue())
+		})
+	})
+
 	Describe(".findChainByLastBlockHash", func() {
 
 		var block *wire.Block

@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -10,9 +11,15 @@ import (
 	"path"
 	"time"
 
-	"github.com/ellcrys/elld/config"
-	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/ellcrys/elld/blockchain"
+
+	elldCrypto "github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 	crypto "github.com/libp2p/go-libp2p-crypto"
+
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/wire"
+	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
 	homedir "github.com/mitchellh/go-homedir"
@@ -99,4 +106,43 @@ func RemoveTestCfgDir() error {
 	dir, _ := homedir.Dir()
 	err := os.RemoveAll(path.Join(dir, ".ellcrys_test"))
 	return err
+}
+
+// GenerateBlock generates a block and returns the json equivalent.
+// Specifically meant for create valid blocks for testing.
+func GenerateBlock(to *elldCrypto.Key, from *elldCrypto.Key, value string) string {
+
+	now := time.Now()
+	block := &wire.Block{}
+	block.Transactions = append(block.Transactions, &wire.Transaction{
+		Type:         wire.TxTypeBalance,
+		Nonce:        0,
+		To:           to.Addr(),
+		From:         from.Addr(),
+		SenderPubKey: from.PubKey().Base58(),
+		Value:        value,
+		Timestamp:    now.Unix(),
+		Fee:          "0.1",
+	})
+	block.Transactions[0].Hash = block.Transactions[0].ComputeHash2()
+	sig, _ := wire.TxSign(block.Transactions[0], from.PrivKey().Base58())
+	block.Transactions[0].Sig = util.ToHex(sig)
+
+	block.Header = &wire.Header{
+		ParentHash:       "",
+		CreatorPubKey:    to.PubKey().Base58(),
+		Number:           1,
+		TransactionsRoot: util.ToHex(blockchain.ComputeTxsRoot(block.Transactions)),
+		Nonce:            1030,
+		Difficulty:       "2747646837",
+		Timestamp:        now.Unix(),
+		MixHash:          "",
+	}
+
+	block.Hash = block.ComputeHash()
+	sig, _ = wire.BlockSign(block, to.PrivKey().Base58())
+	block.Sig = util.ToHex(sig)
+
+	bs, _ := json.MarshalIndent(block, "", "\t")
+	return string(bs)
 }

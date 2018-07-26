@@ -66,12 +66,12 @@ var _ = Describe("Transaction", func() {
 		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
-	Describe(".checkFormatAndValue", func() {
+	Describe(".statelessChecks", func() {
 
 		var validator *TxsValidator
 
 		It("should return error if tx = nil", func() {
-			errs := validator.checkFormatAndValue(nil)
+			errs := validator.statelessChecks(nil)
 			Expect(errs).To(HaveLen(1))
 			Expect(errs).To(ContainElement(fmt.Errorf("nil tx")))
 		})
@@ -101,7 +101,7 @@ var _ = Describe("Transaction", func() {
 			}
 			for tx, err := range cases {
 				validator = NewTxsValidator([]*wire.Transaction{tx}, nil, bchain, false)
-				errs := validator.checkFormatAndValue(tx)
+				errs := validator.statelessChecks(tx)
 				Expect(errs).To(ContainElement(err))
 			}
 		})
@@ -137,7 +137,7 @@ var _ = Describe("Transaction", func() {
 		})
 
 		Context("transaction in main chain", func() {
-			It("should return error if transaction already", func() {
+			It("should return error if transaction already exists in the main chain", func() {
 				var result []*database.KVObject
 				store.Get(nil, &result)
 				tx := genesisBlock.Transactions[0]
