@@ -1,10 +1,6 @@
 package wire
 
 import (
-	"encoding/hex"
-	"fmt"
-	"time"
-
 	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -115,45 +111,4 @@ var _ = Describe("Transaction", func() {
 		})
 	})
 
-	Describe(".Validate", func() {
-		It("should validate transaction", func() {
-
-			txWithWrongHashPrefix := Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100.30", Timestamp: time.Now().Unix(), Fee: "0.10"}
-			txWithWrongHashPrefix.Hash = "0b" + hex.EncodeToString(txWithWrongHashPrefix.ComputeHash())
-
-			txWithRightHashPrefix := Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100.30", Timestamp: time.Now().Unix(), Fee: "0.10"}
-			txWithRightHashPrefix.Hash = ToHex(txWithRightHashPrefix.ComputeHash())
-
-			var data = map[Transaction]error{
-				Transaction{}:                                                                                                                                                                                                                                                        fmt.Errorf("field:type, error:type is unknown"),
-				Transaction{Type: TxTypeBalance}:                                                                                                                                                                                                                                     fmt.Errorf("field:senderPubKey, error:sender public key is required"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48nCZsmoU7wvA3__invalid_fS8UhXQv4u43eny8qpT7ubdVxp3kus3eNZP"}:                                                                                                                                                        fmt.Errorf("field:senderPubKey, error:invalid format: version and/or checksum bytes missing"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48nCZsmoU7wvA3ULfS8UhXQv4u43eny8qpT7ubdVxp3kus3eNZH"}:                                                                                                                                                                fmt.Errorf("field:to, error:recipient address is required"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48nCZsmoU7wvA3ULfS8UhXQv4u43eny8qpT7ubdVxp3kus3eNZH", To: "e5a3zJReMgLJrNn4GsYcnKf1Qa6GQFimC4"}:                                                                                                                      fmt.Errorf("field:to, error:address is not valid"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48nCZsmoU7wvA3ULfS8UhXQv4u43eny8qpT7ubdVxp3kus3eNZH", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad"}:                                                                                                                      fmt.Errorf("field:from, error:sender address is required"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48nCZsmoU7wvA3ULfS8UhXQv4u43eny8qpT7ubdVxp3kus3eNZH", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "eRUnkiVrDJjW57MKdq"}:                                                                                          fmt.Errorf("field:from, error:address is not valid"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48nCZsmoU7wvA3ULfS8UhXQv4u43eny8qpT7ubdVxp3kus3eNZH", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq"}:                                                                          fmt.Errorf("field:from, error:address not derived from 'senderPubKey'"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq"}:                                                                          fmt.Errorf("field:value, error:value must be numeric"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "abc"}:                                                            fmt.Errorf("field:value, error:value must be numeric"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100"}:                                                            fmt.Errorf("field:fee, error:fee must be numeric"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100", Fee: "0"}:                                                  fmt.Errorf("field:fee, error:fee must be a non-zero or non-negative number"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100", Fee: "-1"}:                                                 fmt.Errorf("field:fee, error:fee must be a non-zero or non-negative number"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100", Fee: "0.10"}:                                               fmt.Errorf("field:timestamp, error:timestamp cannot over 7 days ago"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100.30", Timestamp: time.Now().Unix(), Fee: "0.10"}:              fmt.Errorf("field:hash, error:hash is required"),
-				Transaction{Type: TxTypeBalance, SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw", To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", From: "e9L9UNbcxCrnAEc8ARUnkiVrDJjW57MKdq", Value: "100.30", Timestamp: time.Now().Unix(), Fee: "0.10", Hash: "abc"}: fmt.Errorf("field:hash, error:expected 66 characters"),
-				txWithWrongHashPrefix: fmt.Errorf("field:hash, error:hash is not valid"),
-				txWithRightHashPrefix: fmt.Errorf("field:sig, error:signature is required"),
-			}
-
-			for h, e := range data {
-				err := h.Validate()
-				if e != nil {
-					Expect(err).ToNot(BeNil())
-					Expect(err.Error()).To(Equal(e.Error()))
-				} else {
-					Expect(err).To(BeNil())
-				}
-			}
-		})
-	})
 })

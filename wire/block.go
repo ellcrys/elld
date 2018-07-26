@@ -146,40 +146,6 @@ func (b *Block) ComputeHash() string {
 	return ToHex(hash[:])
 }
 
-// Validate validates the block
-func (b *Block) Validate() error {
-
-	// Validate the block header
-	if err := b.Header.Validate(); err != nil {
-		return fmt.Errorf("header error: %s", err)
-	}
-
-	for i, tx := range b.Transactions {
-		// Validate each transaction, ensuring that the expect field
-		// and value are the way they should be.
-		if err := tx.Validate(); err != nil {
-			return fmt.Errorf("transaction{%d} error: %s", i, err)
-		}
-
-		// Ensure the transaction signature is valid.
-		if err := TxVerify(tx); err != nil {
-			return fmt.Errorf("transaction{%d} error: %s", i, err)
-		}
-	}
-
-	// Ensure the block hash is valid
-	if b.Hash != b.ComputeHash() {
-		return fmt.Errorf("block error: hash not valid")
-	}
-
-	// Make sure the block signature is also set
-	if b.Sig == "" {
-		return fmt.Errorf("block error: signature is not set")
-	}
-
-	return nil
-}
-
 // BlockSign signs a block.
 // Expects private key in base58Check encoding
 func BlockSign(b *Block, privKey string) ([]byte, error) {

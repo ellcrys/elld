@@ -12,7 +12,6 @@ import (
 var _ = Describe("TransactionSession", func() {
 
 	var err error
-	var gossip *Gossip
 	var log = logger.NewLogrusNoOp()
 	var n *Node
 
@@ -25,9 +24,7 @@ var _ = Describe("TransactionSession", func() {
 	BeforeEach(func() {
 		n, err = NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 		Expect(err).To(BeNil())
-		gossip = NewGossip(n, log)
-		bus := evbus.New()
-		n.SetLogicBus(bus)
+		n.SetLogicBus(evbus.New())
 	})
 
 	AfterEach(func() {

@@ -196,6 +196,11 @@ func (n *Node) IsSame(node types.Engine) bool {
 	return n.StringID() == node.StringID()
 }
 
+// GetBlockchain returns the blockchain manager
+func (n *Node) GetBlockchain() *blockchain.Blockchain {
+	return n.bchain
+}
+
 // IsHardcodedSeed checks whether the node is an hardcoded seed node
 func (n *Node) IsHardcodedSeed() bool {
 	return n.isHardcodedSeed

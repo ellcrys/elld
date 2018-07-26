@@ -63,10 +63,10 @@ var _ = Describe("Transaction", func() {
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("field:value, error:value must be a non-zero or non-negative number"))
+			Expect(err.Error()).To(Equal("index:0, field:value, error:value must be greater than zero"))
 		})
 
-		It("should return err = 'insufficient fee' when tx type is wire.TxTypeBalance and fee is less than min fee", func() {
+		It("should return err when tx type is wire.TxTypeBalance and fee is less than min fee", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "0.0000000001", time.Now().Unix())
@@ -78,10 +78,10 @@ var _ = Describe("Transaction", func() {
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("insufficient fee"))
+			Expect(err.Error()).To(Equal("index:0, field:fee, error:fee cannot be below the minimum balance transaction fee {0.01000000}"))
 		})
 
-		It("should return err = 'unknown transaction type' when tx type is unknown", func() {
+		It("should return err when tx type is unknown", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(0x300, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
@@ -93,7 +93,7 @@ var _ = Describe("Transaction", func() {
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("field:type, error:type is unknown"))
+			Expect(err.Error()).To(Equal("index:0, field:type, error:unsupported transaction type"))
 		})
 
 		It("should successfully add tx to transaction session", func() {

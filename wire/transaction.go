@@ -1,12 +1,8 @@
 package wire
 
 import (
-	bytes "bytes"
 	"crypto/sha256"
 	"fmt"
-	"time"
-
-	"github.com/shopspring/decimal"
 
 	"github.com/ellcrys/elld/crypto"
 )
@@ -88,6 +84,11 @@ func (tx *Transaction) ID() string {
 	return tx.ComputeHash2()
 }
 
+// Sign the transaction
+func (tx *Transaction) Sign(privKey string) ([]byte, error) {
+	return TxSign(tx, privKey)
+}
+
 // TxVerify checks whether a transaction's signature is valid.
 // Expect tx.SenderPubKey and tx.Sig to be set.
 func TxVerify(tx *Transaction) error {
@@ -141,87 +142,6 @@ func TxSign(tx *Transaction, privKey string) ([]byte, error) {
 	}
 
 	return sig, nil
-}
-
-// Validate the transaction
-func (tx *Transaction) Validate() error {
-
-	now := time.Now()
-
-	if tx.Type != TxTypeBalance {
-		return fieldError("type", "type is unknown")
-	}
-
-	if len(tx.SenderPubKey) == 0 {
-		return fieldError("senderPubKey", "sender public key is required")
-	}
-
-	if _, err := crypto.PubKeyFromBase58(tx.SenderPubKey); err != nil {
-		return fieldError("senderPubKey", err.Error())
-	}
-
-	if len(tx.To) == 0 {
-		return fieldError("to", "recipient address is required")
-	}
-
-	if err := crypto.IsValidAddr(tx.To); err != nil {
-		return fieldError("to", "address is not valid")
-	}
-
-	if len(tx.From) == 0 {
-		return fieldError("from", "sender address is required")
-	}
-
-	if err := crypto.IsValidAddr(tx.From); err != nil {
-		return fieldError("from", "address is not valid")
-	}
-
-	if senderPubKey, _ := crypto.PubKeyFromBase58(tx.SenderPubKey); senderPubKey.Addr() != tx.From {
-		return fieldError("from", "address not derived from 'senderPubKey'")
-	}
-
-	if _, err := decimal.NewFromString(tx.Value); err != nil {
-		return fieldError("value", "value must be numeric")
-	}
-
-	if val, _ := decimal.NewFromString(tx.Value); val.LessThanOrEqual(decimal.New(0, 0)) && tx.Type == TxTypeBalance {
-		return fieldError("value", "value must be a non-zero or non-negative number")
-	}
-
-	fee, err := decimal.NewFromString(tx.Fee)
-	if err != nil {
-		return fieldError("fee", "fee must be numeric")
-	}
-
-	if tx.Type == TxTypeBalance && fee.LessThanOrEqual(decimal.New(0, 0)) {
-		return fieldError("fee", "fee must be a non-zero or non-negative number")
-	}
-
-	if now.Before(time.Unix(tx.Timestamp, 0)) {
-		return fieldError("timestamp", "timestamp cannot be a future time")
-	}
-
-	if now.Add(-7 * 24 * time.Hour).After(time.Unix(tx.Timestamp, 0)) {
-		return fieldError("timestamp", "timestamp cannot over 7 days ago")
-	}
-
-	if len(tx.Hash) == 0 {
-		return fieldError("hash", "hash is required")
-	}
-
-	if len(tx.Hash) < 66 {
-		return fieldError("hash", "expected 66 characters")
-	}
-
-	if tx.Hash[:2] != "0x" || !bytes.Equal([]byte(ToHex(tx.ComputeHash())), []byte(tx.Hash)) {
-		return fieldError("hash", "hash is not valid")
-	}
-
-	if len(tx.Sig) == 0 {
-		return fieldError("sig", "signature is required")
-	}
-
-	return nil
 }
 
 // Bytes returns the byte equivalent
