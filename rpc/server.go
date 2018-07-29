@@ -6,13 +6,14 @@ import (
 	"net/http"
 	"net/rpc"
 
-	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/logic"
+
 	"github.com/ellcrys/elld/util/logger"
 )
 
 // Service provides functionalities accessible through JSON-RPC
 type Service struct {
-	node *node.Node
+	logic *logic.Logic
 }
 
 // Result represent a response to a service method call
@@ -25,18 +26,18 @@ type Result struct {
 
 // Server represents a rpc server
 type Server struct {
-	addr      string
-	log       logger.Logger
-	conn      net.Listener
-	localNode *node.Node
+	addr  string
+	log   logger.Logger
+	conn  net.Listener
+	logic *logic.Logic
 }
 
 // NewServer creates a new RPC server
-func NewServer(addr string, node *node.Node, log logger.Logger) *Server {
+func NewServer(addr string, logic *logic.Logic, log logger.Logger) *Server {
 	s := new(Server)
 	s.addr = addr
 	s.log = log
-	s.localNode = node
+	s.logic = logic
 	return s
 }
 
@@ -44,7 +45,7 @@ func NewServer(addr string, node *node.Node, log logger.Logger) *Server {
 func (s *Server) Serve() error {
 
 	service := new(Service)
-	service.node = s.localNode
+	service.logic = s.logic
 	err := rpc.Register(service)
 	if err != nil {
 		return fmt.Errorf("failed to start rpc server. %s", err)

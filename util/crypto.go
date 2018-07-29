@@ -6,6 +6,8 @@ import (
 	"crypto/rand"
 	"io"
 
+	"golang.org/x/crypto/blake2b"
+
 	crypto "github.com/libp2p/go-libp2p-crypto"
 )
 
@@ -47,4 +49,11 @@ func Decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 	stream := cipher.NewCTR(c, iv)
 	stream.XORKeyStream(data, data)
 	return data, nil
+}
+
+// Blake2b256 returns blake2b 256bit hash of v
+func Blake2b256(v []byte) []byte {
+	hash, _ := blake2b.New256(nil)
+	hash.Write(v)
+	return hash.Sum(nil)
 }

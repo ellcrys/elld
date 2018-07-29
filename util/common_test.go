@@ -14,7 +14,7 @@ var _ = Describe("Common", func() {
 		It("should return []byte{123, 34, 78, 97, 109, 101, 34, 58, 34, 98, 101, 110, 34, 125} bytes", func() {
 			s := struct{ Name string }{Name: "ben"}
 			expected := []byte{123, 34, 78, 97, 109, 101, 34, 58, 34, 98, 101, 110, 34, 125}
-			bs := StructToBytes(s)
+			bs := ObjectToBytes(s)
 			Expect(bs).To(Equal(expected))
 		})
 	})
@@ -85,6 +85,29 @@ var _ = Describe("Common", func() {
 			o := &wire.Address{Timestamp: 1526992244, Address: "some_address"}
 			bs := SerializeMsg(o)
 			Expect(bs).To(Equal([]byte{10, 12, 115, 111, 109, 101, 95, 97, 100, 100, 114, 101, 115, 115, 16, 244, 154, 144, 216, 5}))
+		})
+	})
+
+	Describe(".ToHex", func() {
+		It("should return hex equivalent", func() {
+			v := ToHex([]byte("abc"))
+			Expect(v).To(Equal("0x616263"))
+		})
+	})
+
+	Describe(".FromHex", func() {
+		When("hex value begins with '0x'", func() {
+			It("should return bytes equivalent of hex", func() {
+				v, _ := FromHex("0x616263")
+				Expect(v).To(Equal([]byte("abc")))
+			})
+		})
+
+		When("hex value does not begin with '0x'", func() {
+			It("should return bytes equivalent of hex", func() {
+				v, _ := FromHex("616263")
+				Expect(v).To(Equal([]byte("abc")))
+			})
 		})
 	})
 })

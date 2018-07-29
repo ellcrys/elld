@@ -19,7 +19,7 @@ import (
 	path "path/filepath"
 
 	"github.com/ellcrys/elld/accountmgr"
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
 
@@ -33,7 +33,7 @@ var accountCmd = &cobra.Command{
   by you. Please understand that if you forget the password, it is IMPOSSIBLE to 
   unlock your account.
 
-  Password will be stored under <CONFIGDIR>/` + configdir.AccountDirName + `. It is safe to transfer the 
+  Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `. It is safe to transfer the 
   directory or individual accounts to another node. 
 
   Always backup your keeps regularly.`,
@@ -51,7 +51,7 @@ var accountCreateCmd = &cobra.Command{
   you provide. Do not forget your your passphrase. You will not be able 
   to unlock your account if you do.
 
-  Password will be stored under <CONFIGDIR>/` + configdir.AccountDirName + `. 
+  Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `. 
   It is safe to transfer the directory or individual accounts to another node. 
 
   Use --pwd to directly specify a password without going interactive mode. You 
@@ -67,7 +67,7 @@ var accountCreateCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
 		am.CreateCmd(seed, pwd)
 	},
 }
@@ -76,13 +76,13 @@ var accountListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all accounts",
 	Long: `Description:
-  This command lists all accounts existing under <CONFIGDIR>/` + configdir.AccountDirName + `.
+  This command lists all accounts existing under <CONFIGDIR>/` + config.AccountDirName + `.
 
   Given that an account in the directory begins with a timestamp of its creation time and the 
   list is lexicographically ordered, the most recently created account will the last on the list.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
 		am.ListCmd()
 	},
 }
@@ -101,7 +101,7 @@ var accountUpdateCmd = &cobra.Command{
 			address = args[0]
 		}
 
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
 		am.UpdateCmd(address)
 	},
 }
@@ -130,7 +130,7 @@ var accountImportCmd = &cobra.Command{
 		}
 
 		pwd, _ := cmd.Flags().GetString("pwd")
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), configdir.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
 		am.ImportCmd(keyfile, pwd)
 	},
 }

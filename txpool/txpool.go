@@ -52,7 +52,6 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 func (tp *TxPool) addTx(tx *wire.Transaction) error {
 
 	tp.gmx.Lock()
-	tp.queueMap[tx.ID()] = struct{}{}
 	if tp.beforeAppendCB != nil {
 		if err := tp.beforeAppendCB(tx); err != nil {
 			tp.gmx.Unlock()
@@ -60,6 +59,7 @@ func (tp *TxPool) addTx(tx *wire.Transaction) error {
 		}
 	}
 
+	tp.queueMap[tx.ID()] = struct{}{}
 	if !tp.queue.Append(tx) {
 		tp.gmx.Unlock()
 		return ErrQueueFull

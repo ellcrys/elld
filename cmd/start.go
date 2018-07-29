@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ellcrys/elld/logic"
+
 	"github.com/ellcrys/elld/rpc"
 
 	"gopkg.in/asaskevich/govalidator.v4"
@@ -14,7 +16,7 @@ import (
 	"github.com/ellcrys/elld/accountmgr"
 	funk "github.com/thoas/go-funk"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/console"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
@@ -26,7 +28,7 @@ var (
 	hardcodedBootstrapNodes = []string{} // hardcoded bootstrap node address
 )
 
-func defaultConfig(cfg *configdir.Config) {
+func defaultConfig(cfg *config.EngineConfig) {
 	cfg.Node.GetAddrInterval = util.NonZeroOrDefIn64(cfg.Node.GetAddrInterval, 10)
 	cfg.Node.PingInterval = util.NonZeroOrDefIn64(cfg.Node.PingInterval, 60)
 	cfg.Node.SelfAdvInterval = util.NonZeroOrDefIn64(cfg.Node.SelfAdvInterval, 10)
@@ -130,6 +132,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 // - add bootstrap node from config file if any
 // - open database
 // - initialize protocol instance along with message handlers
+// - create logic handler and pass it to the node
 // - start RPC server if enabled
 // - start console if enabled
 // - connect console to rpc server and prepare console vm if rpc server is enabled
@@ -163,7 +166,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	log.Info("Druid started", "Version", util.ClientVersion)
+	log.Info("Druid started", "Version", config.ClientVersion)
 
 	n, err := node.NewNode(cfg, addressToListenOn, loadedAddress, log)
 	if err != nil {
@@ -192,19 +195,22 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	log.Info("Waiting patiently to interact on", "Addr", n.GetMultiAddr(), "Dev", devMode)
 
-	protocol := node.NewInception(n, log)
-	n.SetProtocol(protocol)
-	n.SetProtocolHandler(util.HandshakeVersion, protocol.OnHandshake)
-	n.SetProtocolHandler(util.PingVersion, protocol.OnPing)
-	n.SetProtocolHandler(util.GetAddrVersion, protocol.OnGetAddr)
-	n.SetProtocolHandler(util.AddrVersion, protocol.OnAddr)
-	n.SetProtocolHandler(util.TxVersion, protocol.OnTx)
+	protocol := node.NewGossip(n, log)
+	n.SetGossipProtocol(protocol)
+	n.SetProtocolHandler(config.HandshakeVersion, protocol.OnHandshake)
+	n.SetProtocolHandler(config.PingVersion, protocol.OnPing)
+	n.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)
+	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
+	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
+
+	lgc, logicEvt := logic.New(n, log)
+	n.SetLogicBus(logicEvt)
 
 	n.Start()
 
 	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = rpc.NewServer(rpcAddress, n, log)
+		rpcServer = rpc.NewServer(rpcAddress, lgc, log)
 		go rpcServer.Serve()
 	}
 
@@ -246,7 +252,7 @@ var startCmd = &cobra.Command{
   to connect to. Addresses must be valid ipfs multiaddress. An account must be 
   provided and unlocked to be used for signing transactions and blocks. Use '--account'
   flag to provide the account. If account is not provided, the default account (
-  oldest account) in <CONFIGDIR>/` + configdir.AccountDirName + ` is used instead.
+  oldest account) in <CONFIGDIR>/` + config.AccountDirName + ` is used instead.
   
   If no account was found, an interactive session to create an account is started.   
   

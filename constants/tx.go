@@ -5,6 +5,6 @@ import (
 )
 
 var (
-	// A2AMinimumTxFee is the minimum transaction fee between two non-contract accounts
-	A2AMinimumTxFee = decimal.NewFromFloat(0.01)
+	// BalanceTxMinimumFee is the minimum transaction fee for balance transactions
+	BalanceTxMinimumFee = decimal.NewFromFloat(0.01)
 )

@@ -2,12 +2,7 @@ package wire
 
 import (
 	"crypto/sha256"
-	"encoding/asn1"
-	"encoding/hex"
 	"fmt"
-	"time"
-
-	validator "gopkg.in/asaskevich/govalidator.v4"
 
 	"github.com/ellcrys/elld/crypto"
 )
@@ -30,22 +25,9 @@ var (
 	// TxTypeBalance represents a transaction from an account to another account
 	TxTypeBalance int64 = 0x1
 
-	// TxTypeRepoCreate represents a transaction type for creating a repository
-	TxTypeRepoCreate int64 = 0x2
-
-	// TxTypeA2B represents a transaction type targeting a blockcode
-	TxTypeA2B int64 = 0x3
+	// TxTypeEndorserTicketCreate represents a transaction to create an endorser ticket
+	TxTypeEndorserTicketCreate int64 = 0x2
 )
-
-type asn1Tx struct {
-	Type         int64  `json:"type"`
-	Nonce        int64  `json:"nonce"`
-	To           string `json:"to" asn1:"utf8"`
-	SenderPubKey string `json:"senderPubKey" asn1:"utf8"`
-	Value        string `json:"value" asn1:"utf8"`
-	Fee          string `json:"fee" asn1:"utf8"`
-	Timestamp    int64  `json:"timestamp"`
-}
 
 // NewTransaction creates a new transaction
 func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, value string, fee string, timestamp int64) (tx *Transaction) {
@@ -60,36 +42,72 @@ func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, v
 	return
 }
 
-// Bytes return the ASN.1 marshalled representation of the transaction
-func (tx *Transaction) Bytes() []byte {
+// NewTx creates a new, signed transaction
+func NewTx(txType int64, nonce int64, to string, senderKey *crypto.Key, value string, fee string, timestamp int64) (tx *Transaction) {
+	tx = new(Transaction)
+	tx.Type = txType
+	tx.Nonce = nonce
+	tx.To = to
+	tx.SenderPubKey = senderKey.PubKey().Base58()
+	tx.From = senderKey.Addr()
+	tx.Value = value
+	tx.Timestamp = timestamp
+	tx.Fee = fee
+	tx.Hash = tx.ComputeHash2()
 
-	asn1Tx := asn1Tx{
-		Type:         tx.Type,
-		Nonce:        tx.Nonce,
-		To:           tx.To,
-		SenderPubKey: tx.SenderPubKey,
-		Value:        tx.Value,
-		Fee:          tx.Fee,
-		Timestamp:    tx.Timestamp,
-	}
-
-	result, err := asn1.Marshal(asn1Tx)
+	sig, err := TxSign(tx, senderKey.PrivKey().Base58())
 	if err != nil {
 		panic(err)
 	}
-	return result
+	tx.Sig = ToHex(sig)
+	return
 }
 
-// Hash returns the SHA256 hash of the transaction
-func (tx *Transaction) Hash() []byte {
+// Bytes return the ASN.1 marshalled representation of the transaction.
+func (tx *Transaction) Bytes() []byte {
+
+	var invokeArgsBs []byte
+	if tx.InvokeArgs != nil {
+		invokeArgsBs = tx.InvokeArgs.Bytes()
+	}
+
+	asn1Data := []interface{}{
+		tx.Type,
+		tx.Nonce,
+		tx.To,
+		tx.SenderPubKey,
+		tx.From,
+		tx.Value,
+		tx.Fee,
+		tx.Timestamp,
+		invokeArgsBs,
+	}
+
+	return getBytes(asn1Data)
+}
+
+// ComputeHash returns the SHA256 hash of the transaction.
+func (tx *Transaction) ComputeHash() []byte {
 	bs := tx.Bytes()
 	hash := sha256.Sum256(bs)
 	return hash[:]
 }
 
+// ComputeHash2 computes the SHA256 hash of the transaction and encodes to hex.
+func (tx *Transaction) ComputeHash2() string {
+	bs := tx.Bytes()
+	hash := sha256.Sum256(bs)
+	return ToHex(hash[:])
+}
+
 // ID returns the hex representation of Hash()
 func (tx *Transaction) ID() string {
-	return hex.EncodeToString(tx.Hash())
+	return tx.ComputeHash2()
+}
+
+// Sign the transaction
+func (tx *Transaction) Sign(privKey string) ([]byte, error) {
+	return TxSign(tx, privKey)
 }
 
 // TxVerify checks whether a transaction's signature is valid.
@@ -101,25 +119,26 @@ func TxVerify(tx *Transaction) error {
 	}
 
 	if tx.SenderPubKey == "" {
-		return txFieldError("senderPubKey", "sender public not set")
+		return fieldError("senderPubKey", "sender public not set")
 	}
 
 	if len(tx.Sig) == 0 {
-		return txFieldError("sig", "signature not set")
+		return fieldError("sig", "signature not set")
 	}
 
 	pubKey, err := crypto.PubKeyFromBase58(tx.SenderPubKey)
 	if err != nil {
-		return txFieldError("senderPubKey", err.Error())
+		return fieldError("senderPubKey", err.Error())
 	}
 
-	valid, err := pubKey.Verify(tx.Bytes(), tx.Sig)
+	decSig, _ := FromHex(tx.Sig)
+	valid, err := pubKey.Verify(tx.Bytes(), decSig)
 	if err != nil {
-		return txFieldError("sig", err.Error())
+		return fieldError("sig", err.Error())
 	}
 
 	if !valid {
-		return crypto.ErrVerifyFailed
+		return crypto.ErrTxVerificationFailed
 	}
 
 	return nil
@@ -138,7 +157,6 @@ func TxSign(tx *Transaction, privKey string) ([]byte, error) {
 		return nil, err
 	}
 
-	tx.Sig = []byte{}
 	sig, err := pKey.Sign(tx.Bytes())
 	if err != nil {
 		return nil, err
@@ -147,43 +165,10 @@ func TxSign(tx *Transaction, privKey string) ([]byte, error) {
 	return sig, nil
 }
 
-func txFieldError(field, err string) error {
-	return fmt.Errorf(fmt.Sprintf("field = %s, msg=%s", field, err))
-}
-
-// TxValidate validates the fields of a transaction
-// - Sender public key must be set and valid
-// - receiver's address must be valid
-// - Timestamp cannot be a future time
-// - Timestamp cannot be a week
-// - Signature is required
-func TxValidate(tx *Transaction) (errs []error) {
-
-	now := time.Now()
-
-	if validator.IsNull(tx.SenderPubKey) {
-		errs = append(errs, txFieldError("senderPubKey", "sender public key is required"))
-	} else if _, err := crypto.PubKeyFromBase58(tx.SenderPubKey); err != nil {
-		errs = append(errs, txFieldError("senderPubKey", err.Error()))
-	}
-
-	if validator.IsNull(tx.To) {
-		errs = append(errs, txFieldError("to", "recipient address is required"))
-	} else if err := crypto.IsValidAddr(tx.To); err != nil {
-		errs = append(errs, txFieldError("to", "address is not valid"))
-	}
-
-	if now.Before(time.Unix(tx.Timestamp, 0)) {
-		errs = append(errs, txFieldError("timestamp", "timestamp cannot be a future time"))
-	}
-
-	if now.Add(-7 * 24 * time.Hour).After(time.Unix(tx.Timestamp, 0)) {
-		errs = append(errs, txFieldError("timestamp", "timestamp cannot over 7 days ago"))
-	}
-
-	if len(tx.Sig) == 0 {
-		errs = append(errs, txFieldError("sig", "signature is required"))
-	}
-
-	return
+// Bytes returns the byte equivalent
+func (m *InvokeArgs) Bytes() []byte {
+	return getBytes([]interface{}{
+		m.Func,
+		m.Params,
+	})
 }

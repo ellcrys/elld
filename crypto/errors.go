@@ -5,6 +5,9 @@ import (
 )
 
 var (
-	// ErrVerifyFailed means signature verification failed
-	ErrVerifyFailed = fmt.Errorf("verify failed")
+	// ErrTxVerificationFailed means signature verification failed
+	ErrTxVerificationFailed = fmt.Errorf("transaction verification failed")
+
+	// ErrBlockVerificationFailed means signature verification failed
+	ErrBlockVerificationFailed = fmt.Errorf("block verification failed")
 )

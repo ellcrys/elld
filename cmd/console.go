@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ var consoleCmd = &cobra.Command{
   to connect to. Addresses must be valid ipfs multiaddress. An account must be 
   provided and unlocked to be used for signing transactions and blocks. Use '--account'
   flag to provide the account. If account is not provided, the default account account 
-  (oldest account) in <CONFIGDIR>/` + configdir.AccountDirName + ` is used instead.
+  (oldest account) in <CONFIGDIR>/` + config.AccountDirName + ` is used instead.
 	
   If no account was found, an interactive session to create an account is started.   
 	
