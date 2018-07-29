@@ -29,13 +29,13 @@ var _ = Describe("Addr", func() {
 
 		var err error
 		var lp *Node
-		var lpProtoc *Inception
+		var gossip *Gossip
 
 		BeforeEach(func() {
 			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
-			lpProtoc = NewInception(lp, log)
-			lp.SetProtocol(lpProtoc)
+			gossip = NewGossip(lp, log)
+			lp.SetGossipProtocol(gossip)
 		})
 
 		When("no relay peer have been stored", func() {
@@ -50,7 +50,7 @@ var _ = Describe("Addr", func() {
 					{Address: "/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV"},
 				}
 
-				peers := lpProtoc.getAddrRelayPeers(candidateAddrs)
+				peers := gossip.selectPeersToRelayTo(candidateAddrs)
 				Expect(len(peers)).To(Equal(2))
 				Expect(peers[0]).ToNot(BeNil())
 				Expect(peers[1]).ToNot(BeNil())
@@ -62,7 +62,7 @@ var _ = Describe("Addr", func() {
 					{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
 				}
 
-				peers := lpProtoc.getAddrRelayPeers(candidateAddrs)
+				peers := gossip.selectPeersToRelayTo(candidateAddrs)
 				Expect(len(peers)).To(Equal(2))
 				Expect(peers[0]).ToNot(BeNil())
 				Expect(peers[1]).To(BeNil())
@@ -78,13 +78,13 @@ var _ = Describe("Addr", func() {
 
 		var err error
 		var lp *Node
-		var lpProtoc *Inception
+		var gossip *Gossip
 
 		BeforeEach(func() {
 			lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
-			lpProtoc = NewInception(lp, log)
-			lp.SetProtocol(lpProtoc)
+			gossip = NewGossip(lp, log)
+			lp.SetGossipProtocol(gossip)
 		})
 
 		It("should return err.Error(too many items in addr message) when address is more than 10", func() {
@@ -101,7 +101,7 @@ var _ = Describe("Addr", func() {
 				{Address: ""},
 				{Address: ""},
 			}
-			errs := lpProtoc.RelayAddr(addrs)
+			errs := gossip.RelayAddr(addrs)
 			Expect(errs).ToNot(BeEmpty())
 			Expect(errs).To(ContainElement(fmt.Errorf("too many addresses in the message")))
 		})
@@ -111,7 +111,7 @@ var _ = Describe("Addr", func() {
 				{Address: ""},
 				{Address: ""},
 			}
-			errs := lpProtoc.RelayAddr(addrs)
+			errs := gossip.RelayAddr(addrs)
 			Expect(errs).ToNot(BeEmpty())
 			Expect(errs).To(ContainElement(fmt.Errorf("no addr to relay")))
 		})
@@ -120,7 +120,7 @@ var _ = Describe("Addr", func() {
 			addrs := []*wire.Address{
 				{Address: "/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu", Timestamp: time.Now().Add(61 * time.Minute).Unix()},
 			}
-			errs := lpProtoc.RelayAddr(addrs)
+			errs := gossip.RelayAddr(addrs)
 			Expect(errs).ToNot(BeEmpty())
 			Expect(errs).To(ContainElement(fmt.Errorf("no addr to relay")))
 		})
@@ -129,23 +129,23 @@ var _ = Describe("Addr", func() {
 
 			var err error
 			var p, p2, p3 *Node
-			var pt, pt2, pt3 *Inception
+			var pt, pt2, pt3 *Gossip
 
 			BeforeEach(func() {
 				p, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
-				pt = NewInception(p, log)
-				p.SetProtocol(pt)
+				pt = NewGossip(p, log)
+				p.SetGossipProtocol(pt)
 
 				p2, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
 				Expect(err).To(BeNil())
-				pt2 = NewInception(p2, log)
-				p2.SetProtocol(pt2)
+				pt2 = NewGossip(p2, log)
+				p2.SetGossipProtocol(pt2)
 
 				p3, err = NewNode(cfg, "127.0.0.1:30013", crypto.NewKeyFromIntSeed(3), log)
 				Expect(err).To(BeNil())
-				pt3 = NewInception(p3, log)
-				p3.SetProtocol(pt3)
+				pt3 = NewGossip(p3, log)
+				p3.SetGossipProtocol(pt3)
 			})
 
 			It("should successfully choose relay peers", func() {

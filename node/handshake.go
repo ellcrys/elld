@@ -1,92 +1,99 @@
 package node
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
-	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
 // SendHandshake sends an introduction message to a peer
-func (pt *Inception) SendHandshake(remotePeer *Node) error {
+func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
-	pt.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
 
-	s, err := pt.LocalPeer().addToPeerStore(remotePeer).newStream(context.Background(), remotePeer.ID(), util.HandshakeVersion)
+	g.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
+
+	// create stream
+	s, err := g.newStream(context.Background(), remotePeer, config.HandshakeVersion)
 	if err != nil {
-		pt.log.Debug("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err)
 	}
 	defer s.Close()
 
-	w := bufio.NewWriter(s)
-	msg := &wire.Handshake{SubVersion: util.ClientVersion}
-	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
+	// write to the stream
+	msg := &wire.Handshake{SubVersion: config.ClientVersion}
+	if err := writeStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Debug("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to write to stream")
 	}
 
-	w.Flush()
+	g.log.Debug("Sent handshake to peer", "PeerID", remotePeerIDShort)
 
-	pt.log.Debug("Sent handshake to peer", "PeerID", remotePeerIDShort)
-
+	// receive handshake message from the remote peer.
 	resp := &wire.Handshake{}
-	decoder := pc.Multicodec(nil).Decoder(bufio.NewReader(s))
-	if err := decoder.Decode(resp); err != nil {
+	if err := readStream(s, resp); err != nil {
 		s.Reset()
-		pt.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
 	}
 
-	remotePeer.Timestamp = time.Now()
-	pt.PM().AddOrUpdatePeer(remotePeer)
+	// update the timestamp of the peer
+	remotePeer.SetTimestamp(time.Now())
+	g.PM().AddOrUpdatePeer(remotePeer)
 
-	pt.log.Info("Handshake was successful", "PeerID", remotePeerIDShort, "SubVersion", resp.SubVersion)
+	g.log.Info("Handshake was successful", "PeerID", remotePeerIDShort, "SubVersion", resp.SubVersion)
 
 	return nil
 }
 
 // OnHandshake handles incoming handshake request
-func (pt *Inception) OnHandshake(s net.Stream) {
+func (g *Gossip) OnHandshake(s net.Stream) {
 
-	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), pt.LocalPeer())
-	remotePeerIDShort := remotePeer.ShortID()
 	defer s.Close()
 
-	if pt.LocalPeer().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.Engine())
+	remotePeerIDShort := remotePeer.ShortID()
+
+	// In dev mode, ensure messages from public address are ignored
+	if g.Engine().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
 		s.Reset()
-		pt.log.Debug("Can't accept message from non local or private IP in development mode", "Addr", remotePeer.GetMultiAddr(), "Msg", "Handshake")
+		g.log.Debug("In development mode, we cannot interact with peers with public IP", "Addr", remotePeer.GetMultiAddr(), "Msg", "Handshake")
 		return
 	}
 
-	pt.log.Info("Received handshake message", "PeerID", remotePeerIDShort)
+	g.log.Info("Received handshake message", "PeerID", remotePeerIDShort)
 
+	// read the message from the stream
 	msg := &wire.Handshake{}
-	if err := pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(msg); err != nil {
+	if err := readStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Error("failed to read handshake message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read handshake message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
-	ack := &wire.Handshake{SubVersion: util.ClientVersion}
-	w := bufio.NewWriter(s)
-	enc := pc.Multicodec(nil).Encoder(w)
-	if err := enc.Encode(ack); err != nil {
+	// TODO: perform version compatibility checks with msg
+
+	// send back this peer's client version so the other peer can decide
+	// whether to keep the connection
+	msg = &wire.Handshake{SubVersion: config.ClientVersion}
+	if err := writeStream(s, msg); err != nil {
 		s.Reset()
-		pt.log.Error("failed to send handshake response", "Err", err)
+		g.log.Error("failed to send handshake response", "Err", err)
 		return
 	}
-	w.Flush()
 
+	// update the remote peer's timestamp and add it to the peer manager's list
 	remotePeer.Timestamp = time.Now()
-	pt.PM().AddOrUpdatePeer(remotePeer)
-	pt.log.Info("Handshake has been acknowledged", "PeerID", remotePeerIDShort, "SubVersion", msg.SubVersion)
+	g.PM().AddOrUpdatePeer(remotePeer)
+
+	g.log.Info("Handshake has been acknowledged", "PeerID", remotePeerIDShort, "SubVersion", msg.SubVersion)
 
 }

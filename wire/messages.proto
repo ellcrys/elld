@@ -45,49 +45,63 @@ message InvokeArgs {
     map<string,string> params = 2;
 }
 
+// BlockVote represents a vote for a block
+message BlockVote {
+    string powBlockHash = 1;
+    int32 vote = 2; 
+	string ticket = 3;
+	string pubKey = 4;
+	string sig  = 5;
+}
+
 // Transaction represents a transaction
 message Transaction {
     int64 type = 1;
     int64 nonce = 2;
     string to = 3;
-    string senderPubKey = 4;
-    string value = 5;
-    int64 Timestamp = 6;
-    string Fee = 7;
-    InvokeArgs InvokeArgs = 8;
-    bytes sig = 9;
+    string from = 4;
+    string senderPubKey = 5;
+    string value = 6;
+    int64 Timestamp = 7;
+    string Fee = 8;
+    InvokeArgs InvokeArgs = 9;
+    string sig = 10;
+    string hash = 11;
 }
 
 // Header represents the header of a block
 message Header {
     string ParentHash = 1;
-    uint64 number = 2;
-    string root = 3;
-    bytes txHash = 4;
-    uint64 nonce = 5;
-    bytes mixHash = 6;
-    string difficulty = 7;
-    string timestamp = 8;
+    string creatorPubKey = 2;
+    uint64 number = 3;
+    string stateRoot = 4;
+    string transactionsRoot = 5;
+    uint64 nonce = 6;
+    string mixHash = 7;
+    string difficulty = 8;
+    int64 timestamp = 9;
 }
 
-// Block represents an Ellcrys block (work in progress)
+// Block represents an Ellcrys unendorsed block
 message Block{
     Header header = 1;
     repeated Transaction transactions = 2;
+    string hash = 3;
+    string sig = 4;
 }
 
 // ObjectState represents the new state of an account's object
 message ObjectState {
     string prevHash = 1;
-    string newAHash = 2;
-    bytes value = 3;
+    string newHash = 2;
+    string value = 3;
 }
 
 // SignTxData represents information about a signed transaction, the signer
 // and the affected state objects. 
 message SignTxData {
     string pubKey = 1;
-    bytes sig = 2;
+    string sig = 2;
     repeated ObjectState stateUpdates = 3;
 }
 
@@ -97,20 +111,19 @@ message SignedTransaction {
     SignTxData sigData = 2;
 }
 
-// BlockcodeObject represents objects belonging to a blockcode
+// BlockcodeObject represents objects belonging to a blockcodeInfo
 message BlockcodeObject {
-    bytes data = 1;
+    string data = 1;
 }
 
-// BlockcodeData represent data belonging to a blockcode
-message BlockcodeData {
-    bytes byteCode = 1;
+// BlockcodeInfo represent data belonging to a blockcode
+message BlockcodeInfo {
+    string byteCode = 1;
     map<string,BlockcodeObject> data = 2;    
 }
 
-// AccountData represents the data specific to a regular account
-message AccountData {
-    string balance = 1;
+// AccountInfo represents the data specific to a regular account
+message AccountInfo {
 }
 
 // GitBundle represents a git bundle
@@ -124,18 +137,16 @@ message RepoBundles {
     repeated GitBundle bundles = 1;
 }
 
-// RepoData represents a git repository data
-message RepoData {
-    string balance = 1;
-    map<string, RepoBundles> branches = 3;  
+// RepoInfo represents a git repository data
+message RepoInfo {
+    map<string, RepoBundles> branches = 1;  
 }
 
 // Account represents an entity on the network.
 message Account {
     int32 type = 1;
     string address = 2;
-    string hash = 3;
-    BlockcodeData blockcodeData = 4;
-    AccountData  accountData = 5;
-    RepoData repoData = 6;
+    string balance = 3;
+    AccountInfo  accountInfo = 4;
+    RepoInfo repoInfo = 5;
 }

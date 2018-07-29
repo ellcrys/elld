@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
 
@@ -13,8 +13,8 @@ var versionCmd = &cobra.Command{
 	Short: "Client, protocol and Go versions",
 	Long:  `Client, protocol and Go versions`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(fmt.Sprintf("Client Version: v%s", util.ClientVersion))
-		fmt.Println("Protocol Version: ", util.ProtocolVersion)
+		fmt.Println(fmt.Sprintf("Client Version: v%s", config.ClientVersion))
+		fmt.Println("Protocol Version: ", config.ProtocolVersion)
 		fmt.Println("Go Version: ", "go1.10")
 	},
 }

@@ -55,12 +55,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/cbergoon/merkletree"
-  packages = ["."]
-  revision = "0e68ec9a138d919b3052ba7cfea5f0a63630cdfe"
-
-[[projects]]
-  branch = "master"
   name = "github.com/cenkalti/hub"
   packages = ["."]
   revision = "11382a9960d39b0ecda16fd01c424c11ff765a34"
@@ -166,8 +160,6 @@
   packages = [
     "common",
     "common/bitutil",
-    "crypto",
-    "crypto/sha3",
     "metrics"
   ]
   revision = "6cf0ab38bd0af77d81aad4c104979cebee9e3e63"
@@ -181,13 +173,9 @@
 [[projects]]
   name = "github.com/ethereum/go-ethereum"
   packages = [
-    "common",
     "common/hexutil",
-    "common/math",
-    "crypto/secp256k1",
     "crypto/sha3",
-    "log",
-    "rlp"
+    "log"
   ]
   revision = "86be91b3e2dff5df28ee53c59df1ecfe9f97e007"
 
@@ -359,6 +347,15 @@
   name = "github.com/jinzhu/copier"
   packages = ["."]
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/lib/pq"
+  packages = [
+    ".",
+    "oid"
+  ]
+  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
 
 [[projects]]
   name = "github.com/libp2p/go-addr-util"
@@ -905,6 +902,7 @@
 [[projects]]
   name = "golang.org/x/crypto"
   packages = [
+    "blake2b",
     "blake2s",
     "blowfish",
     "pbkdf2",
@@ -982,6 +980,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1f1ae94a32f5608d635f02f75770819464a1803c0265bbc066e9797f60b898f9"
+  inputs-digest = "a0e8a3b0a26257f3d201a51fae0c4a1dede8f427dcb2b746ad298adf8a17c66a"
   solver-name = "gps-cdcl"
   solver-version = 1

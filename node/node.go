@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node/histcache"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
@@ -17,8 +19,9 @@ import (
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/elld/configdir"
+	"github.com/ellcrys/elld/config"
 
+	evbus "github.com/asaskevich/EventBus"
 	"github.com/thoas/go-funk"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -35,29 +38,33 @@ import (
 
 // Node represents a network node
 type Node struct {
-	cfg             *configdir.Config       // node config
-	address         ma.Multiaddr            // node multiaddr
-	IP              net.IP                  // node ip
-	host            host.Host               // node libp2p host
-	wg              sync.WaitGroup          // wait group for preventing the main thread from exiting
-	localNode       *Node                   // local node
-	peerManager     *Manager                // node manager for managing connections to other remote peers
-	protoc          Protocol                // protocol instance
-	remote          bool                    // remote indicates the node represents a remote peer
-	Timestamp       time.Time               // the last time this node was seen/active
-	isHardcodedSeed bool                    // whether the node was hardcoded as a seed
-	stopped         bool                    // flag to tell if node has stopped
-	log             logger.Logger           // node logger
-	rSeed           []byte                  // random 256 bit seed to be used for seed random operations
-	db              database.DB             // used to access and modify local database
-	txPool          *txpool.TxPool          // the transaction pool
-	signatory       *d_crypto.Key           // signatory address used to get node ID and for signing
-	historyCache    *histcache.HistoryCache // Used to track objects and behaviours
-	txsRelayQueue   *txpool.TxQueue         // stores transactions waiting to be relayed
+	mtx                     *sync.RWMutex
+	cfg                     *config.EngineConfig    // node config
+	address                 ma.Multiaddr            // node multiaddr
+	IP                      net.IP                  // node ip
+	host                    host.Host               // node libp2p host
+	wg                      sync.WaitGroup          // wait group for preventing the main thread from exiting
+	localNode               *Node                   // local node
+	peerManager             *Manager                // node manager for managing connections to other remote peers
+	gProtoc                 types.Gossip            // gossip protocol instance
+	remote                  bool                    // remote indicates the node represents a remote peer
+	Timestamp               time.Time               // the last time this node was seen/active
+	isHardcodedSeed         bool                    // whether the node was hardcoded as a seed
+	stopped                 bool                    // flag to tell if node has stopped
+	log                     logger.Logger           // node logger
+	rSeed                   []byte                  // random 256 bit seed to be used for seed random operations
+	db                      database.DB             // used to access and modify local database
+	signatory               *d_crypto.Key           // signatory address used to get node ID and for signing
+	historyCache            *histcache.HistoryCache // Used to track objects and behaviours
+	logicEvt                evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
+	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
+	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
+	bchain                  *blockchain.Blockchain  // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port
-func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db database.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 
 	if signatory == nil {
 		return nil, fmt.Errorf("signatory address required")
@@ -91,15 +98,18 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	}
 
 	node := &Node{
-		cfg:           config,
-		address:       util.FullAddressFromHost(host),
-		host:          host,
-		wg:            sync.WaitGroup{},
-		log:           log,
-		rSeed:         util.RandBytes(64),
-		txPool:        txpool.NewTxPool(config.TxPool.Capacity),
-		signatory:     signatory,
-		txsRelayQueue: txpool.NewQueueNoSort(config.TxPool.Capacity),
+		cfg:       config,
+		address:   util.FullAddressFromHost(host),
+		host:      host,
+		wg:        sync.WaitGroup{},
+		log:       log,
+		rSeed:     util.RandBytes(64),
+		signatory: signatory,
+		db:        db,
+		mtx:       &sync.RWMutex{},
+		openTransactionsSession: make(map[string]struct{}),
+		transactionsPool:        txpool.NewTxPool(config.TxPool.Capacity),
+		txsRelayQueue:           txpool.NewQueueNoSort(config.TxPool.Capacity),
 	}
 
 	node.localNode = node
@@ -118,6 +128,16 @@ func NewNode(config *configdir.Config, address string, signatory *d_crypto.Key, 
 	return node, nil
 }
 
+// NewNode creates a Node instance
+func NewNode(config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+	return newNode(nil, config, address, signatory, log)
+}
+
+// NewNodeWithDB is like NewNode but it accepts a db instance
+func NewNodeWithDB(db database.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+	return newNode(db, config, address, signatory, log)
+}
+
 // NewRemoteNode creates a Node that represents a remote node
 func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	node := &Node{
@@ -130,14 +150,15 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 }
 
 // OpenDB opens the database.
-// In dev mode, the database is namespaced by the node id.
+// In dev mode, create a namespace and open database file prefixed with the namespace.
 func (n *Node) OpenDB() error {
+
 	if n.db != nil {
 		return fmt.Errorf("db already open")
 	}
-	n.db = database.NewGeneralDB(n.cfg.ConfigDir())
 
-	namespace := ""
+	n.db = database.NewLevelDB(n.cfg.ConfigDir())
+	var namespace string
 	if n.DevMode() {
 		namespace = n.StringID()
 	}
@@ -145,9 +166,24 @@ func (n *Node) OpenDB() error {
 	return n.db.Open(namespace)
 }
 
+// DB returns the database instance
+func (n *Node) DB() database.DB {
+	return n.db
+}
+
+// GossipProto returns the set protocol
+func (n *Node) GossipProto() types.Gossip {
+	return n.gProtoc
+}
+
 // PM returns the peer manager
 func (n *Node) PM() *Manager {
 	return n.peerManager
+}
+
+// Cfg returns the config object
+func (n *Node) Cfg() *config.EngineConfig {
+	return n.cfg
 }
 
 // History returns the cache holding items (messages etc) we have seen
@@ -156,8 +192,23 @@ func (n *Node) History() *histcache.HistoryCache {
 }
 
 // IsSame checks if p is the same as node
-func (n *Node) IsSame(node *Node) bool {
+func (n *Node) IsSame(node types.Engine) bool {
 	return n.StringID() == node.StringID()
+}
+
+// GetBlockchain returns the blockchain manager
+func (n *Node) GetBlockchain() types.Blockchain {
+	return n.bchain
+}
+
+// IsHardcodedSeed checks whether the node is an hardcoded seed node
+func (n *Node) IsHardcodedSeed() bool {
+	return n.isHardcodedSeed
+}
+
+// SetTimestamp sets the timestamp value
+func (n *Node) SetTimestamp(newTime time.Time) {
+	n.Timestamp = newTime
 }
 
 // DevMode checks whether the node is in dev mode
@@ -170,13 +221,37 @@ func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
+// SetLogicBus sets the logic event bus
+func (n *Node) SetLogicBus(bus evbus.Bus) {
+	n.logicEvt = bus
+}
+
 // SetLocalNode sets the local peer
 func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
 }
 
+// canAcceptPeer determines whether we can continue to interact with
+// a remote node. This is a good place to check if a remote node
+// has been blacklisted etc
+func (n *Node) canAcceptPeer(remotePeer *Node) (bool, string) {
+
+	// In dev mode, we cannot interact with a remote peer with a public IP
+	if n.isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+		return false, "in development mode, we cannot interact with peers with public IP"
+	}
+
+	// If the local peer does not know the remotePeer, it cannot interact with it.
+	// This does not apply in dev mode.
+	if !remotePeer.IsKnown() && !n.isDevMode() {
+		return false, "remote peer is unknown"
+	}
+
+	return true, ""
+}
+
 // addToPeerStore adds a remote node to the host's peerstore
-func (n *Node) addToPeerStore(remote *Node) *Node {
+func (n *Node) addToPeerStore(remote types.Engine) *Node {
 	n.localNode.Peerstore().AddAddr(remote.ID(), remote.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
 	return n
 }
@@ -186,9 +261,9 @@ func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string)
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
 }
 
-// SetProtocol sets the protocol implementation
-func (n *Node) SetProtocol(protoc Protocol) {
-	n.protoc = protoc
+// SetGossipProtocol sets the gossip protocol implementation
+func (n *Node) SetGossipProtocol(protoc types.Gossip) {
+	n.gProtoc = protoc
 }
 
 // GetHost returns the node's host
@@ -326,7 +401,7 @@ func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
 		pAddr, _ := ma.NewMultiaddr(addr)
 		rp := NewRemoteNode(pAddr, n)
 		rp.isHardcodedSeed = hardcoded
-		rp.protoc = n.protoc
+		rp.gProtoc = n.gProtoc
 		n.peerManager.AddBootstrapPeer(rp)
 	}
 	return nil
@@ -347,29 +422,30 @@ func (n *Node) PeersPublicAddr(peerIDsToIgnore []string) (peerAddrs []ma.Multiad
 
 // connectToNode handshake to each bootstrap peer.
 // Then send GetAddr message if handshake is successful
-func (n *Node) connectToNode(remote *Node) error {
-	if n.protoc.SendHandshake(remote) == nil {
-		return n.protoc.SendGetAddr([]*Node{remote})
+func (n *Node) connectToNode(remote types.Engine) error {
+	if n.gProtoc.SendHandshake(remote) == nil {
+		return n.gProtoc.SendGetAddr([]types.Engine{remote})
 	}
 	return nil
-}
-
-// GetTxPool returns the transaction pool
-func (n *Node) GetTxPool() *txpool.TxPool {
-	return n.txPool
 }
 
 // relayTx continuously relays transactions in the tx relay queue
 func (n *Node) relayTx() {
 	for !n.stopped {
-		if n.txsRelayQueue.Size() == 0 {
+		q := n.GetTxRelayQueue()
+		if q.Size() == 0 {
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
-		tx := n.txsRelayQueue.First()
-		n.protoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+		tx := q.First()
+		n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 	}
+}
+
+// GetTimestamp returns the timestamp
+func (n *Node) GetTimestamp() time.Time {
+	return n.Timestamp
 }
 
 // Start starts the node.
@@ -385,9 +461,9 @@ func (n *Node) Start() {
 	}
 
 	// before a transaction is added to the tx pool, it must be successfully
-	// added to the Node's tx relay queue.
-	n.txPool.BeforeAppend(func(tx *wire.Transaction) error {
-		if !n.txsRelayQueue.Append(tx) {
+	// added to the tx relay queue.
+	n.GetTxPool().BeforeAppend(func(tx *wire.Transaction) error {
+		if !n.GetTxRelayQueue().Append(tx) {
 			return txpool.ErrQueueFull
 		}
 		return nil
@@ -409,6 +485,10 @@ func (n *Node) Stop() {
 
 	if pm := n.PM(); pm != nil {
 		pm.Stop()
+	}
+
+	if n.host != nil {
+		n.host.Close()
 	}
 
 	if n.db != nil {
@@ -437,7 +517,7 @@ func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
 	return &Node{
 		address:   nAddr,
 		localNode: n,
-		protoc:    n.protoc,
+		gProtoc:   n.gProtoc,
 		remote:    remote,
 	}, nil
 }
@@ -477,4 +557,14 @@ func (n *Node) createTx() error {
 	// tx := &wire.NewTransaction(wire.TxTypeRepoCreate, 1, "somebody", n.)
 	// return n.txPool.Put()
 	return nil
+}
+
+// GetTxRelayQueue returns the transaction relay queue
+func (n *Node) GetTxRelayQueue() *txpool.TxQueue {
+	return n.txsRelayQueue
+}
+
+// GetTxPool returns the unsigned transaction pool
+func (n *Node) GetTxPool() *txpool.TxPool {
+	return n.transactionsPool
 }

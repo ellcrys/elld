@@ -4,10 +4,12 @@ import (
 	net_rpc "net/rpc"
 	"time"
 
+	"github.com/fatih/structs"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
-	"github.com/jinzhu/copier"
 )
 
 // BalanceService provides functionalities for
@@ -32,7 +34,6 @@ func (es *BalanceService) Send(params map[string]interface{}) interface{} {
 	if es.client == nil {
 		return ConsoleErr("rpc client not initialized", nil)
 	}
-
 	if es.key == nil {
 		return ConsoleErr("key not set", nil)
 	}
@@ -52,16 +53,11 @@ func (es *BalanceService) Send(params map[string]interface{}) interface{} {
 		return ConsoleErr(err.Error(), nil)
 	}
 
-	var sendTxArgs rpc.SendTxArgs
-	copier.Copy(&sendTxArgs, tx)
+	tx.Sig = util.ToHex(sig)
+	tx.Hash = tx.ComputeHash2()
 
 	var result rpc.Result
-	var payload = rpc.SendTxPayload{
-		Args: sendTxArgs,
-		Sig:  sig,
-	}
-
-	err = es.client.Call("Service.Send", payload, &result)
+	err = es.client.Call("Service.TransactionAdd", structs.Map(tx), &result)
 	if err != nil {
 		return ConsoleErr(err.Error(), nil)
 	}
