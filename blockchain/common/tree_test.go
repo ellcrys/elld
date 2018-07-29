@@ -1,4 +1,4 @@
-package blockchain
+package common
 
 import (
 	"github.com/cbergoon/merkletree"

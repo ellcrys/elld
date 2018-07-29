@@ -1,4 +1,4 @@
-package blockchain
+package common
 
 import (
 	"bytes"
@@ -43,6 +43,12 @@ func (t *Tree) Add(item merkletree.Content) {
 	t.items = append(t.items, item)
 }
 
+// GetItems returns the tree items 
+// Needs tests
+func (t *Tree) GetItems() []merkletree.Content {
+	return t.items
+}
+
 // Build the tree from a slice of item
 func (t *Tree) Build() error {
 
@@ -58,5 +64,8 @@ func (t *Tree) Build() error {
 
 // Root returns the root of the tree
 func (t *Tree) Root() []byte {
+	if t.tree == nil {
+		return nil
+	}
 	return t.tree.MerkleRoot()
 }

@@ -48,7 +48,28 @@ func NewChain(id string, store common.Store, cfg *config.EngineConfig, log logge
 	chain.store = store
 	chain.chainLock = &sync.RWMutex{}
 	chain.log = log
+	chain.info = &common.ChainInfo{
+		ID: id,
+	}
 	return chain
+}
+
+// GetID returns the id of the chain
+func (c *Chain) GetID() string {
+	return c.id
+}
+
+// getBlock fetches a block by its number
+func (c *Chain) getBlock(number uint64) (*wire.Block, error) {
+	c.chainLock.RLock()
+	defer c.chainLock.RUnlock()
+
+	b, err := c.store.GetBlock(c.id, number)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 // getTipHeader returns the header of the highest block on this chain
@@ -183,7 +204,7 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 
 // NewStateTree creates a new tree. When backLinked is set to true
 // the root of the previous block is included as the first entry to the tree.
-func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*Tree, error) {
+func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tree, error) {
 
 	var prevRoot []byte
 
@@ -199,7 +220,7 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*Tree, err
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode parent state root")
 			}
-		}
+		} // TODO: what happens if no parent block?
 	} else {
 		// Decode the state root to byte equivalent
 		prevRoot, err = util.FromHex(tipHeader.StateRoot)
@@ -212,9 +233,9 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*Tree, err
 	// of the previous block as the first item. This ensures
 	// cryptographic, backward linkage with previous blocks. No need do
 	// this if no tip block or noBackLink is true
-	tree := NewTree()
+	tree := common.NewTree()
 	if !noBackLink && len(prevRoot) > 0 {
-		tree.Add(TreeItem(prevRoot))
+		tree.Add(common.TreeItem(prevRoot))
 	}
 
 	return tree, nil

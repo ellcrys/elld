@@ -1,4 +1,4 @@
-package validators
+package blockchain
 
 import (
 	"fmt"
@@ -6,13 +6,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	govalidator "gopkg.in/asaskevich/govalidator.v4"
 )
+
+func fieldError(field, err string) error {
+	var fieldArg = "field:%s, "
+	if field == "" {
+		fieldArg = "%s"
+	}
+	return fmt.Errorf(fmt.Sprintf(fieldArg+"error:%s", field, err))
+}
+
+func fieldErrorWithIndex(index int, field, err string) error {
+	var fieldArg = "field:%s, "
+	if field == "" {
+		fieldArg = "%s"
+	}
+	return fmt.Errorf(fmt.Sprintf("index:%d, "+fieldArg+"error:%s", index, field, err))
+}
 
 // BlockValidator implements a validator for checking
 // syntactic, contextual and state correctness of a block
@@ -27,7 +43,7 @@ type BlockValidator struct {
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
-	bchain *blockchain.Blockchain
+	bchain types.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
@@ -38,7 +54,7 @@ type BlockValidator struct {
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
-	bchain *blockchain.Blockchain, allowDupCheck bool) *BlockValidator {
+	bchain types.Blockchain, allowDupCheck bool) *BlockValidator {
 	return &BlockValidator{
 		block:               block,
 		txpool:              txPool,
@@ -50,7 +66,7 @@ func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
 // Validate runs a series of checks against the loaded block
 // returning all errors found.
 func (v *BlockValidator) Validate() (errs []error) {
-	errs = v.statelessChecks()
+	errs = v.check()
 	errs = append(errs, v.checkSignature()...)
 	if v.allowDuplicateCheck {
 		errs = append(errs, v.duplicateCheck(v.block)...)
@@ -65,10 +81,10 @@ func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 	// For non-genesis block, parent hash must be set
 	if h.Number != 1 && len(h.ParentHash) == 0 {
 		errs = append(errs, fieldError("parentHash", "parent hash is required"))
-	} else if h.Number != 1 && len(h.ParentHash) == 66 {
+	} else if h.Number != 1 && len(h.ParentHash) != 66 {
 		// For non-genesis block, parent hash hex encoded length
 		// must be 66 charachers long (64 hex, 2 '0x' prefix)
-		errs = append(errs, fieldError("parentHash", "parent hash is has invalid length. 66 chars. required."))
+		errs = append(errs, fieldError("parentHash", "parent hash has invalid length. 66 chars. required."))
 	} else if h.Number == 1 && len(h.ParentHash) > 0 {
 		// For genesis block, parent hash is not required
 		errs = append(errs, fieldError("parentHash", "parent hash is not expected in a genesis block"))
@@ -133,9 +149,9 @@ func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 	return
 }
 
-// statelessChecks checks the field and their values and
+// check checks the field and their values and
 // does no integration checks with other components.
-func (v *BlockValidator) statelessChecks() (errs []error) {
+func (v *BlockValidator) check() (errs []error) {
 
 	// Transaction must not be nil
 	if v.block == nil {
@@ -186,7 +202,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 
 	pubKey, err := crypto.PubKeyFromBase58(v.block.Header.CreatorPubKey)
 	if err != nil {
-		errs = append(errs, fieldError("creatorPubKey", err.Error()))
+		errs = append(errs, fieldError("header.creatorPubKey", err.Error()))
 		return
 	}
 
@@ -207,11 +223,11 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 func (v *BlockValidator) duplicateCheck(b *wire.Block) (errs []error) {
 
 	if v.bchain != nil {
-		known, err := v.bchain.IsKnownBlock(b.Hash)
+		known, reason, err := v.bchain.IsKnownBlock(b.Hash)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("duplicate check error: %s", err))
 		} else if known {
-			errs = append(errs, fieldError("", "block is already known"))
+			errs = append(errs, fieldError("", fmt.Sprintf("block found in %s", reason)))
 		}
 	}
 

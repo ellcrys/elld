@@ -1,12 +1,12 @@
-package validators
+package blockchain
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types"
 
 	"github.com/shopspring/decimal"
 
@@ -34,7 +34,7 @@ type TxsValidator struct {
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
-	bchain *blockchain.Blockchain
+	bchain types.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
@@ -49,7 +49,7 @@ type TxsValidator struct {
 
 // NewTxsValidator creates an instance of TxsValidator
 func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool,
-	bchain *blockchain.Blockchain, allowDupCheck bool) *TxsValidator {
+	bchain types.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 txs,
 		txpool:              txPool,
@@ -60,7 +60,7 @@ func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool,
 
 // NewTxValidator is like NewTxsValidator except it accepts a single transaction
 func NewTxValidator(tx *wire.Transaction, txPool *txpool.TxPool,
-	bchain *blockchain.Blockchain, allowDupCheck bool) *TxsValidator {
+	bchain types.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 []*wire.Transaction{tx},
 		txpool:              txPool,
@@ -79,9 +79,9 @@ func (v *TxsValidator) Validate() (errs []error) {
 	return
 }
 
-// statelessChecks checks the field and their values and
-// does no integration checks with other components.
-func (v *TxsValidator) statelessChecks(tx *wire.Transaction) (errs []error) {
+// check check the field and their values and
+// does no integration check with other components.
+func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -242,7 +242,7 @@ func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
 // ValidateTx validates a single transaction coming received
 // by the gossip handler..
 func (v *TxsValidator) ValidateTx(tx *wire.Transaction) []error {
-	errs := v.statelessChecks(tx)
+	errs := v.check(tx)
 	errs = append(errs, v.checkSignature(tx)...)
 	if v.allowDuplicateCheck {
 		errs = append(errs, v.duplicateCheck(tx)...)

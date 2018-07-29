@@ -102,6 +102,18 @@ func (m *BlockchainMeta) JSON() ([]byte, error) {
 // StateObject describes an object to be stored in a database.StateObject.
 // Usually created after processing a Transition object.
 type StateObject struct {
-	Key   []byte
+
+	// Key represents the key to use
+	// to persist the object to database
+	Key []byte
+
+	// TreeKey represents the key to use
+	// to add a record of this object in
+	// a merkle tree
+	TreeKey []byte
+
+	// Value is the content of this state
+	// object. It is written to the database
+	// and the tree
 	Value []byte
 }

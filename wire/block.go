@@ -156,12 +156,6 @@ func BlockSign(b *Block, privKey string) ([]byte, error) {
 		return nil, err
 	}
 
-	_sig := b.Sig
-	b.Sig = ""
-	defer func() {
-		b.Sig = _sig
-	}()
-
 	sig, err := pKey.Sign(b.Bytes())
 	if err != nil {
 		return nil, err

@@ -1,8 +1,8 @@
 package logic
 
 import (
+	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/constants"
-	"github.com/ellcrys/elld/validators"
 	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
 )
@@ -11,7 +11,7 @@ import (
 // Any error is sent to errCh
 func (l *Logic) TransactionAdd(tx *wire.Transaction, errCh chan error) error {
 
-	txValidator := validators.NewTxValidator(tx, l.engine.GetTxPool(), l.engine.GetBlockchain(), true)
+	txValidator := blockchain.NewTxValidator(tx, l.engine.GetTxPool(), l.engine.GetBlockchain(), true)
 	if errs := txValidator.Validate(); len(errs) > 0 {
 		return sendErr(errCh, errs[0])
 	}

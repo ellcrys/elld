@@ -11,8 +11,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/ellcrys/elld/blockchain"
-
+	"github.com/ellcrys/elld/blockchain/common"
 	elldCrypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -132,7 +131,7 @@ func GenerateBlock(to *elldCrypto.Key, from *elldCrypto.Key, value string) strin
 		ParentHash:       "",
 		CreatorPubKey:    to.PubKey().Base58(),
 		Number:           1,
-		TransactionsRoot: util.ToHex(blockchain.ComputeTxsRoot(block.Transactions)),
+		TransactionsRoot: util.ToHex(common.ComputeTxsRoot(block.Transactions)),
 		Nonce:            1030,
 		Difficulty:       "2747646837",
 		Timestamp:        now.Unix(),

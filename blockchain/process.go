@@ -3,7 +3,8 @@ package blockchain
 import (
 	"bytes"
 	"fmt"
-	"sort"
+
+	"github.com/ellcrys/elld/types"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
@@ -15,18 +16,14 @@ import (
 // passes this validation is considered safe to add to the chain.
 func (b *Blockchain) validateBlock(block *wire.Block) error {
 
-	// validate the block
-	// if err := block.Validate(); err != nil {
-	// 	return fmt.Errorf("failed block validation: %s", err)
-	// }
-
-	// check if the signature of the block is valid and signed by the block creator.
-	if err := wire.BlockVerify(block); err != nil {
-		return fmt.Errorf("failed block signature verification: %s", err)
+	blockValidator := NewBlockValidator(block, b.txPool, b, true)
+	if errs := blockValidator.Validate(); len(errs) > 0 {
+		return errs[0]
 	}
 
+	// TODO: move this to the block validator
 	// validate the transaction root
-	if block.Header.TransactionsRoot == util.ToHex(ComputeTxsRoot(block.Transactions)) {
+	if block.Header.TransactionsRoot != util.ToHex(common.ComputeTxsRoot(block.Transactions)) {
 		return fmt.Errorf("failed transaction root check")
 	}
 
@@ -81,7 +78,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	// find the sender account. Return error if sender account
 	// does not exist. This should never happen here as the caller must
 	// have validated all transactions in the containing block.
-	senderAcct, err = b.GetAccount(chain, tx.From)
+	senderAcct, err = b.getAccount(chain, tx.From)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sender's account: %s", err)
 	}
@@ -94,7 +91,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 
 	// find the account of the recipient. If the recipient account does not
 	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
-	recipientAcct, err = b.GetAccount(chain, tx.To)
+	recipientAcct, err = b.getAccount(chain, tx.To)
 	if err != nil {
 		if err != common.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -158,14 +155,16 @@ func (b *Blockchain) opsToStateObjects(block *wire.Block, chain *Chain, ops []co
 
 		case *common.OpCreateAccount:
 			stateObjs = append(stateObjs, &common.StateObject{
-				Key:   common.MakeAccountKey(block.GetNumber(), chain.id, _op.Address()),
-				Value: util.ObjectToBytes(_op.Account),
+				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
+				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID(), _op.Address()),
+				Value:   util.ObjectToBytes(_op.Account),
 			})
 
 		case *common.OpNewAccountBalance:
 			stateObjs = append(stateObjs, &common.StateObject{
-				Key:   common.MakeAccountKey(block.GetNumber(), chain.id, _op.Address()),
-				Value: util.ObjectToBytes(_op.Account),
+				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
+				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID(), _op.Address()),
+				Value:   util.ObjectToBytes(_op.Account),
 			})
 
 		default:
@@ -200,26 +199,6 @@ func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain *Chain) 
 	}
 
 	return ops, nil
-}
-
-// ComputeTxsRoot computes the merkle root of a set of transactions.
-// Transactions are first lexicographically sorted and added to a
-// brand new tree. Returns the tree root.
-func ComputeTxsRoot(txs []*wire.Transaction) []byte {
-
-	sort.Slice(txs, func(i, j int) bool {
-		iBytes, _ := util.FromHex(txs[i].Hash)
-		jBytes, _ := util.FromHex(txs[j].Hash)
-		return bytes.Compare(iBytes, jBytes) == -1
-	})
-
-	tree := NewTree()
-	for _, tx := range txs {
-		tree.Add(TreeItem([]byte(tx.GetHash())))
-	}
-
-	tree.Build()
-	return tree.Root()
 }
 
 // maybeAcceptBlock attempts to determine the suitable chain for the
@@ -332,16 +311,23 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 // ProcessBlock takes a block and attempts to add it to the
 // tip of one of the known chains (main chain or forked chain). It returns
 // the chain where the block was appended to.
-func (b *Blockchain) ProcessBlock(block *wire.Block) (*Chain, error) {
+func (b *Blockchain) ProcessBlock(block *wire.Block) (types.Chain, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
 	b.log.Debug("Processing block", "Hash", block.Hash)
 
-	// validate the content and format of the block as well as the signature.
-	// if err := b.validateBlock(block); err != nil {
-	// 	return nil
-	// }
+	// If ever we forgot to set the transaction pool,
+	// the client should be forced to exit.
+	if b.txPool == nil {
+		panic("initialization error: transaction pool not set")
+	}
+
+	// validate the block. Although, we expect the block to have been
+	// validated on the gossip level before getting here
+	if err := b.validateBlock(block); err != nil {
+		return nil, err
+	}
 
 	// if the block has been previously rejected, return err
 	if b.isRejected(block) {
@@ -402,7 +388,7 @@ func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.C
 
 	// Add the state objects into the tree. Contantenate the key and value into a TreeItem
 	for _, so := range stateObjs {
-		tree.Add(TreeItem(bytes.Join([][]byte{so.Key, so.Value}, nil)))
+		tree.Add(common.TreeItem(bytes.Join([][]byte{so.TreeKey, so.Value}, nil)))
 	}
 
 	// Build the tree and compute new state root
@@ -411,7 +397,6 @@ func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.C
 	}
 
 	root = tree.Root()
-
 	return
 }
 
@@ -449,7 +434,6 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 			if orphanBlock.Header.ParentHash != curParentHash {
 				continue
 			}
-
 			// remove from the orphan from the cache
 			b.orphanBlocks.Remove(orphanBlock.GetHash())
 

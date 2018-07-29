@@ -18,6 +18,11 @@ type KVObject struct {
 	Prefixes []string `json:"prefixes"`
 }
 
+// IsEmpty checks whether the object is empty
+func (kv *KVObject) IsEmpty() bool { // TODO: test
+	return len(kv.Key) == 0 && len(kv.Value) == 0
+}
+
 // MakePrefix creates a prefix string
 func MakePrefix(prefixes []string) []byte {
 	return []byte(strings.Join(prefixes, PrefixSeparator))

@@ -1,6 +1,13 @@
 package common
 
-import "github.com/ellcrys/elld/database"
+import (
+	"bytes"
+	"sort"
+
+	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/wire"
+)
 
 // DocType represents a document type
 type DocType int
@@ -33,4 +40,24 @@ func GetTxOp(db database.TxCreator, opts ...CallOp) TxOp {
 		Tx:        tx,
 		CanFinish: true,
 	}
+}
+
+// ComputeTxsRoot computes the merkle root of a set of transactions.
+// Transactions are first lexicographically sorted and added to a
+// brand new tree. Returns the tree root.
+func ComputeTxsRoot(txs []*wire.Transaction) []byte {
+
+	sort.Slice(txs, func(i, j int) bool {
+		iBytes, _ := util.FromHex(txs[i].Hash)
+		jBytes, _ := util.FromHex(txs[j].Hash)
+		return bytes.Compare(iBytes, jBytes) == -1
+	})
+
+	tree := NewTree()
+	for _, tx := range txs {
+		tree.Add(TreeItem([]byte(tx.GetHash())))
+	}
+
+	tree.Build()
+	return tree.Root()
 }

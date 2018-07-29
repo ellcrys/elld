@@ -3,8 +3,7 @@ package node
 import (
 	"context"
 
-	"github.com/ellcrys/elld/validators"
-
+	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
@@ -38,7 +37,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	// Validate the transaction and check whether
 	// it already exists in the transaction pool,
 	// main chain and side chains. If so, reject it
-	if errs := validators.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain, true).Validate(); len(errs) > 0 {
+	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain, true).Validate(); len(errs) > 0 {
 		s.Reset()
 		g.log.Debug("Transaction is not valid", "Err", errs[0])
 		return

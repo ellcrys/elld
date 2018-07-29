@@ -3,20 +3,30 @@ package testdata
 var ProcessDotGoJSON = []string{
 	`{
         "header": {
-            "parentHash": "hash_1",
-            "creatorPubKey": "49VzsGezoNjJQxHjekoCQP9CXZUs34CmCY53kGaHyR9rCJQJbJW",
-            "number": 2,
-            "stateRoot": "abc",
-            "transactionsRoot": "jsjhf9e3i9nfi",
-            "nonce": 0,
-            "mixHash": "",
-            "difficulty": "500000",
-            "timestamp": 0
+            "creatorPubKey": "48s9G48LD5eo5YMjJWmRjPaoDZJRNTuiscHMov6zDGMEqUg4vbG",
+            "number": 1,
+            "transactionsRoot": "0x8f845ec4453d2446695d5908cba62574850f97450fd7436421047101d88a58bb",
+            "stateRoot": "0x8f845ec4453d2446695d5908cba62574850f97450fd7436421047101d88a58bb",
+            "nonce": 1030,
+            "difficulty": "2747646837",
+            "timestamp": 1532623286,
+            "mixHash": "0x8f845ec4453d2446695d5908cba62574850f97450fd7436421047101d88a58bb"
         },
         "transactions": [
+            {
+                "type": 1,
+                "to": "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+                "from": "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+                "senderPubKey": "48s9G48LD5eo5YMjJWmRjPaoDZJRNTuiscHMov6zDGMEqUg4vbG",
+                "value": "1",
+                "Timestamp": 1532623441,
+                "Fee": "0.1",
+                "sig": "0x849bbe5877507cce082ca536445297f28679994d412973f32f8aa8fff68691e29b9189ff7b4999511d41961597222cb9e625547434e6a247277c31ec053ab001",
+                "hash": "0xe696fbdff5ef9d84aae7d060ab6445b2c5a33654a950e929fcfc99699f9bef09"
+            }
         ],
-        "hash": "hash_2",
-        "sig": "abc"
+        "hash": "0x90d1ac4a02fce39889f4c76f894dd7ff917c02201ce074d2c04771167381a953",
+	    "sig": "0x9a794b198de6b788d62aad0e3b9c5d96fde603953fbf5a79015494c43b6b634e9fcd8b5bf3dc50c91827e1b6a3d2b7f0a8693f6d61d0a56c2291004862e9600f"
     }`,
 	`{
         "header": {

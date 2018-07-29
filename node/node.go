@@ -197,7 +197,7 @@ func (n *Node) IsSame(node types.Engine) bool {
 }
 
 // GetBlockchain returns the blockchain manager
-func (n *Node) GetBlockchain() *blockchain.Blockchain {
+func (n *Node) GetBlockchain() types.Blockchain {
 	return n.bchain
 }
 

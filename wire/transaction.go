@@ -42,6 +42,27 @@ func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, v
 	return
 }
 
+// NewTx creates a new, signed transaction
+func NewTx(txType int64, nonce int64, to string, senderKey *crypto.Key, value string, fee string, timestamp int64) (tx *Transaction) {
+	tx = new(Transaction)
+	tx.Type = txType
+	tx.Nonce = nonce
+	tx.To = to
+	tx.SenderPubKey = senderKey.PubKey().Base58()
+	tx.From = senderKey.Addr()
+	tx.Value = value
+	tx.Timestamp = timestamp
+	tx.Fee = fee
+	tx.Hash = tx.ComputeHash2()
+
+	sig, err := TxSign(tx, senderKey.PrivKey().Base58())
+	if err != nil {
+		panic(err)
+	}
+	tx.Sig = ToHex(sig)
+	return
+}
+
 // Bytes return the ASN.1 marshalled representation of the transaction.
 func (tx *Transaction) Bytes() []byte {
 
