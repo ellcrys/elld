@@ -11,6 +11,78 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 )
 
+// StreamOptions defines options for handling a stream
+type StreamOptions struct {
+
+	// Ctx represents the streams context
+	Ctx context.Context
+
+	// RemotePeer is the peer we intend to send a
+	// message to
+	RemotePeer types.Engine
+
+	// MsgVersion represents the message version of the
+	// message to be sent.
+	MsgVersion string
+
+	// Writable is the message to be set. If set it
+	// will be sent to the stream
+	Writable interface{}
+
+	// OnWriteFailed is called when write attempt fails.
+	// The error is passed to the provided callback
+	OnWriteFailed func(error)
+
+	// ReadTo defines the container to hold incoming messages
+	ReadTo interface{}
+
+	// OnReadFailed is called when read attempt fails.
+	// The error is passed to the provided callback
+	OnReadFailed func(error)
+}
+
+// Stream creates a new stream or processes an existing stream. If existingStream
+// is not set, a new stream is created using parameters provided in streamOpts.
+func (g *Gossip) Stream(existingStream net.Stream, streamOpts StreamOptions) error {
+	var stream = existingStream
+	var err error
+
+	// if stream is nil, we assume the caller intends for us
+	// to create a new stream.
+	if stream == nil {
+		stream, err = g.newStream(streamOpts.Ctx, streamOpts.RemotePeer, streamOpts.MsgVersion)
+		if err != nil {
+			return fmt.Errorf("stream creation error: %s", err)
+		}
+	}
+
+	// Attempt to write a message to the stream if provided.
+	// If write fails, call the OnWriteFailed callback if set.
+	if streamOpts.Writable != nil {
+		if err := writeStream(stream, streamOpts.Writable); err != nil {
+			if streamOpts.OnWriteFailed != nil {
+				streamOpts.OnWriteFailed(err)
+			}
+			stream.Reset()
+			return fmt.Errorf("getaddr failed. failed to write to stream")
+		}
+	}
+
+	// If ReadTo is set, copy the stream data to the provided
+	// struct/map in ReadTo.
+	if streamOpts.ReadTo != nil {
+		if err = readStream(stream, streamOpts.ReadTo); err != nil {
+			if streamOpts.OnReadFailed != nil {
+				streamOpts.OnReadFailed(err)
+			}
+			stream.Reset()
+			return fmt.Errorf("stream read failed: %s", err)
+		}
+	}
+
+	return nil
+}
+
 // sendGetAddr sends a wire.GetAddr message to a remote peer.
 // The remote peer will respond with a wire.Addr message which the function
 // must process using the OnAddr handler and return the response.
