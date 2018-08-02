@@ -145,28 +145,14 @@ func (c *Chain) getBlockByHash(hash string) (*wire.Block, error) {
 // of the current block and if the difference between the chain tip
 // and the candidate block number is not 1. If there is no block on
 // the chain yet, then we assume this to be the first block of a fork.
+//
+// The caller is expected to validate the block before call.
 func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	c.chainLock.Lock()
 	defer c.chainLock.Unlock()
 
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)
-
-	// ensure it passes validation
-	// if err := block.Validate(); err != nil {
-	// 	if canFinish {
-	// 		tx.Rollback()
-	// 	}
-	// 	return fmt.Errorf("genesis block failed validation: %s", err)
-	// }
-
-	// // verify the block
-	// if err := wire.BlockVerify(block); err != nil {
-	// 	if canFinish {
-	// 		tx.Rollback()
-	// 	}
-	// 	return fmt.Errorf("genesis block signature is not valid: %s", err)
-	// }
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
