@@ -2,7 +2,8 @@ package blockchain
 
 import (
 	"fmt"
-	"time"
+
+	"github.com/go-ozzo/ozzo-validation"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/txpool"
@@ -19,7 +20,10 @@ import (
 )
 
 // KnownTransactionTypes are the supported transaction types
-var KnownTransactionTypes = []int64{wire.TxTypeBalance}
+var KnownTransactionTypes = []int64{
+	wire.TxTypeBalance,
+	wire.TxTypeAllocCoin,
+}
 
 // TxsValidator implements a validator for checking
 // syntactic, contextual and state correctness of transactions
@@ -79,6 +83,13 @@ func (v *TxsValidator) Validate() (errs []error) {
 	return
 }
 
+func appendErr(dest []error, err error) []error {
+	if err != nil {
+		return append(dest, err)
+	}
+	return dest
+}
+
 // check check the field and their values and
 // does no integration check with other components.
 func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
@@ -89,101 +100,128 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 		return
 	}
 
-	// Transaction type must be known and acceptable
-	if !funk.ContainsInt64(KnownTransactionTypes, tx.Type) {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"type", "unsupported transaction type"))
+	var validTypeRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if !funk.ContainsInt64(KnownTransactionTypes, val.(int64)) {
+				return err
+			}
+			return nil
+		}
 	}
+
+	var validAddrRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if _err := crypto.IsValidAddr(val.(string)); _err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	var validPubKeyRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if _, _err := crypto.PubKeyFromBase58(val.(string)); _err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	var validValueRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if _, _err := decimal.NewFromString(val.(string)); _err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	var isZeroLessRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			dec, _ := decimal.NewFromString(val.(string))
+			if dec.LessThanOrEqual(decimal.Zero) {
+				return err
+			}
+			return nil
+		}
+	}
+
+	var isValidFeeRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			dec, _ := decimal.NewFromString(val.(string))
+			if dec.LessThan(constants.BalanceTxMinimumFee) {
+				return err
+			}
+			return nil
+		}
+	}
+
+	var isSameRule = func(val2 string, err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if val.(string) != val2 {
+				return err
+			}
+			return nil
+		}
+	}
+
+	// Transaction type is required and must match the known types
+	errs = appendErr(errs, validation.Validate(tx.Type,
+		validation.By(validTypeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "type", "unsupported transaction type"))),
+	))
 
 	// Nonce must be a non-negative integer
-	if tx.Nonce < 0 {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"nonce", "nonce must be non-negative"))
-	}
+	errs = appendErr(errs, validation.Validate(tx.Nonce,
+		validation.Min(0).Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "nonce", "nonce must be non-negative").Error()),
+	))
 
 	// Recipient's address must be set and it must be valid
-	if tx.To == "" {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"to", "recipient address is required"))
-	} else if err := crypto.IsValidAddr(tx.To); err != nil {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"to", "recipient address is not valid"))
-	}
+	errs = appendErr(errs, validation.Validate(tx.To,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "to", "recipient address is required").Error()),
+		validation.By(validAddrRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "to", "recipient address is not valid"))),
+	))
 
-	// Sender's address must be set and it must be valid
-	if tx.From == "" {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"from", "sender address is required"))
-	} else if err := crypto.IsValidAddr(tx.From); err != nil {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"from", "sender address is not valid"))
-	}
+	// Sender's address must be set and it must be valid non-zero decimal
+	errs = appendErr(errs, validation.Validate(tx.Value,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "value is required").Error()),
+		validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "could not convert to decimal"))),
+		validation.By(isZeroLessRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "value must be greater than zero"))),
+	))
 
-	// Sender public key is required and must be valid.
-	if tx.SenderPubKey == "" {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"senderPubKey", "sender public key is required"))
-	} else if _, err := crypto.PubKeyFromBase58(tx.SenderPubKey); err != nil {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"senderPubKey", "sender public key is not valid"))
-	}
+	// Timestamp is required.
+	errs = appendErr(errs, validation.Validate(tx.Timestamp,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "timestamp", "timestamp is required").Error()),
+	))
 
-	// For balance transactions, value cannot be an empty string
-	// and it must be convertible to decimal and not a zero value.
+	// Sender's address must be set and must also be valid
+	errs = appendErr(errs, validation.Validate(tx.From,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender address is required").Error()),
+		validation.By(validAddrRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender address is not valid"))),
+	))
+
+	// Sender's public key is required and must be a valid base58 encoded key
+	errs = appendErr(errs, validation.Validate(tx.SenderPubKey,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", "sender public key is required").Error()),
+		validation.By(validPubKeyRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", "sender public key is not valid"))),
+	))
+
+	// Hash is required. It must also be correct
+	errs = appendErr(errs, validation.Validate(tx.Hash,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is required").Error()),
+		validation.By(isSameRule(tx.ComputeHash2(), fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is not correct"))),
+	))
+
+	// Signature must be set
+	errs = appendErr(errs, validation.Validate(tx.Sig,
+		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "sig", "signature is required").Error()),
+	))
+
 	if tx.Type == wire.TxTypeBalance {
-		if tx.Value == "" {
-			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-				"value", "value is required"))
-		}
-		_value, err := decimal.NewFromString(tx.Value)
-		if err != nil {
-			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-				"value", "could not convert to decimal"))
-		}
-		if _value.LessThanOrEqual(decimal.Zero) {
-			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-				"value", "value must be greater than zero"))
-		}
-	}
-
-	// Timestamp is required and cannot be a time in the future
-	if tx.Timestamp == 0 {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"timestamp", "timestamp is required"))
-	} else if tx.Timestamp > time.Now().Unix() {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"timestamp", "timestamp cannot be a future time"))
-	}
-
-	// Fee cannot be empty or less than 0
-	if tx.Fee == "" {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"fee", "fee is required"))
-	} else {
-		fee, err := decimal.NewFromString(tx.Fee)
-		if err != nil {
-			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-				"fee", "could not convert to decimal"))
-		} else if tx.Type == wire.TxTypeBalance && fee.LessThanOrEqual(constants.BalanceTxMinimumFee) {
-			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-				"fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(8))))
-		}
-	}
-
-	// Ensure the transaction hash is provided and
-	// that the hash matches the computed value.
-	if tx.Hash == "" {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"hash", "hash is required"))
-	} else if tx.Hash != tx.ComputeHash2() {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"hash", "hash is not correct"))
-	}
-
-	// Check that signature is provided
-	if tx.Sig == "" {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"sig", "signature is required"))
+		errs = appendErr(errs, validation.Validate(tx.Fee,
+			validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "fee is required").Error()),
+			validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "could not convert to decimal"))),
+			validation.By(isValidFeeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(16))))),
+		))
 	}
 
 	return

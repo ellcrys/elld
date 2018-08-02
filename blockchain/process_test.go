@@ -52,7 +52,7 @@ var ProcessTest = func() bool {
 			})
 		})
 
-		Describe(".processTransactions", func() {
+		Describe(".processTransactions (only TxTypeBalance transactions)", func() {
 
 			var sender = crypto.NewKeyFromIntSeed(1)
 			var account *wire.Account
@@ -193,6 +193,40 @@ var ProcessTest = func() bool {
 						Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[2].Address()).To(Equal(block.Transactions[0].To))
 						Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal("2"))
+					})
+				})
+			})
+		})
+
+		Describe(".processTransactions (only TxTypeAllocCoin transactions)", func() {
+			Context("only a single transaction", func() {
+				When("recipient account does not exist", func() {
+					It("should successfully return one state object = OpNewAccountBalance", func() {
+						block := testdata.ProcessTransaction2[0]
+						ops, err := bc.processTransactions(block.Transactions, chain)
+						Expect(err).To(BeNil())
+						Expect(ops).To(HaveLen(1))
+						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal("10.0000000000000000"))
+					})
+				})
+
+				When("recipient account already exists with 100 balance", func() {
+					BeforeEach(func() {
+						Expect(bc.putAccount(1, chain, &wire.Account{
+							Type:    wire.AccountTypeBalance,
+							Address: block.Transactions[0].To,
+							Balance: "100",
+						})).To(BeNil())
+					})
+
+					It("should successfully return one state object = OpNewAccountBalance and Balance = 110.0000000000000000", func() {
+						block := testdata.ProcessTransaction2[0]
+						ops, err := bc.processTransactions(block.Transactions, chain)
+						Expect(err).To(BeNil())
+						Expect(ops).To(HaveLen(1))
+						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal("110.0000000000000000"))
 					})
 				})
 			})

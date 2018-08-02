@@ -109,7 +109,7 @@ func (b *Blockchain) Up() error {
 
 		// Create the genesis chain and the genesis block.
 		// The ID of the genesis chain is the hash of the genesis block hash.
-		gBlock, _ := wire.BlockFromString(GenesisBlock)
+		gBlock := GenesisBlock
 		gChainID := util.ToHex(util.Blake2b256([]byte(gBlock.Hash)))
 		gChain := NewChain(gChainID, b.store, b.cfg, b.log)
 

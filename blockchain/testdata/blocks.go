@@ -23,6 +23,48 @@ var GenesisBlock = &wire.Block{
 	Sig:  "0x1b780e791e52b8dbbac94883187e5ee4189c566c45c0a8e8fd9c0eeca62fceca39ff13af020b995603046249f4c534998198965121389040529ec8cb26f90601",
 }
 
+var GenesisBlockWithAllocTx = &wire.Block{
+	Header: &wire.Header{ParentHash: "", CreatorPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", Number: 0x1, StateRoot: "0x4b785cce8108467f7d2f284b93855e4f6699ae1e66d8e604e965dea8c6e0c942", TransactionsRoot: "0xd7ed68547538f286417a0c02e9c7d2f7c723de0fcc2b8cc5d4b2173f6b009c1c", Nonce: 0x5defb, MixHash: "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2", Difficulty: "102994", Timestamp: 1533217952},
+	Transactions: []*wire.Transaction{
+		&wire.Transaction{
+			Type:         2,
+			Nonce:        123,
+			To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+			From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+			SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+			Value:        "1",
+			Timestamp:    1532730725,
+			Fee:          "0.1",
+			InvokeArgs:   (*wire.InvokeArgs)(nil),
+			Sig:          "0xd7189754a6e702ce92169b508138ce247f550debe233c6871d83feb11c7421f428eb7a4a7c7fbe3c8c808d9f7bc15382a936bb289de49a4a6a68de452214f303",
+			Hash:         "0xef95a926a9bd04ea03f7e1904168d1953d40a3b409a23fe0a9478e0aab87f146",
+		},
+	},
+	Hash: "0xfbb522686c84140cc849e7ff00c738520f3e1e4cdb343177c157c8b0730d3629",
+	Sig:  "0xfb3273f2e2e4e6d76a2db8ff53b9925487d2ec3c4e73d0b7515ec62f390403a79aa794285ea1cd059d4e78271c482e1babdb68a987fec40377cf8e9f1d51f304",
+}
+
+var GenesisBlockWithTxSenderNotFound = &wire.Block{
+	Header: &wire.Header{ParentHash: "", CreatorPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", Number: 0x1, StateRoot: "0x03a82f13db319a687882a5e52d809b4cdd4271e7975ba6882d458d9215644fe8", TransactionsRoot: "0xf40b36dae9e32c6c632e1bd667797f1867a1b2333599edb3350628c279672101", Nonce: 0x5defb, MixHash: "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2", Difficulty: "102994", Timestamp: 1533214287},
+	Transactions: []*wire.Transaction{
+		&wire.Transaction{
+			Type:         1,
+			Nonce:        123,
+			To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+			From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+			SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+			Value:        "1",
+			Timestamp:    1532730725,
+			Fee:          "0.1",
+			InvokeArgs:   (*wire.InvokeArgs)(nil),
+			Sig:          "0x3dee87954795785daabae738f9c6fd3e1f01b19fb56e9aa776580136d3e90a629ab9d42495acb53f24132b5c89089dd1c07c76ee99948377cbddcbe29b58d90c",
+			Hash:         "0xccc1bd0e81cb57f43a719b580180d53293623b2f7de2a04c2e5abc683d720a72",
+		},
+	},
+	Hash: "0xd37fb22001cc4aa59f65da5cfb62df873007325d72521c74efe9054626d4404e",
+	Sig:  "0x976eeaaa693a394ad1d913a00e26146aaedb9d84ca1c15f4b578414589858e9659c3cb8f9ef422cc993a9ab50dee97b432d5f69fd7fe300fdccb36b08b42bf09",
+}
+
 var Block2 = &wire.Block{
 	Header: &wire.Header{ParentHash: "0x4d2a36390fd9423c141770f14c96ece0d03cd46137f8d8aceb0bf024992c8df9", CreatorPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", Number: 0x2, StateRoot: "0x2fbf11beeb8d78b2d81456a730e8a57b0503c1182f88c135e43d5d4ac02258bd", TransactionsRoot: "0xe15bb15726de09feecb364c9b66865a0a95ca9213c46a805df719eabdcce1db7", Nonce: 0x5def4, MixHash: "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2", Difficulty: "102994", Timestamp: 1532816936},
 	Transactions: []*wire.Transaction{
@@ -190,6 +232,26 @@ var ProcessTransaction = []*wire.Block{
 				InvokeArgs:   (*wire.InvokeArgs)(nil),
 				Sig:          "0xa3e0edce436fe4ba2dc5df3ab9a41d5be1d399da8b5a4e1a54ea19b7b528eb4fb279c26d2a57151e4461e7a6032333a37f23bc3ed1e3cd794786a1fc94fc4508",
 				Hash:         "0xf767f0b1a94b03c731752f9dffa50eefed1a1edcc153cf25b2b6fc7c02f50fa6",
+			},
+		},
+	},
+}
+
+var ProcessTransaction2 = []*wire.Block{
+	&wire.Block{
+		Transactions: []*wire.Transaction{
+			&wire.Transaction{
+				Type:         2,
+				Nonce:        123,
+				To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+				From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+				SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				Value:        "10",
+				Timestamp:    1532730722,
+				Fee:          "0",
+				InvokeArgs:   (*wire.InvokeArgs)(nil),
+				Sig:          "0x934821551ec998a626225c05daa18f5c748e95f427823258149513739e196d944c4d3638a60fd6c0703c7fc6f704c31b0b8f9296f29dd9c260edaffa8ede210c",
+				Hash:         "0x347847a41c66c23738db8c4bae2992845d28074cf155bcbe90f89b6248edce87",
 			},
 		},
 	},
@@ -422,6 +484,69 @@ var Orphans = []*wire.Block{
 		},
 		Hash: "0x4cd6f638986c8bce1ca6ea113964d87127c64982daff24dd5c03cdbe49209a58",
 		Sig:  "0x67ffd86d168e3bc0a29617ca3743d15f19ac2b95e26f6e1f48c9d5f68805530892d3c064003bfd4798a5f63a530a77a850f1004ec920112b5656af74c6559d0b",
+	},
+}
+
+var ChainAppend = []*wire.Block{
+	&wire.Block{
+		Header: &wire.Header{ParentHash: "0x4d2a36390fd9423c141770f14c96ece0d03cd46137f8d8aceb0bf024992c8df9", CreatorPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", Number: 0x2, StateRoot: "0x2fbf11beeb8d78b2d81456a730e8a57b0503c1182f88c135e43d5d4ac02258bd", TransactionsRoot: "0xf40b36dae9e32c6c632e1bd667797f1867a1b2333599edb3350628c279672101", Nonce: 0x5defb, MixHash: "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2", Difficulty: "102994", Timestamp: 1533215983},
+		Transactions: []*wire.Transaction{
+			&wire.Transaction{
+				Type:         1,
+				Nonce:        123,
+				To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+				From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+				SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				Value:        "1",
+				Timestamp:    1532730725,
+				Fee:          "0.1",
+				InvokeArgs:   (*wire.InvokeArgs)(nil),
+				Sig:          "0x3dee87954795785daabae738f9c6fd3e1f01b19fb56e9aa776580136d3e90a629ab9d42495acb53f24132b5c89089dd1c07c76ee99948377cbddcbe29b58d90c",
+				Hash:         "0xccc1bd0e81cb57f43a719b580180d53293623b2f7de2a04c2e5abc683d720a72",
+			},
+		},
+		Hash: "0xd4eef5ba479f0edb626123c9409c234cd3370e92e43417faee4e43a0c8f4352b",
+		Sig:  "0x9761913257015f486ec28a355619204f2ca21c4607de28029392f69904a6861c7d407482140f3721b3f7fc3a5c9a4958e5e48d473007cc6f17206244ab8bf90d",
+	},
+	&wire.Block{
+		Header: &wire.Header{ParentHash: "0xd4eef5ba479f0edb626123c9409c234cd3370e92e43417faee4e43a0c8f4352b", CreatorPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", Number: 0x3, StateRoot: "0xe1b864f373cd882d955723b4403fc6367dbc2eb20fa9a51c91a87af4c5037e23", TransactionsRoot: "0xf40b36dae9e32c6c632e1bd667797f1867a1b2333599edb3350628c279672101", Nonce: 0x5defb, MixHash: "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2", Difficulty: "102994", Timestamp: 1533216502},
+		Transactions: []*wire.Transaction{
+			&wire.Transaction{
+				Type:         1,
+				Nonce:        123,
+				To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+				From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+				SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				Value:        "1",
+				Timestamp:    1532730725,
+				Fee:          "0.1",
+				InvokeArgs:   (*wire.InvokeArgs)(nil),
+				Sig:          "0x3dee87954795785daabae738f9c6fd3e1f01b19fb56e9aa776580136d3e90a629ab9d42495acb53f24132b5c89089dd1c07c76ee99948377cbddcbe29b58d90c",
+				Hash:         "0xccc1bd0e81cb57f43a719b580180d53293623b2f7de2a04c2e5abc683d720a72",
+			},
+		},
+		Hash: "0x671e428411605760b942bd094ca9a183b28e84726b9cd73557f70f8d98f0c28d",
+		Sig:  "0x97db33ca0e3264071694359ecd664e4f944d63c7866cd78ef00c6a9d65fddbd6287af94d6842623f2b80516007cec31ab81b7e2e768728c35d8eecab9a59d105",
+	},
+	&wire.Block{
+		Header: &wire.Header{ParentHash: "0x671e428411605760b942bd094ca9a183b28e84726b9cd73557f70f8d98f0c28d", CreatorPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC", Number: 0x2, StateRoot: "0x2fbf11beeb8d78b2d81456a730e8a57b0503c1182f88c135e43d5d4ac02258bd", TransactionsRoot: "0xf40b36dae9e32c6c632e1bd667797f1867a1b2333599edb3350628c279672101", Nonce: 0x5defb, MixHash: "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2", Difficulty: "102994", Timestamp: 1533216788},
+		Transactions: []*wire.Transaction{
+			&wire.Transaction{
+				Type:         1,
+				Nonce:        123,
+				To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+				From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+				SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				Value:        "1",
+				Timestamp:    1532730725,
+				Fee:          "0.1",
+				InvokeArgs:   (*wire.InvokeArgs)(nil),
+				Sig:          "0x3dee87954795785daabae738f9c6fd3e1f01b19fb56e9aa776580136d3e90a629ab9d42495acb53f24132b5c89089dd1c07c76ee99948377cbddcbe29b58d90c",
+				Hash:         "0xccc1bd0e81cb57f43a719b580180d53293623b2f7de2a04c2e5abc683d720a72",
+			},
+		},
+		Hash: "0xe6e4d97f484a80f5caef98a30271c63e2833c69bf8a1aea64898ac363393064e",
+		Sig:  "0xed5d92d2f7ce03d784cbfdfee5a2dd4925b57498cba7078b26ca7393ccb42bd3e893e28b31b9b40e42ca4061509fd5eac0682327ea7723f9f0c1372d4d2d0107",
 	},
 }
 
