@@ -46,13 +46,13 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 	return append(newOps, op)
 }
 
-// processBalanceTx processes a transaction. It returns series of transition
-// operations that must be applied to effect the transaction.
+// processBalanceTx processes a TxTypeBalance transaction. It returns series of transition
+// operations that must be applied to effect changes the world state and transaction accounts.
 // It accepts the following args:
 //
 // @tx: 	The transaction
-// @ops: 	The list of current operations generated from other transactions of same block as tx.
-//			We use ops to check the latest proposed operation of an account initiated by other transactions.
+// @ops: 	The list of recent operations generated from other transactions of same block as tx.
+//			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
 // @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
 func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transition, chain *Chain) ([]common.Transition, error) {
 	var err error
@@ -62,8 +62,8 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	var recipientAcctBalance = decimal.Zero
 
 	// first, we check if we can determine the balances of the sender and recipient accounts
-	// from OpNewAccountBalance operations by previous transactions. Because, if an account was
-	// updated by an previous transaction, the new balance will be found in the ops list.
+	// from OpNewAccountBalance operations by previous transactions. If an account was
+	// updated by a previous transaction, the new balance will be found in the ops list.
 	for _, prevOp := range ops {
 		// check for balance change for the sender
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.From {
@@ -145,6 +145,62 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	return txOps, nil
 }
 
+// processAllocCoinTx process a TxTypeAllocCoin which request the creation of a new
+// account as well as allocation of some value to that account.
+// @tx: 	The transaction
+// @ops: 	The list of recent operations generated from other transactions of same block as tx.
+//			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
+// @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
+func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Transition, chain *Chain) ([]common.Transition, error) {
+	var err error
+	var txOps []common.Transition
+	var recipientAcct *wire.Account
+	var recipientAcctBalance = decimal.Zero
+
+	// first, we check if we can determine the balances of the recipient account
+	// from OpNewAccountBalance operations by previous transactions. If an account was
+	// updated by a previous transaction, the new balance will be found in the ops list.
+	for _, prevOp := range ops {
+		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.To {
+			recipientAcctBalance, _ = util.StrToDecimal(opNewBalance.Account.Balance)
+		}
+	}
+
+	// find the account of the recipient. If the account does not exists,
+	// initialize a new account object for the recipient
+	recipientAcct, err = b.getAccount(chain, tx.To)
+	if err != nil {
+		if err != common.ErrAccountNotFound {
+			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+		}
+		recipientAcct = &wire.Account{
+			Type:    wire.AccountTypeBalance,
+			Address: tx.To,
+			Balance: "0",
+		}
+	}
+
+	// If the recipients account balance is zero and unchanged
+	// in previous ops execution, we set it to the value of the current,
+	// committed account balance
+	if recipientAcctBalance.Equals(decimal.Zero) {
+		recipientAcctBalance, _ = util.StrToDecimal(recipientAcct.Balance)
+	}
+
+	// Update the recipients account balance to be the
+	// sum of current balance and the new allocation
+	recipientAcct.Balance = recipientAcctBalance.Add(util.StrToDec(tx.Value)).StringFixed(16)
+
+	// construct an OpNewAccountBalance transition object
+	// and set the account to the updated recipient.
+	txOps = append(txOps, &common.OpNewAccountBalance{
+		OpBase:  &common.OpBase{Addr: tx.To},
+		Account: recipientAcct,
+	})
+
+	return txOps, nil
+}
+
 // opsToKVObjects takes a slice of operations and apply them to the provided chain
 func (b *Blockchain) opsToStateObjects(block *wire.Block, chain *Chain, ops []common.Transition) ([]*common.StateObject, error) {
 
@@ -185,16 +241,22 @@ func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain *Chain) 
 	// to decide what should happen to the chain state by
 	// producing transition objects.
 	for i, tx := range txs {
-		switch tx.Type {
+		var err error
+		var newOps []common.Transition
 
+		switch tx.Type {
 		case wire.TxTypeBalance:
-			newOps, err := b.processBalanceTx(tx, ops, chain)
-			if err != nil {
-				return nil, fmt.Errorf("index{%d}: %s", i, err)
-			}
-			for _, op := range newOps {
-				ops = addOp(ops, op)
-			}
+			newOps, err = b.processBalanceTx(tx, ops, chain)
+		case wire.TxTypeAllocCoin:
+			newOps, err = b.processAllocCoinTx(tx, ops, chain)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("index{%d}: %s", i, err)
+		}
+
+		for _, op := range newOps {
+			ops = addOp(ops, op)
 		}
 	}
 

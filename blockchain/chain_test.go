@@ -19,8 +19,8 @@ var ChainTest = func() bool {
 			Context("with empty chain", func() {
 				When("and back linking enabled", func() {
 					It("should successfully create a tree and return root", func() {
-						newChain := NewChain("my_chain", store, cfg, log)
-						tree, err := newChain.NewStateTree(false)
+						emptyChain := NewChain("my_chain", store, cfg, log)
+						tree, err := emptyChain.NewStateTree(false)
 						Expect(err).To(BeNil())
 						tree.Add(item1)
 						tree.Add(item2)
@@ -33,8 +33,8 @@ var ChainTest = func() bool {
 
 				When("and back linking disabled", func() {
 					It("should successfully create a tree and same root as an empty chain", func() {
-						newChain := NewChain("my_chain", store, cfg, log)
-						tree, err := newChain.NewStateTree(true)
+						emptyChain := NewChain("my_chain", store, cfg, log)
+						tree, err := emptyChain.NewStateTree(true)
 						Expect(err).To(BeNil())
 						tree.Add(item1)
 						tree.Add(item2)
@@ -57,13 +57,13 @@ var ChainTest = func() bool {
 						err = tree.Build()
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).NotTo(Equal(emptyChainRoot))
-						expected := []uint8{191, 47, 2, 172, 153, 59, 66, 122, 196, 204, 250, 4, 210, 29, 53, 102, 49, 94, 168, 246, 156, 182, 191, 115, 39, 232, 105, 68, 116, 238, 91, 160}
+						expected := []uint8{0, 89, 103, 96, 98, 208, 166, 34, 132, 93, 119, 204, 178, 88, 250, 251, 96, 179, 247, 233, 131, 189, 181, 236, 64, 22, 48, 186, 10, 13, 42, 63}
 						Expect(tree.Root()).To(Equal(expected))
 					})
 				})
 
 				When("and back linking disabled", func() {
-					It("should successfully create without seed a new state tree and return its root", func() {
+					It("should successfully create state tree without seeding with the prev block state root", func() {
 						tree, err := chain.NewStateTree(true)
 						Expect(err).To(BeNil())
 						tree.Add(item1)
@@ -79,22 +79,22 @@ var ChainTest = func() bool {
 
 		Describe(".append", func() {
 
-			var block, block2, block3 *wire.Block
+			var block2, block2_2, block3 *wire.Block
 
 			BeforeEach(func() {
-				block, _ = wire.BlockFromString(testdata.ChainDotJSON[1])
-				block2, _ = wire.BlockFromString(testdata.ChainDotJSON[2])
-				block3, _ = wire.BlockFromString(testdata.ChainDotJSON[3])
+				block2 = testdata.ChainAppend[0]
+				block3 = testdata.ChainAppend[1]
+				block2_2 = testdata.ChainAppend[2]
 			})
 
-			It("should return err when the block number does not serial match the current tip number", func() {
+			It("should return err when the block number does not serially match the current tip number", func() {
 				err = chain.append(block3)
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("unable to append: candidate block number {1} is not the expected block number {expected=2}"))
+				Expect(err.Error()).To(Equal("unable to append: candidate block number {3} is not the expected block number {expected=2}"))
 			})
 
 			It("should return err when the block's parent hash does not match the hash of the current tip block", func() {
-				err = chain.append(block)
+				err = chain.append(block2_2)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("unable to append block: parent hash does not match the hash of the current block"))
 			})
@@ -135,7 +135,6 @@ var ChainTest = func() bool {
 			})
 
 			It("should return 1 if chain contains 1 block", func() {
-				block, _ := wire.BlockFromString(testdata.ChainDotJSON[3])
 				err := chain.append(block)
 				Expect(err).To(BeNil())
 
@@ -173,6 +172,5 @@ var ChainTest = func() bool {
 				Expect(block).ToNot(BeNil())
 			})
 		})
-
 	})
 }

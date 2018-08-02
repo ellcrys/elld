@@ -25,8 +25,8 @@ var (
 	// TxTypeBalance represents a transaction from an account to another account
 	TxTypeBalance int64 = 0x1
 
-	// TxTypeEndorserTicketCreate represents a transaction to create an endorser ticket
-	TxTypeEndorserTicketCreate int64 = 0x2
+	// TxTypeAllocCoin represents a transaction to alloc coins to an account
+	TxTypeAllocCoin int64 = 0x2
 )
 
 // NewTransaction creates a new transaction
