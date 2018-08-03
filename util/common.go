@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fatih/structs"
+	"github.com/vmihailenco/msgpack"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/fatih/structs"
 
 	"github.com/shopspring/decimal"
 )
@@ -159,10 +159,10 @@ func HexToStr(hexStr string) (string, error) {
 	return string(bs), nil
 }
 
-// SerializeMsg serializes a protocol buffer message.
+// SerializeMsg serializes an object using msgpack.
 // Panics if an error is encountered
-func SerializeMsg(o proto.Message) []byte {
-	bs, err := proto.Marshal(o)
+func SerializeMsg(o interface{}) []byte {
+	bs, err := msgpack.Marshal(o)
 	if err != nil {
 		panic(err)
 	}

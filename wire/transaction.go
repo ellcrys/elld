@@ -29,6 +29,27 @@ var (
 	TxTypeAllocCoin int64 = 0x2
 )
 
+// InvokeArgs describes a function to be executed by a blockcode
+type InvokeArgs struct {
+	Func   string            `json:"func" msgpack:"func"`
+	Params map[string][]byte `json:"params" msgpack:"params"`
+}
+
+// Transaction represents a transaction
+type Transaction struct {
+	Type         int64       `json:"type" msgpack:"type"`
+	Nonce        int64       `json:"nonce" msgpack:"nonce"`
+	To           string      `json:"to" msgpack:"to"`
+	From         string      `json:"from" msgpack:"from"`
+	SenderPubKey string      `json:"senderPubKey" msgpack:"senderPubKey"`
+	Value        string      `json:"value" msgpack:"value"`
+	Timestamp    int64       `json:"Timestamp" msgpack:"Timestamp"`
+	Fee          string      `json:"Fee" msgpack:"Fee"`
+	InvokeArgs   *InvokeArgs `json:"InvokeArgs" msgpack:"InvokeArgs"`
+	Sig          string      `json:"sig" msgpack:"sig"`
+	Hash         string      `json:"hash" msgpack:"hash"`
+}
+
 // NewTransaction creates a new transaction
 func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, value string, fee string, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
@@ -61,6 +82,10 @@ func NewTx(txType int64, nonce int64, to string, senderKey *crypto.Key, value st
 	}
 	tx.Sig = ToHex(sig)
 	return
+}
+
+func (tx *Transaction) GetHash() string {
+	return tx.Hash
 }
 
 // Bytes return the ASN.1 marshalled representation of the transaction.

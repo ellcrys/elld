@@ -12,6 +12,37 @@ import (
 	"gopkg.in/asaskevich/govalidator.v4"
 )
 
+// Block represents a block
+type Block struct {
+	Header       *Header        `json:"header" msgpack:"header"`
+	Transactions []*Transaction `json:"transactions" msgpack:"transactions"`
+	Hash         string         `json:"hash" msgpack:"hash"`
+	Sig          string         `json:"sig" msgpack:"sig"`
+}
+
+// Header represents the header of a block
+type Header struct {
+	ParentHash       string `json:"ParentHash" msgpack:"ParentHash"`
+	CreatorPubKey    string `json:"creatorPubKey" msgpack:"creatorPubKey"`
+	Number           uint64 `json:"number" msgpack:"number"`
+	StateRoot        string `json:"stateRoot" msgpack:"stateRoot"`
+	TransactionsRoot string `json:"transactionsRoot" msgpack:"transactionsRoot"`
+	Nonce            uint64 `json:"nonce" msgpack:"nonce"`
+	MixHash          string `json:"mixHash" msgpack:"mixHash"`
+	Difficulty       string `json:"difficulty" msgpack:"difficulty"`
+	Timestamp        int64  `json:"timestamp" msgpack:"timestamp"`
+}
+
+// GetNumber returns the header number which is the block number
+func (h *Header) GetNumber() uint64 {
+	return h.Number
+}
+
+// GetHash returns the block's hash
+func (b *Block) GetHash() string {
+	return b.Hash
+}
+
 // BlockFromString unmarshal a json string into a Block
 func BlockFromString(str string) (*Block, error) {
 	var block Block
