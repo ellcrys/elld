@@ -3,8 +3,6 @@ package util
 import (
 	"math/big"
 
-	"github.com/ellcrys/elld/wire"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -81,10 +79,10 @@ var _ = Describe("Common", func() {
 	})
 
 	Describe(".SerializeMsg", func() {
-		It("should return [10, 12, 115, 111, 109, 101, 95, 97, 100, 100, 114, 101, 115, 115, 16, 244, 154, 144, 216, 5]", func() {
-			o := &wire.Address{Timestamp: 1526992244, Address: "some_address"}
+		It("should successfully serialize object", func() {
+			o := []interface{}{1, 2, 3}
 			bs := SerializeMsg(o)
-			Expect(bs).To(Equal([]byte{10, 12, 115, 111, 109, 101, 95, 97, 100, 100, 114, 101, 115, 115, 16, 244, 154, 144, 216, 5}))
+			Expect(bs).To(Equal([]byte{147, 1, 2, 3}))
 		})
 	})
 

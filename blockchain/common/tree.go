@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/cbergoon/merkletree"
+	"github.com/ellcrys/elld/util"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -43,7 +44,7 @@ func (t *Tree) Add(item merkletree.Content) {
 	t.items = append(t.items, item)
 }
 
-// GetItems returns the tree items 
+// GetItems returns the tree items
 // Needs tests
 func (t *Tree) GetItems() []merkletree.Content {
 	return t.items
@@ -63,9 +64,9 @@ func (t *Tree) Build() error {
 }
 
 // Root returns the root of the tree
-func (t *Tree) Root() []byte {
+func (t *Tree) Root() util.Hash {
 	if t.tree == nil {
-		return nil
+		return util.EmptyHash
 	}
-	return t.tree.MerkleRoot()
+	return util.BytesToHash(t.tree.MerkleRoot())
 }

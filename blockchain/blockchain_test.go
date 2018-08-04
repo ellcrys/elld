@@ -74,22 +74,22 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				bc.chains = make(map[string]*Chain)
 				chain = NewChain("c", store, cfg, log)
-				GenesisBlock = testdata.GenesisBlockWithAllocTx
+				GenesisBlock = testdata.BlockWithSingleAllocTx
 			})
 
 			// BeforeEach(func() {
 			// 	blk, err := bc.GenerateBlock(&GenerateBlockParams{
 			// 		Transactions: []*wire.Transaction{
-			// 			wire.NewTx(wire.TxTypeAllocCoin, 123, receiver.Addr(), sender, "1", "0.1", 1532730725),
+			// 			wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
 			// 		},
 			// 		Creator:    sender,
-			// 		Nonce:      384763,
-			// 		MixHash:    "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2",
-			// 		Difficulty: "102994",
-			// 	}, ChainOp{Chain: NewChain("c", store, cfg, log)})
+			// 		Nonce:      wire.EncodeNonce(1),
+			// 		MixHash:    util.BytesToHash([]byte("mix hash")),
+			// 		Difficulty: new(big.Int).SetInt64(500),
+			// 	}, ChainOp{Chain: chain})
 			// 	Expect(err).To(BeNil())
 			// 	Expect(blk).ToNot(BeNil())
-			// 	pretty.Println(blk)
+			// 	pp.Println(blk)
 			// })
 
 			It("should return error if store is not set", func() {
@@ -100,8 +100,15 @@ var BlockchainTest = func() bool {
 			})
 
 			When("genesis block is not valid", func() {
+				It("should return error if genesis block number is not equal to 1", func() {
+					GenesisBlock = testdata.GenesisBlockWithAllocTxAndNumber2
+					err = bc.Up()
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("genesis block error: expected block number 1"))
+				})
+
 				It("should return error if a transaction's sender does not exists", func() {
-					GenesisBlock = testdata.GenesisBlockWithTxSenderNotFound
+					GenesisBlock = testdata.GenesisBlockSenderNotFound
 					err = bc.Up()
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
@@ -110,7 +117,7 @@ var BlockchainTest = func() bool {
 
 			When("genesis block is valid", func() {
 				It("should assign new chain as the best chain if no chain is known", func() {
-					GenesisBlock = testdata.GenesisBlockWithAllocTx
+					GenesisBlock = testdata.BlockWithSingleAllocTx
 					err = bc.Up()
 					Expect(err).To(BeNil())
 					Expect(bc.bestChain).ToNot(BeNil())
@@ -186,8 +193,7 @@ var BlockchainTest = func() bool {
 			var chain2 *Chain
 
 			BeforeEach(func() {
-				block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
-				Expect(err).To(BeNil())
+				block = testdata.BlockSet1[0]
 
 				chain2 = NewChain("chain2", store, cfg, log)
 				Expect(err).To(BeNil())
@@ -211,7 +217,7 @@ var BlockchainTest = func() bool {
 
 			Context("when the hash maps to the highest block in chain2", func() {
 				It("should return chain2 and header matching the header of the recently added block", func() {
-					_block, chain, header, err := bc.findBlockChainByHash(block.GetHash())
+					_block, chain, header, err := bc.findBlockChainByHash(block.GetHash().HexStr())
 					Expect(err).To(BeNil())
 					Expect(block).To(Equal(_block))
 					Expect(chain.GetID()).To(Equal(chain2.id))
@@ -224,7 +230,7 @@ var BlockchainTest = func() bool {
 				var block2 *wire.Block
 
 				BeforeEach(func() {
-					block2, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+					block2 = testdata.BlockSet1[0]
 					Expect(err).To(BeNil())
 
 					err = chain2.store.PutBlock(chain2.id, block2)
@@ -232,7 +238,7 @@ var BlockchainTest = func() bool {
 				})
 
 				It("should return chain (not chain2) and header matching the header of the recently aded block", func() {
-					_block, chain, tipHeader, err := bc.findBlockChainByHash(block.GetHash())
+					_block, chain, tipHeader, err := bc.findBlockChainByHash(block.GetHash().HexStr())
 					Expect(err).To(BeNil())
 					Expect(block).To(Equal(_block))
 					Expect(chain.GetID()).To(Equal(chain2.id))
@@ -253,7 +259,7 @@ var BlockchainTest = func() bool {
 				chain = NewChain("chain_2", store, cfg, log)
 				subChain = NewChain("sub_chain", store, cfg, log)
 
-				block, err = wire.BlockFromString(testdata.LoadChainData[0])
+				block = testdata.BlockSet1[0]
 				Expect(err).To(BeNil())
 
 				err := bc.saveChain(chain, "", 0)
@@ -330,23 +336,23 @@ var BlockchainTest = func() bool {
 			})
 
 			It("should return error if initial block parent is nil", func() {
-				initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
+				initialBlock := testdata.BlockSet1[0]
 				_, err := bc.newChain(nil, initialBlock, nil, nil)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("initial block parent cannot be nil"))
 			})
 
 			It("should return error if initial block and parent are not related", func() {
-				initialBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[0])
-				initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+				initialBlock := testdata.BlockSet1[1]
+				initialBlockParent := testdata.BlockSet1[2]
 				_, err = bc.newChain(nil, initialBlock, initialBlockParent, nil)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("initial block and parent are not related"))
 			})
 
 			It("should successfully return a new chain", func() {
-				initialBlockParent, err := wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
-				initialBlock, _ := wire.BlockFromString(testdata.BlockchainDotGoJSON[2])
+				initialBlock := testdata.BlockSet1[1]
+				initialBlockParent := testdata.BlockSet1[0]
 
 				tx, _ := chain.store.NewTx()
 				chain, err := bc.newChain(tx, initialBlock, initialBlockParent, nil)
@@ -363,7 +369,7 @@ var BlockchainTest = func() bool {
 
 			BeforeEach(func() {
 				chain = NewChain("chain_a", store, cfg, log)
-				block, _ = wire.BlockFromString(testdata.GetTransactionData[1])
+				block = testdata.BlockSet1[0]
 				chain.append(block)
 				err = chain.putTransactions(block.Transactions)
 				Expect(err).To(BeNil())
@@ -438,7 +444,7 @@ var BlockchainTest = func() bool {
 					chainA = NewChain("chain_a", store, cfg, log)
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
-					block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+					block = testdata.BlockSet1[0]
 					err = chainA.append(block)
 					Expect(err).To(BeNil())
 				})
@@ -447,7 +453,7 @@ var BlockchainTest = func() bool {
 					chainB = NewChain("chain_b", store, cfg, log)
 					err := bc.saveChain(chainB, "", 0)
 					Expect(err).To(BeNil())
-					block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
+					block = testdata.BlockSet1[0]
 					err = chainB.append(block)
 					Expect(err).To(BeNil())
 				})
@@ -456,8 +462,8 @@ var BlockchainTest = func() bool {
 					chainC = NewChain("chain_c", store, cfg, log)
 					err := bc.saveChain(chainC, "", 0)
 					Expect(err).To(BeNil())
-					block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
-					block2, err := wire.BlockFromString(testdata.ChooseBestChainData[1])
+					block = testdata.BlockSet1[0]
+					block2 := testdata.BlockSet1[1]
 					err = chainC.append(block)
 					Expect(err).To(BeNil())
 					err = chainC.append(block2)

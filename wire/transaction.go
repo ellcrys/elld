@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 )
 
 var (
@@ -46,8 +47,8 @@ type Transaction struct {
 	Timestamp    int64       `json:"Timestamp" msgpack:"Timestamp"`
 	Fee          string      `json:"Fee" msgpack:"Fee"`
 	InvokeArgs   *InvokeArgs `json:"InvokeArgs" msgpack:"InvokeArgs"`
-	Sig          string      `json:"sig" msgpack:"sig"`
-	Hash         string      `json:"hash" msgpack:"hash"`
+	Sig          []byte      `json:"sig" msgpack:"sig"`
+	Hash         util.Hash   `json:"hash" msgpack:"hash"`
 }
 
 // NewTransaction creates a new transaction
@@ -74,17 +75,18 @@ func NewTx(txType int64, nonce int64, to string, senderKey *crypto.Key, value st
 	tx.Value = value
 	tx.Timestamp = timestamp
 	tx.Fee = fee
-	tx.Hash = tx.ComputeHash2()
+	tx.Hash = tx.ComputeHash()
 
 	sig, err := TxSign(tx, senderKey.PrivKey().Base58())
 	if err != nil {
 		panic(err)
 	}
-	tx.Sig = ToHex(sig)
+	tx.Sig = sig
 	return
 }
 
-func (tx *Transaction) GetHash() string {
+// GetHash returns the hash of tx
+func (tx *Transaction) GetHash() util.Hash {
 	return tx.Hash
 }
 
@@ -112,22 +114,15 @@ func (tx *Transaction) Bytes() []byte {
 }
 
 // ComputeHash returns the SHA256 hash of the transaction.
-func (tx *Transaction) ComputeHash() []byte {
+func (tx *Transaction) ComputeHash() util.Hash {
 	bs := tx.Bytes()
 	hash := sha256.Sum256(bs)
-	return hash[:]
-}
-
-// ComputeHash2 computes the SHA256 hash of the transaction and encodes to hex.
-func (tx *Transaction) ComputeHash2() string {
-	bs := tx.Bytes()
-	hash := sha256.Sum256(bs)
-	return ToHex(hash[:])
+	return util.BytesToHash(hash[:])
 }
 
 // ID returns the hex representation of Hash()
 func (tx *Transaction) ID() string {
-	return tx.ComputeHash2()
+	return tx.ComputeHash().HexStr()
 }
 
 // Sign the transaction
@@ -156,8 +151,7 @@ func TxVerify(tx *Transaction) error {
 		return fieldError("senderPubKey", err.Error())
 	}
 
-	decSig, _ := FromHex(tx.Sig)
-	valid, err := pubKey.Verify(tx.Bytes(), decSig)
+	valid, err := pubKey.Verify(tx.Bytes(), tx.Sig)
 	if err != nil {
 		return fieldError("sig", err.Error())
 	}

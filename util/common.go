@@ -19,12 +19,15 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
+	letterBytes   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	letterIdxBits = 6                    // 6 bits to represent a letter index
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
+
+// Big0 represents a zero value big.Int
+var Big0 = new(big.Int).SetInt64(0)
 
 func init() {
 	r.Seed(time.Now().UnixNano())
@@ -185,6 +188,22 @@ func FromHex(hexValue string) ([]byte, error) {
 		_hexValue = parts[1]
 	}
 	return hex.DecodeString(_hexValue)
+}
+
+// MustFromHex is like FromHex except it panics if an error occurs
+func MustFromHex(hexValue string) []byte {
+	var _hexValue string
+	parts := strings.Split(hexValue, "0x")
+	if len(parts) == 1 {
+		_hexValue = parts[0]
+	} else {
+		_hexValue = parts[1]
+	}
+	v, err := hex.DecodeString(_hexValue)
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
 
 // StructToMap returns a map containing fields from the s.

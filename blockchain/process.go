@@ -23,7 +23,7 @@ func (b *Blockchain) validateBlock(block *wire.Block) error {
 
 	// TODO: move this to the block validator
 	// validate the transaction root
-	if block.Header.TransactionsRoot != util.ToHex(common.ComputeTxsRoot(block.Transactions)) {
+	if !block.Header.TransactionsRoot.Equal(common.ComputeTxsRoot(block.Transactions)) {
 		return fmt.Errorf("failed transaction root check")
 	}
 
@@ -283,7 +283,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 		// find the chain where the parent of the block exists on. If a chain is not found,
 		// then the block is considered an orphan. If the chain is found but the block at the tip
 		// is has the same or a greater block number compared to the new block, it is considered a stale block.
-		parentBlock, chain, chainTip, err = b.findBlockChainByHash(block.Header.ParentHash)
+		parentBlock, chain, chainTip, err = b.findBlockChainByHash(block.Header.ParentHash.HexStr())
 		if err != nil {
 			if err != common.ErrBlockNotFound {
 				return nil, err
@@ -331,7 +331,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 
 	// Compare the state root in the block header with the root obtained
 	// from the mock execution of the block.
-	if block.Header.StateRoot != util.ToHex(newStateRoot) {
+	if !block.Header.StateRoot.Equal(newStateRoot) {
 		tx.Rollback()
 		return nil, common.ErrBlockStateRootInvalid
 	}
@@ -398,12 +398,12 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (types.Chain, error) {
 
 	// check if the block has previously been detected as an orphan.
 	// We do not need to go re-process this block if it is an orphan.
-	if b.isOrphanBlock(block.Hash) {
+	if b.isOrphanBlock(block.Hash.HexStr()) {
 		return nil, common.ErrOrphanBlock
 	}
 
 	// check if the block exists in any known chain
-	exists, err := b.HaveBlock(block.Hash)
+	exists, err := b.HaveBlock(block.Hash.HexStr())
 	if err != nil {
 		return nil, fmt.Errorf("failed to check block existence: %s", err)
 	}
@@ -419,33 +419,33 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (types.Chain, error) {
 	}
 
 	// process any remaining orphan blocks
-	b.processOrphanBlocks(block.Hash)
+	b.processOrphanBlocks(block.Hash.HexStr())
 
 	return chain, nil
 }
 
 // execBlock execute the transactions of the blocks to
 // output the resulting state objects and state root.
-func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.CallOp) (root []byte, stateObjs []*common.StateObject, err error) {
+func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.CallOp) (root util.Hash, stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
 	ops, err := b.processTransactions(block.Transactions, chain)
 	if err != nil {
-		return nil, nil, fmt.Errorf("transaction error: %s", err)
+		return util.EmptyHash, nil, fmt.Errorf("transaction error: %s", err)
 	}
 
 	// Create state objects from the transition objects. State objects when written
 	// to the blockchain state (store and tree) change the values of data.
 	stateObjs, err = b.opsToStateObjects(block, chain, ops)
 	if err != nil {
-		return nil, nil, err
+		return util.EmptyHash, nil, err
 	}
 
 	// Get a new state tree. The tree is seeded with the state root of the parent block
 	tree, err := chain.NewStateTree(false, opts...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create new state tree: %s", err)
+		return util.EmptyHash, nil, fmt.Errorf("failed to create new state tree: %s", err)
 	}
 
 	// Add the state objects into the tree. Contantenate the key and value into a TreeItem
@@ -455,7 +455,7 @@ func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.C
 
 	// Build the tree and compute new state root
 	if err = tree.Build(); err != nil {
-		return nil, nil, err
+		return util.EmptyHash, nil, err
 	}
 
 	root = tree.Root()
@@ -493,18 +493,19 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 			// find an orphan block with a parent hash that
 			// is same has the latestBlockHash
 			orphanBlock := b.orphanBlocks.Peek(oBKey).(*wire.Block)
-			if orphanBlock.Header.ParentHash != curParentHash {
+			if orphanBlock.Header.ParentHash.HexStr() != curParentHash {
 				continue
 			}
+
 			// remove from the orphan from the cache
-			b.orphanBlocks.Remove(orphanBlock.GetHash())
+			b.orphanBlocks.Remove(orphanBlock.HashToHex())
 
 			// re-attempt to process the block
 			if _, err := b.maybeAcceptBlock(orphanBlock, nil); err != nil {
 				return err
 			}
 
-			parentHashes = append(parentHashes, orphanBlock.Hash)
+			parentHashes = append(parentHashes, orphanBlock.Hash.HexStr())
 		}
 	}
 

@@ -6,7 +6,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
 
 	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
@@ -61,10 +60,10 @@ func TransactionTest() bool {
 
 			It("should return nil and history key of transaction should be in HistoryCache", func() {
 				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-				tx.Hash = util.ToHex(tx.ComputeHash())
+				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
-				tx.Sig = util.ToHex(sig)
+				tx.Sig = sig
 				err = proto.RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())
 				Expect(n.historyCache.Len()).To(Equal(1))
@@ -75,10 +74,10 @@ func TransactionTest() bool {
 
 				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 				tx.From = sender.Addr()
-				tx.Hash = util.ToHex(tx.ComputeHash())
+				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
-				tx.Sig = util.ToHex(sig)
+				tx.Sig = sig
 
 				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
 				time.Sleep(1 * time.Millisecond)
@@ -94,10 +93,10 @@ func TransactionTest() bool {
 
 				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
 				tx.From = sender.Addr()
-				tx.Hash = util.ToHex(tx.ComputeHash())
+				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
-				tx.Sig = util.ToHex(sig)
+				tx.Sig = sig
 
 				err = proto.RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())

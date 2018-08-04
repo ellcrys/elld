@@ -7,6 +7,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -44,7 +45,7 @@ var _ = Describe("Leveldb", func() {
 		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
-			Hash:   "hash",
+			Hash:   util.StrToHash("hash"),
 		}
 
 		It("should put block without error", func() {
@@ -72,7 +73,7 @@ var _ = Describe("Leveldb", func() {
 
 			var block2 = &wire.Block{
 				Header: &wire.Header{Number: 1},
-				Hash:   "some_hash",
+				Hash:   util.StrToHash("some_hash"),
 			}
 
 			err = store.PutBlock(chainID, block2)
@@ -91,7 +92,7 @@ var _ = Describe("Leveldb", func() {
 		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
-			Hash:   "hash",
+			Hash:   util.StrToHash("hash"),
 		}
 
 		BeforeEach(func() {
@@ -108,7 +109,7 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should get block by hash", func() {
-			storedBlock, err := store.GetBlockByHash(chainID, block.GetHash())
+			storedBlock, err := store.GetBlockByHash(chainID, block.GetHash().HexStr())
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
@@ -129,7 +130,7 @@ var _ = Describe("Leveldb", func() {
 		It("should return the block with the hightest number if 0 is passed", func() {
 			var block2 = &wire.Block{
 				Header: &wire.Header{Number: 2},
-				Hash:   "hash",
+				Hash:   util.StrToHash("hash"),
 			}
 			err = store.PutBlock(chainID, block2)
 			Expect(err).To(BeNil())
@@ -146,7 +147,7 @@ var _ = Describe("Leveldb", func() {
 		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
-			Hash:   "hash",
+			Hash:   util.StrToHash("hash"),
 		}
 
 		BeforeEach(func() {
@@ -168,7 +169,7 @@ var _ = Describe("Leveldb", func() {
 		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
-			Hash:   "hash",
+			Hash:   util.StrToHash("hash"),
 		}
 
 		BeforeEach(func() {
@@ -179,7 +180,7 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should get block by hash", func() {
-			storedBlockHeader, err := store.GetBlockHeaderByHash(chainID, block.GetHash())
+			storedBlockHeader, err := store.GetBlockHeaderByHash(chainID, block.GetHash().HexStr())
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))
