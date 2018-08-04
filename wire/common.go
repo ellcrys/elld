@@ -1,36 +1,20 @@
 package wire
 
 import (
-	bytes "bytes"
-	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	r "math/rand"
 	"strings"
+
+	"github.com/vmihailenco/msgpack"
 )
 
 const (
-	HashLength    = 32
 	letterBytes   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	letterIdxBits = 6                    // 6 bits to represent a letter index
 	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
 	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
-
-// Hash represents a 32 bytes digest
-type Hash [HashLength]byte
-
-// Bytes gets the byte representation of the underlying hash.
-func (h Hash) Bytes() []byte { return h[:] }
-
-// Big converts a hash to a big integer.
-func (h Hash) Big() *big.Int { return new(big.Int).SetBytes(h[:]) }
-
-// Equal checks whether h is equal to o
-func (h Hash) Equal(o Hash) bool {
-	return bytes.Equal(h.Bytes(), o.Bytes())
-}
 
 // ToHex encodes value to hex with a '0x' prefix
 func ToHex(value []byte) string {
@@ -77,10 +61,10 @@ func fieldError(field, err string) error {
 	return fmt.Errorf(fmt.Sprintf("field:%s, error:%s", field, err))
 }
 
-// getBytes return the ASN.1 marshalled representation of fields
+// getBytes return the serialized representation of fields
 func getBytes(fields []interface{}) []byte {
 
-	result, err := asn1.Marshal(fields)
+	result, err := msgpack.Marshal(fields)
 	if err != nil {
 		panic(err)
 	}

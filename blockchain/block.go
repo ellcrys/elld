@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -13,13 +14,13 @@ import (
 // GenerateBlockParams represents parameters
 // required for block generation.
 type GenerateBlockParams struct {
-	OverrideParentHash string
+	OverrideParentHash util.Hash
 	Transactions       []*wire.Transaction
 	Creator            *crypto.Key
-	Nonce              uint64
-	MixHash            string
-	Difficulty         string
-	OverrideStateRoot  string
+	Nonce              wire.BlockNonce
+	MixHash            util.Hash
+	Difficulty         *big.Int
+	OverrideStateRoot  util.Hash
 }
 
 // HaveBlock checks whether we have a block in the
@@ -77,9 +78,9 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 		return nil, fmt.Errorf("at least one transaction is required")
 	} else if params.Creator == nil {
 		return nil, fmt.Errorf("creator's key is required")
-	} else if params.Difficulty == "" {
+	} else if params.Difficulty == nil || params.Difficulty.Cmp(util.Big0) == 0 {
 		return nil, fmt.Errorf("difficulty is required")
-	} else if params.MixHash == "" {
+	} else if params.MixHash.IsEmpty() {
 		return nil, fmt.Errorf("mix hash is required")
 	}
 
@@ -114,10 +115,10 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 
 	block = &wire.Block{
 		Header: &wire.Header{
-			ParentHash:       "",
+			ParentHash:       util.EmptyHash,
 			CreatorPubKey:    params.Creator.PubKey().Base58(),
 			Number:           1,
-			TransactionsRoot: util.ToHex(common.ComputeTxsRoot(params.Transactions)),
+			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
 			MixHash:          params.MixHash,
 			Difficulty:       params.Difficulty,
@@ -126,7 +127,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 		Transactions: params.Transactions,
 	}
 
-	// If the chain has no tip block but it has hot a parent,
+	// If the chain has no tip block but it has a parent,
 	// then we set the block's parent hash to the parent's hash
 	// and set the block number to BlockNumber(parent) + 1
 	if chainTip == nil && chain.parentBlock != nil {
@@ -144,7 +145,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 
 	// override parent hash with the parent hash provided in
 	// in the params.
-	if params.OverrideParentHash != "" {
+	if !params.OverrideParentHash.IsEmpty() {
 		block.Header.ParentHash = params.OverrideParentHash
 	}
 
@@ -153,10 +154,10 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 	if err != nil {
 		return nil, fmt.Errorf("exec: %s", err)
 	}
-	block.Header.StateRoot = util.ToHex(root)
+	block.Header.StateRoot = root
 
 	// override state root if params include a state root
-	if params.OverrideStateRoot != "" {
+	if !params.OverrideStateRoot.IsEmpty() {
 		block.Header.StateRoot = params.OverrideStateRoot
 	}
 
@@ -169,7 +170,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 		return nil, fmt.Errorf("failed to sign block: %s", err)
 	}
 
-	block.Sig = util.ToHex(sig)
+	block.Sig = sig
 
 	// Finally, validate the block to ensure it meets every
 	// requirement for a valid block.

@@ -127,6 +127,15 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 		}
 	}
 
+	var requireHashRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if val.(util.Hash).IsEmpty() {
+				return err
+			}
+			return nil
+		}
+	}
+
 	var validValueRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
 			if _, _err := decimal.NewFromString(val.(string)); _err != nil {
@@ -156,7 +165,16 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 		}
 	}
 
-	var isSameRule = func(val2 string, err error) func(interface{}) error {
+	var isSameHashRule = func(val2 util.Hash, err error) func(interface{}) error {
+		return func(val interface{}) error {
+			if !val.(util.Hash).Equal(val2) {
+				return err
+			}
+			return nil
+		}
+	}
+
+	var isSameStrRule = func(val2 string, err error) func(interface{}) error {
 		return func(val interface{}) error {
 			if val.(string) != val2 {
 				return err
@@ -207,8 +225,8 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	// Hash is required. It must also be correct
 	errs = appendErr(errs, validation.Validate(tx.Hash,
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is required").Error()),
-		validation.By(isSameRule(tx.ComputeHash2(), fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is not correct"))),
+		validation.By(requireHashRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is required"))),
+		validation.By(isSameHashRule(tx.ComputeHash(), fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is not correct"))),
 	))
 
 	// Signature must be set
@@ -221,6 +239,13 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 			validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "could not convert to decimal"))),
 			validation.By(isValidFeeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(16))))),
+		))
+	}
+
+	if tx.Type == wire.TxTypeAllocCoin {
+		// Transaction sender must be the same as the recipient
+		errs = appendErr(errs, validation.Validate(tx.From,
+			validation.By(isSameStrRule(tx.To, fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),
 		))
 	}
 
@@ -238,8 +263,7 @@ func (v *TxsValidator) checkSignature(tx *wire.Transaction) (errs []error) {
 		return
 	}
 
-	decSig, _ := util.FromHex(tx.Sig)
-	valid, err := pubKey.Verify(tx.Bytes(), decSig)
+	valid, err := pubKey.Verify(tx.Bytes(), tx.Sig)
 	if err != nil {
 		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
 			"sig", err.Error()))
@@ -263,7 +287,7 @@ func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
 	}
 
 	if v.bchain != nil {
-		_, err := v.bchain.GetTransaction(tx.Hash)
+		_, err := v.bchain.GetTransaction(tx.Hash.HexStr())
 		if err != nil {
 			if err != common.ErrTxNotFound {
 				errs = append(errs, fmt.Errorf("get transaction error: %s", err))

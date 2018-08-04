@@ -28,7 +28,9 @@ func GetTxOp(db database.TxCreator, opts ...CallOp) TxOp {
 		for _, op := range opts {
 			switch _op := op.(type) {
 			case TxOp:
-				return _op
+				if _op.Tx != nil {
+					return _op
+				}
 			}
 		}
 	}
@@ -45,17 +47,15 @@ func GetTxOp(db database.TxCreator, opts ...CallOp) TxOp {
 // ComputeTxsRoot computes the merkle root of a set of transactions.
 // Transactions are first lexicographically sorted and added to a
 // brand new tree. Returns the tree root.
-func ComputeTxsRoot(txs []*wire.Transaction) []byte {
+func ComputeTxsRoot(txs []*wire.Transaction) util.Hash {
 
 	sort.Slice(txs, func(i, j int) bool {
-		iBytes, _ := util.FromHex(txs[i].Hash)
-		jBytes, _ := util.FromHex(txs[j].Hash)
-		return bytes.Compare(iBytes, jBytes) == -1
+		return bytes.Compare(txs[i].Hash.Bytes(), txs[j].Hash.Bytes()) == -1
 	})
 
 	tree := NewTree()
 	for _, tx := range txs {
-		tree.Add(TreeItem([]byte(tx.GetHash())))
+		tree.Add(TreeItem(tx.GetHash().Bytes()))
 	}
 
 	tree.Build()

@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/cbergoon/merkletree"
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -33,7 +34,7 @@ var _ = Describe("Tree", func() {
 			tree.Add(items[0])
 			tree.Add(items[1])
 			Expect(tree.Build()).To(BeNil())
-			Expect(tree.Root()).To(Equal([]byte{70, 13, 170, 184, 121, 200, 20, 163, 1, 149, 156, 20, 212, 181, 133, 63, 201, 200, 21, 159, 153, 118, 93, 88, 210, 135, 88, 77, 161, 255, 134, 58}))
+			Expect(tree.Root()).To(Equal(util.Hash{70, 13, 170, 184, 121, 200, 20, 163, 1, 149, 156, 20, 212, 181, 133, 63, 201, 200, 21, 159, 153, 118, 93, 88, 210, 135, 88, 77, 161, 255, 134, 58}))
 		})
 	})
 })
