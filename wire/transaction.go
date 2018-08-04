@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 )
 
 var (
@@ -25,9 +26,30 @@ var (
 	// TxTypeBalance represents a transaction from an account to another account
 	TxTypeBalance int64 = 0x1
 
-	// TxTypeEndorserTicketCreate represents a transaction to create an endorser ticket
-	TxTypeEndorserTicketCreate int64 = 0x2
+	// TxTypeAllocCoin represents a transaction to alloc coins to an account
+	TxTypeAllocCoin int64 = 0x2
 )
+
+// InvokeArgs describes a function to be executed by a blockcode
+type InvokeArgs struct {
+	Func   string            `json:"func" msgpack:"func"`
+	Params map[string][]byte `json:"params" msgpack:"params"`
+}
+
+// Transaction represents a transaction
+type Transaction struct {
+	Type         int64       `json:"type" msgpack:"type"`
+	Nonce        int64       `json:"nonce" msgpack:"nonce"`
+	To           string      `json:"to" msgpack:"to"`
+	From         string      `json:"from" msgpack:"from"`
+	SenderPubKey string      `json:"senderPubKey" msgpack:"senderPubKey"`
+	Value        string      `json:"value" msgpack:"value"`
+	Timestamp    int64       `json:"Timestamp" msgpack:"Timestamp"`
+	Fee          string      `json:"Fee" msgpack:"Fee"`
+	InvokeArgs   *InvokeArgs `json:"InvokeArgs" msgpack:"InvokeArgs"`
+	Sig          []byte      `json:"sig" msgpack:"sig"`
+	Hash         util.Hash   `json:"hash" msgpack:"hash"`
+}
 
 // NewTransaction creates a new transaction
 func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, value string, fee string, timestamp int64) (tx *Transaction) {
@@ -53,14 +75,19 @@ func NewTx(txType int64, nonce int64, to string, senderKey *crypto.Key, value st
 	tx.Value = value
 	tx.Timestamp = timestamp
 	tx.Fee = fee
-	tx.Hash = tx.ComputeHash2()
+	tx.Hash = tx.ComputeHash()
 
 	sig, err := TxSign(tx, senderKey.PrivKey().Base58())
 	if err != nil {
 		panic(err)
 	}
-	tx.Sig = ToHex(sig)
+	tx.Sig = sig
 	return
+}
+
+// GetHash returns the hash of tx
+func (tx *Transaction) GetHash() util.Hash {
+	return tx.Hash
 }
 
 // Bytes return the ASN.1 marshalled representation of the transaction.
@@ -87,22 +114,15 @@ func (tx *Transaction) Bytes() []byte {
 }
 
 // ComputeHash returns the SHA256 hash of the transaction.
-func (tx *Transaction) ComputeHash() []byte {
+func (tx *Transaction) ComputeHash() util.Hash {
 	bs := tx.Bytes()
 	hash := sha256.Sum256(bs)
-	return hash[:]
-}
-
-// ComputeHash2 computes the SHA256 hash of the transaction and encodes to hex.
-func (tx *Transaction) ComputeHash2() string {
-	bs := tx.Bytes()
-	hash := sha256.Sum256(bs)
-	return ToHex(hash[:])
+	return util.BytesToHash(hash[:])
 }
 
 // ID returns the hex representation of Hash()
 func (tx *Transaction) ID() string {
-	return tx.ComputeHash2()
+	return tx.ComputeHash().HexStr()
 }
 
 // Sign the transaction
@@ -131,8 +151,7 @@ func TxVerify(tx *Transaction) error {
 		return fieldError("senderPubKey", err.Error())
 	}
 
-	decSig, _ := FromHex(tx.Sig)
-	valid, err := pubKey.Verify(tx.Bytes(), decSig)
+	valid, err := pubKey.Verify(tx.Bytes(), tx.Sig)
 	if err != nil {
 		return fieldError("sig", err.Error())
 	}

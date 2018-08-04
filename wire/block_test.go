@@ -2,9 +2,10 @@ package wire
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ellcrys/elld/crypto"
-
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -17,24 +18,22 @@ var _ = Describe("Block & Header", func() {
 		It("should validate fields", func() {
 
 			_key := key.PubKey().Base58()
+			parentHash := util.BytesToHash([]byte("x"))
+			txRoot := util.BytesToHash([]byte("tx_123"))
+			stateRoot := util.BytesToHash([]byte("state_123"))
 
 			var data = map[Header]error{
-				Header{}: fmt.Errorf("field:parentHash, error:expected 66 characters"),
-				Header{Number: 0, ParentHash: "some_hash"}:                                                                                                                                                              fmt.Errorf("field:number, error:number must be greater or equal to 1"),
-				Header{Number: 0, ParentHash: "some_hash"}:                                                                                                                                                              fmt.Errorf("field:parentHash, error:expected 66 characters"),
-				Header{Number: 1, ParentHash: "some_hash"}:                                                                                                                                                              fmt.Errorf("field:parentHash, error:should be empty since block number is 1"),
-				Header{Number: 1}:                                                                                                                                                                                       fmt.Errorf("field:creatorPubKey, error:creator public key is required"),
-				Header{Number: 1, CreatorPubKey: _key}:                                                                                                                                                                  fmt.Errorf("field:transactionsRoot, error:expected 66 characters"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key}:                                                                                                                                                 fmt.Errorf("field:number, error:number must be greater or equal to 1"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2}:                                                                                                                                      fmt.Errorf("field:transactionsRoot, error:expected 66 characters"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66)}:                                                                                                           fmt.Errorf("field:transactionsRoot, error:expected 66 characters"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, TransactionsRoot: RandString(66)}:                                                                                                    fmt.Errorf("field:stateRoot, error:expected 66 characters"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66), TransactionsRoot: RandString(66)}:                                                                         fmt.Errorf("field:nonce, error:must not be zero"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66), TransactionsRoot: RandString(66), Nonce: 1}:                                                               fmt.Errorf("field:mixHash, error:expected 32 characters"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66), TransactionsRoot: RandString(66), Nonce: 1, MixHash: RandString(32)}:                                      fmt.Errorf("field:difficulty, error:must be non-zero and non-negative"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66), TransactionsRoot: RandString(66), Nonce: 1, MixHash: RandString(32), Difficulty: "ac"}:                    fmt.Errorf("field:difficulty, error:must be numeric"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66), TransactionsRoot: RandString(66), Nonce: 1, MixHash: RandString(32), Difficulty: "1"}:                     fmt.Errorf("field:timestamp, error:must not be empty or a negative value"),
-				Header{ParentHash: RandString(66), CreatorPubKey: _key, Number: 2, StateRoot: RandString(66), TransactionsRoot: RandString(66), Nonce: 1, MixHash: RandString(32), Difficulty: "1", Timestamp: 1500000}: nil,
+				Header{}:                                                                                                                              fmt.Errorf("field:parentHash, error:expected 66 characters"),
+				Header{Number: 0}:                                                                                                                     fmt.Errorf("field:number, error:number must be greater or equal to 1"),
+				Header{Number: 1, ParentHash: util.BytesToHash([]byte("x"))}:                                                                          fmt.Errorf("field:parentHash, error:should be empty since block number is 1"),
+				Header{Number: 2}:                                                                                                                     fmt.Errorf("field:parentHash, error:parent hash is required"),
+				Header{Number: 2, ParentHash: util.BytesToHash([]byte("x"))}:                                                                          fmt.Errorf("field:creatorPubKey, error:creator public key is required"),
+				Header{Number: 1, CreatorPubKey: "invalid"}:                                                                                           fmt.Errorf("field:creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
+				Header{Number: 1, CreatorPubKey: _key}:                                                                                                fmt.Errorf("field:transactionsRoot, error:transaction root is required"),
+				Header{ParentHash: parentHash, CreatorPubKey: _key}:                                                                                   fmt.Errorf("field:number, error:number must be greater or equal to 1"),
+				Header{ParentHash: parentHash, CreatorPubKey: _key, Number: 2, TransactionsRoot: txRoot}:                                              fmt.Errorf("field:stateRoot, error:state root is required"),
+				Header{ParentHash: parentHash, CreatorPubKey: _key, Number: 2, TransactionsRoot: txRoot, StateRoot: stateRoot}:                        fmt.Errorf("field:nonce, error:nonce is required"),
+				Header{ParentHash: parentHash, CreatorPubKey: _key, Number: 2, TransactionsRoot: txRoot, StateRoot: stateRoot, Nonce: EncodeNonce(1)}: fmt.Errorf("field:timestamp, error:timestamp must not be empty or a negative value"),
 			}
 
 			for h, e := range data {
@@ -52,16 +51,16 @@ var _ = Describe("Block & Header", func() {
 	Describe("Header.Bytes", func() {
 		It("should successfully return bytes", func() {
 			h := Header{
-				ParentHash:       "parent_hash",
+				ParentHash:       util.BytesToHash([]byte("parent_hash")),
 				Number:           1,
-				TransactionsRoot: "state_root_hash",
-				StateRoot:        "tx_hash",
-				Nonce:            1,
-				MixHash:          "mixHash",
-				Difficulty:       "1",
+				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
+				StateRoot:        util.BytesToHash([]byte("tx_hash")),
+				Nonce:            EncodeNonce(1),
+				MixHash:          util.BytesToHash([]byte("mixHash")),
+				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
-			expected := []byte{48, 62, 12, 11, 112, 97, 114, 101, 110, 116, 95, 104, 97, 115, 104, 19, 1, 49, 12, 15, 115, 116, 97, 116, 101, 95, 114, 111, 111, 116, 95, 104, 97, 115, 104, 12, 7, 116, 120, 95, 104, 97, 115, 104, 19, 1, 49, 19, 7, 109, 105, 120, 72, 97, 115, 104, 19, 1, 49, 2, 3, 22, 227, 96}
+			expected := []byte{152, 196, 32, 112, 97, 114, 101, 110, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 196, 32, 115, 116, 97, 116, 101, 95, 114, 111, 111, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 32, 116, 120, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 8, 0, 0, 0, 0, 0, 0, 0, 1, 196, 32, 109, 105, 120, 72, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 206, 0, 22, 227, 96}
 			Expect(h.Bytes()).To(Equal(expected))
 		})
 	})
@@ -69,32 +68,33 @@ var _ = Describe("Block & Header", func() {
 	Describe("Header.ComputeHash", func() {
 		It("should successfully return 32 bytes digest", func() {
 			h := Header{
-				ParentHash:       "parent_hash",
+				ParentHash:       util.BytesToHash([]byte("parent_hash")),
 				Number:           1,
-				TransactionsRoot: "state_root_hash",
-				StateRoot:        "tx_hash",
-				Nonce:            1,
-				MixHash:          "mixHash",
-				Difficulty:       "1",
+				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
+				StateRoot:        util.BytesToHash([]byte("tx_hash")),
+				Nonce:            EncodeNonce(1),
+				MixHash:          util.BytesToHash([]byte("mixHash")),
+				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
 			actual := h.ComputeHash()
-			Expect(actual).To(Equal("0x30beb61284f96a98db1210f07c43430d63dbdd8af42f159464e0df0bf06eaa8d"))
+			expected := util.Hash([32]byte{146, 253, 217, 97, 144, 129, 246, 248, 132, 81, 54, 23, 53, 212, 175, 117, 135, 145, 156, 159, 235, 114, 67, 181, 24, 51, 51, 92, 36, 189, 193, 101})
+			Expect(actual).To(HaveLen(32))
+			Expect(actual).To(Equal(expected))
 		})
 	})
 
 	Describe(".BlockSign", func() {
 
-		var key = crypto.NewKeyFromIntSeed(1)
 		var header1 = &Header{
-			ParentHash:       RandString(66),
-			Number:           2,
-			TransactionsRoot: RandString(66),
-			StateRoot:        RandString(66),
-			Nonce:            1,
-			MixHash:          RandString(32),
-			Difficulty:       "1",
-			Timestamp:        1529670647,
+			ParentHash:       util.BytesToHash([]byte("parent_hash")),
+			Number:           1,
+			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
+			StateRoot:        util.BytesToHash([]byte("tx_hash")),
+			Nonce:            EncodeNonce(1),
+			MixHash:          util.BytesToHash([]byte("mixHash")),
+			Difficulty:       new(big.Int).SetUint64(100),
+			Timestamp:        1500000,
 		}
 
 		It("should successfully sign a block", func() {
@@ -104,15 +104,14 @@ var _ = Describe("Block & Header", func() {
 					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
-				Hash:   "",
 			}
 
 			t1 := b.Transactions[0]
-			t1.Hash = ToHex(t1.ComputeHash())
+			t1.Hash = t1.ComputeHash()
 
 			t1Sig, err := TxSign(t1, key.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			t1.Sig = ToHex(t1Sig)
+			t1.Sig = t1Sig
 
 			b.Hash = b.ComputeHash()
 			bs, err := BlockSign(&b, key.PrivKey().Base58())
@@ -122,16 +121,16 @@ var _ = Describe("Block & Header", func() {
 	})
 
 	Describe(".BlockVerify", func() {
-		var key = crypto.NewKeyFromIntSeed(1)
+
 		var header1 = &Header{
-			ParentHash:       RandString(66),
-			Number:           2,
-			TransactionsRoot: RandString(66),
-			StateRoot:        RandString(66),
-			Nonce:            1,
-			MixHash:          RandString(32),
-			Difficulty:       "1",
-			Timestamp:        1529670647,
+			ParentHash:       util.BytesToHash([]byte("parent_hash")),
+			Number:           1,
+			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
+			StateRoot:        util.BytesToHash([]byte("tx_hash")),
+			Nonce:            EncodeNonce(1),
+			MixHash:          util.BytesToHash([]byte("mixHash")),
+			Difficulty:       new(big.Int).SetUint64(100),
+			Timestamp:        1500000,
 		}
 
 		It("should return err if creator pub key is not set in header", func() {
@@ -141,7 +140,6 @@ var _ = Describe("Block & Header", func() {
 					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
-				Hash:   "",
 			}
 
 			err := BlockVerify(&b)
@@ -156,7 +154,6 @@ var _ = Describe("Block & Header", func() {
 					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
-				Hash:   "",
 			}
 			b.Header.CreatorPubKey = key.PubKey().Base58()
 
@@ -172,20 +169,19 @@ var _ = Describe("Block & Header", func() {
 					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
-				Hash:   "",
 			}
 			b.Header.CreatorPubKey = key.PubKey().Base58()
 
 			t1 := b.Transactions[0]
-			t1.Hash = ToHex(t1.ComputeHash())
+			t1.Hash = t1.ComputeHash()
 
 			t1Sig, err := TxSign(t1, key.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			t1.Sig = ToHex(t1Sig)
+			t1.Sig = t1Sig
 
 			b.Hash = b.ComputeHash()
 
-			b.Sig = ToHex([]byte("invalid"))
+			b.Sig = []byte("invalid")
 			err = BlockVerify(&b)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("block verification failed"))
@@ -198,23 +194,22 @@ var _ = Describe("Block & Header", func() {
 					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
-				Hash:   "",
 			}
 			b.Header.CreatorPubKey = key.PubKey().Base58()
 
 			t1 := b.Transactions[0]
-			t1.Hash = ToHex(t1.ComputeHash())
+			t1.Hash = t1.ComputeHash()
 
 			t1Sig, err := TxSign(t1, key.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			t1.Sig = ToHex(t1Sig)
+			t1.Sig = t1Sig
 
 			b.Hash = b.ComputeHash()
 			bs, err := BlockSign(&b, key.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			Expect(bs).ToNot(BeEmpty())
 
-			b.Sig = ToHex(bs)
+			b.Sig = bs
 			err = BlockVerify(&b)
 			Expect(err).To(BeNil())
 		})
@@ -222,7 +217,6 @@ var _ = Describe("Block & Header", func() {
 
 	Describe("Block.ComputeHash", func() {
 		It("should successfully return 32 bytes digest", func() {
-
 			b := Block{
 				Transactions: []*Transaction{
 					&Transaction{
@@ -235,20 +229,20 @@ var _ = Describe("Block & Header", func() {
 						Fee:          "0.10"},
 				},
 				Header: &Header{
-					ParentHash:       "parent_hash",
+					ParentHash:       util.BytesToHash([]byte("parent_hash")),
 					Number:           1,
-					TransactionsRoot: "state_root_hash",
-					StateRoot:        "tx_hash",
-					Nonce:            1,
-					MixHash:          "mixHash",
-					Difficulty:       "1",
+					TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
+					StateRoot:        util.BytesToHash([]byte("tx_hash")),
+					Nonce:            EncodeNonce(1),
+					MixHash:          util.BytesToHash([]byte("mixHash")),
+					Difficulty:       new(big.Int).SetUint64(100),
 					Timestamp:        1500000,
 				},
 			}
 
 			actual := b.ComputeHash()
-			Expect(actual).To(Equal("0x05ec83603ef38b226994c36e4be0ebecb9b146953c20a45b240a3d3f24ad70f1"))
+			expected := util.BytesToHash([]byte{249, 126, 96, 65, 239, 247, 137, 10, 213, 92, 48, 202, 215, 66, 213, 118, 114, 158, 241, 199, 148, 33, 193, 228, 42, 104, 53, 172, 204, 173, 44, 50})
+			Expect(actual).To(Equal(expected))
 		})
 	})
-
 })

@@ -145,28 +145,14 @@ func (c *Chain) getBlockByHash(hash string) (*wire.Block, error) {
 // of the current block and if the difference between the chain tip
 // and the candidate block number is not 1. If there is no block on
 // the chain yet, then we assume this to be the first block of a fork.
+//
+// The caller is expected to validate the block before call.
 func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	c.chainLock.Lock()
 	defer c.chainLock.Unlock()
 
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)
-
-	// ensure it passes validation
-	// if err := block.Validate(); err != nil {
-	// 	if canFinish {
-	// 		tx.Rollback()
-	// 	}
-	// 	return fmt.Errorf("genesis block failed validation: %s", err)
-	// }
-
-	// // verify the block
-	// if err := wire.BlockVerify(block); err != nil {
-	// 	if canFinish {
-	// 		tx.Rollback()
-	// 	}
-	// 	return fmt.Errorf("genesis block signature is not valid: %s", err)
-	// }
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
@@ -202,40 +188,42 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	return c.store.PutBlock(c.id, candidate, txOp)
 }
 
-// NewStateTree creates a new tree. When backLinked is set to true
-// the root of the previous block is included as the first entry to the tree.
+// NewStateTree creates a new tree seeded with the state root of
+// the chain's tip block or the chain's parent block for side chains that have
+// no block but are children of a block in a parent block.
+//
+// When backLinked is set to false the tree is not seeded with the state root
+// of the previous tip block or chain parent block.
 func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tree, error) {
 
-	var prevRoot []byte
+	var prevRoot util.Hash
 
 	// Get the root of the block at the tip. If no block was found, it means the chain is empty.
 	// In this case, if the chain has a parent block, we use the parent block stateRoot.
-	tipHeader, err := c.getTipHeader(opts...)
-	if err != nil {
-		if err != common.ErrBlockNotFound {
-			return nil, err
-		}
-		if c.parentBlock != nil {
-			prevRoot, err = util.FromHex(c.parentBlock.Header.StateRoot)
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode parent state root")
-			}
-		} // TODO: what happens if no parent block?
-	} else {
-		// Decode the state root to byte equivalent
-		prevRoot, err = util.FromHex(tipHeader.StateRoot)
+	if !noBackLink {
+		tipHeader, err := c.getTipHeader(opts...)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode chain tip state root")
+			if err != common.ErrBlockNotFound {
+				return nil, err
+			}
+			if c.parentBlock != nil {
+				prevRoot = c.parentBlock.Header.StateRoot
+			}
+		} else {
+			// Decode the state root to byte equivalent
+			prevRoot = tipHeader.StateRoot
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode chain tip state root")
+			}
 		}
 	}
 
 	// Create the new tree and seed it by adding the root
-	// of the previous block as the first item. This ensures
-	// cryptographic, backward linkage with previous blocks. No need do
-	// this if no tip block or noBackLink is true
+	// of the previous state root. No need to do
+	// this if we have not determined the previous state root.
 	tree := common.NewTree()
-	if !noBackLink && len(prevRoot) > 0 {
-		tree.Add(common.TreeItem(prevRoot))
+	if !prevRoot.IsEmpty() {
+		tree.Add(common.TreeItem(prevRoot.Bytes()))
 	}
 
 	return tree, nil

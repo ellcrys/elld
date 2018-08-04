@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
-	govalidator "gopkg.in/asaskevich/govalidator.v4"
 )
 
 func fieldError(field, err string) error {
@@ -79,13 +77,9 @@ func (v *BlockValidator) Validate() (errs []error) {
 func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 
 	// For non-genesis block, parent hash must be set
-	if h.Number != 1 && len(h.ParentHash) == 0 {
+	if h.Number != 1 && h.ParentHash == util.EmptyHash {
 		errs = append(errs, fieldError("parentHash", "parent hash is required"))
-	} else if h.Number != 1 && len(h.ParentHash) != 66 {
-		// For non-genesis block, parent hash hex encoded length
-		// must be 66 charachers long (64 hex, 2 '0x' prefix)
-		errs = append(errs, fieldError("parentHash", "parent hash has invalid length. 66 chars. required."))
-	} else if h.Number == 1 && len(h.ParentHash) > 0 {
+	} else if h.Number == 1 && h.ParentHash != util.EmptyHash {
 		// For genesis block, parent hash is not required
 		errs = append(errs, fieldError("parentHash", "parent hash is not expected in a genesis block"))
 	}
@@ -103,38 +97,24 @@ func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 		errs = append(errs, fieldError("creatorPubKey", err.Error()))
 	}
 
-	// Transactions root must be provided and
-	// must have 66 charachers in length
-	txRootLen := len(h.TransactionsRoot)
-	if txRootLen == 0 {
+	// Transactions root must be provided
+	if h.TransactionsRoot == util.EmptyHash {
 		errs = append(errs, fieldError("transactionsRoot", "transaction root is required"))
-	} else if txRootLen != 66 {
-		errs = append(errs, fieldError("transactionsRoot", "transaction root has invalid length. 66 chars. required."))
 	}
 
-	// State root must be provided and
-	// must have 66 charachers in length
-	stRootLen := len(h.StateRoot)
-	if stRootLen == 0 {
+	// State root must be provided
+	if h.StateRoot == util.EmptyHash {
 		errs = append(errs, fieldError("stateRoot", "state root is required"))
-	} else if len(h.StateRoot) != 66 {
-		errs = append(errs, fieldError("stateRoot", "state root has invalid length. 66 chars. required"))
 	}
 
-	// MixHash must be provided and
-	// must have 66 characters in length.
-	mixHashLen := len(h.MixHash)
-	if mixHashLen == 0 {
+	// MixHash must be provided
+	if h.MixHash == util.EmptyHash {
 		errs = append(errs, fieldError("mixHash", "mix hash is required"))
-	} else if len(h.MixHash) != 66 {
-		errs = append(errs, fieldError("mixHash", "state root has invalid length. 66 chars. required"))
 	}
 
 	// Difficulty must be a numeric value
 	// and greater than zero
-	if !govalidator.IsNumeric(h.Difficulty) {
-		errs = append(errs, fieldError("difficulty", "difficulty must be a numeric value"))
-	} else if diff, _ := strconv.ParseInt(h.Difficulty, 10, 64); diff <= 0 {
+	if h.Difficulty == nil || h.Difficulty.Cmp(util.Big0) == 0 {
 		errs = append(errs, fieldError("difficulty", "difficulty must be non-zero and non-negative"))
 	}
 
@@ -179,11 +159,10 @@ func (v *BlockValidator) check() (errs []error) {
 		}
 	}
 
-	// Hash must be provided and
-	// must have 66 charachers in length
-	if len(v.block.Hash) == 0 {
+	// Hash must be provided
+	if v.block.Hash == util.EmptyHash {
 		errs = append(errs, fieldError("hash", "hash is required"))
-	} else if v.block.Header != nil && v.block.Hash != v.block.ComputeHash() {
+	} else if v.block.Header != nil && !v.block.Hash.Equal(v.block.ComputeHash()) {
 		errs = append(errs, fieldError("hash", "hash is not correct"))
 	}
 
@@ -206,8 +185,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 		return
 	}
 
-	decSig, _ := util.FromHex(v.block.Sig)
-	valid, err := pubKey.Verify(v.block.Bytes(), decSig)
+	valid, err := pubKey.Verify(v.block.Bytes(), v.block.Sig)
 	if err != nil {
 		errs = append(errs, fieldError("sig", err.Error()))
 	} else if !valid {
@@ -223,7 +201,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 func (v *BlockValidator) duplicateCheck(b *wire.Block) (errs []error) {
 
 	if v.bchain != nil {
-		known, reason, err := v.bchain.IsKnownBlock(b.Hash)
+		known, reason, err := v.bchain.IsKnownBlock(b.Hash.HexStr())
 		if err != nil {
 			errs = append(errs, fmt.Errorf("duplicate check error: %s", err))
 		} else if known {

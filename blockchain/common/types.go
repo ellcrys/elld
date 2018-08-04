@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -15,10 +16,10 @@ type Block interface {
 	GetNumber() uint64
 
 	// ComputeHash computes and returns the hash
-	ComputeHash() string
+	ComputeHash() util.Hash
 
 	// GetHash returns the already computed hash
-	GetHash() string
+	GetHash() util.Hash
 }
 
 // OrphanBlock represents an orphan block

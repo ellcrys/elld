@@ -3,9 +3,9 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/ellcrys/elld/crypto"
-
 	"github.com/ellcrys/elld/blockchain/testdata"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,7 +24,7 @@ var BlockValidatorTest = func() bool {
 					nil:           fmt.Errorf("nil block"),
 					&wire.Block{}: fmt.Errorf("field:header, error:header is required"),
 					&wire.Block{}: fmt.Errorf("field:hash, error:hash is required"),
-					&wire.Block{Hash: "invalid", Header: &wire.Header{}}: fmt.Errorf("field:hash, error:hash is not correct"),
+					&wire.Block{Hash: util.StrToHash("invalid"), Header: &wire.Header{}}: fmt.Errorf("field:hash, error:hash is not correct"),
 					&wire.Block{}:                                                                                        fmt.Errorf("field:sig, error:signature is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.parentHash, error:parent hash is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.number, error:number must be greater or equal to 1"),

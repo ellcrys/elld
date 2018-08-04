@@ -2,9 +2,11 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/testdata"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,12 +20,12 @@ var BlockTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+				block = testdata.BlockSet1[0]
 				Expect(err).To(BeNil())
 			})
 
 			It("should return false when block does not exist in any known chain", func() {
-				has, err := bc.HaveBlock(block.GetHash())
+				has, err := bc.HaveBlock(block.GetHash().HexStr())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeFalse())
 			})
@@ -39,7 +41,7 @@ var BlockTest = func() bool {
 				err = chain2.store.PutBlock(chain2.id, block)
 				Expect(err).To(BeNil())
 
-				has, err := bc.HaveBlock(block.GetHash())
+				has, err := bc.HaveBlock(block.GetHash().HexStr())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeTrue())
 			})
@@ -49,12 +51,12 @@ var BlockTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block, err = wire.BlockFromString(testdata.BlockchainDotGoJSON[1])
+				block = testdata.BlockSet1[0]
 				Expect(err).To(BeNil())
 			})
 
 			It("should return false when block does not exist in any known chain or caches", func() {
-				exist, reason, err := bc.IsKnownBlock(block.GetHash())
+				exist, reason, err := bc.IsKnownBlock(block.GetHash().HexStr())
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeFalse())
 				Expect(reason).To(BeEmpty())
@@ -71,14 +73,14 @@ var BlockTest = func() bool {
 				err = chain2.store.PutBlock(chain2.id, block)
 				Expect(err).To(BeNil())
 
-				has, err := bc.HaveBlock(block.GetHash())
+				has, err := bc.HaveBlock(block.GetHash().HexStr())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeTrue())
 			})
 
 			It("should return true when block exist as an orphan", func() {
 				bc.addOrphanBlock(block)
-				known, reason, err := bc.IsKnownBlock(block.GetHash())
+				known, reason, err := bc.IsKnownBlock(block.GetHash().HexStr())
 				Expect(err).To(BeNil())
 				Expect(known).To(BeTrue())
 				Expect(reason).To(Equal("orphan cache"))
@@ -96,10 +98,10 @@ var BlockTest = func() bool {
 
 			It("should validate params", func() {
 				var cases = map[*GenerateBlockParams]interface{}{
-					&GenerateBlockParams{}:                                                       fmt.Errorf("at least one transaction is required"),
-					&GenerateBlockParams{Transactions: txs}:                                      fmt.Errorf("creator's key is required"),
-					&GenerateBlockParams{Transactions: txs, Creator: sender}:                     fmt.Errorf("difficulty is required"),
-					&GenerateBlockParams{Transactions: txs, Creator: sender, Difficulty: "1234"}: fmt.Errorf("mix hash is required"),
+					&GenerateBlockParams{}:                                                                         fmt.Errorf("at least one transaction is required"),
+					&GenerateBlockParams{Transactions: txs}:                                                        fmt.Errorf("creator's key is required"),
+					&GenerateBlockParams{Transactions: txs, Creator: sender}:                                       fmt.Errorf("difficulty is required"),
+					&GenerateBlockParams{Transactions: txs, Creator: sender, Difficulty: new(big.Int).SetInt64(1)}: fmt.Errorf("mix hash is required"),
 				}
 
 				for m, r := range cases {
@@ -112,9 +114,9 @@ var BlockTest = func() bool {
 				blk, err := bc.GenerateBlock(&GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        384772,
-					MixHash:      "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2",
-					Difficulty:   "102993",
+					Nonce:        wire.EncodeNonce(1),
+					MixHash:      util.BytesToHash([]byte("mix hash")),
+					Difficulty:   new(big.Int).SetInt64(500),
 				})
 				Expect(err).To(BeNil())
 				Expect(blk).ToNot(BeNil())
@@ -123,27 +125,14 @@ var BlockTest = func() bool {
 				Expect(blk.Header.ParentHash).To(Equal(block.Hash))
 			})
 
-			It("should return error if final block failed general block validation rules", func() {
-				blk, err := bc.GenerateBlock(&GenerateBlockParams{
-					Transactions: txs,
-					Creator:      sender,
-					Nonce:        384772,
-					MixHash:      "invalid_mix_hash",
-					Difficulty:   "102993",
-				})
-				Expect(err).ToNot(BeNil())
-				Expect(blk).To(BeNil())
-				Expect(err.Error()).To(Equal("failed final validation: field:header.mixHash, error:state root has invalid length. 66 chars. required"))
-			})
-
 			When("chain is directly passed", func() {
 				It("should successfully create a new and valid block", func() {
 					blk, err := bc.GenerateBlock(&GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
-						Nonce:        384772,
-						MixHash:      "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2",
-						Difficulty:   "102993",
+						Nonce:        wire.EncodeNonce(1),
+						MixHash:      util.BytesToHash([]byte("mix hash")),
+						Difficulty:   new(big.Int).SetInt64(500),
 					}, ChainOp{Chain: chain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
@@ -163,9 +152,9 @@ var BlockTest = func() bool {
 					blk, err := bc.GenerateBlock(&GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
-						Nonce:        384772,
-						MixHash:      "abc",
-						Difficulty:   "102993",
+						Nonce:        wire.EncodeNonce(1),
+						MixHash:      util.BytesToHash([]byte("mix hash")),
+						Difficulty:   new(big.Int).SetInt64(500),
 					})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
@@ -182,13 +171,13 @@ var BlockTest = func() bool {
 					targetChain.parentBlock = block
 				})
 
-				It("should return error if not target chain", func() {
+				It("should return error sender account is not found in the target chain", func() {
 					blk, err := bc.GenerateBlock(&GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
-						Nonce:        384772,
-						MixHash:      "abc",
-						Difficulty:   "102993",
+						Nonce:        wire.EncodeNonce(1),
+						MixHash:      util.BytesToHash([]byte("mix hash")),
+						Difficulty:   new(big.Int).SetInt64(500),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
@@ -219,9 +208,9 @@ var BlockTest = func() bool {
 					blk, err := bc.GenerateBlock(&GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
-						Nonce:        384772,
-						MixHash:      "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2",
-						Difficulty:   "102993",
+						Nonce:        wire.EncodeNonce(1),
+						MixHash:      util.BytesToHash([]byte("mix hash")),
+						Difficulty:   new(big.Int).SetInt64(500),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
@@ -252,15 +241,15 @@ var BlockTest = func() bool {
 					blk, err := bc.GenerateBlock(&GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
-						Nonce:        384772,
-						MixHash:      "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2",
-						Difficulty:   "102993",
+						Nonce:        wire.EncodeNonce(1),
+						MixHash:      util.BytesToHash([]byte("mix hash")),
+						Difficulty:   new(big.Int).SetInt64(500),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.Header.StateRoot).ToNot(BeEmpty())
 					Expect(blk.Header.Number).To(Equal(uint64(1)))
-					Expect(blk.Header.ParentHash).To(BeEmpty())
+					Expect(blk.Header.ParentHash.IsEmpty()).To(BeTrue())
 				})
 			})
 		})

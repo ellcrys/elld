@@ -101,10 +101,10 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	var tests = []func() bool{
-		// BlockchainTest,
+		BlockchainTest,
 		AccountTest,
 		CacheTest,
-		// ChainTest,
+		ChainTest,
 		MetadataTest,
 		ProcessTest,
 		BlockTest,

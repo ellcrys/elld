@@ -2,15 +2,76 @@ package wire
 
 import (
 	"crypto/sha256"
-	"encoding/asn1"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/ellcrys/elld/crypto"
-	"gopkg.in/asaskevich/govalidator.v4"
+	"github.com/ellcrys/elld/util"
 )
+
+// A BlockNonce is a 64-bit hash which proves (combined with the
+// mix-hash) that a sufficient amount of computation has been carried
+// out on a block.
+type BlockNonce [8]byte
+
+// EmptyBlockNonce is a BlockNonce with no values
+var EmptyBlockNonce = BlockNonce([8]byte{})
+
+// EncodeNonce converts the given integer to a block nonce.
+func EncodeNonce(i uint64) BlockNonce {
+	var n BlockNonce
+	binary.BigEndian.PutUint64(n[:], i)
+	return n
+}
+
+// Uint64 returns the integer value of a block nonce.
+func (n BlockNonce) Uint64() uint64 {
+	return binary.BigEndian.Uint64(n[:])
+}
+
+// MarshalText encodes n as a hex string with 0x prefix.
+func (n BlockNonce) MarshalText() string {
+	return util.ToHex(n[:])
+}
+
+// Block represents a block
+type Block struct {
+	Header       *Header        `json:"header" msgpack:"header"`
+	Transactions []*Transaction `json:"transactions" msgpack:"transactions"`
+	Hash         util.Hash      `json:"hash" msgpack:"hash"`
+	Sig          []byte         `json:"sig" msgpack:"sig"`
+}
+
+// Header represents the header of a block
+type Header struct {
+	Number           uint64     `json:"number" msgpack:"number"`
+	Nonce            BlockNonce `json:"nonce" msgpack:"nonce"`
+	MixHash          util.Hash  `json:"mixHash" msgpack:"mixHash"`
+	Timestamp        int64      `json:"timestamp" msgpack:"timestamp"`
+	CreatorPubKey    string     `json:"creatorPubKey" msgpack:"creatorPubKey"`
+	ParentHash       util.Hash  `json:"ParentHash" msgpack:"ParentHash"`
+	StateRoot        util.Hash  `json:"stateRoot" msgpack:"stateRoot"`
+	TransactionsRoot util.Hash  `json:"transactionsRoot" msgpack:"transactionsRoot"`
+	Difficulty       *big.Int   `json:"difficulty" msgpack:"difficulty"`
+}
+
+// GetNumber returns the header number which is the block number
+func (h *Header) GetNumber() uint64 {
+	return h.Number
+}
+
+// GetHash returns the block's hash
+func (b *Block) GetHash() util.Hash {
+	return b.Hash
+}
+
+// HashToHex returns the block's hex equivalent of its hash
+// preceeded with 0x
+func (b *Block) HashToHex() string {
+	return b.GetHash().HexStr()
+}
 
 // BlockFromString unmarshal a json string into a Block
 func BlockFromString(str string) (*Block, error) {
@@ -21,38 +82,31 @@ func BlockFromString(str string) (*Block, error) {
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
-func (h *Header) HashNoNonce() Hash {
-
-	asn1Data := []interface{}{
+func (h *Header) HashNoNonce() util.Hash {
+	result := getBytes([]interface{}{
 		h.ParentHash,
-		strconv.FormatUint(h.Number, 10),
+		h.Number,
 		h.TransactionsRoot,
 		h.StateRoot,
 		h.Difficulty,
 		h.Timestamp,
-	}
-
-	result, err := asn1.Marshal(asn1Data)
-	if err != nil {
-		panic(err)
-	}
-
+	})
 	return sha256.Sum256(result)
 }
 
 // Validate the header
 func (h *Header) Validate() error {
 
-	if h.Number != 1 && len(h.ParentHash) < 66 {
-		return fieldError("parentHash", "expected 66 characters")
-	}
-
-	if h.Number == 1 && len(h.ParentHash) > 0 {
-		return fieldError("parentHash", "should be empty since block number is 1")
-	}
-
 	if h.Number < 1 {
 		return fieldError("number", "number must be greater or equal to 1")
+	}
+
+	if h.Number != 1 && h.ParentHash == util.EmptyHash {
+		return fieldError("parentHash", "parent hash is required")
+	}
+
+	if h.Number == 1 && h.ParentHash != util.EmptyHash {
+		return fieldError("parentHash", "should be empty since block number is 1")
 	}
 
 	if len(h.CreatorPubKey) == 0 {
@@ -63,36 +117,20 @@ func (h *Header) Validate() error {
 		return fieldError("creatorPubKey", err.Error())
 	}
 
-	if len(h.TransactionsRoot) != 66 {
-		return fieldError("transactionsRoot", "expected 66 characters")
+	if h.TransactionsRoot == util.EmptyHash {
+		return fieldError("transactionsRoot", "transaction root is required")
 	}
 
-	if len(h.StateRoot) != 66 {
-		return fieldError("stateRoot", "expected 66 characters")
+	if h.StateRoot == util.EmptyHash {
+		return fieldError("stateRoot", "state root is required")
 	}
 
-	if len(h.StateRoot) != 66 {
-		return fieldError("stateRoot", "expected 66 characters")
-	}
-
-	if h.Nonce == 0 {
-		return fieldError("nonce", "must not be zero")
-	}
-
-	if len(h.MixHash) != 32 {
-		return fieldError("mixHash", "expected 32 characters")
-	}
-
-	if !govalidator.IsNumeric(h.Difficulty) {
-		return fieldError("difficulty", "must be numeric")
-	}
-
-	if diff, _ := strconv.ParseInt(h.Difficulty, 10, 64); diff <= 0 {
-		return fieldError("difficulty", "must be non-zero and non-negative")
+	if h.Nonce == EmptyBlockNonce {
+		return fieldError("nonce", "nonce is required")
 	}
 
 	if h.Timestamp <= 0 {
-		return fieldError("timestamp", "must not be empty or a negative value")
+		return fieldError("timestamp", "timestamp must not be empty or a negative value")
 	}
 
 	return nil
@@ -102,22 +140,21 @@ func (h *Header) Validate() error {
 func (h *Header) Bytes() []byte {
 	return getBytes([]interface{}{
 		h.ParentHash,
-		strconv.FormatUint(h.Number, 10),
+		h.Number,
 		h.TransactionsRoot,
 		h.StateRoot,
-		strconv.FormatUint(h.Nonce, 10),
+		h.Nonce,
 		h.MixHash,
 		h.Difficulty,
 		h.Timestamp,
 	})
 }
 
-// ComputeHash returns the SHA256 hash of the header as a hex string
-// prefixed by '0x'
-func (h *Header) ComputeHash() string {
+// ComputeHash returns the SHA256 hash of the header
+func (h *Header) ComputeHash() util.Hash {
 	bs := h.Bytes()
 	hash := sha256.Sum256(bs)
-	return ToHex(hash[:])
+	return util.BytesToHash(hash[:])
 }
 
 // Bytes returns the ANS1 bytes equivalent of the block data.
@@ -137,10 +174,10 @@ func (b *Block) Bytes() []byte {
 
 // ComputeHash returns the SHA256 hash of the header as a hex string
 // prefixed by '0x'
-func (b *Block) ComputeHash() string {
+func (b *Block) ComputeHash() util.Hash {
 	bs := b.Bytes()
 	hash := sha256.Sum256(bs)
-	return ToHex(hash[:])
+	return util.BytesToHash(hash[:])
 }
 
 // BlockSign signs a block.
@@ -182,11 +219,10 @@ func BlockVerify(block *Block) error {
 
 	pubKey, err := crypto.PubKeyFromBase58(block.Header.CreatorPubKey)
 	if err != nil {
-		return fieldError("senderPubKey", err.Error())
+		return fieldError("header.creatorPubKey", err.Error())
 	}
 
-	decSig, _ := FromHex(block.Sig)
-	valid, err := pubKey.Verify(block.Bytes(), decSig)
+	valid, err := pubKey.Verify(block.Bytes(), block.Sig)
 	if err != nil {
 		return fieldError("sig", err.Error())
 	}
@@ -196,11 +232,6 @@ func BlockVerify(block *Block) error {
 	}
 
 	return nil
-}
-
-//GetGenesisDifficulty get the genesis block difficulty
-func (b *Block) GetGenesisDifficulty() *big.Int {
-	return big.NewInt(500000)
 }
 
 // GetNumber returns the number

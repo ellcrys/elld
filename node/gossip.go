@@ -8,13 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vmihailenco/msgpack"
+
 	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
-	pc "github.com/multiformats/go-multicodec/protobuf"
 )
 
 // Gossip represents the peer protocol
@@ -41,12 +42,12 @@ func (g *Gossip) newStream(ctx context.Context, remotePeer types.Engine, msgVers
 }
 
 func readStream(s net.Stream, dest interface{}) error {
-	return pc.Multicodec(nil).Decoder(bufio.NewReader(s)).Decode(dest)
+	return msgpack.NewDecoder(bufio.NewReader(s)).Decode(dest)
 }
 
 func writeStream(s net.Stream, msg interface{}) error {
 	w := bufio.NewWriter(s)
-	if err := pc.Multicodec(nil).Encoder(w).Encode(msg); err != nil {
+	if err := msgpack.NewEncoder(w).Encode(msg); err != nil {
 		return err
 	}
 	w.Flush()
@@ -90,12 +91,15 @@ func (g *Gossip) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
 // reject sends a reject message.
 // The caller is expected to close the stream after the call.
 func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extraData []byte) error {
-	rMsg := wire.NewRejectMsg(msg, int32(code), reason, extraData)
-	w := bufio.NewWriter(s)
-	if err := pc.Multicodec(nil).Encoder(w).Encode(rMsg); err != nil {
+	rMsg := wire.Reject{
+		Message:   msg,
+		Code:      int32(code),
+		Reason:    reason,
+		ExtraData: extraData,
+	}
+	if err := writeStream(s, rMsg); err != nil {
 		return fmt.Errorf("reject message failed. failed to write to stream")
 	}
-	w.Flush()
 	return nil
 }
 

@@ -108,9 +108,13 @@ func (b *Blockchain) Up() error {
 		b.log.Debug("No existing chain found. Creating genesis chain")
 
 		// Create the genesis chain and the genesis block.
+		gBlock := GenesisBlock
+		if gBlock.GetNumber() != 1 {
+			return fmt.Errorf("genesis block error: expected block number 1")
+		}
+
 		// The ID of the genesis chain is the hash of the genesis block hash.
-		gBlock, _ := wire.BlockFromString(GenesisBlock)
-		gChainID := util.ToHex(util.Blake2b256([]byte(gBlock.Hash)))
+		gChainID := util.ToHex(util.Blake2b256(gBlock.Hash.Bytes()))
 		gChain := NewChain(gChainID, b.store, b.cfg, b.log)
 
 		// Save the chain the chain (which also adds it to the chain cache)
@@ -287,13 +291,13 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 func (b *Blockchain) addRejectedBlock(block *wire.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
-	b.rejectedBlocks.Add(block.GetHash(), struct{}{})
+	b.rejectedBlocks.Add(block.GetHash().HexStr(), struct{}{})
 }
 
 func (b *Blockchain) isRejected(block *wire.Block) bool {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
-	return b.rejectedBlocks.Has(block.GetHash())
+	return b.rejectedBlocks.Has(block.GetHash().HexStr())
 }
 
 // addOrphanBlock adds a block to the collection of orphaned blocks.
@@ -301,7 +305,7 @@ func (b *Blockchain) addOrphanBlock(block common.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration
-	b.orphanBlocks.AddWithExp(block.GetHash(), block, time.Now().Add(time.Hour))
+	b.orphanBlocks.AddWithExp(block.GetHash().HexStr(), block, time.Now().Add(time.Hour))
 }
 
 // isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
@@ -415,7 +419,7 @@ func (b *Blockchain) newChain(tx database.Tx, initialBlock *wire.Block, parentBl
 	// set the parent block and chain on the new chain.
 	// Construct a deterministic chain id which is the hash
 	// of the initial block's hash
-	chainID := util.ToHex(util.Blake2b256([]byte(initialBlock.Hash)))
+	chainID := util.ToHex(util.Blake2b256([]byte(initialBlock.Hash.Bytes())))
 	chain := NewChain(chainID, b.store, b.cfg, b.log)
 	chain.parentBlock = parentBlock
 

@@ -138,7 +138,7 @@ func (s *Store) GetBlockByHash(chainID string, hash string, opts ...common.CallO
 		if err = util.BytesToObject(kv.Value, &block); err != nil {
 			return true
 		}
-		found = block.Hash == hash
+		found = block.Hash.HexStr() == hash
 		return found
 	})
 	if err != nil {
