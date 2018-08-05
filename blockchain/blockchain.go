@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/txpool"
@@ -50,7 +51,7 @@ type Blockchain struct {
 	log logger.Logger
 
 	// store is the the database where block data and other meta data are stored
-	store common.Store
+	store store.Storer
 
 	// bestChain is the chain considered to be the true chain.
 	// It is protected by lock
@@ -90,7 +91,7 @@ func (b *Blockchain) Up() error {
 
 	var err error
 
-	// We cannot boot up the blockchain manager if a common.Store
+	// We cannot boot up the blockchain manager if a store.Storer
 	// implementation has not been set.
 	if b.store == nil {
 		return fmt.Errorf("store has not been initialized")
@@ -185,7 +186,7 @@ func (b *Blockchain) loadChain(chainInfo *common.ChainInfo) error {
 }
 
 // SetStore sets the store to use
-func (b *Blockchain) SetStore(store common.Store) {
+func (b *Blockchain) SetStore(store store.Storer) {
 	b.store = store
 }
 
@@ -462,4 +463,12 @@ func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
 	}
 
 	return &tx, nil
+}
+
+// Reader creates a chain reader for best/main chain
+func (b *Blockchain) Reader() store.Reader {
+	if b.bestChain == nil {
+		return nil
+	}
+	return store.NewChainReader(b.store, b.bestChain.id)
 }

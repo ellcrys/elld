@@ -15,14 +15,14 @@ var BlockchainTest = func() bool {
 		Describe(".SetStore", func() {
 			It("should set store", func() {
 				bc := New(nil, cfg, log)
-				bc.SetStore(store)
+				bc.SetStore(testStore)
 				Expect(bc.store).ToNot(BeNil())
 			})
 		})
 
 		Describe(".addChain", func() {
 			It("should add chain", func() {
-				chain := NewChain("chain_id", store, cfg, log)
+				chain := NewChain("chain_id", testStore, cfg, log)
 				Expect(err).To(BeNil())
 				Expect(bc.chains).To(HaveLen(1))
 				err = bc.addChain(chain)
@@ -36,7 +36,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_id", store, cfg, log)
+				chain = NewChain("chain_id", testStore, cfg, log)
 				Expect(err).To(BeNil())
 				err = bc.addChain(chain)
 				Expect(err).To(BeNil())
@@ -55,7 +55,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_id", store, cfg, log)
+				chain = NewChain("chain_id", testStore, cfg, log)
 				Expect(err).To(BeNil())
 			})
 
@@ -122,8 +122,8 @@ var BlockchainTest = func() bool {
 			})
 
 			It("should load all chains", func() {
-				c1 := NewChain("c1", store, cfg, log)
-				c2 := NewChain("c2", store, cfg, log)
+				c1 := NewChain("c1", testStore, cfg, log)
+				c2 := NewChain("c2", testStore, cfg, log)
 
 				err = bc.saveChain(c1, "", 0)
 				Expect(err).To(BeNil())
@@ -192,7 +192,7 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				block = testdata.BlockSet1[0]
 
-				chain2 = NewChain("chain2", store, cfg, log)
+				chain2 = NewChain("chain2", testStore, cfg, log)
 				Expect(err).To(BeNil())
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
@@ -253,8 +253,8 @@ var BlockchainTest = func() bool {
 			})
 
 			BeforeEach(func() {
-				chain = NewChain("chain_2", store, cfg, log)
-				subChain = NewChain("sub_chain", store, cfg, log)
+				chain = NewChain("chain_2", testStore, cfg, log)
+				subChain = NewChain("sub_chain", testStore, cfg, log)
 
 				block = testdata.BlockSet1[0]
 				Expect(err).To(BeNil())
@@ -306,7 +306,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", store, cfg, log)
+				chain = NewChain("chain_a", testStore, cfg, log)
 				err := bc.saveChain(chain, "", 0)
 				Expect(err).To(BeNil())
 			})
@@ -365,7 +365,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", store, cfg, log)
+				chain = NewChain("chain_a", testStore, cfg, log)
 				block = testdata.BlockSet1[0]
 				chain.append(block)
 				err = chain.putTransactions(block.Transactions)
@@ -406,7 +406,7 @@ var BlockchainTest = func() bool {
 			// 	})
 
 			// 	BeforeEach(func() {
-			// 		chainA = NewChain("chain_a", store, cfg, log)
+			// 		chainA = NewChain("chain_a", testStore, cfg, log)
 			// 		err := bc.saveChain(chainA, "", 0)
 			// 		Expect(err).To(BeNil())
 			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
@@ -415,7 +415,7 @@ var BlockchainTest = func() bool {
 			// 	})
 
 			// 	BeforeEach(func() {
-			// 		chainB = NewChain("chain_b", store, cfg, log)
+			// 		chainB = NewChain("chain_b", testStore, cfg, log)
 			// 		err := bc.saveChain(chainB, "", 0)
 			// 		Expect(err).To(BeNil())
 			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
@@ -438,7 +438,7 @@ var BlockchainTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					chainA = NewChain("chain_a", store, cfg, log)
+					chainA = NewChain("chain_a", testStore, cfg, log)
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
 					block = testdata.BlockSet1[0]
@@ -447,7 +447,7 @@ var BlockchainTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					chainB = NewChain("chain_b", store, cfg, log)
+					chainB = NewChain("chain_b", testStore, cfg, log)
 					err := bc.saveChain(chainB, "", 0)
 					Expect(err).To(BeNil())
 					block = testdata.BlockSet1[0]
@@ -456,7 +456,7 @@ var BlockchainTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					chainC = NewChain("chain_c", store, cfg, log)
+					chainC = NewChain("chain_c", testStore, cfg, log)
 					err := bc.saveChain(chainC, "", 0)
 					Expect(err).To(BeNil())
 					block = testdata.BlockSet1[0]

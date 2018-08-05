@@ -95,10 +95,10 @@ var AccountTest = func() bool {
 				var child *Chain
 
 				BeforeEach(func() {
-					chainParent := NewChain("papa", store, cfg, log)
+					chainParent := NewChain("papa", testStore, cfg, log)
 					bc.addChain(chainParent)
 
-					child = NewChain("child", store, cfg, log)
+					child = NewChain("child", testStore, cfg, log)
 					child.info.ParentChainID = chainParent.id
 
 					err = bc.putAccount(1, chainParent, account)
@@ -118,14 +118,14 @@ var AccountTest = func() bool {
 				var child *Chain
 
 				BeforeEach(func() {
-					chainGrandParent := NewChain("grand-papa", store, cfg, log)
+					chainGrandParent := NewChain("grand-papa", testStore, cfg, log)
 					bc.addChain(chainGrandParent)
 
-					chainParent := NewChain("papa", store, cfg, log)
+					chainParent := NewChain("papa", testStore, cfg, log)
 					bc.addChain(chainParent)
 					chainParent.info.ParentChainID = chainGrandParent.id
 
-					child = NewChain("child", store, cfg, log)
+					child = NewChain("child", testStore, cfg, log)
 					child.info.ParentChainID = chainParent.id
 
 					err = bc.putAccount(1, chainGrandParent, account)

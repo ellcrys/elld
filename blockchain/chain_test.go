@@ -34,7 +34,7 @@ var ChainTest = func() bool {
 			Context("with empty chain", func() {
 				When("and back linking enabled", func() {
 					It("should successfully create a tree, added 2 items and return root", func() {
-						emptyChain := NewChain("my_chain", store, cfg, log)
+						emptyChain := NewChain("my_chain", testStore, cfg, log)
 						tree, err := emptyChain.NewStateTree(false)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
@@ -49,7 +49,7 @@ var ChainTest = func() bool {
 
 				When("and back linking disabled", func() {
 					It("should successfully create a tree and same root as an empty chain", func() {
-						emptyChain := NewChain("my_chain", store, cfg, log)
+						emptyChain := NewChain("my_chain", testStore, cfg, log)
 						tree, err := emptyChain.NewStateTree(true)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
@@ -157,7 +157,7 @@ var ChainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", store, cfg, log)
+				chain = NewChain("chain_a", testStore, cfg, log)
 			})
 
 			It("should return zero if chain has no block", func() {

@@ -1,4 +1,4 @@
-package leveldb
+package store
 
 import (
 	"encoding/json"

@@ -372,7 +372,7 @@ var ProcessTest = func() bool {
 					Describe("all state objects must be persisted", func() {
 						for _, so := range stateObjs {
 							var result []*elldb.KVObject
-							store.Get(so.Key, &result)
+							testStore.Get(so.Key, &result)
 							Expect(result).To(HaveLen(1))
 						}
 					})
@@ -381,7 +381,7 @@ var ProcessTest = func() bool {
 						for _, tx := range block.Transactions {
 							txKey := common.MakeTxKey(chain.GetID(), tx.ID())
 							var result []*elldb.KVObject
-							store.Get(txKey, &result)
+							testStore.Get(txKey, &result)
 							Expect(result).To(HaveLen(1))
 						}
 					})

@@ -31,7 +31,7 @@ var BlockTest = func() bool {
 			})
 
 			It("should return true of block exists in a chain", func() {
-				chain2 := NewChain("chain2", store, cfg, log)
+				chain2 := NewChain("chain2", testStore, cfg, log)
 				Expect(err).To(BeNil())
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
@@ -63,7 +63,7 @@ var BlockTest = func() bool {
 			})
 
 			It("should return true when block exists in a chain", func() {
-				chain2 := NewChain("chain2", store, cfg, log)
+				chain2 := NewChain("chain2", testStore, cfg, log)
 				Expect(err).To(BeNil())
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
@@ -167,7 +167,7 @@ var BlockTest = func() bool {
 				var targetChain *Chain
 
 				BeforeEach(func() {
-					targetChain = NewChain("abc", store, cfg, log)
+					targetChain = NewChain("abc", testStore, cfg, log)
 					targetChain.parentBlock = block
 				})
 
@@ -190,7 +190,7 @@ var BlockTest = func() bool {
 				var targetChain *Chain
 
 				BeforeEach(func() {
-					targetChain = NewChain("abc", store, cfg, log)
+					targetChain = NewChain("abc", testStore, cfg, log)
 					// block.Header.ParentHash = "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2"
 					targetChain.parentBlock = block
 				})
@@ -225,7 +225,7 @@ var BlockTest = func() bool {
 				var targetChain *Chain
 
 				BeforeEach(func() {
-					targetChain = NewChain("abc", store, cfg, log)
+					targetChain = NewChain("abc", testStore, cfg, log)
 				})
 
 				BeforeEach(func() {

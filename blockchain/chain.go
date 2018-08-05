@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
@@ -33,7 +34,7 @@ type Chain struct {
 	chainLock *sync.RWMutex
 
 	// store provides functionalities for storing objects
-	store common.Store
+	store store.Storer
 
 	// log is used for logging
 	log logger.Logger
@@ -41,7 +42,7 @@ type Chain struct {
 
 // NewChain creates an instance of a chain. It will create metadata object for the
 // chain if not exists. It will return error if it is unable to do so.
-func NewChain(id string, store common.Store, cfg *config.EngineConfig, log logger.Logger) *Chain {
+func NewChain(id string, store store.Storer, cfg *config.EngineConfig, log logger.Logger) *Chain {
 	chain := new(Chain)
 	chain.id = id
 	chain.cfg = cfg

@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/blockchain/leveldb"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
@@ -21,7 +20,7 @@ import (
 var log logger.Logger
 var cfg *config.EngineConfig
 var err error
-var store common.Store
+var testStore store.Storer
 var db elldb.DB
 var bc *Blockchain
 var chainID = "chain1"
@@ -49,7 +48,7 @@ var _ = Describe("Blockchain", func() {
 		db = elldb.NewDB(cfg.ConfigDir())
 		err = db.Open("")
 		Expect(err).To(BeNil())
-		store, err = leveldb.New(db)
+		testStore, err = store.New(db)
 		Expect(err).To(BeNil())
 	})
 
@@ -59,7 +58,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		txPool = txpool.NewTxPool(100)
 		bc = New(txPool, cfg, log)
-		bc.SetStore(store)
+		bc.SetStore(testStore)
 	})
 
 	// Create default test block
@@ -74,7 +73,7 @@ var _ = Describe("Blockchain", func() {
 	// the blockchain. Also append the test block
 	// to the chain
 	BeforeEach(func() {
-		chain = NewChain(chainID, store, cfg, log)
+		chain = NewChain(chainID, testStore, cfg, log)
 		Expect(err).To(BeNil())
 		bc.addChain(chain)
 		err = chain.append(block)

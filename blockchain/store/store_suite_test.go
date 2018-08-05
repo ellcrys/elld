@@ -1,4 +1,4 @@
-package leveldb
+package store
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestLeveldb(t *testing.T) {
+func TestStore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Leveldb Suite")
+	RunSpecs(t, "Store Suite")
 }
