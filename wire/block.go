@@ -55,6 +55,7 @@ type Header struct {
 	StateRoot        util.Hash  `json:"stateRoot" msgpack:"stateRoot"`
 	TransactionsRoot util.Hash  `json:"transactionsRoot" msgpack:"transactionsRoot"`
 	Difficulty       *big.Int   `json:"difficulty" msgpack:"difficulty"`
+	Extra            []byte     `json:"extra" msgpack:"extra"`
 }
 
 // GetNumber returns the header number which is the block number
@@ -68,7 +69,7 @@ func (b *Block) GetHash() util.Hash {
 }
 
 // HashToHex returns the block's hex equivalent of its hash
-// preceeded with 0x
+// preceded by 0x
 func (b *Block) HashToHex() string {
 	return b.GetHash().HexStr()
 }
@@ -86,10 +87,12 @@ func (h *Header) HashNoNonce() util.Hash {
 	result := getBytes([]interface{}{
 		h.ParentHash,
 		h.Number,
+		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
 		h.Difficulty,
 		h.Timestamp,
+		h.Extra,
 	})
 	return sha256.Sum256(result)
 }
@@ -99,12 +102,14 @@ func (h *Header) Bytes() []byte {
 	return getBytes([]interface{}{
 		h.ParentHash,
 		h.Number,
+		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.Nonce,
 		h.MixHash,
 		h.Difficulty,
 		h.Timestamp,
+		h.Nonce,
+		h.Extra,
 	})
 }
 
