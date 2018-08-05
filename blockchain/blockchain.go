@@ -23,16 +23,6 @@ const (
 	MaxRejectedBlocksCacheSize = 100
 )
 
-// ChainOp defines a method option for passing a chain object
-type ChainOp struct {
-	Chain *Chain
-}
-
-// GetName returns the name of the op
-func (t ChainOp) GetName() string {
-	return "ChainOp"
-}
-
 // Blockchain represents the Ellcrys blockchain. It provides
 // functionalities for interacting with the underlying database
 // and primitives.
@@ -185,6 +175,11 @@ func (b *Blockchain) loadChain(chainInfo *common.ChainInfo) error {
 	return b.addChain(chain)
 }
 
+// GetBestChain gets the chain that is currently considered the main chain
+func (b *Blockchain) GetBestChain() common.Chainer {
+	return b.bestChain
+}
+
 // SetStore sets the store to use
 func (b *Blockchain) SetStore(store store.Storer) {
 	b.store = store
@@ -206,7 +201,7 @@ func (b *Blockchain) HybridMode() (bool, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	h, err := b.bestChain.getTipHeader()
+	h, err := b.bestChain.GetTipHeader()
 	if err != nil {
 		return false, err
 	}
@@ -235,7 +230,7 @@ func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain
 
 		// At the point, we have found chain the block belongs to.
 		// Next we get the header of the block at the tip of the chain.
-		chainTipHeader, err := chain.getTipHeader()
+		chainTipHeader, err := chain.GetTipHeader()
 		if err != nil {
 			if err != common.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -302,7 +297,7 @@ func (b *Blockchain) isRejected(block *wire.Block) bool {
 }
 
 // addOrphanBlock adds a block to the collection of orphaned blocks.
-func (b *Blockchain) addOrphanBlock(block common.Block) {
+func (b *Blockchain) addOrphanBlock(block *wire.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration

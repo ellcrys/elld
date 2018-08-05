@@ -2,8 +2,10 @@ package common
 
 import (
 	"bytes"
+	"math/big"
 	"sort"
 
+	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -19,6 +21,16 @@ const (
 	// TypeTx represents a transaction document type
 	TypeTx DocType = 0x2
 )
+
+// ChainOp defines a method option for passing a chain object
+type ChainOp struct {
+	Chain Chainer
+}
+
+// GetName returns the name of the op
+func (t ChainOp) GetName() string {
+	return "ChainOp"
+}
 
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
@@ -60,4 +72,16 @@ func ComputeTxsRoot(txs []*wire.Transaction) util.Hash {
 
 	tree.Build()
 	return tree.Root()
+}
+
+// GenerateBlockParams represents parameters
+// required for block generation.
+type GenerateBlockParams struct {
+	OverrideParentHash util.Hash
+	Transactions       []*wire.Transaction
+	Creator            *crypto.Key
+	Nonce              wire.BlockNonce
+	MixHash            util.Hash
+	Difficulty         *big.Int
+	OverrideStateRoot  util.Hash
 }

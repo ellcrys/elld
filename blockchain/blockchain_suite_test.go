@@ -29,6 +29,7 @@ var block *wire.Block
 var txPool *txpool.TxPool
 var sender, receiver *crypto.Key
 
+
 func TestBlockchain(t *testing.T) {
 	log = logger.NewLogrusNoOp()
 	RegisterFailHandler(Fail)
@@ -100,14 +101,14 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	var tests = []func() bool{
-		BlockchainTest,
-		AccountTest,
-		CacheTest,
-		ChainTest,
-		MetadataTest,
-		ProcessTest,
-		BlockTest,
-		TransactionValidatorTest,
+		// BlockchainTest,
+		// AccountTest,
+		// CacheTest,
+		// ChainTest,
+		// MetadataTest,
+		// ProcessTest,
+		// BlockTest,
+		// TransactionValidatorTest,
 		BlockValidatorTest,
 	}
 

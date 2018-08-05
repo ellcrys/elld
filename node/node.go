@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/histcache"
@@ -59,7 +60,7 @@ type Node struct {
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
-	bchain                  types.Blockchain        // The blockchain manager
+	bchain                  common.Blockchain       // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port
@@ -196,12 +197,12 @@ func (n *Node) IsSame(node types.Engine) bool {
 }
 
 // GetBlockchain returns the blockchain manager
-func (n *Node) GetBlockchain() types.Blockchain {
+func (n *Node) GetBlockchain() common.Blockchain {
 	return n.bchain
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain types.Blockchain) {
+func (n *Node) SetBlockchain(bchain common.Blockchain) {
 	n.bchain = bchain
 }
 

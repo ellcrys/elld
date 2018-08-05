@@ -5,25 +5,12 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/wire"
 )
-
-// Block defines an interface for a block
-type Block interface {
-
-	// GetNumber returns the block number
-	GetNumber() uint64
-
-	// ComputeHash computes and returns the hash
-	ComputeHash() util.Hash
-
-	// GetHash returns the already computed hash
-	GetHash() util.Hash
-}
 
 // OrphanBlock represents an orphan block
 type OrphanBlock struct {
-	Block      Block
+	Block      *wire.Block
 	Expiration time.Time
 }
 
@@ -81,4 +68,52 @@ type StateObject struct {
 	// object. It is written to the database
 	// and the tree
 	Value []byte
+}
+
+// Chainer defines an interface for Chain
+type Chainer interface {
+
+	// NewStateTree returns a new tree
+	NewStateTree(noBackLink bool, opts ...CallOp) (*Tree, error)
+
+	// GetTipHeader gets the header of the tip block
+	GetTipHeader(opts ...CallOp) (*wire.Header, error)
+
+	// GetID gets the chain ID
+	GetID() string
+
+	// GetBlock gets a block in the chain
+	GetBlock(uint64) (*wire.Block, error)
+
+	// GetParentBlock gets the chain's parent block if it has one
+	GetParentBlock() *wire.Block
+
+	// GetParentInfo gets the chain's parent information
+	GetParentInfo() *ChainInfo
+}
+
+// Blockchain defines an interface for a blockchain manager
+type Blockchain interface {
+
+	// Up initializes and loads the blockchain manager
+	Up() error
+
+	// GetBestChain gets the chain that is currently considered the main chain
+	GetBestChain() Chainer
+
+	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
+	IsKnownBlock(hash string) (bool, string, error)
+
+	// HaveBlock checks if a block exists on the main or side chains
+	HaveBlock(hash string) (bool, error)
+
+	// GetTransaction finds and returns a transaction on the main chain
+	GetTransaction(hash string) (*wire.Transaction, error)
+
+	// ProcessBlock attempts to process and append a block to the main or side chains
+	ProcessBlock(*wire.Block) (Chainer, error)
+
+	// GenerateBlock creates a new block for a target chain.
+	// The Chain is specified by passing to ChainOp.
+	GenerateBlock(*GenerateBlockParams, ...CallOp) (*wire.Block, error)
 }

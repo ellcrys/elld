@@ -14,6 +14,7 @@ import (
 )
 
 // Chain represents a chain of blocks
+// Implements common.Chainer
 type Chain struct {
 
 	// id represents the identifier of this chain
@@ -60,8 +61,18 @@ func (c *Chain) GetID() string {
 	return c.id
 }
 
-// getBlock fetches a block by its number
-func (c *Chain) getBlock(number uint64) (*wire.Block, error) {
+// GetParentBlock gets the chain's parent block if it has one
+func (c *Chain) GetParentBlock() *wire.Block {
+	return c.parentBlock
+}
+
+// GetParentInfo gets the parent info
+func (c *Chain) GetParentInfo() *common.ChainInfo {
+	return c.info
+}
+
+// GetBlock fetches a block by its number
+func (c *Chain) GetBlock(number uint64) (*wire.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -73,8 +84,8 @@ func (c *Chain) getBlock(number uint64) (*wire.Block, error) {
 	return b, nil
 }
 
-// getTipHeader returns the header of the highest block on this chain
-func (c *Chain) getTipHeader(opts ...common.CallOp) (*wire.Header, error) {
+// GetTipHeader returns the header of the highest block on this chain
+func (c *Chain) GetTipHeader(opts ...common.CallOp) (*wire.Header, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -90,7 +101,7 @@ func (c *Chain) getTipHeader(opts ...common.CallOp) (*wire.Header, error) {
 // be deduced by fetching the number of the most recent block
 // added to the chain.
 func (c *Chain) height(opts ...common.CallOp) (uint64, error) {
-	tip, err := c.getTipHeader(opts...)
+	tip, err := c.GetTipHeader(opts...)
 	if err != nil {
 		if err != common.ErrBlockNotFound {
 			return 0, err
@@ -202,7 +213,7 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tr
 	// Get the root of the block at the tip. If no block was found, it means the chain is empty.
 	// In this case, if the chain has a parent block, we use the parent block stateRoot.
 	if !noBackLink {
-		tipHeader, err := c.getTipHeader(opts...)
+		tipHeader, err := c.GetTipHeader(opts...)
 		if err != nil {
 			if err != common.ErrBlockNotFound {
 				return nil, err

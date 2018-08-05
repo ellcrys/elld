@@ -26,27 +26,27 @@ func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Acco
 //
 // If the account is not found in the chain, the parent chain
 // and its parent is checked up to the root chain.
-func (b *Blockchain) getAccount(chain *Chain, address string) (*wire.Account, error) {
+func (b *Blockchain) getAccount(chain common.Chainer, address string) (*wire.Account, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
 	var result elldb.KVObject
 	var account wire.Account
-	var curChainID = chain.id
+	var curChainID = chain.GetID()
 
 	for address != "" {
 		// Initiate a look that will traverse from the chain,
 		// its parents up to the root parent checking each chain
 		// for the existence of the account
 		var key = common.QueryAccountKey(curChainID, address)
-		chain.store.GetFirstOrLast(false, key, &result)
+		b.store.GetFirstOrLast(false, key, &result)
 
 		// If not found, check whether this chain has a parent chain
 		// and if so, set the parent chain as the next to be checked and
 		// also fetch the chain from the chain cache.
-		if result.IsEmpty() && chain.info.ParentChainID != "" {
-			curChainID = chain.info.ParentChainID
-			if chain = b.chains[chain.info.ParentChainID]; chain == nil {
+		if result.IsEmpty() && chain.GetParentInfo().ParentChainID != "" {
+			curChainID = chain.GetParentInfo().ParentChainID
+			if chain = b.chains[chain.GetParentInfo().ParentChainID]; chain == nil {
 				break
 			}
 			continue

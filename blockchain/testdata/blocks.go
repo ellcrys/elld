@@ -3,9 +3,22 @@ package testdata
 import (
 	"math/big"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
+
+// type Blockchain interface {
+// 	GenesisBlock(*GenerateBlockParams, ChainOp) (*wire.Block, error)
+// }
+
+func makeTestBlock(bc common.Blockchain, chain common.Chainer, gp *common.GenerateBlockParams) *wire.Block {
+	blk, err := bc.GenerateBlock(gp, common.ChainOp{Chain: chain})
+	if err != nil {
+		panic(err)
+	}
+	return blk
+}
 
 var GenesisBlock = &wire.Block{
 	Header: &wire.Header{

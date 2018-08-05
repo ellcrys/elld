@@ -2,26 +2,12 @@ package blockchain
 
 import (
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
-
-// GenerateBlockParams represents parameters
-// required for block generation.
-type GenerateBlockParams struct {
-	OverrideParentHash util.Hash
-	Transactions       []*wire.Transaction
-	Creator            *crypto.Key
-	Nonce              wire.BlockNonce
-	MixHash            util.Hash
-	Difficulty         *big.Int
-	OverrideStateRoot  util.Hash
-}
 
 // HaveBlock checks whether we have a block in the
 // main chain or other chains.
@@ -67,9 +53,9 @@ func (b *Blockchain) IsKnownBlock(hash string) (bool, string, error) {
 // GenerateBlock produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
+func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
 
-	var chain *Chain
+	var chain common.Chainer
 	var block *wire.Block
 
 	if params == nil {
@@ -87,7 +73,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 	// Determine if an explicit chain is to be used as
 	// opposed to the main chain.
 	for _, opt := range opts {
-		if _opt, ok := opt.(ChainOp); ok {
+		if _opt, ok := opt.(common.ChainOp); ok {
 			chain = _opt.Chain
 			break
 		}
@@ -106,7 +92,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 	}
 
 	// Get the latest block header
-	chainTip, err := chain.getBlock(0)
+	chainTip, err := chain.GetBlock(0)
 	if err != nil {
 		if err != common.ErrBlockNotFound {
 			return nil, err
@@ -130,9 +116,9 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 	// If the chain has no tip block but it has a parent,
 	// then we set the block's parent hash to the parent's hash
 	// and set the block number to BlockNumber(parent) + 1
-	if chainTip == nil && chain.parentBlock != nil {
-		block.Header.ParentHash = chain.parentBlock.Hash
-		block.Header.Number = chain.parentBlock.Header.Number + 1
+	if chainTip == nil && chain.GetParentBlock() != nil {
+		block.Header.ParentHash = chain.GetParentBlock().Hash
+		block.Header.Number = chain.GetParentBlock().Header.Number + 1
 	}
 
 	// If a the chain tip exists, we set the block's parent
