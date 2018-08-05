@@ -7,7 +7,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
@@ -318,7 +318,7 @@ func (b *Blockchain) isOrphanBlock(blockHash string) bool {
 // findChainInfo finds information about chain
 func (b *Blockchain) findChainInfo(chainID string) (*common.ChainInfo, error) {
 
-	var result database.KVObject
+	var result elldb.KVObject
 	var chainInfo common.ChainInfo
 	var chainKey = common.MakeChainKey(chainID)
 
@@ -347,7 +347,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 	}
 
 	chainKey := common.MakeChainKey(chain.GetID())
-	err = txOp.Tx.Put([]*database.KVObject{database.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
+	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
 	if err != nil {
 		if txOp.CanFinish {
 			txOp.Tx.Rollback()
@@ -366,7 +366,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 
 // getChains return all known chains
 func (b *Blockchain) getChains() (chainsInfo []*common.ChainInfo, err error) {
-	var result []*database.KVObject
+	var result []*elldb.KVObject
 	chainsKey := common.MakeChainsQueryKey()
 	b.store.Get(chainsKey, &result)
 	for _, r := range result {
@@ -401,7 +401,7 @@ func (b *Blockchain) addChain(chain *Chain) error {
 // parentBlock is the block that is the parent of the initialBlock. The parentBlock
 // will be a block in another chain if this chain represents a fork. While
 // parentChain is the chain on which the parent block sits in.
-func (b *Blockchain) newChain(tx database.Tx, initialBlock *wire.Block, parentBlock *wire.Block, parentChain *Chain) (*Chain, error) {
+func (b *Blockchain) newChain(tx elldb.Tx, initialBlock *wire.Block, parentBlock *wire.Block, parentChain *Chain) (*Chain, error) {
 
 	// The block and its parent must be provided. They must also
 	// be related through the initialBlock referencing the parent block's hash.
@@ -450,7 +450,7 @@ func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
 
 	// Construct transaction key and find it on the main chain
 	var txKey = common.MakeTxKey(b.bestChain.GetID(), hash)
-	var result []*database.KVObject
+	var result []*elldb.KVObject
 	b.bestChain.store.Get(txKey, &result)
 
 	if len(result) == 0 {

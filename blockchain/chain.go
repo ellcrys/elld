@@ -6,7 +6,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
@@ -239,7 +239,7 @@ func (c *Chain) putTransactions(txs []*wire.Transaction, opts ...common.CallOp) 
 
 	for i, tx := range txs {
 		txKey := common.MakeTxKey(c.id, tx.ID())
-		if err := txOp.Tx.Put([]*database.KVObject{database.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
+		if err := txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
 			if txOp.CanFinish {
 				txOp.Tx.Rollback()
 			}

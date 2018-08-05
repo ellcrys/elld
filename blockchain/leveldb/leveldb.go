@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
@@ -17,19 +17,19 @@ const MetadataKey = "meta"
 // interface meant to be used for persisting and retrieving
 // blockchain data.
 type Store struct {
-	db        database.DB
+	db        elldb.DB
 	namespace string
 }
 
 // New creates an instance of the store
-func New(db database.DB) (*Store, error) {
+func New(db elldb.DB) (*Store, error) {
 	return &Store{
 		db: db,
 	}, nil
 }
 
 // hasBlock checks whether a block exists
-func (s *Store) hasBlock(tx database.Tx, chainID string, number uint64) (bool, error) {
+func (s *Store) hasBlock(tx elldb.Tx, chainID string, number uint64) (bool, error) {
 	_, err := s.getBlock(tx, chainID, number)
 	if err != nil {
 		if err == common.ErrBlockNotFound {
@@ -42,7 +42,7 @@ func (s *Store) hasBlock(tx database.Tx, chainID string, number uint64) (bool, e
 
 // getBlock gets a block by the block number.
 // If number is 0, return the block with the highest block number
-func (s *Store) getBlock(tx database.Tx, chainID string, number uint64) (*wire.Block, error) {
+func (s *Store) getBlock(tx elldb.Tx, chainID string, number uint64) (*wire.Block, error) {
 
 	// Since number is '0', we must fetch the last block
 	// which is the block with the highest number and the most recent
@@ -134,7 +134,7 @@ func (s *Store) GetBlockByHash(chainID string, hash string, opts ...common.CallO
 	// matching the specified hash
 	var block wire.Block
 	var found = false
-	txOp.Tx.Iterate(common.MakeBlocksQueryKey(chainID), true, func(kv *database.KVObject) bool {
+	txOp.Tx.Iterate(common.MakeBlocksQueryKey(chainID), true, func(kv *elldb.KVObject) bool {
 		if err = util.BytesToObject(kv.Value, &block); err != nil {
 			return true
 		}
@@ -184,7 +184,7 @@ func (s *Store) PutBlock(chainID string, block *wire.Block, opts ...common.CallO
 
 // putBlock adds a block to the store using the provided transaction object.
 // Returns error if a block with same number exists.
-func (s *Store) putBlock(tx database.Tx, chainID string, block *wire.Block) error {
+func (s *Store) putBlock(tx elldb.Tx, chainID string, block *wire.Block) error {
 
 	// check if block already exists. return nil if block exists.
 	hasBlock, err := s.hasBlock(tx, chainID, block.GetNumber())
@@ -199,8 +199,8 @@ func (s *Store) putBlock(tx database.Tx, chainID string, block *wire.Block) erro
 	// store the block with a key format that allows
 	// for query using the block number
 	key := common.MakeBlockKey(chainID, block.GetNumber())
-	blockObj := database.NewKVObject(key, value)
-	if err := tx.Put([]*database.KVObject{blockObj}); err != nil {
+	blockObj := elldb.NewKVObject(key, value)
+	if err := tx.Put([]*elldb.KVObject{blockObj}); err != nil {
 		return fmt.Errorf("failed to put block: %s", err)
 	}
 
@@ -212,8 +212,8 @@ func (s *Store) Put(key []byte, value []byte, opts ...common.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 
-	obj := database.NewKVObject(key, value)
-	if err := txOp.Tx.Put([]*database.KVObject{obj}); err != nil {
+	obj := elldb.NewKVObject(key, value)
+	if err := txOp.Tx.Put([]*elldb.KVObject{obj}); err != nil {
 		if txOp.CanFinish {
 			txOp.Tx.Rollback()
 		}
@@ -228,7 +228,7 @@ func (s *Store) Put(key []byte, value []byte, opts ...common.CallOp) error {
 }
 
 // Get an object by key (and optionally by prefixes)
-func (s *Store) Get(key []byte, result *[]*database.KVObject) {
+func (s *Store) Get(key []byte, result *[]*elldb.KVObject) {
 	r := s.db.GetByPrefix(key)
 	if r == nil {
 		return
@@ -238,7 +238,7 @@ func (s *Store) Get(key []byte, result *[]*database.KVObject) {
 
 // GetFirstOrLast returns the first or last object matching the key.
 // Set first to true to return the first or false for last.
-func (s *Store) GetFirstOrLast(first bool, key []byte, result *database.KVObject) {
+func (s *Store) GetFirstOrLast(first bool, key []byte, result *elldb.KVObject) {
 	r := s.db.GetFirstOrLast(key, first)
 	if r == nil {
 		return
@@ -247,7 +247,7 @@ func (s *Store) GetFirstOrLast(first bool, key []byte, result *database.KVObject
 }
 
 // NewTx creates and returns a transaction
-func (s *Store) NewTx() (database.Tx, error) {
+func (s *Store) NewTx() (elldb.Tx, error) {
 
 	tx, err := s.db.NewTx()
 	if err != nil {

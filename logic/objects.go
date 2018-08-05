@@ -1,17 +1,15 @@
 package logic
 
-import (
-	"github.com/ellcrys/elld/database"
-)
+import "github.com/ellcrys/elld/elldb"
 
 // ObjectsPut store objects
-func (l *Logic) ObjectsPut(objs []*database.KVObject, errCh chan error) error {
+func (l *Logic) ObjectsPut(objs []*elldb.KVObject, errCh chan error) error {
 	err := l.engine.DB().Put(objs)
 	return sendErr(errCh, err)
 }
 
 // ObjectsGet store objects
-func (l *Logic) ObjectsGet(prefix []byte, result chan []*database.KVObject) error {
+func (l *Logic) ObjectsGet(prefix []byte, result chan []*elldb.KVObject) error {
 	result <- l.engine.DB().GetByPrefix(prefix)
 	return nil
 }

@@ -1,4 +1,4 @@
-package database
+package elldb
 
 import (
 	"os"
@@ -19,7 +19,7 @@ var _ = Describe("Database", func() {
 	})
 
 	BeforeEach(func() {
-		db = NewLevelDB(testCfgDir)
+		db = NewDB(testCfgDir)
 		err = db.Open("")
 		Expect(err).To(BeNil())
 	})
@@ -35,7 +35,7 @@ var _ = Describe("Database", func() {
 
 	Describe(".Open", func() {
 		It("should return error if unable to open database", func() {
-			db = NewLevelDB("/*^&^")
+			db = NewDB("/*^&^")
 			err = db.Open("")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to create database. mkdir /*^&^: permission denied"))

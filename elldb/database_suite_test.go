@@ -1,4 +1,4 @@
-package database_test
+package elldb_test
 
 import (
 	"testing"

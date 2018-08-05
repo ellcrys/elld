@@ -2,7 +2,7 @@ package logic
 
 import (
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
 	. "github.com/onsi/ginkgo"
@@ -44,7 +44,7 @@ var _ = Describe("Transaction", func() {
 	Describe(".ObjectsPut", func() {
 
 		It("should successfully add object without error", func() {
-			addresses := []*database.KVObject{database.NewKVObject([]byte("age"), []byte("20"))}
+			addresses := []*elldb.KVObject{elldb.NewKVObject([]byte("age"), []byte("20"))}
 			errCh = make(chan error, 1)
 			logic.ObjectsPut(addresses, errCh)
 			err := <-errCh
@@ -55,16 +55,16 @@ var _ = Describe("Transaction", func() {
 	Describe(".ObjectsGet", func() {
 
 		It("should successfully get objects without error", func() {
-			addresses := []*database.KVObject{
-				database.NewKVObject([]byte("age"), []byte("20"), "ns"),
-				database.NewKVObject([]byte("sex"), []byte("unknown"), "ns"),
+			addresses := []*elldb.KVObject{
+				elldb.NewKVObject([]byte("age"), []byte("20"), "ns"),
+				elldb.NewKVObject([]byte("sex"), []byte("unknown"), "ns"),
 			}
 			errCh = make(chan error, 1)
 			logic.ObjectsPut(addresses, errCh)
 			err := <-errCh
 			Expect(err).To(BeNil())
 
-			var result = make(chan []*database.KVObject, 1)
+			var result = make(chan []*elldb.KVObject, 1)
 			logic.ObjectsGet([]byte("ns"), result)
 			objs := <-result
 			Expect(objs).To(HaveLen(2))

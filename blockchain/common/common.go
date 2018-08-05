@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
@@ -23,7 +23,7 @@ const (
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
-func GetTxOp(db database.TxCreator, opts ...CallOp) TxOp {
+func GetTxOp(db elldb.TxCreator, opts ...CallOp) TxOp {
 	if len(opts) > 0 {
 		for _, op := range opts {
 			switch _op := op.(type) {

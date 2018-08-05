@@ -6,7 +6,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -371,7 +371,7 @@ var ProcessTest = func() bool {
 
 					Describe("all state objects must be persisted", func() {
 						for _, so := range stateObjs {
-							var result []*database.KVObject
+							var result []*elldb.KVObject
 							store.Get(so.Key, &result)
 							Expect(result).To(HaveLen(1))
 						}
@@ -380,7 +380,7 @@ var ProcessTest = func() bool {
 					Describe("all transactions must be persisted", func() {
 						for _, tx := range block.Transactions {
 							txKey := common.MakeTxKey(chain.GetID(), tx.ID())
-							var result []*database.KVObject
+							var result []*elldb.KVObject
 							store.Get(txKey, &result)
 							Expect(result).To(HaveLen(1))
 						}

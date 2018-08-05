@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/ellcrys/druid/util"
-	common "github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -30,7 +30,7 @@ func (b *Blockchain) getAccount(chain *Chain, address string) (*wire.Account, er
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	var result database.KVObject
+	var result elldb.KVObject
 	var account wire.Account
 	var curChainID = chain.id
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
 
@@ -464,7 +464,7 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 func (m *Manager) savePeers() error {
 
 	var numAddrs = 0
-	var objectsToStore []*database.KVObject
+	var objectsToStore []*elldb.KVObject
 
 	// determine the active addresses that are eligible for persistence
 	peers := m.CopyActivePeers(0)
@@ -475,7 +475,7 @@ func (m *Manager) savePeers() error {
 				"addr": p.GetMultiAddr(),
 				"ts":   p.GetTimestamp().Unix(),
 			})
-			objectsToStore = append(objectsToStore, database.NewKVObject(key, value, "address"))
+			objectsToStore = append(objectsToStore, elldb.NewKVObject(key, value, "address"))
 			numAddrs++
 		}
 	}
@@ -495,7 +495,7 @@ func (m *Manager) savePeers() error {
 func (m *Manager) loadPeers() error {
 
 	// get addresses from database
-	var result = make(chan []*database.KVObject, 1)
+	var result = make(chan []*elldb.KVObject, 1)
 	m.localNode.logicEvt.Publish("objects.get", "address", result)
 
 	// create remote nodes objects to represent the addresses

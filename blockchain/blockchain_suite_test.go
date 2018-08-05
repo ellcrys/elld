@@ -9,7 +9,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util/logger"
@@ -22,7 +22,7 @@ var log logger.Logger
 var cfg *config.EngineConfig
 var err error
 var store common.Store
-var db database.DB
+var db elldb.DB
 var bc *Blockchain
 var chainID = "chain1"
 var chain *Chain
@@ -46,7 +46,7 @@ var _ = Describe("Blockchain", func() {
 
 	// Create the database and store instances
 	BeforeEach(func() {
-		db = database.NewLevelDB(cfg.ConfigDir())
+		db = elldb.NewDB(cfg.ConfigDir())
 		err = db.Open("")
 		Expect(err).To(BeNil())
 		store, err = leveldb.New(db)

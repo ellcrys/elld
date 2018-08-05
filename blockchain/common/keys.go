@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 )
 
 const (
@@ -30,43 +30,43 @@ const (
 // MakeAccountKey constructs a key for an account
 func MakeAccountKey(blockNum uint64, chainID, address string) []byte {
 	bn := strconv.FormatUint(blockNum, 10)
-	return database.MakeKey([]byte(bn), []string{ObjectTypeChain, chainID, ObjectTypeAccount, address})
+	return elldb.MakeKey([]byte(bn), []string{ObjectTypeChain, chainID, ObjectTypeAccount, address})
 }
 
 // QueryAccountKey constructs a key for finding account data in the store and hash tree.
 func QueryAccountKey(chainID, address string) []byte {
-	return database.MakePrefix([]string{ObjectTypeChain, chainID, ObjectTypeAccount, address})
+	return elldb.MakePrefix([]string{ObjectTypeChain, chainID, ObjectTypeAccount, address})
 }
 
 // MakeBlockchainMetadataKey constructs a key for storing blockchain-wide metadata
 func MakeBlockchainMetadataKey() []byte {
-	return database.MakeKey([]byte("_"), []string{ObjectTypeMeta, "blockchain"})
+	return elldb.MakeKey([]byte("_"), []string{ObjectTypeMeta, "blockchain"})
 }
 
 // MakeBlockKey constructs a key for storing a block
 func MakeBlockKey(chainID string, blockNumber uint64) []byte {
 	key := []byte(fmt.Sprintf("%d", blockNumber))
-	return database.MakeKey(key, []string{ObjectTypeChain, chainID, ObjectTypeBlock})
+	return elldb.MakeKey(key, []string{ObjectTypeChain, chainID, ObjectTypeBlock})
 }
 
 // MakeBlocksQueryKey constructs a key for storing a block
 func MakeBlocksQueryKey(chainID string) []byte {
-	return database.MakeKey(nil, []string{ObjectTypeChain, chainID, ObjectTypeBlock})
+	return elldb.MakeKey(nil, []string{ObjectTypeChain, chainID, ObjectTypeBlock})
 }
 
 // MakeChainKey constructs a key for storing a chain information
 func MakeChainKey(chainID string) []byte {
-	return database.MakeKey([]byte(chainID), []string{ObjectTypeChainInfo})
+	return elldb.MakeKey([]byte(chainID), []string{ObjectTypeChainInfo})
 }
 
 // MakeChainsQueryKey constructs a key for find all chain items
 func MakeChainsQueryKey() []byte {
-	return database.MakePrefix([]string{ObjectTypeChainInfo})
+	return elldb.MakePrefix([]string{ObjectTypeChainInfo})
 }
 
 // MakeTxKey constructs a key for storing a transaction
 func MakeTxKey(chainID, txHash string) []byte {
-	return database.MakeKey(nil, []string{ObjectTypeChain, chainID, ObjectTypeTransaction, txHash})
+	return elldb.MakeKey(nil, []string{ObjectTypeChain, chainID, ObjectTypeTransaction, txHash})
 }
 
 // MakeTreeKey constructs a key for recording state objects in a tree

@@ -5,7 +5,7 @@ import (
 
 	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/txpool"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -17,7 +17,7 @@ import (
 type Engine interface {
 	SetLogicBus(bus evbus.Bus)       // Set the event bus used to perform logical operations against the blockchain
 	Cfg() *config.EngineConfig       // Returns the engine configuration
-	DB() database.DB                 // The engine's database instance
+	DB() elldb.DB                    // The engine's database instance
 	AddTxSession(txID string)        // Add new transaction session
 	HasTxSession(txID string) bool   // Check if a transaction has an existing session
 	RemoveTxSession(txID string)     // Remove a transaction session

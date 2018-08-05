@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
@@ -35,7 +35,7 @@ type CallOp interface {
 
 // TxOp defines a method option for passing external transactions
 type TxOp struct {
-	Tx        database.Tx
+	Tx        elldb.Tx
 	CanFinish bool
 }
 
@@ -44,8 +44,25 @@ func (t TxOp) GetName() string {
 	return "TxOp"
 }
 
-// Store defines an interface for storing objects and metadata
-// of the blockchain.
+// ChainReader defines an interface for reading a chain
+type ChainReader interface {
+
+	// GetBlock finds and returns a block associated with chainID.
+	// When 0 is passed, it should return the block with the highest number
+	GetBlock(number uint64, opts ...CallOp) (*wire.Block, error)
+
+	// GetBlockByHash finds and returns a block associated with chainID.
+	GetBlockByHash(hash string, opts ...CallOp) (*wire.Block, error)
+
+	// GetBlockHeader gets the header of a block.
+	// When 0 is passed, it should return the header of the block with the highest number
+	GetBlockHeader(number uint64, opts ...CallOp) (*wire.Header, error)
+
+	// GetBlockHeaderByHash finds and returns the header of a block matching hash
+	GetBlockHeaderByHash(hash string) (*wire.Header, error)
+}
+
+// Store defines an interface for storing objects
 type Store interface {
 
 	// PutBlock adds a block to the store
@@ -69,14 +86,14 @@ type Store interface {
 	Put(key []byte, value []byte, opts ...CallOp) error
 
 	// Get retrieves an arbitrary value
-	Get(key []byte, result *[]*database.KVObject)
+	Get(key []byte, result *[]*elldb.KVObject)
 
 	// GetFirstOrLast returns the first or last object matching the key.
 	// Set first to true to return the first or false for last.
-	GetFirstOrLast(first bool, key []byte, result *database.KVObject)
+	GetFirstOrLast(first bool, key []byte, result *elldb.KVObject)
 
 	// NewTx creates and returns a transaction
-	NewTx() (database.Tx, error)
+	NewTx() (elldb.Tx, error)
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice
@@ -100,7 +117,7 @@ func (m *BlockchainMeta) JSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// StateObject describes an object to be stored in a database.StateObject.
+// StateObject describes an object to be stored in a elldb.StateObject.
 // Usually created after processing a Transition object.
 type StateObject struct {
 

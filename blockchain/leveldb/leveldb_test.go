@@ -5,7 +5,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -16,7 +16,7 @@ import (
 var _ = Describe("Leveldb", func() {
 
 	var err error
-	var db database.DB
+	var db elldb.DB
 	var cfg *config.EngineConfig
 	var store *Store
 
@@ -30,7 +30,7 @@ var _ = Describe("Leveldb", func() {
 	})
 
 	BeforeEach(func() {
-		db = database.NewLevelDB(cfg.ConfigDir())
+		db = elldb.NewDB(cfg.ConfigDir())
 		err = db.Open("")
 		Expect(err).To(BeNil())
 	})
@@ -189,7 +189,7 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".Put", func() {
 		It("should successfully store object", func() {
-			key := database.MakeKey([]byte("my_key"), []string{"block", "account"})
+			key := elldb.MakeKey([]byte("my_key"), []string{"block", "account"})
 			err = store.Put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 		})
@@ -198,25 +198,25 @@ var _ = Describe("Leveldb", func() {
 	Describe(".Get", func() {
 
 		It("should successfully get object by prefix", func() {
-			key := database.MakeKey([]byte("my_key"), []string{"an_obj", "account"})
+			key := elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account"})
 			err = store.Put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
-			var result = []*database.KVObject{}
+			var result = []*elldb.KVObject{}
 			store.Get([]byte("an_obj"), &result)
 			Expect(result).To(HaveLen(1))
 
-			result = []*database.KVObject{}
-			store.Get(database.MakePrefix([]string{"an_obj", "account"}), &result)
+			result = []*elldb.KVObject{}
+			store.Get(elldb.MakePrefix([]string{"an_obj", "account"}), &result)
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should successfully get object by key", func() {
-			key := database.MakeKey([]byte("my_key"), []string{"block", "account"})
+			key := elldb.MakeKey([]byte("my_key"), []string{"block", "account"})
 			err = store.Put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
-			var result = []*database.KVObject{}
+			var result = []*elldb.KVObject{}
 			store.Get(key, &result)
 			Expect(result).To(HaveLen(1))
 		})
@@ -227,24 +227,24 @@ var _ = Describe("Leveldb", func() {
 		var key, key2 []byte
 
 		BeforeEach(func() {
-			key = database.MakeKey([]byte("my_key"), []string{"an_obj", "account", "1"})
+			key = elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account", "1"})
 			err = store.Put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
-			key2 = database.MakeKey([]byte("my_key"), []string{"an_obj", "account", "2"})
+			key2 = elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account", "2"})
 			err = store.Put(key2, []byte("stuff2"))
 			Expect(err).To(BeNil())
 		})
 
 		It("should return the first object when first arg. is true", func() {
-			var result = &database.KVObject{}
+			var result = &elldb.KVObject{}
 			store.GetFirstOrLast(true, []byte("an_obj"), result)
 			Expect(result).ToNot(BeNil())
 			Expect(result.GetKey()).To(Equal(key))
 		})
 
 		It("should return the last object when last arg. is false", func() {
-			var result = &database.KVObject{}
+			var result = &elldb.KVObject{}
 			store.GetFirstOrLast(false, []byte("an_obj"), result)
 			Expect(result).ToNot(BeNil())
 			Expect(result.GetKey()).To(Equal(key2))

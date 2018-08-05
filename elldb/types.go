@@ -1,4 +1,4 @@
-package database
+package elldb
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ const PrefixSeparator = "~"
 // KeyPrefixSeparator is the separator that separates the prefix and the key
 const KeyPrefixSeparator = ":"
 
-// KVObject represents an item in the database
+// KVObject represents an item in the elldb
 type KVObject struct {
 	Key      []byte   `json:"key"`
 	Value    []byte   `json:"value"`
