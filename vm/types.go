@@ -16,7 +16,7 @@ type Tx struct {
 // Args defines the structure of arguments sent to a blockcode
 type Args struct {
 	Func      string            `json:"func"`
-	Payload   map[string]string `json:"payload"`
+	Payload   map[string][]byte `json:"payload"`
 	Tx        *Tx               `json:"tx"`
 	BlockInfo *BlockInfo        `json:"blockInfo"`
 }

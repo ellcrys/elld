@@ -99,3 +99,12 @@ func (l *Logrus) Fatal(msg string, keyValues ...interface{}) {
 
 	l.log.WithFields(l.toFields(keyValues)).Fatal(msg)
 }
+
+// Warn logs a message at level Warn on the standard logger
+func (l *Logrus) Warn(msg string, keyValues ...interface{}) {
+	if err := isValidKeyValues(keyValues); err != nil {
+		panic(err)
+	}
+
+	l.log.WithFields(l.toFields(keyValues)).Warn(msg)
+}

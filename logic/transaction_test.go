@@ -6,7 +6,6 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -59,7 +58,7 @@ var _ = Describe("Transaction", func() {
 			tx.From = sender.Addr()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).ToNot(BeNil())
@@ -71,14 +70,14 @@ var _ = Describe("Transaction", func() {
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "0.0000000001", time.Now().Unix())
 			tx.From = sender.Addr()
-			tx.Hash = util.ToHex(tx.ComputeHash())
+			tx.Hash = tx.ComputeHash()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("index:0, field:fee, error:fee cannot be below the minimum balance transaction fee {0.01000000}"))
+			Expect(err.Error()).To(Equal("index:0, field:fee, error:fee cannot be below the minimum balance transaction fee {0.0100000000000000}"))
 		})
 
 		It("should return err when tx type is unknown", func() {
@@ -86,10 +85,10 @@ var _ = Describe("Transaction", func() {
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(0x300, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
 			tx.From = sender.Addr()
-			tx.Hash = util.ToHex(tx.ComputeHash())
+			tx.Hash = tx.ComputeHash()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).ToNot(BeNil())
@@ -101,10 +100,10 @@ var _ = Describe("Transaction", func() {
 			sender, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
 			tx.From = sender.Addr()
-			tx.Hash = util.ToHex(tx.ComputeHash())
+			tx.Hash = tx.ComputeHash()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			logic.TransactionAdd(tx, errCh)
 			err = <-errCh
 			Expect(err).To(BeNil())

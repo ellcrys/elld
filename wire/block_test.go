@@ -1,7 +1,6 @@
 package wire
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ellcrys/elld/crypto"
@@ -13,40 +12,6 @@ import (
 var _ = Describe("Block & Header", func() {
 
 	var key = crypto.NewKeyFromIntSeed(1)
-
-	Describe("Header.validate", func() {
-		It("should validate fields", func() {
-
-			_key := key.PubKey().Base58()
-			parentHash := util.BytesToHash([]byte("x"))
-			txRoot := util.BytesToHash([]byte("tx_123"))
-			stateRoot := util.BytesToHash([]byte("state_123"))
-
-			var data = map[Header]error{
-				Header{}:                                                                                                                              fmt.Errorf("field:parentHash, error:expected 66 characters"),
-				Header{Number: 0}:                                                                                                                     fmt.Errorf("field:number, error:number must be greater or equal to 1"),
-				Header{Number: 1, ParentHash: util.BytesToHash([]byte("x"))}:                                                                          fmt.Errorf("field:parentHash, error:should be empty since block number is 1"),
-				Header{Number: 2}:                                                                                                                     fmt.Errorf("field:parentHash, error:parent hash is required"),
-				Header{Number: 2, ParentHash: util.BytesToHash([]byte("x"))}:                                                                          fmt.Errorf("field:creatorPubKey, error:creator public key is required"),
-				Header{Number: 1, CreatorPubKey: "invalid"}:                                                                                           fmt.Errorf("field:creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
-				Header{Number: 1, CreatorPubKey: _key}:                                                                                                fmt.Errorf("field:transactionsRoot, error:transaction root is required"),
-				Header{ParentHash: parentHash, CreatorPubKey: _key}:                                                                                   fmt.Errorf("field:number, error:number must be greater or equal to 1"),
-				Header{ParentHash: parentHash, CreatorPubKey: _key, Number: 2, TransactionsRoot: txRoot}:                                              fmt.Errorf("field:stateRoot, error:state root is required"),
-				Header{ParentHash: parentHash, CreatorPubKey: _key, Number: 2, TransactionsRoot: txRoot, StateRoot: stateRoot}:                        fmt.Errorf("field:nonce, error:nonce is required"),
-				Header{ParentHash: parentHash, CreatorPubKey: _key, Number: 2, TransactionsRoot: txRoot, StateRoot: stateRoot, Nonce: EncodeNonce(1)}: fmt.Errorf("field:timestamp, error:timestamp must not be empty or a negative value"),
-			}
-
-			for h, e := range data {
-				err := h.Validate()
-				if e != nil {
-					Expect(err).ToNot(BeNil())
-					Expect(err.Error()).To(Equal(e.Error()))
-				} else {
-					Expect(err).To(BeNil())
-				}
-			}
-		})
-	})
 
 	Describe("Header.Bytes", func() {
 		It("should successfully return bytes", func() {

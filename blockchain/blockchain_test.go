@@ -69,11 +69,8 @@ var BlockchainTest = func() bool {
 
 		Describe(".Up", func() {
 
-			var chain *Chain
-
 			BeforeEach(func() {
 				bc.chains = make(map[string]*Chain)
-				chain = NewChain("c", store, cfg, log)
 				GenesisBlock = testdata.BlockWithSingleAllocTx
 			})
 
