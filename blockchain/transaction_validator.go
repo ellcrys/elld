@@ -7,7 +7,6 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/txpool"
-	"github.com/ellcrys/elld/types"
 
 	"github.com/shopspring/decimal"
 
@@ -38,7 +37,7 @@ type TxsValidator struct {
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
-	bchain types.Blockchain
+	bchain common.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
@@ -53,7 +52,7 @@ type TxsValidator struct {
 
 // NewTxsValidator creates an instance of TxsValidator
 func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool,
-	bchain types.Blockchain, allowDupCheck bool) *TxsValidator {
+	bchain common.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 txs,
 		txpool:              txPool,
@@ -64,7 +63,7 @@ func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool,
 
 // NewTxValidator is like NewTxsValidator except it accepts a single transaction
 func NewTxValidator(tx *wire.Transaction, txPool *txpool.TxPool,
-	bchain types.Blockchain, allowDupCheck bool) *TxsValidator {
+	bchain common.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 []*wire.Transaction{tx},
 		txpool:              txPool,

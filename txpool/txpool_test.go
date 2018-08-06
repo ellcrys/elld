@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -27,7 +26,7 @@ var _ = Describe("TxPool", func() {
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			err = tp.Put(tx)
@@ -39,7 +38,7 @@ var _ = Describe("TxPool", func() {
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(10200, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unknown transaction type"))
@@ -50,7 +49,7 @@ var _ = Describe("TxPool", func() {
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
@@ -66,7 +65,7 @@ var _ = Describe("TxPool", func() {
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
@@ -80,7 +79,7 @@ var _ = Describe("TxPool", func() {
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
@@ -94,7 +93,7 @@ var _ = Describe("TxPool", func() {
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))

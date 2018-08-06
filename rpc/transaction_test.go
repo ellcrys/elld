@@ -65,7 +65,7 @@ var _ = Describe("Transactions", func() {
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
 			tx.From = sender.Addr()
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
-			tx.Hash = "invalid_hash"
+			tx.Hash = util.StrToHash("invalid_hash")
 
 			payload := map[string]interface{}{
 				"type":         tx.Type,
@@ -76,14 +76,14 @@ var _ = Describe("Transactions", func() {
 				"value":        tx.Value,
 				"fee":          tx.Fee,
 				"timestamp":    tx.Timestamp,
-				"sig":          util.ToHex(sig),
+				"sig":          sig,
 				"hash":         tx.Hash,
 			}
 
 			var result Result
-			service.TransactionAdd(payload, &result)
+			err = service.TransactionAdd(payload, &result)
 			Expect(result.Error).ToNot(BeEmpty())
-			Expect(result.Error).To(Equal("field:hash, error:expected 66 characters"))
+			Expect(result.Error).To(Equal("index:0, field:hash, error:hash is not correct"))
 		})
 
 		It("should successfully send transaction", func() {
@@ -93,7 +93,7 @@ var _ = Describe("Transactions", func() {
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
 			tx.From = sender.Addr()
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
-			tx.Hash = util.ToHex(tx.ComputeHash())
+			tx.Hash = tx.ComputeHash()
 
 			payload := map[string]interface{}{
 				"type":         tx.Type,
@@ -104,7 +104,7 @@ var _ = Describe("Transactions", func() {
 				"value":        tx.Value,
 				"fee":          tx.Fee,
 				"timestamp":    tx.Timestamp,
-				"sig":          util.ToHex(sig),
+				"sig":          sig,
 				"hash":         tx.Hash,
 			}
 

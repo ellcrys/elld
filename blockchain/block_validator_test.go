@@ -2,8 +2,9 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 
-	"github.com/ellcrys/elld/blockchain/testdata"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -15,7 +16,7 @@ var BlockValidatorTest = func() bool {
 	return Describe("BlockValidator", func() {
 
 		BeforeEach(func() {
-			bc.bestChain = chain
+			bc.bestChain = genesisChain
 		})
 
 		Describe(".check", func() {
@@ -64,8 +65,22 @@ var BlockValidatorTest = func() bool {
 
 		Describe(".Validate", func() {
 
+			var block *wire.Block
+
 			BeforeEach(func() {
-				_, err = bc.ProcessBlock(testdata.Block2)
+				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730722),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(500),
+				})
+			})
+
+			BeforeEach(func() {
+				_, err = bc.ProcessBlock(block)
 				Expect(err).To(BeNil())
 			})
 

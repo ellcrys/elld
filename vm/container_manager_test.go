@@ -72,8 +72,8 @@ var _ = Describe("ContainerManager", func() {
 				To: "blockcode_0",
 				InvokeArgs: &wire.InvokeArgs{
 					Func: "some_func",
-					Params: map[string]string{
-						"amount": "100",
+					Params: map[string][]byte{
+						"amount": []byte("100"),
 					},
 				},
 			}

@@ -4,27 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ellcrys/elld/database"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/wire"
 )
 
-// Block defines an interface for a block
-type Block interface {
-
-	// GetNumber returns the block number
-	GetNumber() uint64
-
-	// ComputeHash computes and returns the hash
-	ComputeHash() util.Hash
-
-	// GetHash returns the already computed hash
-	GetHash() util.Hash
-}
-
 // OrphanBlock represents an orphan block
 type OrphanBlock struct {
-	Block      Block
+	Block      *wire.Block
 	Expiration time.Time
 }
 
@@ -35,48 +21,13 @@ type CallOp interface {
 
 // TxOp defines a method option for passing external transactions
 type TxOp struct {
-	Tx        database.Tx
+	Tx        elldb.Tx
 	CanFinish bool
 }
 
 // GetName returns the name of the op
 func (t TxOp) GetName() string {
 	return "TxOp"
-}
-
-// Store defines an interface for storing objects and metadata
-// of the blockchain.
-type Store interface {
-
-	// PutBlock adds a block to the store
-	PutBlock(chainID string, block *wire.Block, opts ...CallOp) error
-
-	// GetBlock finds and returns a block associated with chainID.
-	// When 0 is passed, it should return the block with the highest number
-	GetBlock(chainID string, number uint64, opts ...CallOp) (*wire.Block, error)
-
-	// GetBlockByHash finds and returns a block associated with chainID.
-	GetBlockByHash(chainID string, hash string, opts ...CallOp) (*wire.Block, error)
-
-	// GetBlockHeader gets the header of a block.
-	// When 0 is passed, it should return the header of the block with the highest number
-	GetBlockHeader(chainID string, number uint64, opts ...CallOp) (*wire.Header, error)
-
-	// GetBlockHeaderByHash finds and returns the header of a block matching hash
-	GetBlockHeaderByHash(chainID string, hash string) (*wire.Header, error)
-
-	// Put store an arbitrary value
-	Put(key []byte, value []byte, opts ...CallOp) error
-
-	// Get retrieves an arbitrary value
-	Get(key []byte, result *[]*database.KVObject)
-
-	// GetFirstOrLast returns the first or last object matching the key.
-	// Set first to true to return the first or false for last.
-	GetFirstOrLast(first bool, key []byte, result *database.KVObject)
-
-	// NewTx creates and returns a transaction
-	NewTx() (database.Tx, error)
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice
@@ -100,7 +51,7 @@ func (m *BlockchainMeta) JSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// StateObject describes an object to be stored in a database.StateObject.
+// StateObject describes an object to be stored in a elldb.StateObject.
 // Usually created after processing a Transition object.
 type StateObject struct {
 
@@ -117,4 +68,52 @@ type StateObject struct {
 	// object. It is written to the database
 	// and the tree
 	Value []byte
+}
+
+// Chainer defines an interface for Chain
+type Chainer interface {
+
+	// NewStateTree returns a new tree
+	NewStateTree(noBackLink bool, opts ...CallOp) (*Tree, error)
+
+	// GetTipHeader gets the header of the tip block
+	GetTipHeader(opts ...CallOp) (*wire.Header, error)
+
+	// GetID gets the chain ID
+	GetID() string
+
+	// GetBlock gets a block in the chain
+	GetBlock(uint64) (*wire.Block, error)
+
+	// GetParentBlock gets the chain's parent block if it has one
+	GetParentBlock() *wire.Block
+
+	// GetParentInfo gets the chain's parent information
+	GetParentInfo() *ChainInfo
+}
+
+// Blockchain defines an interface for a blockchain manager
+type Blockchain interface {
+
+	// Up initializes and loads the blockchain manager
+	Up() error
+
+	// GetBestChain gets the chain that is currently considered the main chain
+	GetBestChain() Chainer
+
+	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
+	IsKnownBlock(hash string) (bool, string, error)
+
+	// HaveBlock checks if a block exists on the main or side chains
+	HaveBlock(hash string) (bool, error)
+
+	// GetTransaction finds and returns a transaction on the main chain
+	GetTransaction(hash string) (*wire.Transaction, error)
+
+	// ProcessBlock attempts to process and append a block to the main or side chains
+	ProcessBlock(*wire.Block) (Chainer, error)
+
+	// GenerateBlock creates a new block for a target chain.
+	// The Chain is specified by passing to ChainOp.
+	GenerateBlock(*GenerateBlockParams, ...CallOp) (*wire.Block, error)
 }

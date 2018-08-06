@@ -74,5 +74,10 @@ func (l *Zap) Error(msg string, keyValues ...interface{}) {
 
 // Fatal logs a message at level Fatal on the standard logger
 func (l *Zap) Fatal(msg string, keyValues ...interface{}) {
-	l.log.Errorw(msg, keyValues...)
+	l.log.Fatalw(msg, keyValues...)
+}
+
+// Warn logs a message at level Warn on the standard logger
+func (l *Zap) Warn(msg string, keyValues ...interface{}) {
+	l.log.Warnw(msg, keyValues...)
 }

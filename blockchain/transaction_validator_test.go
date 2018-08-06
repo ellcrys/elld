@@ -87,8 +87,8 @@ var TransactionValidatorTest = func() bool {
 				var tx *wire.Transaction
 
 				BeforeEach(func() {
-					tx = block.Transactions[0]
-					err = chain.putTransactions([]*wire.Transaction{tx})
+					tx = genesisBlock.Transactions[0]
+					err = genesisChain.putTransactions([]*wire.Transaction{tx})
 					Expect(err).To(BeNil())
 				})
 

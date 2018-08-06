@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
@@ -21,16 +22,6 @@ const (
 	// MaxRejectedBlocksCacheSize is the number of blocks we can keep in the rejected block cache
 	MaxRejectedBlocksCacheSize = 100
 )
-
-// ChainOp defines a method option for passing a chain object
-type ChainOp struct {
-	Chain *Chain
-}
-
-// GetName returns the name of the op
-func (t ChainOp) GetName() string {
-	return "ChainOp"
-}
 
 // Blockchain represents the Ellcrys blockchain. It provides
 // functionalities for interacting with the underlying database
@@ -50,7 +41,7 @@ type Blockchain struct {
 	log logger.Logger
 
 	// store is the the database where block data and other meta data are stored
-	store common.Store
+	store store.Storer
 
 	// bestChain is the chain considered to be the true chain.
 	// It is protected by lock
@@ -90,7 +81,7 @@ func (b *Blockchain) Up() error {
 
 	var err error
 
-	// We cannot boot up the blockchain manager if a common.Store
+	// We cannot boot up the blockchain manager if a store.Storer
 	// implementation has not been set.
 	if b.store == nil {
 		return fmt.Errorf("store has not been initialized")
@@ -184,8 +175,13 @@ func (b *Blockchain) loadChain(chainInfo *common.ChainInfo) error {
 	return b.addChain(chain)
 }
 
+// GetBestChain gets the chain that is currently considered the main chain
+func (b *Blockchain) GetBestChain() common.Chainer {
+	return b.bestChain
+}
+
 // SetStore sets the store to use
-func (b *Blockchain) SetStore(store common.Store) {
+func (b *Blockchain) SetStore(store store.Storer) {
 	b.store = store
 }
 
@@ -205,7 +201,7 @@ func (b *Blockchain) HybridMode() (bool, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	h, err := b.bestChain.getTipHeader()
+	h, err := b.bestChain.GetTipHeader()
 	if err != nil {
 		return false, err
 	}
@@ -234,7 +230,7 @@ func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain
 
 		// At the point, we have found chain the block belongs to.
 		// Next we get the header of the block at the tip of the chain.
-		chainTipHeader, err := chain.getTipHeader()
+		chainTipHeader, err := chain.GetTipHeader()
 		if err != nil {
 			if err != common.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -301,7 +297,7 @@ func (b *Blockchain) isRejected(block *wire.Block) bool {
 }
 
 // addOrphanBlock adds a block to the collection of orphaned blocks.
-func (b *Blockchain) addOrphanBlock(block common.Block) {
+func (b *Blockchain) addOrphanBlock(block *wire.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration
@@ -318,7 +314,7 @@ func (b *Blockchain) isOrphanBlock(blockHash string) bool {
 // findChainInfo finds information about chain
 func (b *Blockchain) findChainInfo(chainID string) (*common.ChainInfo, error) {
 
-	var result database.KVObject
+	var result elldb.KVObject
 	var chainInfo common.ChainInfo
 	var chainKey = common.MakeChainKey(chainID)
 
@@ -347,7 +343,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 	}
 
 	chainKey := common.MakeChainKey(chain.GetID())
-	err = txOp.Tx.Put([]*database.KVObject{database.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
+	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
 	if err != nil {
 		if txOp.CanFinish {
 			txOp.Tx.Rollback()
@@ -366,7 +362,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 
 // getChains return all known chains
 func (b *Blockchain) getChains() (chainsInfo []*common.ChainInfo, err error) {
-	var result []*database.KVObject
+	var result []*elldb.KVObject
 	chainsKey := common.MakeChainsQueryKey()
 	b.store.Get(chainsKey, &result)
 	for _, r := range result {
@@ -401,7 +397,7 @@ func (b *Blockchain) addChain(chain *Chain) error {
 // parentBlock is the block that is the parent of the initialBlock. The parentBlock
 // will be a block in another chain if this chain represents a fork. While
 // parentChain is the chain on which the parent block sits in.
-func (b *Blockchain) newChain(tx database.Tx, initialBlock *wire.Block, parentBlock *wire.Block, parentChain *Chain) (*Chain, error) {
+func (b *Blockchain) newChain(tx elldb.Tx, initialBlock *wire.Block, parentBlock *wire.Block, parentChain *Chain) (*Chain, error) {
 
 	// The block and its parent must be provided. They must also
 	// be related through the initialBlock referencing the parent block's hash.
@@ -450,7 +446,7 @@ func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
 
 	// Construct transaction key and find it on the main chain
 	var txKey = common.MakeTxKey(b.bestChain.GetID(), hash)
-	var result []*database.KVObject
+	var result []*elldb.KVObject
 	b.bestChain.store.Get(txKey, &result)
 
 	if len(result) == 0 {
@@ -462,4 +458,12 @@ func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
 	}
 
 	return &tx, nil
+}
+
+// Reader creates a chain reader for best/main chain
+func (b *Blockchain) Reader() store.Reader {
+	if b.bestChain == nil {
+		return nil
+	}
+	return store.NewChainReader(b.store, b.bestChain.id)
 }

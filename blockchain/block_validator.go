@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/txpool"
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
@@ -41,7 +41,7 @@ type BlockValidator struct {
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
-	bchain types.Blockchain
+	bchain common.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
@@ -52,7 +52,7 @@ type BlockValidator struct {
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
-	bchain types.Blockchain, allowDupCheck bool) *BlockValidator {
+	bchain common.Blockchain, allowDupCheck bool) *BlockValidator {
 	return &BlockValidator{
 		block:               block,
 		txpool:              txPool,

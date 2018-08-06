@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ellcrys/elld/types"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -54,7 +52,7 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 // @ops: 	The list of recent operations generated from other transactions of same block as tx.
 //			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
 // @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
-func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transition, chain *Chain) ([]common.Transition, error) {
+func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transition, chain common.Chainer) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var senderAcct, recipientAcct *wire.Account
@@ -151,7 +149,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 // @ops: 	The list of recent operations generated from other transactions of same block as tx.
 //			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
 // @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
-func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Transition, chain *Chain) ([]common.Transition, error) {
+func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Transition, chain common.Chainer) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var recipientAcct *wire.Account
@@ -202,7 +200,7 @@ func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Trans
 }
 
 // opsToKVObjects takes a slice of operations and apply them to the provided chain
-func (b *Blockchain) opsToStateObjects(block *wire.Block, chain *Chain, ops []common.Transition) ([]*common.StateObject, error) {
+func (b *Blockchain) opsToStateObjects(block *wire.Block, chain common.Chainer, ops []common.Transition) ([]*common.StateObject, error) {
 
 	stateObjs := []*common.StateObject{}
 
@@ -233,7 +231,7 @@ func (b *Blockchain) opsToStateObjects(block *wire.Block, chain *Chain, ops []co
 
 // processTransactions computes the operations that must be applied to the
 // hash tree and world state.
-func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain *Chain) ([]common.Transition, error) {
+func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain common.Chainer) ([]common.Transition, error) {
 
 	var ops []common.Transition
 
@@ -373,7 +371,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 // ProcessBlock takes a block and attempts to add it to the
 // tip of one of the known chains (main chain or forked chain). It returns
 // the chain where the block was appended to.
-func (b *Blockchain) ProcessBlock(block *wire.Block) (types.Chain, error) {
+func (b *Blockchain) ProcessBlock(block *wire.Block) (common.Chainer, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
@@ -426,7 +424,7 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (types.Chain, error) {
 
 // execBlock execute the transactions of the blocks to
 // output the resulting state objects and state root.
-func (b *Blockchain) execBlock(chain *Chain, block *wire.Block, opts ...common.CallOp) (root util.Hash, stateObjs []*common.StateObject, err error) {
+func (b *Blockchain) execBlock(chain common.Chainer, block *wire.Block, opts ...common.CallOp) (root util.Hash, stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.

@@ -8,7 +8,7 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types"
@@ -35,12 +35,12 @@ func PeerManagerTest() bool {
 	return Describe("PeerManager", func() {
 
 		var err error
-		var db database.DB
+		var db elldb.DB
 		var p *Node
 		var mgr *Manager
 
 		BeforeEach(func() {
-			db = database.NewLevelDB(cfg.ConfigDir())
+			db = elldb.NewDB(cfg.ConfigDir())
 			err = db.Open("")
 			Expect(err).To(BeNil())
 		})

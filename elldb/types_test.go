@@ -1,4 +1,4 @@
-package database
+package elldb
 
 import (
 	. "github.com/onsi/ginkgo"
