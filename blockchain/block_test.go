@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -21,8 +20,15 @@ var BlockTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block = testdata.BlockSet1[0]
-				Expect(err).To(BeNil())
+				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(500),
+				})
 			})
 
 			It("should return false when block does not exist in any known chain", func() {
@@ -52,8 +58,15 @@ var BlockTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block = testdata.BlockSet1[0]
-				Expect(err).To(BeNil())
+				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(500),
+				})
 			})
 
 			It("should return false when block does not exist in any known chain or caches", func() {
@@ -93,7 +106,7 @@ var BlockTest = func() bool {
 			var txs []*wire.Transaction
 
 			BeforeEach(func() {
-				bc.bestChain = chain
+				bc.bestChain = genesisChain
 				txs = []*wire.Transaction{wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "0.1", "0.1", time.Now().Unix())}
 			})
 
@@ -123,7 +136,7 @@ var BlockTest = func() bool {
 				Expect(blk).ToNot(BeNil())
 				Expect(blk.Header.StateRoot).ToNot(BeEmpty())
 				Expect(blk.Header.Number).To(Equal(uint64(2)))
-				Expect(blk.Header.ParentHash).To(Equal(block.Hash))
+				Expect(blk.Header.ParentHash).To(Equal(genesisBlock.Hash))
 			})
 
 			When("chain is directly passed", func() {
@@ -134,12 +147,12 @@ var BlockTest = func() bool {
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(500),
-					}, common.ChainOp{Chain: chain})
+					}, ChainOp{Chain: genesisChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.Header.StateRoot).ToNot(BeEmpty())
 					Expect(blk.Header.Number).To(Equal(uint64(2)))
-					Expect(blk.Header.ParentHash).To(Equal(block.Hash))
+					Expect(blk.Header.ParentHash).To(Equal(genesisBlock.Hash))
 				})
 			})
 
@@ -169,7 +182,7 @@ var BlockTest = func() bool {
 
 				BeforeEach(func() {
 					targetChain = NewChain("abc", testStore, cfg, log)
-					targetChain.parentBlock = block
+					targetChain.parentBlock = genesisBlock
 				})
 
 				It("should return error sender account is not found in the target chain", func() {
@@ -179,7 +192,7 @@ var BlockTest = func() bool {
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(500),
-					}, common.ChainOp{Chain: targetChain})
+					}, ChainOp{Chain: targetChain})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
 					Expect(err.Error()).To(Equal("exec: transaction error: index{0}: failed to get sender's account: account not found"))
@@ -193,7 +206,7 @@ var BlockTest = func() bool {
 				BeforeEach(func() {
 					targetChain = NewChain("abc", testStore, cfg, log)
 					// block.Header.ParentHash = "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2"
-					targetChain.parentBlock = block
+					targetChain.parentBlock = genesisBlock
 				})
 
 				BeforeEach(func() {
@@ -212,12 +225,12 @@ var BlockTest = func() bool {
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(500),
-					}, common.ChainOp{Chain: targetChain})
+					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.Header.StateRoot).ToNot(BeEmpty())
 					Expect(blk.Header.Number).To(Equal(uint64(2)))
-					Expect(blk.Header.ParentHash).To(Equal(block.Hash))
+					Expect(blk.Header.ParentHash).To(Equal(genesisBlock.Hash))
 				})
 			})
 
@@ -245,7 +258,7 @@ var BlockTest = func() bool {
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(500),
-					}, common.ChainOp{Chain: targetChain})
+					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.Header.StateRoot).ToNot(BeEmpty())

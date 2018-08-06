@@ -22,15 +22,6 @@ const (
 	TypeTx DocType = 0x2
 )
 
-// ChainOp defines a method option for passing a chain object
-type ChainOp struct {
-	Chain Chainer
-}
-
-// GetName returns the name of the op
-func (t ChainOp) GetName() string {
-	return "ChainOp"
-}
 
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and

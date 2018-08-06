@@ -13,6 +13,16 @@ import (
 	"github.com/ellcrys/elld/wire"
 )
 
+// ChainOp defines a method option for passing a chain object
+type ChainOp struct {
+	Chain *Chain
+}
+
+// GetName returns the name of the op
+func (t ChainOp) GetName() string {
+	return "ChainOp"
+}
+
 // Chain represents a chain of blocks
 // Implements common.Chainer
 type Chain struct {

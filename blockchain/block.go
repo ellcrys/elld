@@ -55,7 +55,8 @@ func (b *Blockchain) IsKnownBlock(hash string) (bool, string, error) {
 // as a CallOp.
 func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
 
-	var chain common.Chainer
+	// var emptyChain common.Chainer
+	var chain *Chain
 	var block *wire.Block
 
 	if params == nil {
@@ -73,12 +74,11 @@ func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...c
 	// Determine if an explicit chain is to be used as
 	// opposed to the main chain.
 	for _, opt := range opts {
-		if _opt, ok := opt.(common.ChainOp); ok {
+		if _opt, ok := opt.(ChainOp); ok {
 			chain = _opt.Chain
 			break
 		}
 	}
-
 	// If an explicit chain has not been set, we use
 	// the main chain
 	if chain == nil {
