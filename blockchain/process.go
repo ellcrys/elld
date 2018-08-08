@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/ellcrys/elld/elldb"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -52,7 +54,7 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 // @ops: 	The list of recent operations generated from other transactions of same block as tx.
 //			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
 // @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
-func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transition, chain common.Chainer) ([]common.Transition, error) {
+func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transition, chain common.Chainer, opts ...common.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var senderAcct, recipientAcct *wire.Account
@@ -76,7 +78,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	// find the sender account. Return error if sender account
 	// does not exist. This should never happen here as the caller must
 	// have validated all transactions in the containing block.
-	senderAcct, err = b.getAccount(chain, tx.From)
+	senderAcct, err = b.getAccount(chain, tx.From, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sender's account: %s", err)
 	}
@@ -89,7 +91,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 
 	// find the account of the recipient. If the recipient account does not
 	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
-	recipientAcct, err = b.getAccount(chain, tx.To)
+	recipientAcct, err = b.getAccount(chain, tx.To, opts...)
 	if err != nil {
 		if err != common.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -149,7 +151,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 // @ops: 	The list of recent operations generated from other transactions of same block as tx.
 //			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
 // @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
-func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Transition, chain common.Chainer) ([]common.Transition, error) {
+func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Transition, chain common.Chainer, opts ...common.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var recipientAcct *wire.Account
@@ -166,7 +168,7 @@ func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Trans
 
 	// find the account of the recipient. If the account does not exists,
 	// initialize a new account object for the recipient
-	recipientAcct, err = b.getAccount(chain, tx.To)
+	recipientAcct, err = b.getAccount(chain, tx.To, opts...)
 	if err != nil {
 		if err != common.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -231,7 +233,7 @@ func (b *Blockchain) opsToStateObjects(block *wire.Block, chain common.Chainer, 
 
 // processTransactions computes the operations that must be applied to the
 // hash tree and world state.
-func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain common.Chainer) ([]common.Transition, error) {
+func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain common.Chainer, opts ...common.CallOp) ([]common.Transition, error) {
 
 	var ops []common.Transition
 
@@ -244,9 +246,9 @@ func (b *Blockchain) processTransactions(txs []*wire.Transaction, chain common.C
 
 		switch tx.Type {
 		case wire.TxTypeBalance:
-			newOps, err = b.processBalanceTx(tx, ops, chain)
+			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
 		case wire.TxTypeAllocCoin:
-			newOps, err = b.processAllocCoinTx(tx, ops, chain)
+			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
 
 		if err != nil {
@@ -311,8 +313,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
 	if chainTip != nil && block.GetNumber() == chainTip.Number {
-		// create the new chain, set its root to the parent of the stale block
-		// and also add the stale block to it.
+		// create the new chain, set its root to the parent of the forked block
 		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
@@ -336,11 +337,13 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 
 	// Next we need to update the blockchain objects in the store
 	// as described by the state objects
+	var batchObjs []*elldb.KVObject
 	for _, so := range stateObjs {
-		if err := chain.store.Put(so.Key, so.Value, txOp); err != nil {
-			tx.Rollback()
-			return nil, fmt.Errorf("failed to add state object to store: %s", err)
-		}
+		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
+	}
+	if err := txOp.Tx.Put(batchObjs); err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf("failed to add state object to store: %s", err)
 	}
 
 	// At this point, the block is good to go. We add it to the chain
@@ -350,7 +353,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 	}
 
 	// Index the transactions so they can be queried directly
-	if err := chain.putTransactions(block.Transactions, txOp); err != nil {
+	if err := chain.PutTransactions(block.Transactions, txOp); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("put transaction failed: %s", err)
 	}
@@ -388,7 +391,6 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (common.Chainer, error) {
 	if err := b.validateBlock(block); err != nil {
 		return nil, err
 	}
-
 	// if the block has been previously rejected, return err
 	if b.isRejected(block) {
 		return nil, common.ErrBlockRejected
@@ -428,7 +430,7 @@ func (b *Blockchain) execBlock(chain common.Chainer, block *wire.Block, opts ...
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
-	ops, err := b.processTransactions(block.Transactions, chain)
+	ops, err := b.processTransactions(block.Transactions, chain, opts...)
 	if err != nil {
 		return util.EmptyHash, nil, fmt.Errorf("transaction error: %s", err)
 	}

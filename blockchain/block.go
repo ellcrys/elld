@@ -55,7 +55,6 @@ func (b *Blockchain) IsKnownBlock(hash string) (bool, string, error) {
 // as a CallOp.
 func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
 
-	// var emptyChain common.Chainer
 	var chain *Chain
 	var block *wire.Block
 

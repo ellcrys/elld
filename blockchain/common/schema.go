@@ -1,8 +1,7 @@
 package common
 
 import (
-	"fmt"
-	"strconv"
+	"github.com/vmihailenco/msgpack"
 
 	"github.com/ellcrys/elld/elldb"
 )
@@ -27,10 +26,22 @@ const (
 	ObjectTypeMeta = "meta"
 )
 
+// EncodeBlockNumber serializes a block number
+func EncodeBlockNumber(n uint64) []byte {
+	b, _ := msgpack.Marshal(n)
+	return b
+}
+
+// DecodeBlockNumber deserializes a block number
+func DecodeBlockNumber(encNum []byte) uint64 {
+	var bn uint64
+	msgpack.Unmarshal(encNum, &bn)
+	return bn
+}
+
 // MakeAccountKey constructs a key for an account
 func MakeAccountKey(blockNum uint64, chainID, address string) []byte {
-	bn := strconv.FormatUint(blockNum, 10)
-	return elldb.MakeKey([]byte(bn), []string{ObjectTypeChain, chainID, ObjectTypeAccount, address})
+	return elldb.MakeKey(EncodeBlockNumber(blockNum), []string{ObjectTypeChain, chainID, ObjectTypeAccount, address})
 }
 
 // QueryAccountKey constructs a key for finding account data in the store and hash tree.
@@ -45,8 +56,7 @@ func MakeBlockchainMetadataKey() []byte {
 
 // MakeBlockKey constructs a key for storing a block
 func MakeBlockKey(chainID string, blockNumber uint64) []byte {
-	key := []byte(fmt.Sprintf("%d", blockNumber))
-	return elldb.MakeKey(key, []string{ObjectTypeChain, chainID, ObjectTypeBlock})
+	return elldb.MakeKey(EncodeBlockNumber(blockNumber), []string{ObjectTypeChain, chainID, ObjectTypeBlock})
 }
 
 // MakeBlocksQueryKey constructs a key for storing a block
@@ -71,6 +81,5 @@ func MakeTxKey(chainID, txHash string) []byte {
 
 // MakeTreeKey constructs a key for recording state objects in a tree
 func MakeTreeKey(blockNumber uint64, objectType string) []byte {
-	bn := []byte(fmt.Sprintf("%d", blockNumber))
-	return append([]byte(bn), []byte(objectType)...)
+	return append(EncodeBlockNumber(blockNumber), []byte(objectType)...)
 }

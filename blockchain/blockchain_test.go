@@ -17,14 +17,13 @@ var BlockchainTest = func() bool {
 		Describe(".SetStore", func() {
 			It("should set store", func() {
 				bc := New(nil, cfg, log)
-				bc.SetStore(testStore)
-				Expect(bc.store).ToNot(BeNil())
+				bc.SetDB(db)
 			})
 		})
 
 		Describe(".addChain", func() {
 			It("should add chain", func() {
-				chain := NewChain("chain_id", testStore, cfg, log)
+				chain := NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 				Expect(bc.chains).To(HaveLen(1))
 				err = bc.addChain(chain)
@@ -38,7 +37,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_id", testStore, cfg, log)
+				chain = NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 				err = bc.addChain(chain)
 				Expect(err).To(BeNil())
@@ -57,7 +56,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_id", testStore, cfg, log)
+				chain = NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 			})
 
@@ -75,8 +74,8 @@ var BlockchainTest = func() bool {
 
 			BeforeEach(func() {
 				bc.chains = make(map[string]*Chain)
-				chain := NewChain("c1", testStore, cfg, log)
-				block2 = makeTestBlock(bc, chain, &common.GenerateBlockParams{
+				chain := NewChain("c1", db, cfg, log)
+				block2 = MakeTestBlock(bc, chain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
 					},
@@ -91,14 +90,14 @@ var BlockchainTest = func() bool {
 				bc := New(nil, cfg, log)
 				err = bc.Up()
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("store has not been initialized"))
+				Expect(err.Error()).To(Equal("db has not been initialized"))
 			})
 
 			When("genesis block is not valid: block number is > 1", func() {
 				BeforeEach(func() {
 					bc.chains = make(map[string]*Chain)
-					chain := NewChain("c1", testStore, cfg, log)
-					block := makeTestBlock(bc, chain, &common.GenerateBlockParams{
+					chain := NewChain("c1", db, cfg, log)
+					block := MakeTestBlock(bc, chain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
 						},
@@ -121,13 +120,15 @@ var BlockchainTest = func() bool {
 			When("genesis block is not valid: sender account does not exist", func() {
 				BeforeEach(func() {
 					bc.chains = make(map[string]*Chain)
-					chain := NewChain("c1", testStore, cfg, log)
+					chain := NewChain("c1", db, cfg, log)
+
 					Expect(bc.putAccount(1, chain, &wire.Account{
 						Type:    wire.AccountTypeBalance,
 						Address: sender.Addr(),
 						Balance: "1000",
 					})).To(BeNil())
-					block := makeTestBlock(bc, chain, &common.GenerateBlockParams{
+
+					block := MakeTestBlock(bc, chain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
 						},
@@ -153,8 +154,8 @@ var BlockchainTest = func() bool {
 
 				BeforeEach(func() {
 					bc.chains = make(map[string]*Chain)
-					chain := NewChain("c1", testStore, cfg, log)
-					block := makeTestBlock(bc, chain, &common.GenerateBlockParams{
+					chain := NewChain("c1", db, cfg, log)
+					block := MakeTestBlock(bc, chain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
 						},
@@ -176,8 +177,8 @@ var BlockchainTest = func() bool {
 			It("should load all chains", func() {
 				GenesisBlock = block2
 
-				c1 := NewChain("c1", testStore, cfg, log)
-				c2 := NewChain("c2", testStore, cfg, log)
+				c1 := NewChain("c1", db, cfg, log)
+				c2 := NewChain("c2", db, cfg, log)
 
 				err = bc.saveChain(c1, "", 0)
 				Expect(err).To(BeNil())
@@ -244,7 +245,7 @@ var BlockchainTest = func() bool {
 			var chain2 *Chain
 
 			BeforeEach(func() {
-				chain2 = NewChain("chain2", testStore, cfg, log)
+				chain2 = NewChain("chain2", db, cfg, log)
 				err = bc.addChain(chain2)
 				Expect(err).To(BeNil())
 
@@ -254,7 +255,7 @@ var BlockchainTest = func() bool {
 					Balance: "1000",
 				})).To(BeNil())
 
-				b1 = makeTestBlock(bc, chain2, &common.GenerateBlockParams{
+				b1 = MakeTestBlock(bc, chain2, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730723),
 					},
@@ -291,7 +292,7 @@ var BlockchainTest = func() bool {
 				var b2 *wire.Block
 
 				BeforeEach(func() {
-					b2 = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					b2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 						},
@@ -324,13 +325,13 @@ var BlockchainTest = func() bool {
 			})
 
 			BeforeEach(func() {
-				chain = NewChain("chain_2", testStore, cfg, log)
+				chain = NewChain("chain_2", db, cfg, log)
 				err := bc.saveChain(chain, "", 0)
 				Expect(err).To(BeNil())
 
-				subChain = NewChain("sub_chain", testStore, cfg, log)
+				subChain = NewChain("sub_chain", db, cfg, log)
 
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -385,7 +386,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", testStore, cfg, log)
+				chain = NewChain("chain_a", db, cfg, log)
 				err := bc.saveChain(chain, "", 0)
 				Expect(err).To(BeNil())
 			})
@@ -408,7 +409,7 @@ var BlockchainTest = func() bool {
 			var parentBlock, block, unknownParent *wire.Block
 
 			BeforeEach(func() {
-				parentBlock = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				parentBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -418,7 +419,7 @@ var BlockchainTest = func() bool {
 					Difficulty: new(big.Int).SetInt64(500),
 				})
 
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -429,7 +430,7 @@ var BlockchainTest = func() bool {
 					Difficulty:         new(big.Int).SetInt64(500),
 				})
 
-				unknownParent = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				unknownParent = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -459,8 +460,14 @@ var BlockchainTest = func() bool {
 				Expect(err.Error()).To(Equal("initial block and parent are not related"))
 			})
 
+			It("should return error if parent chain is nil", func() {
+				_, err = bc.newChain(nil, block, parentBlock, nil)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("parent chain cannot be nil"))
+			})
+
 			It("should successfully return a new chain", func() {
-				chain, err := bc.newChain(nil, block, parentBlock, nil)
+				chain, err := bc.newChain(nil, block, parentBlock, genesisChain)
 				Expect(err).To(BeNil())
 				Expect(chain).ToNot(BeNil())
 				Expect(chain.parentBlock).To(Equal(parentBlock))
@@ -472,9 +479,9 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", testStore, cfg, log)
+				chain = NewChain("chain_a", db, cfg, log)
 
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -485,7 +492,7 @@ var BlockchainTest = func() bool {
 				})
 
 				chain.append(block)
-				err = chain.putTransactions(block.Transactions)
+				err = chain.PutTransactions(block.Transactions)
 				Expect(err).To(BeNil())
 			})
 
@@ -523,7 +530,7 @@ var BlockchainTest = func() bool {
 			// 	})
 
 			// 	BeforeEach(func() {
-			// 		chainA = NewChain("chain_a", testStore, cfg, log)
+			// 		chainA = NewChain("chain_a", db, cfg, log)
 			// 		err := bc.saveChain(chainA, "", 0)
 			// 		Expect(err).To(BeNil())
 			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
@@ -532,7 +539,7 @@ var BlockchainTest = func() bool {
 			// 	})
 
 			// 	BeforeEach(func() {
-			// 		chainB = NewChain("chain_b", testStore, cfg, log)
+			// 		chainB = NewChain("chain_b", db, cfg, log)
 			// 		err := bc.saveChain(chainB, "", 0)
 			// 		Expect(err).To(BeNil())
 			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
@@ -556,11 +563,11 @@ var BlockchainTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					chainA = NewChain("chain_a", testStore, cfg, log)
+					chainA = NewChain("chain_a", db, cfg, log)
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
 
-					block := makeTestBlock(bc, chainA, &common.GenerateBlockParams{
+					block := MakeTestBlock(bc, chainA, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730724),
 						},
@@ -575,11 +582,11 @@ var BlockchainTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					chainB = NewChain("chain_b", testStore, cfg, log)
+					chainB = NewChain("chain_b", db, cfg, log)
 					err := bc.saveChain(chainB, "", 0)
 					Expect(err).To(BeNil())
 
-					block := makeTestBlock(bc, chainB, &common.GenerateBlockParams{
+					block := MakeTestBlock(bc, chainB, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730725),
 						},
@@ -594,11 +601,11 @@ var BlockchainTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					chainC = NewChain("chain_c", testStore, cfg, log)
+					chainC = NewChain("chain_c", db, cfg, log)
 					err := bc.saveChain(chainC, "", 0)
 					Expect(err).To(BeNil())
 
-					block := makeTestBlock(bc, chainC, &common.GenerateBlockParams{
+					block := MakeTestBlock(bc, chainC, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730726),
 						},
@@ -610,7 +617,7 @@ var BlockchainTest = func() bool {
 					err = chainC.append(block)
 					Expect(err).To(BeNil())
 
-					block2 := makeTestBlock(bc, chainC, &common.GenerateBlockParams{
+					block2 := MakeTestBlock(bc, chainC, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730727),
 						},

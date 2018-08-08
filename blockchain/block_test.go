@@ -20,7 +20,7 @@ var BlockTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -38,14 +38,14 @@ var BlockTest = func() bool {
 			})
 
 			It("should return true of block exists in a chain", func() {
-				chain2 := NewChain("chain2", testStore, cfg, log)
+				chain2 := NewChain("chain2", db, cfg, log)
 				Expect(err).To(BeNil())
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
 
 				err = bc.addChain(chain2)
 				Expect(err).To(BeNil())
-				err = chain2.store.PutBlock(chain2.id, block)
+				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
 				has, err := bc.HaveBlock(block.GetHash().HexStr())
@@ -58,7 +58,7 @@ var BlockTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -77,14 +77,14 @@ var BlockTest = func() bool {
 			})
 
 			It("should return true when block exists in a chain", func() {
-				chain2 := NewChain("chain2", testStore, cfg, log)
+				chain2 := NewChain("chain2", db, cfg, log)
 				Expect(err).To(BeNil())
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
 
 				err = bc.addChain(chain2)
 				Expect(err).To(BeNil())
-				err = chain2.store.PutBlock(chain2.id, block)
+				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
 				has, err := bc.HaveBlock(block.GetHash().HexStr())
@@ -181,7 +181,7 @@ var BlockTest = func() bool {
 				var targetChain *Chain
 
 				BeforeEach(func() {
-					targetChain = NewChain("abc", testStore, cfg, log)
+					targetChain = NewChain("abc", db, cfg, log)
 					targetChain.parentBlock = genesisBlock
 				})
 
@@ -204,7 +204,7 @@ var BlockTest = func() bool {
 				var targetChain *Chain
 
 				BeforeEach(func() {
-					targetChain = NewChain("abc", testStore, cfg, log)
+					targetChain = NewChain("abc", db, cfg, log)
 					// block.Header.ParentHash = "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2"
 					targetChain.parentBlock = genesisBlock
 				})
@@ -239,7 +239,7 @@ var BlockTest = func() bool {
 				var targetChain *Chain
 
 				BeforeEach(func() {
-					targetChain = NewChain("abc", testStore, cfg, log)
+					targetChain = NewChain("abc", db, cfg, log)
 				})
 
 				BeforeEach(func() {

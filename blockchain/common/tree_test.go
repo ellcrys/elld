@@ -8,6 +8,7 @@ import (
 )
 
 var _ = Describe("Tree", func() {
+
 	Describe(".Add", func() {
 		It("should add all items", func() {
 			items := []merkletree.Content{TreeItem([]byte("a")), TreeItem([]byte("b"))}

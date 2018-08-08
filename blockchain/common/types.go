@@ -23,11 +23,41 @@ type CallOp interface {
 type TxOp struct {
 	Tx        elldb.Tx
 	CanFinish bool
+	finished  bool
+}
+
+// Closed gets the status of the transaction
+func (t TxOp) Closed() bool {
+	return t.finished
 }
 
 // GetName returns the name of the op
 func (t TxOp) GetName() string {
 	return "TxOp"
+}
+
+// Commit commits the transaction if it has not been done before.
+// It ignores the call if CanFinish is false.
+func (t TxOp) Commit() error {
+	if !t.CanFinish || t.finished {
+		return nil
+	}
+	if err := t.Tx.Commit(); err != nil {
+		return err
+	}
+	t.finished = true
+	return nil
+}
+
+// Rollback rolls back the transaction if it has not been done before.
+// It ignores the call if CanFinish is false.
+func (t TxOp) Rollback() error {
+	if !t.CanFinish || t.finished {
+		return nil
+	}
+	t.Tx.Rollback()
+	t.finished = true
+	return nil
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice
@@ -76,8 +106,8 @@ type Chainer interface {
 	// NewStateTree returns a new tree
 	NewStateTree(noBackLink bool, opts ...CallOp) (*Tree, error)
 
-	// GetTipHeader gets the header of the tip block
-	GetTipHeader(opts ...CallOp) (*wire.Header, error)
+	// Current gets the header of the tip block
+	Current(opts ...CallOp) (*wire.Header, error)
 
 	// GetID gets the chain ID
 	GetID() string
@@ -90,6 +120,18 @@ type Chainer interface {
 
 	// GetParentInfo gets the chain's parent information
 	GetParentInfo() *ChainInfo
+
+	// CreateAccount creates an account on a target block
+	CreateAccount(targetBlockNum uint64, account *wire.Account, opts ...CallOp) error
+
+	// GetAccount gets an account
+	GetAccount(address string, opts ...CallOp) (*wire.Account, error)
+
+	// PutTransactions stores a collection of transactions
+	PutTransactions(txs []*wire.Transaction, opts ...CallOp) error
+
+	// GetTransaction gets a transaction by hash
+	GetTransaction(hash string) *wire.Transaction
 }
 
 // Blockchain defines an interface for a blockchain manager
@@ -116,4 +158,10 @@ type Blockchain interface {
 	// GenerateBlock creates a new block for a target chain.
 	// The Chain is specified by passing to ChainOp.
 	GenerateBlock(*GenerateBlockParams, ...CallOp) (*wire.Block, error)
+
+	// ChainReader gets a Reader for reading the main chain
+	ChainReader() ChainReader
+
+	// GetChainsReader gets chain reader for all known chains
+	GetChainsReader() (readers []ChainReader)
 }

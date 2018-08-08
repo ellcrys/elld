@@ -35,7 +35,7 @@ var ChainTest = func() bool {
 			Context("with empty chain", func() {
 				When("and back linking enabled", func() {
 					It("should successfully create a tree, added 2 items and return root", func() {
-						emptyChain := NewChain("my_chain", testStore, cfg, log)
+						emptyChain := NewChain("my_chain", db, cfg, log)
 						tree, err := emptyChain.NewStateTree(false)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
@@ -50,7 +50,7 @@ var ChainTest = func() bool {
 
 				When("and back linking disabled", func() {
 					It("should successfully create a tree and same root as an empty chain", func() {
-						emptyChain := NewChain("my_chain", testStore, cfg, log)
+						emptyChain := NewChain("my_chain", db, cfg, log)
 						tree, err := emptyChain.NewStateTree(true)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
@@ -85,7 +85,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{71, 8, 146, 165, 83, 85, 14, 8, 205, 18, 197, 148, 185, 110, 90, 144, 240, 24, 18, 227, 244, 250, 225, 240, 229, 224, 243, 182, 202, 192, 226, 154}
+							expected := util.Hash{160, 11, 29, 115, 220, 4, 126, 243, 116, 182, 16, 77, 80, 58, 165, 104, 68, 64, 109, 64, 214, 208, 168, 170, 86, 185, 40, 236, 101, 140, 46, 150}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 
@@ -110,7 +110,7 @@ var ChainTest = func() bool {
 
 		Describe(".append", func() {
 			BeforeEach(func() {
-				genesisBlock = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
 					},
@@ -165,7 +165,7 @@ var ChainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", testStore, cfg, log)
+				chain = NewChain("chain_a", db, cfg, log)
 			})
 
 			It("should return zero if chain has no block", func() {
