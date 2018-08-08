@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -26,7 +27,6 @@ var _ = Describe("Blockcode", func() {
 
 			validManifest := &Manifest{Lang: "go", LangVersion: "1.10.2", PublicFuncs: []string{"some_func"}}
 			Expect(validateManifest(validManifest)).To(BeNil())
-
 		})
 	})
 
@@ -61,11 +61,11 @@ var _ = Describe("Blockcode", func() {
 		})
 	})
 
-	Describe(".Len", func() {
+	Describe(".Bytes", func() {
 		It("should return 3072", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Len()).To(Equal(3072))
+			Expect(bc.Size()).To(Equal(3072))
 		})
 	})
 
@@ -81,7 +81,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return Hash", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Hash()).To(Equal([]byte{148, 25, 211, 248, 52, 247, 87, 232, 85, 122, 54, 128, 104, 171, 53, 68, 243, 150, 28, 66, 217, 58, 223, 47, 111, 118, 36, 95, 219, 145, 83, 185}))
+			Expect(bc.Hash()).To(Equal(util.Hash{5, 125, 44, 203, 100, 69, 63, 216, 32, 34, 100, 113, 187, 108, 242, 91, 70, 218, 137, 211, 122, 143, 179, 219, 176, 130, 50, 196, 252, 223, 231, 80}))
 		})
 	})
 
@@ -89,7 +89,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return ID", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.ID()).To(Equal("9419d3f834f757e8557a368068ab3544f3961c42d93adf2f6f76245fdb9153b9"))
+			Expect(bc.ID()).To(Equal("0x057d2ccb64453fd820226471bb6cf25b46da89d37a8fb3dbb08232c4fcdfe750"))
 		})
 	})
 

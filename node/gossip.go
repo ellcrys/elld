@@ -3,7 +3,6 @@ package node
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -69,7 +68,7 @@ func (g *Gossip) PM() *Manager {
 
 // sign takes an object, marshals it to JSON and signs it
 func (g *Gossip) sign(msg interface{}) []byte {
-	bs, _ := json.Marshal(msg)
+	bs, _ := msgpack.Marshal(msg)
 	key := g.Engine().PrivKey()
 	sig, _ := key.Sign(bs)
 	return sig
@@ -77,7 +76,7 @@ func (g *Gossip) sign(msg interface{}) []byte {
 
 // verify verifies a signature
 func (g *Gossip) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
-	bs, _ := json.Marshal(msg)
+	bs, _ := msgpack.Marshal(msg)
 	result, err := pKey.Verify(bs, sig)
 	if err != nil {
 		return fmt.Errorf("failed to verify -> %s", err)
