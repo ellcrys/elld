@@ -1,7 +1,6 @@
 package accountmgr
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	funk "github.com/thoas/go-funk"
+	"github.com/vmihailenco/msgpack"
 )
 
 var (
@@ -118,7 +118,7 @@ func (sa *StoredAccount) Decrypt(passphrase string) error {
 
 	// attempt to decode to ensure content is json encoded
 	var accountData map[string]string
-	if err := json.Unmarshal(acctBytesBase58Dec, &accountData); err != nil {
+	if err := msgpack.Unmarshal(acctBytesBase58Dec, &accountData); err != nil {
 		return fmt.Errorf("unable to parse account data")
 	}
 
