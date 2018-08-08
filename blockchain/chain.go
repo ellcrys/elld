@@ -240,7 +240,6 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tr
 				prevRoot = c.parentBlock.Header.StateRoot
 			}
 		} else {
-			// Decode the state root to byte equivalent
 			prevRoot = tipHeader.StateRoot
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode chain tip state root")

@@ -224,9 +224,9 @@ func (b *Blockchain) HybridMode() (bool, error) {
 	return h.Number >= b.cfg.Chain.TargetHybridModeBlock, nil
 }
 
-// findBlockChainByHash finds the chain where the block with the hash
+// findChainByBlockHash finds the chain where the block with the hash
 // provided hash exist on. It also returns the header of highest block of the chain.
-func (b *Blockchain) findBlockChainByHash(hash string) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
+func (b *Blockchain) findChainByBlockHash(hash string) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 

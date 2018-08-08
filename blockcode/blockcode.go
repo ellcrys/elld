@@ -8,8 +8,6 @@ package blockcode
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/asn1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/thoas/go-funk"
+	"github.com/vmihailenco/msgpack"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
@@ -43,30 +42,29 @@ type Blockcode struct {
 	Manifest *Manifest
 }
 
-type asn1Blockcode struct {
-	Code     []byte
-	Manifest []byte
-}
-
 // Manifest describes the blockcode
 type Manifest struct {
-	Lang        Lang     `json:"lang"`
-	LangVersion string   `json:"langVer"`
-	PublicFuncs []string `json:"publicFuncs"`
+	Lang        Lang     `msgpack:"lang" json:"lang"`
+	LangVersion string   `msgpack:"langVer" json:"langVer"`
+	PublicFuncs []string `msgpack:"publicFuncs" json:"publicFuncs"`
 }
 
-// Len returns the bytecode size
-func (bc *Blockcode) Len() int {
+// Bytes returns the bytes representation of the manifest
+func (m *Manifest) Bytes() []byte {
+	bs, _ := msgpack.Marshal(m)
+	return bs
+}
+
+// Size returns the bytecode size
+func (bc *Blockcode) Size() int {
 	return len(bc.code)
 }
 
-// Bytes return the ASN.1 marshalled representation of the Blockcode
+// Bytes return bytes representation of the Blockcode
 func (bc *Blockcode) Bytes() []byte {
-
-	manifestBS, _ := json.Marshal(bc.Manifest)
-	result, err := asn1.Marshal(asn1Blockcode{
+	result, err := msgpack.Marshal([]interface{}{
 		bc.code,
-		manifestBS,
+		bc.Manifest.Bytes(),
 	})
 	if err != nil {
 		panic(err)
@@ -80,15 +78,15 @@ func (bc *Blockcode) GetCode() []byte {
 }
 
 // Hash returns the SHA256 hash of the blockcode
-func (bc *Blockcode) Hash() []byte {
+func (bc *Blockcode) Hash() util.Hash {
 	bs := bc.Bytes()
 	hash := sha256.Sum256(bs)
-	return hash[:]
+	return util.BytesToHash(hash[:])
 }
 
 // ID returns the hex representation of Hash()
 func (bc *Blockcode) ID() string {
-	return hex.EncodeToString(bc.Hash())
+	return bc.Hash().HexStr()
 }
 
 // Read un-tars the code into destination
@@ -102,21 +100,24 @@ func (bc *Blockcode) Read(destination string) error {
 	return archiver.Tar.Read(buff, destination)
 }
 
-// FromBytes creates a Blockcode from a slice of bytes produced by Blockcode.Bytes
+// FromBytes creates a Blockcode from serialized Blockcode
 func FromBytes(bs []byte) (*Blockcode, error) {
 
-	var asn1Bc asn1Blockcode
-	if _, err := asn1.Unmarshal(bs, &asn1Bc); err != nil {
+	var data []interface{}
+	if err := msgpack.Unmarshal(bs, &data); err != nil {
 		return nil, err
 	}
 
+	var code = data[0]
 	var manifest Manifest
-	if err := json.Unmarshal(asn1Bc.Manifest, &manifest); err != nil {
+
+	// decode the manifest
+	if err := msgpack.Unmarshal(data[1].([]byte), &manifest); err != nil {
 		return nil, err
 	}
 
 	return &Blockcode{
-		code:     asn1Bc.Code,
+		code:     code.([]byte),
 		Manifest: &manifest,
 	}, nil
 }

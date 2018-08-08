@@ -3,7 +3,6 @@ package wire
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -72,14 +71,6 @@ func (b *Block) GetHash() util.Hash {
 // preceded by 0x
 func (b *Block) HashToHex() string {
 	return b.GetHash().HexStr()
-}
-
-// BlockFromString unmarshal a json string into a Block
-func BlockFromString(str string) (*Block, error) {
-	var block Block
-	var err error
-	err = json.Unmarshal([]byte(str), &block)
-	return &block, err
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.

@@ -283,7 +283,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 		// find the chain where the parent of the block exists on. If a chain is not found,
 		// then the block is considered an orphan. If the chain is found but the block at the tip
 		// is has the same or a greater block number compared to the new block, it is considered a stale block.
-		parentBlock, chain, chainTip, err = b.findBlockChainByHash(block.Header.ParentHash.HexStr())
+		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.Header.ParentHash.HexStr())
 		if err != nil {
 			if err != common.ErrBlockNotFound {
 				return nil, err

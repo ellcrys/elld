@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	r "math/rand"
@@ -35,13 +34,13 @@ func init() {
 
 // ObjectToBytes returns json encoded representation of an object
 func ObjectToBytes(s interface{}) []byte {
-	b, _ := json.Marshal(s)
+	b, _ := msgpack.Marshal(s)
 	return b
 }
 
 // BytesToObject converts byte slice to an object
 func BytesToObject(bs []byte, dest interface{}) error {
-	return json.Unmarshal(bs, dest)
+	return msgpack.Unmarshal(bs, dest)
 }
 
 // RandString is like RandBytes but returns string
