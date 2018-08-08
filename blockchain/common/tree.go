@@ -34,7 +34,7 @@ type Tree struct {
 }
 
 // NewTree creates an instance of Tree and accepts storage
-// module that implements store.Storer.
+// module that implements common.Storer.
 func NewTree() *Tree {
 	return &Tree{}
 }

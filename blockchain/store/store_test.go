@@ -18,7 +18,8 @@ var _ = Describe("Leveldb", func() {
 	var err error
 	var db elldb.DB
 	var cfg *config.EngineConfig
-	var store *Store
+	var store *ChainStore
+	var chainID = "main"
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -36,20 +37,105 @@ var _ = Describe("Leveldb", func() {
 	})
 
 	BeforeEach(func() {
-		store, err = New(db)
+		store = New(db, chainID)
 		Expect(err).To(BeNil())
+	})
+
+	Describe(".PutTransactions", func() {
+
+		var txs = []*wire.Transaction{
+			&wire.Transaction{To: "to_addr", From: "from_addr"},
+			&wire.Transaction{To: "to_addr_2", From: "from_addr_2"},
+		}
+
+		It("should successfully put transactions", func() {
+			err = store.PutTransactions(txs)
+			Expect(err).To(BeNil())
+
+			r := store.db.GetByPrefix(common.MakeTxKey(store.chainID, txs[0].ID()))
+			var tx wire.Transaction
+			r[0].Scan(&tx)
+			Expect(&tx).To(Equal(txs[0]))
+
+			r = store.db.GetByPrefix(common.MakeTxKey(store.chainID, txs[1].ID()))
+			r[0].Scan(&tx)
+			Expect(&tx).To(Equal(txs[1]))
+		})
+	})
+
+	Describe(".GetTransaction", func() {
+
+		var txs = []*wire.Transaction{
+			&wire.Transaction{To: "to_addr", From: "from_addr"},
+			&wire.Transaction{To: "to_addr_2", From: "from_addr_2"},
+		}
+
+		It("should successfully put transactions", func() {
+			err = store.PutTransactions(txs)
+			Expect(err).To(BeNil())
+
+			tx := store.GetTransaction(txs[0].ID())
+			Expect(tx).ToNot(BeNil())
+			Expect(tx).To(Equal(txs[0]))
+
+			tx = store.GetTransaction(txs[1].ID())
+			Expect(tx).ToNot(BeNil())
+			Expect(tx).To(Equal(txs[1]))
+		})
+	})
+
+	Describe(".CreateAccount", func() {
+		It("should successfully create an account", func() {
+			var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
+			err = store.CreateAccount(1, acct)
+			Expect(err).To(BeNil())
+
+			r := store.db.GetByPrefix(common.MakeAccountKey(1, store.chainID, "addr"))
+			var found wire.Account
+			r[0].Scan(&found)
+			Expect(&found).To(Equal(acct))
+		})
+	})
+
+	Describe(".GetAccount", func() {
+		Context("no existing account in store", func() {
+			It("should return the only account", func() {
+				var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
+				err = store.CreateAccount(1, acct)
+				Expect(err).To(BeNil())
+
+				found, err := store.GetAccount(acct.Address)
+				Expect(err).To(BeNil())
+				Expect(found).To(Equal(acct))
+			})
+		})
+
+		Context("with multiple account of same address", func() {
+			It("should contain account with the highest block number", func() {
+				var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
+				err = store.CreateAccount(1, acct)
+				Expect(err).To(BeNil())
+
+				var acct2 = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr2"}
+				err = store.CreateAccount(2, acct2)
+				Expect(err).To(BeNil())
+
+				found, err := store.GetAccount(acct2.Address)
+				Expect(err).To(BeNil())
+				Expect(found).To(Equal(acct2))
+			})
+		})
 	})
 
 	Describe(".PutBlock", func() {
 
-		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
 		}
 
 		It("should put block without error", func() {
-			err = store.PutBlock(chainID, block)
+			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
 			Expect(result).To(HaveLen(1))
@@ -61,7 +147,7 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should return nil and not add block when another block with same number exists", func() {
-			err = store.PutBlock(chainID, block)
+			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
 			Expect(result).To(HaveLen(1))
@@ -76,7 +162,7 @@ var _ = Describe("Leveldb", func() {
 				Hash:   util.StrToHash("some_hash"),
 			}
 
-			err = store.PutBlock(chainID, block2)
+			err = store.PutBlock(block2)
 			Expect(err).To(BeNil())
 			result = store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
 			Expect(result).To(HaveLen(1))
@@ -84,6 +170,35 @@ var _ = Describe("Leveldb", func() {
 			err = json.Unmarshal(result[0].Value, &storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).ToNot(Equal(block2))
+		})
+	})
+
+	Describe(".Current", func() {
+
+		When("two blocks are in the chain", func() {
+			var block = &wire.Block{Header: &wire.Header{Number: 1}, Hash: util.StrToHash("hash")}
+			var block2 = &wire.Block{Header: &wire.Header{Number: 2}, Hash: util.StrToHash("hash2")}
+
+			BeforeEach(func() {
+				err = store.PutBlock(block)
+				Expect(err).To(BeNil())
+				err = store.PutBlock(block2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return most recently added block", func() {
+				cb, err := store.Current()
+				Expect(err).To(BeNil())
+				Expect(cb).To(Equal(block2))
+			})
+		})
+
+		When("when no block is in the chain", func() {
+			It("should return ErrBlockNotFound", func() {
+				_, err := store.Current()
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(common.ErrBlockNotFound))
+			})
 		})
 	})
 
@@ -96,33 +211,33 @@ var _ = Describe("Leveldb", func() {
 		}
 
 		BeforeEach(func() {
-			err = store.PutBlock(chainID, block)
+			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should get block by number", func() {
-			storedBlock, err := store.GetBlock(chainID, block.Header.Number)
+			storedBlock, err := store.GetBlock(block.Header.Number)
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
 
 		It("should get block by hash", func() {
-			storedBlock, err := store.GetBlockByHash(chainID, block.GetHash().HexStr())
+			storedBlock, err := store.GetBlockByHash(block.GetHash().HexStr())
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
 
 		It("with block hash; return error if block does not exist", func() {
-			b, err := store.GetBlockByHash(chainID, "unknown")
+			b, err := store.GetBlockByHash("unknown")
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(common.ErrBlockNotFound))
 			Expect(b).To(BeNil())
 		})
 
 		It("with block number; return error if block does not exist", func() {
-			_, err = store.GetBlock(chainID, 10000)
+			_, err = store.GetBlock(10000)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(common.ErrBlockNotFound))
 		})
@@ -132,10 +247,11 @@ var _ = Describe("Leveldb", func() {
 				Header: &wire.Header{Number: 2},
 				Hash:   util.StrToHash("hash"),
 			}
-			err = store.PutBlock(chainID, block2)
+
+			err = store.PutBlock(block2)
 			Expect(err).To(BeNil())
 
-			storedBlock, err := store.GetBlock(chainID, 0)
+			storedBlock, err := store.GetBlock(0)
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 			Expect(storedBlock).To(Equal(block2))
@@ -151,14 +267,14 @@ var _ = Describe("Leveldb", func() {
 		}
 
 		BeforeEach(func() {
-			err = store.PutBlock(chainID, block)
+			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should get block header by number", func() {
-			storedBlockHeader, err := store.GetBlockHeader(chainID, block.Header.Number)
+			storedBlockHeader, err := store.GetHeader(block.Header.Number)
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))
@@ -173,81 +289,53 @@ var _ = Describe("Leveldb", func() {
 		}
 
 		BeforeEach(func() {
-			err = store.PutBlock(chainID, block)
+			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should get block by hash", func() {
-			storedBlockHeader, err := store.GetBlockHeaderByHash(chainID, block.GetHash().HexStr())
+			storedBlockHeader, err := store.GetHeaderByHash(block.GetHash().HexStr())
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))
 		})
 	})
 
-	Describe(".Put", func() {
+	Describe(".put", func() {
 		It("should successfully store object", func() {
 			key := elldb.MakeKey([]byte("my_key"), []string{"block", "account"})
-			err = store.Put(key, []byte("stuff"))
+			err = store.put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 		})
 	})
 
-	Describe(".Get", func() {
+	Describe(".get", func() {
 
 		It("should successfully get object by prefix", func() {
 			key := elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account"})
-			err = store.Put(key, []byte("stuff"))
+			err = store.put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
 			var result = []*elldb.KVObject{}
-			store.Get([]byte("an_obj"), &result)
+			store.get([]byte("an_obj"), &result)
 			Expect(result).To(HaveLen(1))
 
 			result = []*elldb.KVObject{}
-			store.Get(elldb.MakePrefix([]string{"an_obj", "account"}), &result)
+			store.get(elldb.MakePrefix([]string{"an_obj", "account"}), &result)
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should successfully get object by key", func() {
 			key := elldb.MakeKey([]byte("my_key"), []string{"block", "account"})
-			err = store.Put(key, []byte("stuff"))
+			err = store.put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
 			var result = []*elldb.KVObject{}
-			store.Get(key, &result)
+			store.get(key, &result)
 			Expect(result).To(HaveLen(1))
 		})
 	})
 
-	Describe(".GetFirstOrLast", func() {
-
-		var key, key2 []byte
-
-		BeforeEach(func() {
-			key = elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account", "1"})
-			err = store.Put(key, []byte("stuff"))
-			Expect(err).To(BeNil())
-
-			key2 = elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account", "2"})
-			err = store.Put(key2, []byte("stuff2"))
-			Expect(err).To(BeNil())
-		})
-
-		It("should return the first object when first arg. is true", func() {
-			var result = &elldb.KVObject{}
-			store.GetFirstOrLast(true, []byte("an_obj"), result)
-			Expect(result).ToNot(BeNil())
-			Expect(result.GetKey()).To(Equal(key))
-		})
-
-		It("should return the last object when last arg. is false", func() {
-			var result = &elldb.KVObject{}
-			store.GetFirstOrLast(false, []byte("an_obj"), result)
-			Expect(result).ToNot(BeNil())
-			Expect(result.GetKey()).To(Equal(key2))
-		})
-	})
 })

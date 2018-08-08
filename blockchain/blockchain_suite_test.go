@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -22,7 +21,7 @@ import (
 var log logger.Logger
 var cfg *config.EngineConfig
 var err error
-var testStore store.Storer
+var testStore common.ChainStorer
 var db elldb.DB
 var bc *Blockchain
 var chainID = "chain1"
@@ -37,7 +36,7 @@ func TestBlockchain(t *testing.T) {
 	RunSpecs(t, "Blockchain Suite")
 }
 
-func makeTestBlock(bc common.Blockchain, chain *Chain, gp *common.GenerateBlockParams) *wire.Block {
+func MakeTestBlock(bc common.Blockchain, chain *Chain, gp *common.GenerateBlockParams) *wire.Block {
 	blk, err := bc.GenerateBlock(gp, ChainOp{Chain: chain})
 	if err != nil {
 		panic(err)
@@ -58,8 +57,6 @@ var _ = Describe("Blockchain", func() {
 		db = elldb.NewDB(cfg.ConfigDir())
 		err = db.Open("")
 		Expect(err).To(BeNil())
-		testStore, err = store.New(db)
-		Expect(err).To(BeNil())
 	})
 
 	// Initialize the default test transaction pool
@@ -68,7 +65,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		txPool = txpool.NewTxPool(100)
 		bc = New(txPool, cfg, log)
-		bc.SetStore(testStore)
+		bc.SetDB(db)
 	})
 
 	// Create default test block
@@ -82,7 +79,7 @@ var _ = Describe("Blockchain", func() {
 	// the blockchain. Also append the test block
 	// to the chain
 	BeforeEach(func() {
-		genesisChain = NewChain(chainID, testStore, cfg, log)
+		genesisChain = NewChain(chainID, db, cfg, log)
 		bc.addChain(genesisChain)
 		bc.bestChain = genesisChain
 	})
@@ -97,7 +94,7 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	BeforeEach(func() {
-		genesisBlock = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+		genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 			Transactions: []*wire.Transaction{
 				wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730722),
 			},

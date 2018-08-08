@@ -68,7 +68,7 @@ var BlockValidatorTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730722),
 					},

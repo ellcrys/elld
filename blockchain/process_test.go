@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/jinzhu/copier"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
+	"github.com/jinzhu/copier"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -312,7 +310,7 @@ var ProcessTest = func() bool {
 				var block *wire.Block
 
 				BeforeEach(func() {
-					block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 						},
@@ -338,7 +336,7 @@ var ProcessTest = func() bool {
 			var block *wire.Block
 
 			BeforeEach(func() {
-				block = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730722),
 					},
@@ -395,7 +393,7 @@ var ProcessTest = func() bool {
 					var staleBlock2 wire.Block
 
 					BeforeEach(func() {
-						block2 := makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+						block2 := MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 							},
@@ -407,7 +405,7 @@ var ProcessTest = func() bool {
 						err = genesisChain.append(block2)
 						Expect(err).To(BeNil())
 
-						block3 := makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+						block3 := MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730725),
 							},
@@ -435,9 +433,8 @@ var ProcessTest = func() bool {
 
 				When("a block has same number as the chainTip", func() {
 					var block2, block2_2 *wire.Block
-
 					BeforeEach(func() {
-						block2 = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+						block2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 							},
@@ -447,12 +444,12 @@ var ProcessTest = func() bool {
 							Difficulty: new(big.Int).SetInt64(500),
 						})
 
-						block2_2 = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+						block2_2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730725),
 							},
 							Creator:    sender,
-							Nonce:      wire.EncodeNonce(1),
+							Nonce:      wire.EncodeNonce(4),
 							MixHash:    util.BytesToHash([]byte("mix hash 2")),
 							Difficulty: new(big.Int).SetInt64(500),
 						})
@@ -477,7 +474,7 @@ var ProcessTest = func() bool {
 					var block3 *wire.Block
 
 					BeforeEach(func() {
-						block3 = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+						block3 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 							},
@@ -505,7 +502,7 @@ var ProcessTest = func() bool {
 				var blockInvalidStateRoot, okStateRoot *wire.Block
 
 				BeforeEach(func() {
-					blockInvalidStateRoot = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 						},
@@ -519,7 +516,7 @@ var ProcessTest = func() bool {
 					blockInvalidStateRoot.Hash = blockInvalidStateRoot.ComputeHash()
 					blockInvalidStateRoot.Sig, _ = wire.BlockSign(blockInvalidStateRoot, sender.PrivKey().Base58())
 
-					okStateRoot = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					okStateRoot = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 						Transactions: []*wire.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 						},
@@ -551,8 +548,7 @@ var ProcessTest = func() bool {
 
 					Describe("all state objects must be persisted", func() {
 						for _, so := range stateObjs {
-							var result []*elldb.KVObject
-							testStore.Get(so.Key, &result)
+							var result = db.GetByPrefix(so.Key)
 							Expect(result).To(HaveLen(1))
 						}
 					})
@@ -560,8 +556,7 @@ var ProcessTest = func() bool {
 					Describe("all transactions must be persisted", func() {
 						for _, tx := range okStateRoot.Transactions {
 							txKey := common.MakeTxKey(genesisChain.GetID(), tx.ID())
-							var result []*elldb.KVObject
-							testStore.Get(txKey, &result)
+							var result = db.GetByPrefix(txKey)
 							Expect(result).To(HaveLen(1))
 						}
 					})
@@ -577,7 +572,7 @@ var ProcessTest = func() bool {
 			// The tests will create new chains attempting to add the blocks
 			// in different order just to test orphan handling. This other chains are named replayChain
 			BeforeEach(func() {
-				parent1 = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				parent1 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
 					},
@@ -589,7 +584,7 @@ var ProcessTest = func() bool {
 				_, err = bc.ProcessBlock(parent1)
 				Expect(err).To(BeNil())
 
-				orphanParent = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				orphanParent = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730730),
 					},
@@ -601,7 +596,7 @@ var ProcessTest = func() bool {
 				_, err = bc.ProcessBlock(orphanParent)
 				Expect(err).To(BeNil())
 
-				orphan = makeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+				orphan = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730726),
 					},
@@ -619,7 +614,7 @@ var ProcessTest = func() bool {
 				var replayChain *Chain
 
 				BeforeEach(func() {
-					replayChain = NewChain("c2", testStore, cfg, log)
+					replayChain = NewChain("c2", db, cfg, log)
 					bc.bestChain = replayChain
 					bc.chains = map[string]*Chain{replayChain.id: replayChain}
 
@@ -650,7 +645,7 @@ var ProcessTest = func() bool {
 						has, err := replayChain.hasBlock(orphanParent.HashToHex())
 						Expect(err).To(BeNil())
 						Expect(has).To(BeTrue())
-						tipHeader, err := replayChain.GetTipHeader()
+						tipHeader, err := replayChain.Current()
 						Expect(err).To(BeNil())
 						Expect(tipHeader.ComputeHash()).To(Equal(orphanParent.Header.ComputeHash()))
 					})
@@ -662,7 +657,7 @@ var ProcessTest = func() bool {
 				var replayChain *Chain
 
 				BeforeEach(func() {
-					replayChain = NewChain("c2", testStore, cfg, log)
+					replayChain = NewChain("c2", db, cfg, log)
 					bc.bestChain = replayChain
 					bc.chains = map[string]*Chain{replayChain.id: replayChain}
 
@@ -696,7 +691,7 @@ var ProcessTest = func() bool {
 						has, err := replayChain.hasBlock(orphan.HashToHex())
 						Expect(err).To(BeNil())
 						Expect(has).To(BeTrue())
-						tipHeader, err := replayChain.GetTipHeader()
+						tipHeader, err := replayChain.Current()
 						Expect(err).To(BeNil())
 						Expect(tipHeader.ComputeHash()).To(Equal(orphan.Header.ComputeHash()))
 					})

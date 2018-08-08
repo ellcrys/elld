@@ -3,6 +3,8 @@ package elldb
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ellcrys/elld/util"
 )
 
 // PrefixSeparator is the separator that separates multiple prefixes
@@ -21,6 +23,11 @@ type KVObject struct {
 // IsEmpty checks whether the object is empty
 func (kv *KVObject) IsEmpty() bool { // TODO: test
 	return len(kv.Key) == 0 && len(kv.Value) == 0
+}
+
+// Scan marshals the value into dest
+func (kv *KVObject) Scan(dest interface{}) error {
+	return util.BytesToObject(kv.Value, &dest)
 }
 
 // MakePrefix creates a prefix string
