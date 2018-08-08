@@ -1,11 +1,11 @@
 package common
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/wire"
+	"github.com/vmihailenco/msgpack"
 )
 
 // OrphanBlock represents an orphan block
@@ -78,7 +78,7 @@ type BlockchainMeta struct {
 
 // JSON returns the JSON encoded equivalent
 func (m *BlockchainMeta) JSON() ([]byte, error) {
-	return json.Marshal(m)
+	return msgpack.Marshal(m)
 }
 
 // StateObject describes an object to be stored in a elldb.StateObject.

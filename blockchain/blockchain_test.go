@@ -270,7 +270,7 @@ var BlockchainTest = func() bool {
 			})
 
 			It("should return chain=nil, header=nil, err=nil if no block on the chain matches the hash", func() {
-				_block, chain, header, err := bc.findBlockChainByHash("unknown")
+				_block, chain, header, err := bc.findChainByBlockHash("unknown")
 				Expect(err).To(BeNil())
 				Expect(_block).To(BeNil())
 				Expect(header).To(BeNil())
@@ -279,9 +279,9 @@ var BlockchainTest = func() bool {
 
 			Context("when the hash belongs to the highest block in chain2", func() {
 				It("should return chain2 and header must match the header of the recently added block", func() {
-					_block, chain, header, err := bc.findBlockChainByHash(b1.GetHash().HexStr())
+					_block, chain, header, err := bc.findChainByBlockHash(b1.GetHash().HexStr())
 					Expect(err).To(BeNil())
-					Expect(b1).To(Equal(_block))
+					Expect(b1.Bytes()).To(Equal(_block.Bytes()))
 					Expect(chain.GetID()).To(Equal(chain2.id))
 					Expect(header.ComputeHash()).To(Equal(b1.Header.ComputeHash()))
 				})
@@ -306,9 +306,9 @@ var BlockchainTest = func() bool {
 				})
 
 				It("should return chain and header matching the header of block 1", func() {
-					_block, chain, tipHeader, err := bc.findBlockChainByHash(genesisBlock.GetHash().HexStr())
+					_block, chain, tipHeader, err := bc.findChainByBlockHash(genesisBlock.GetHash().HexStr())
 					Expect(err).To(BeNil())
-					Expect(genesisBlock).To(Equal(_block))
+					Expect(genesisBlock.Bytes()).To(Equal(_block.Bytes()))
 					Expect(genesisBlock.GetNumber()).To(Equal(uint64(1)))
 					Expect(chain.GetID()).To(Equal(chain.id))
 					Expect(tipHeader.ComputeHash()).To(Equal(b2.Header.ComputeHash()))
