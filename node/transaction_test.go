@@ -6,6 +6,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/util"
 
 	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
@@ -59,7 +60,7 @@ func TransactionTest() bool {
 			})
 
 			It("should return nil and history key of transaction should be in HistoryCache", func() {
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
 				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
@@ -72,8 +73,8 @@ func TransactionTest() bool {
 
 			It("remote node should add tx in its tx pool", func() {
 
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-				tx.From = sender.Addr()
+				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
 				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
@@ -91,8 +92,8 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				rp.SetGossipProtocol(proto)
 
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-				tx.From = sender.Addr()
+				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
 				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
