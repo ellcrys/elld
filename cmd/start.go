@@ -28,7 +28,7 @@ var (
 	hardcodedBootstrapNodes = []string{} // hardcoded bootstrap node address
 )
 
-func defaultConfig(cfg *config.EngineConfig) {
+func devDefaultConfig(cfg *config.EngineConfig) {
 	cfg.Node.GetAddrInterval = util.NonZeroOrDefIn64(cfg.Node.GetAddrInterval, 10)
 	cfg.Node.PingInterval = util.NonZeroOrDefIn64(cfg.Node.PingInterval, 60)
 	cfg.Node.SelfAdvInterval = util.NonZeroOrDefIn64(cfg.Node.SelfAdvInterval, 10)
@@ -148,14 +148,15 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	password, _ := cmd.Flags().GetString("pwd")
 	seed, _ := cmd.Flags().GetInt64("seed")
 
-	if devMode {
-		cfg.Node.Dev = devMode
-		defaultConfig(cfg)
-	}
-
 	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
 	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
+	cfg.Monetary.Decimals = 16
+
+	if devMode {
+		cfg.Node.Dev = devMode
+		devDefaultConfig(cfg)
+	}
 
 	if !util.IsValidHostPortAddress(addressToListenOn) {
 		log.Fatal("invalid bind address provided")

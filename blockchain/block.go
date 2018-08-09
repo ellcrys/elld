@@ -11,7 +11,7 @@ import (
 
 // HaveBlock checks whether we have a block in the
 // main chain or other chains.
-func (b *Blockchain) HaveBlock(hash string) (bool, error) {
+func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	for _, chain := range b.chains {
@@ -28,7 +28,7 @@ func (b *Blockchain) HaveBlock(hash string) (bool, error) {
 
 // IsKnownBlock checks whether a block with the has exists
 // in at least one of all block chains and caches (e.g orphan)
-func (b *Blockchain) IsKnownBlock(hash string) (bool, string, error) {
+func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	var have bool

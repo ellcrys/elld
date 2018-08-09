@@ -1,12 +1,15 @@
 package common
 
-import "github.com/ellcrys/elld/wire"
+import (
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/wire"
+)
 
 // Transition represents a mutation to the state of a chain
 type Transition interface {
 
 	// Address returns the address this transition is to affect
-	Address() string
+	Address() util.String
 
 	// Equal is used to check whether a transition operation t is similar
 	Equal(t Transition) bool
@@ -14,17 +17,17 @@ type Transition interface {
 
 // OpBase includes common methods and fields for a transition object
 type OpBase struct {
-	Addr string
+	Addr util.String
 }
 
 // Address returns the address to be acted on
-func (o *OpBase) Address() string {
+func (o *OpBase) Address() util.String {
 	return o.Addr
 }
 
 // Equal checks whether a Transition t is equal to o
 func (o *OpBase) Equal(t Transition) bool {
-	return o.Address() == t.Address()
+	return o.Address().Equal(t.Address())
 }
 
 // OpCreateAccount describes a transition to create an account

@@ -22,7 +22,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
@@ -32,7 +32,7 @@ var BlockTest = func() bool {
 			})
 
 			It("should return false when block does not exist in any known chain", func() {
-				has, err := bc.HaveBlock(block.GetHash().HexStr())
+				has, err := bc.HaveBlock(block.GetHash())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeFalse())
 			})
@@ -48,7 +48,7 @@ var BlockTest = func() bool {
 				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
-				has, err := bc.HaveBlock(block.GetHash().HexStr())
+				has, err := bc.HaveBlock(block.GetHash())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeTrue())
 			})
@@ -60,7 +60,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730724),
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
@@ -70,7 +70,7 @@ var BlockTest = func() bool {
 			})
 
 			It("should return false when block does not exist in any known chain or caches", func() {
-				exist, reason, err := bc.IsKnownBlock(block.GetHash().HexStr())
+				exist, reason, err := bc.IsKnownBlock(block.GetHash())
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeFalse())
 				Expect(reason).To(BeEmpty())
@@ -87,14 +87,14 @@ var BlockTest = func() bool {
 				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
-				has, err := bc.HaveBlock(block.GetHash().HexStr())
+				has, err := bc.HaveBlock(block.GetHash())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeTrue())
 			})
 
 			It("should return true when block exist as an orphan", func() {
 				bc.addOrphanBlock(block)
-				known, reason, err := bc.IsKnownBlock(block.GetHash().HexStr())
+				known, reason, err := bc.IsKnownBlock(block.GetHash())
 				Expect(err).To(BeNil())
 				Expect(known).To(BeTrue())
 				Expect(reason).To(Equal("orphan cache"))
@@ -107,7 +107,7 @@ var BlockTest = func() bool {
 
 			BeforeEach(func() {
 				bc.bestChain = genesisChain
-				txs = []*wire.Transaction{wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "0.1", "0.1", time.Now().Unix())}
+				txs = []*wire.Transaction{wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "0.1", "0.1", time.Now().Unix())}
 			})
 
 			It("should validate params", func() {
@@ -212,7 +212,7 @@ var BlockTest = func() bool {
 				BeforeEach(func() {
 					err = bc.putAccount(1, targetChain, &wire.Account{
 						Type:    wire.AccountTypeBalance,
-						Address: sender.Addr(),
+						Address: util.String(sender.Addr()),
 						Balance: "100",
 					})
 					Expect(err).To(BeNil())
@@ -245,7 +245,7 @@ var BlockTest = func() bool {
 				BeforeEach(func() {
 					err = bc.putAccount(1, targetChain, &wire.Account{
 						Type:    wire.AccountTypeBalance,
-						Address: sender.Addr(),
+						Address: util.String(sender.Addr()),
 						Balance: "100",
 					})
 					Expect(err).To(BeNil())

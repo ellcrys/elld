@@ -1,8 +1,6 @@
 package store
 
 import (
-	"encoding/json"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
@@ -19,7 +17,7 @@ var _ = Describe("Leveldb", func() {
 	var db elldb.DB
 	var cfg *config.EngineConfig
 	var store *ChainStore
-	var chainID = "main"
+	var chainID = util.String("main")
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -44,20 +42,20 @@ var _ = Describe("Leveldb", func() {
 	Describe(".PutTransactions", func() {
 
 		var txs = []*wire.Transaction{
-			&wire.Transaction{To: "to_addr", From: "from_addr"},
-			&wire.Transaction{To: "to_addr_2", From: "from_addr_2"},
+			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+			&wire.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
 		It("should successfully put transactions", func() {
 			err = store.PutTransactions(txs)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeTxKey(store.chainID, txs[0].ID()))
+			r := store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[0].Hash.Bytes()))
 			var tx wire.Transaction
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[0]))
 
-			r = store.db.GetByPrefix(common.MakeTxKey(store.chainID, txs[1].ID()))
+			r = store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[1].Hash.Bytes()))
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[1]))
 		})
@@ -66,19 +64,18 @@ var _ = Describe("Leveldb", func() {
 	Describe(".GetTransaction", func() {
 
 		var txs = []*wire.Transaction{
-			&wire.Transaction{To: "to_addr", From: "from_addr"},
-			&wire.Transaction{To: "to_addr_2", From: "from_addr_2"},
+			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+			&wire.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
 		It("should successfully put transactions", func() {
 			err = store.PutTransactions(txs)
 			Expect(err).To(BeNil())
 
-			tx := store.GetTransaction(txs[0].ID())
+			tx := store.GetTransaction(txs[0].Hash)
 			Expect(tx).ToNot(BeNil())
 			Expect(tx).To(Equal(txs[0]))
-
-			tx = store.GetTransaction(txs[1].ID())
+			tx = store.GetTransaction(txs[1].Hash)
 			Expect(tx).ToNot(BeNil())
 			Expect(tx).To(Equal(txs[1]))
 		})
@@ -90,7 +87,7 @@ var _ = Describe("Leveldb", func() {
 			err = store.CreateAccount(1, acct)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeAccountKey(1, store.chainID, "addr"))
+			r := store.db.GetByPrefix(common.MakeAccountKey(1, store.chainID.Bytes(), []byte("addr")))
 			var found wire.Account
 			r[0].Scan(&found)
 			Expect(&found).To(Equal(acct))
@@ -104,7 +101,7 @@ var _ = Describe("Leveldb", func() {
 				err = store.CreateAccount(1, acct)
 				Expect(err).To(BeNil())
 
-				found, err := store.GetAccount(acct.Address)
+				found, err := store.GetAccount(util.String(acct.Address))
 				Expect(err).To(BeNil())
 				Expect(found).To(Equal(acct))
 			})
@@ -120,7 +117,7 @@ var _ = Describe("Leveldb", func() {
 				err = store.CreateAccount(2, acct2)
 				Expect(err).To(BeNil())
 
-				found, err := store.GetAccount(acct2.Address)
+				found, err := store.GetAccount((util.String(acct2.Address)))
 				Expect(err).To(BeNil())
 				Expect(found).To(Equal(acct2))
 			})
@@ -137,11 +134,11 @@ var _ = Describe("Leveldb", func() {
 		It("should put block without error", func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
+			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock wire.Block
-			err = json.Unmarshal(result[0].Value, &storedBlock)
+			err = result[0].Scan(&storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).To(Equal(block))
 		})
@@ -149,11 +146,11 @@ var _ = Describe("Leveldb", func() {
 		It("should return nil and not add block when another block with same number exists", func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
+			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock wire.Block
-			err = json.Unmarshal(result[0].Value, &storedBlock)
+			err = result[0].Scan(&storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).To(Equal(block))
 
@@ -164,17 +161,16 @@ var _ = Describe("Leveldb", func() {
 
 			err = store.PutBlock(block2)
 			Expect(err).To(BeNil())
-			result = store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
+			result = store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
-			err = json.Unmarshal(result[0].Value, &storedBlock)
+			err = result[0].Scan(&storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).ToNot(Equal(block2))
 		})
 	})
 
 	Describe(".Current", func() {
-
 		When("two blocks are in the chain", func() {
 			var block = &wire.Block{Header: &wire.Header{Number: 1}, Hash: util.StrToHash("hash")}
 			var block2 = &wire.Block{Header: &wire.Header{Number: 2}, Hash: util.StrToHash("hash2")}
@@ -204,7 +200,6 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".GetBlock", func() {
 
-		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
@@ -213,7 +208,7 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
+			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -224,13 +219,13 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should get block by hash", func() {
-			storedBlock, err := store.GetBlockByHash(block.GetHash().HexStr())
+			storedBlock, err := store.GetBlockByHash(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
 
 		It("with block hash; return error if block does not exist", func() {
-			b, err := store.GetBlockByHash("unknown")
+			b, err := store.GetBlockByHash(util.Hash{1, 3, 4})
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(common.ErrBlockNotFound))
 			Expect(b).To(BeNil())
@@ -260,7 +255,6 @@ var _ = Describe("Leveldb", func() {
 
 	Describe("GetBlockHeader", func() {
 
-		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
@@ -269,7 +263,7 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
+			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -282,7 +276,6 @@ var _ = Describe("Leveldb", func() {
 	})
 
 	Describe(".GetBlockHeaderByHash", func() {
-		var chainID = "main"
 		var block = &wire.Block{
 			Header: &wire.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
@@ -291,12 +284,12 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID))
+			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should get block by hash", func() {
-			storedBlockHeader, err := store.GetHeaderByHash(block.GetHash().HexStr())
+			storedBlockHeader, err := store.GetHeaderByHash(block.GetHash())
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))
@@ -305,16 +298,15 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".put", func() {
 		It("should successfully store object", func() {
-			key := elldb.MakeKey([]byte("my_key"), []string{"block", "account"})
+			key := elldb.MakeKey([]byte("my_key"), []byte("block"), []byte("account"))
 			err = store.put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 		})
 	})
 
 	Describe(".get", func() {
-
 		It("should successfully get object by prefix", func() {
-			key := elldb.MakeKey([]byte("my_key"), []string{"an_obj", "account"})
+			key := elldb.MakeKey([]byte("my_key"), []byte("an_obj"), []byte("account"))
 			err = store.put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
@@ -323,12 +315,12 @@ var _ = Describe("Leveldb", func() {
 			Expect(result).To(HaveLen(1))
 
 			result = []*elldb.KVObject{}
-			store.get(elldb.MakePrefix([]string{"an_obj", "account"}), &result)
+			store.get(elldb.MakePrefix([]byte("an_obj"), []byte("account")), &result)
 			Expect(result).To(HaveLen(1))
 		})
 
 		It("should successfully get object by key", func() {
-			key := elldb.MakeKey([]byte("my_key"), []string{"block", "account"})
+			key := elldb.MakeKey([]byte("my_key"), []byte("block"), []byte("account"))
 			err = store.put(key, []byte("stuff"))
 			Expect(err).To(BeNil())
 
@@ -337,5 +329,4 @@ var _ = Describe("Leveldb", func() {
 			Expect(result).To(HaveLen(1))
 		})
 	})
-
 })

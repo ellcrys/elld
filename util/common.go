@@ -32,6 +32,29 @@ func init() {
 	r.Seed(time.Now().UnixNano())
 }
 
+// String represents a custom string
+type String string
+
+// Bytes returns the bytes equivalent of the string
+func (s String) Bytes() []byte {
+	return []byte(s)
+}
+
+// Equal check whether s and o are the same
+func (s String) Equal(o String) bool {
+	return string(s) == string(o)
+}
+
+func (s String) String() string {
+	return string(s)
+}
+
+// Decimal returns the decimal representation of the string.
+// Panics if string failed to be converted to decimal.
+func (s String) Decimal() decimal.Decimal {
+	return StrToDec(s.String())
+}
+
 // ObjectToBytes returns json encoded representation of an object
 func ObjectToBytes(s interface{}) []byte {
 	b, _ := msgpack.Marshal(s)
