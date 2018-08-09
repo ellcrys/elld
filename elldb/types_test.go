@@ -12,7 +12,7 @@ var _ = Describe("Types", func() {
 			kv := NewKVObject([]byte("age"), []byte("20"), []byte("prefix"))
 			key := kv.GetKey()
 			Expect(key).ToNot(BeEmpty())
-			Expect(key).To(Equal([]byte("prefix/age")))
+			Expect(key).To(Equal([]byte("prefix_$$_age")))
 		})
 	})
 
@@ -29,10 +29,10 @@ var _ = Describe("Types", func() {
 
 		When("key has KeyPrefixSeparator", func() {
 			It("should return object that contains key=age, value=20, prefix=prefixA", func() {
-				o := FromKeyValue([]byte("prefixA/age"), []byte("20"))
+				o := FromKeyValue([]byte("prefixA_$$_age"), []byte("20"))
 				Expect(o.Key).To(Equal([]byte("age")))
 				Expect(o.Value).To(Equal([]byte("20")))
-				Expect(o.GetKey()).To(Equal([]byte("prefixA/age")))
+				Expect(o.GetKey()).To(Equal([]byte("prefixA_$$_age")))
 				Expect(o.Prefix).To(Equal([]byte("prefixA")))
 			})
 		})
@@ -58,7 +58,7 @@ var _ = Describe("Types", func() {
 	Describe(".MakeKey", func() {
 		It("should return 'prefixAprefixB/age' when key and prefixes are provided", func() {
 			actual := MakeKey([]byte("age"), []byte("prefixA"), []byte("prefixB"))
-			Expect(string(actual)).To(Equal("prefixAprefixB/age"))
+			Expect(string(actual)).To(Equal("prefixAprefixB_$$_age"))
 		})
 
 		It("should return only concatenated prefixes 'prefixAprefixB' with no KeyPrefixSeparator when key is not provided", func() {
