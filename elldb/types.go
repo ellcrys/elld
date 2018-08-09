@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	KeyPrefixSeparator = "/"
+	KeyPrefixSeparator = "_$$_"
 )
 
 // KVObject represents an item in the elldb
