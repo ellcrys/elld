@@ -28,7 +28,7 @@ func (t ChainOp) GetName() string {
 type Chain struct {
 
 	// id represents the identifier of this chain
-	id string
+	id util.String
 
 	// parentBlock represents the block from which this chain is formed.
 	// A chain that is not a subtree of another chain will have this set to nil.
@@ -53,7 +53,7 @@ type Chain struct {
 
 // NewChain creates an instance of a chain. It will create metadata object for the
 // chain if not exists. It will return error if it is unable to do so.
-func NewChain(id string, db elldb.DB, cfg *config.EngineConfig, log logger.Logger) *Chain {
+func NewChain(id util.String, db elldb.DB, cfg *config.EngineConfig, log logger.Logger) *Chain {
 	chain := new(Chain)
 	chain.id = id
 	chain.cfg = cfg
@@ -67,7 +67,7 @@ func NewChain(id string, db elldb.DB, cfg *config.EngineConfig, log logger.Logge
 }
 
 // GetID returns the id of the chain
-func (c *Chain) GetID() string {
+func (c *Chain) GetID() util.String {
 	return c.id
 }
 
@@ -122,7 +122,7 @@ func (c *Chain) height(opts ...common.CallOp) (uint64, error) {
 }
 
 // hasBlock checks if a block with the provided hash exists on this chain
-func (c *Chain) hasBlock(hash string) (bool, error) {
+func (c *Chain) hasBlock(hash util.Hash) (bool, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -137,7 +137,7 @@ func (c *Chain) hasBlock(hash string) (bool, error) {
 }
 
 // getBlockHeaderByHash returns the header of a block that matches the hash on this chain
-func (c *Chain) getBlockHeaderByHash(hash string) (*wire.Header, error) {
+func (c *Chain) getBlockHeaderByHash(hash util.Hash) (*wire.Header, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -150,7 +150,7 @@ func (c *Chain) getBlockHeaderByHash(hash string) (*wire.Header, error) {
 }
 
 // getBlockByHash fetches a block by its hash
-func (c *Chain) getBlockByHash(hash string) (*wire.Block, error) {
+func (c *Chain) getBlockByHash(hash util.Hash) (*wire.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -170,7 +170,7 @@ func (c *Chain) CreateAccount(targetBlockNum uint64, account *wire.Account, opts
 }
 
 // GetAccount gets an account
-func (c *Chain) GetAccount(address string, opts ...common.CallOp) (*wire.Account, error) {
+func (c *Chain) GetAccount(address util.String, opts ...common.CallOp) (*wire.Account, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 	return c.store.GetAccount(address, opts...)
@@ -264,6 +264,6 @@ func (c *Chain) PutTransactions(txs []*wire.Transaction, opts ...common.CallOp) 
 }
 
 // GetTransaction gets a transaction by hash
-func (c *Chain) GetTransaction(hash string) *wire.Transaction {
+func (c *Chain) GetTransaction(hash util.Hash) *wire.Transaction {
 	return c.store.GetTransaction(hash)
 }

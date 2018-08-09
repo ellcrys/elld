@@ -110,7 +110,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	var validAddrRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
-			if _err := crypto.IsValidAddr(val.(string)); _err != nil {
+			if _err := crypto.IsValidAddr(val.(util.String).String()); _err != nil {
 				return err
 			}
 			return nil
@@ -119,7 +119,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	var validPubKeyRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
-			if _, _err := crypto.PubKeyFromBase58(val.(string)); _err != nil {
+			if _, _err := crypto.PubKeyFromBase58(val.(util.String).String()); _err != nil {
 				return err
 			}
 			return nil
@@ -137,7 +137,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	var validValueRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
-			if _, _err := decimal.NewFromString(val.(string)); _err != nil {
+			if _, _err := decimal.NewFromString(val.(util.String).String()); _err != nil {
 				return err
 			}
 			return nil
@@ -146,7 +146,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	var isZeroLessRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
-			dec, _ := decimal.NewFromString(val.(string))
+			dec, _ := decimal.NewFromString(val.(util.String).String())
 			if dec.LessThanOrEqual(decimal.Zero) {
 				return err
 			}
@@ -156,7 +156,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	var isValidFeeRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
-			dec, _ := decimal.NewFromString(val.(string))
+			dec, _ := decimal.NewFromString(val.(util.String).String())
 			if dec.LessThan(constants.BalanceTxMinimumFee) {
 				return err
 			}
@@ -175,7 +175,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 	var isSameStrRule = func(val2 string, err error) func(interface{}) error {
 		return func(val interface{}) error {
-			if val.(string) != val2 {
+			if val.(util.String).String() != val2 {
 				return err
 			}
 			return nil
@@ -244,7 +244,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 	if tx.Type == wire.TxTypeAllocCoin {
 		// Transaction sender must be the same as the recipient
 		errs = appendErr(errs, validation.Validate(tx.From,
-			validation.By(isSameStrRule(tx.To, fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),
+			validation.By(isSameStrRule(tx.To.String(), fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),
 		))
 	}
 
@@ -255,7 +255,7 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 // Expects the transaction to have a valid sender public key
 func (v *TxsValidator) checkSignature(tx *wire.Transaction) (errs []error) {
 
-	pubKey, err := crypto.PubKeyFromBase58(tx.SenderPubKey)
+	pubKey, err := crypto.PubKeyFromBase58(tx.SenderPubKey.String())
 	if err != nil {
 		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
 			"senderPubKey", err.Error()))
@@ -286,7 +286,7 @@ func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
 	}
 
 	if v.bchain != nil {
-		_, err := v.bchain.GetTransaction(tx.Hash.HexStr())
+		_, err := v.bchain.GetTransaction(tx.Hash)
 		if err != nil {
 			if err != common.ErrTxNotFound {
 				errs = append(errs, fmt.Errorf("get transaction error: %s", err))

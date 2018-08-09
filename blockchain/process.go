@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/ellcrys/elld/elldb"
@@ -67,11 +66,11 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	for _, prevOp := range ops {
 		// check for balance change for the sender
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.From {
-			senderAcctBalance, _ = util.StrToDecimal(opNewBalance.Account.Balance)
+			senderAcctBalance = opNewBalance.Account.Balance.Decimal()
 		}
 		// check for balance change for the recipient
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.To {
-			recipientAcctBalance, _ = util.StrToDecimal(opNewBalance.Account.Balance)
+			recipientAcctBalance = opNewBalance.Account.Balance.Decimal()
 		}
 	}
 
@@ -86,7 +85,7 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	// if we were unable to learn about the sender's latest balance from the ops list
 	// as a result of previous transactions in same block, then we use the current account balance.
 	if senderAcctBalance.Equals(decimal.Zero) {
-		senderAcctBalance, _ = util.StrToDecimal(senderAcct.Balance)
+		senderAcctBalance = senderAcct.Balance.Decimal()
 	}
 
 	// find the account of the recipient. If the recipient account does not
@@ -114,14 +113,11 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	// if we are unable to learn about the recipient's latest balance from the ops list as
 	// then we can use the balance of the recipient account
 	if recipientAcctBalance.Equals(decimal.Zero) {
-		recipientAcctBalance, _ = util.StrToDecimal(recipientAcct.Balance)
+		recipientAcctBalance = recipientAcct.Balance.Decimal()
 	}
 
 	// convert the amount to be sent to decimal
-	sendingAmount, err := decimal.NewFromString(tx.Value)
-	if err != nil {
-		return nil, fmt.Errorf("sending amount error: %s", err)
-	}
+	sendingAmount := tx.Value.Decimal()
 
 	// ensure the sender's account balance is sufficient for this transaction
 	if senderAcctBalance.LessThan(sendingAmount) {
@@ -129,14 +125,24 @@ func (b *Blockchain) processBalanceTx(tx *wire.Transaction, ops []common.Transit
 	}
 
 	// add an operation to set a new account balance for the sender
-	senderAcct.Balance = senderAcctBalance.Sub(sendingAmount).String()
+	senderAcct.Balance = util.String(
+		senderAcctBalance.
+			Sub(sendingAmount).
+			StringFixed(b.cfg.Monetary.Decimals),
+	)
+
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.From},
 		Account: senderAcct,
 	})
 
 	// add an operation to set a new balance of the recipient
-	recipientAcct.Balance = recipientAcctBalance.Add(sendingAmount).String()
+	recipientAcct.Balance = util.String(
+		recipientAcctBalance.
+			Add(sendingAmount).
+			StringFixed(b.cfg.Monetary.Decimals),
+	)
+
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.To},
 		Account: recipientAcct,
@@ -162,7 +168,7 @@ func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Trans
 	// updated by a previous transaction, the new balance will be found in the ops list.
 	for _, prevOp := range ops {
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.To {
-			recipientAcctBalance, _ = util.StrToDecimal(opNewBalance.Account.Balance)
+			recipientAcctBalance = opNewBalance.Account.Balance.Decimal()
 		}
 	}
 
@@ -184,12 +190,15 @@ func (b *Blockchain) processAllocCoinTx(tx *wire.Transaction, ops []common.Trans
 	// in previous ops execution, we set it to the value of the current,
 	// committed account balance
 	if recipientAcctBalance.Equals(decimal.Zero) {
-		recipientAcctBalance, _ = util.StrToDecimal(recipientAcct.Balance)
+		recipientAcctBalance = recipientAcct.Balance.Decimal()
 	}
 
 	// Update the recipients account balance to be the
 	// sum of current balance and the new allocation
-	recipientAcct.Balance = recipientAcctBalance.Add(util.StrToDec(tx.Value)).StringFixed(16)
+	recipientAcct.Balance = util.String(
+		recipientAcctBalance.Add(tx.Value.Decimal()).
+			StringFixed(b.cfg.Monetary.Decimals),
+	)
 
 	// construct an OpNewAccountBalance transition object
 	// and set the account to the updated recipient.
@@ -212,14 +221,14 @@ func (b *Blockchain) opsToStateObjects(block *wire.Block, chain common.Chainer, 
 		case *common.OpCreateAccount:
 			stateObjs = append(stateObjs, &common.StateObject{
 				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
-				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID(), _op.Address()),
+				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
 				Value:   util.ObjectToBytes(_op.Account),
 			})
 
 		case *common.OpNewAccountBalance:
 			stateObjs = append(stateObjs, &common.StateObject{
 				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
-				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID(), _op.Address()),
+				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
 				Value:   util.ObjectToBytes(_op.Account),
 			})
 
@@ -283,7 +292,7 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 		// find the chain where the parent of the block exists on. If a chain is not found,
 		// then the block is considered an orphan. If the chain is found but the block at the tip
 		// is has the same or a greater block number compared to the new block, it is considered a stale block.
-		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.Header.ParentHash.HexStr())
+		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.Header.ParentHash)
 		if err != nil {
 			if err != common.ErrBlockNotFound {
 				return nil, err
@@ -398,12 +407,12 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (common.Chainer, error) {
 
 	// check if the block has previously been detected as an orphan.
 	// We do not need to go re-process this block if it is an orphan.
-	if b.isOrphanBlock(block.Hash.HexStr()) {
+	if b.isOrphanBlock(block.Hash) {
 		return nil, common.ErrOrphanBlock
 	}
 
 	// check if the block exists in any known chain
-	exists, err := b.HaveBlock(block.Hash.HexStr())
+	exists, err := b.HaveBlock(block.Hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check block existence: %s", err)
 	}
@@ -450,7 +459,7 @@ func (b *Blockchain) execBlock(chain common.Chainer, block *wire.Block, opts ...
 
 	// Add the state objects into the tree. Contantenate the key and value into a TreeItem
 	for _, so := range stateObjs {
-		tree.Add(common.TreeItem(bytes.Join([][]byte{so.TreeKey, so.Value}, nil)))
+		tree.Add(common.TreeItem(append(so.TreeKey, so.Value...)))
 	}
 
 	// Build the tree and compute new state root

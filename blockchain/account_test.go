@@ -3,6 +3,7 @@ package blockchain
 import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,7 +20,7 @@ var AccountTest = func() bool {
 				key = crypto.NewKeyFromIntSeed(1)
 				account = &wire.Account{
 					Type:    wire.AccountTypeBalance,
-					Address: key.Addr(),
+					Address: util.String(key.Addr()),
 				}
 			})
 
@@ -38,7 +39,7 @@ var AccountTest = func() bool {
 				key = crypto.NewKeyFromIntSeed(1)
 				account = &wire.Account{
 					Type:    wire.AccountTypeBalance,
-					Address: key.Addr(),
+					Address: util.String(key.Addr()),
 				}
 			})
 
@@ -86,7 +87,7 @@ var AccountTest = func() bool {
 					Expect(err).To(BeNil())
 					Expect(a).ToNot(BeNil())
 					Expect(a).To(Equal(account))
-					Expect(a.Balance).To(Equal("100"))
+					Expect(a.Balance).To(Equal(util.String("100")))
 				})
 			})
 

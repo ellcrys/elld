@@ -85,7 +85,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{160, 11, 29, 115, 220, 4, 126, 243, 116, 182, 16, 77, 80, 58, 165, 104, 68, 64, 109, 64, 214, 208, 168, 170, 86, 185, 40, 236, 101, 140, 46, 150}
+							expected := util.Hash{111, 183, 233, 32, 210, 221, 41, 140, 249, 7, 72, 33, 13, 169, 116, 214, 218, 129, 230, 179, 131, 136, 26, 83, 184, 122, 230, 224, 55, 64, 244, 159}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 
@@ -112,7 +112,7 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 					Transactions: []*wire.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
@@ -148,13 +148,13 @@ var ChainTest = func() bool {
 		Describe(".hashBlock", func() {
 
 			It("should return false if block does not exist in the chain", func() {
-				exist, err := genesisChain.hasBlock("some_unknown_hash")
+				exist, err := genesisChain.hasBlock(util.Hash{1, 2, 3})
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeFalse())
 			})
 
 			It("should return true if block exist in the chain", func() {
-				exist, err := genesisChain.hasBlock(genesisBlock.GetHash().HexStr())
+				exist, err := genesisChain.hasBlock(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeTrue())
 			})
@@ -187,13 +187,13 @@ var ChainTest = func() bool {
 		Describe(".getBlockHeaderByHash", func() {
 
 			It("should return err if block was not found", func() {
-				header, err := genesisChain.getBlockHeaderByHash("unknown")
+				header, err := genesisChain.getBlockHeaderByHash(util.Hash{1, 2, 3})
 				Expect(err).To(Equal(common.ErrBlockNotFound))
 				Expect(header).To(BeNil())
 			})
 
 			It("should successfully get block header by hash", func() {
-				header, err := genesisChain.getBlockHeaderByHash(genesisBlock.GetHash().HexStr())
+				header, err := genesisChain.getBlockHeaderByHash(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(header).ToNot(BeNil())
 			})
@@ -201,13 +201,13 @@ var ChainTest = func() bool {
 
 		Describe(".getBlockByHash", func() {
 			It("should return error if block is not found", func() {
-				block, err := genesisChain.getBlockByHash("unknown")
+				block, err := genesisChain.getBlockByHash(util.Hash{1, 2, 3})
 				Expect(err).To(Equal(common.ErrBlockNotFound))
 				Expect(block).To(BeNil())
 			})
 
 			It("should successfully get block by hash", func() {
-				block, err := genesisChain.getBlockByHash(genesisBlock.GetHash().HexStr())
+				block, err := genesisChain.getBlockByHash(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(block).ToNot(BeNil())
 			})

@@ -1,23 +1,20 @@
 package elldb
 
 import (
-	"fmt"
-	"strings"
+	"bytes"
 
 	"github.com/ellcrys/elld/util"
 )
 
-// PrefixSeparator is the separator that separates multiple prefixes
-const PrefixSeparator = "~"
-
-// KeyPrefixSeparator is the separator that separates the prefix and the key
-const KeyPrefixSeparator = ":"
+const (
+	KeyPrefixSeparator = "/"
+)
 
 // KVObject represents an item in the elldb
 type KVObject struct {
-	Key      []byte   `json:"key"`
-	Value    []byte   `json:"value"`
-	Prefixes []string `json:"prefixes"`
+	Key    []byte `json:"key"`
+	Value  []byte `json:"value"`
+	Prefix []byte `json:"prefix"`
 }
 
 // IsEmpty checks whether the object is empty
@@ -31,59 +28,65 @@ func (kv *KVObject) Scan(dest interface{}) error {
 }
 
 // MakePrefix creates a prefix string
-func MakePrefix(prefixes []string) []byte {
-	return []byte(strings.Join(prefixes, PrefixSeparator))
+func MakePrefix(prefixes ...[]byte) (result []byte) {
+	for _, p := range prefixes {
+		result = append(result, p...)
+	}
+	return
 }
 
-// MakeKey construct a key from the object key and a slice of prefixes
-func MakeKey(key []byte, prefixes []string) []byte {
-	kpSep := KeyPrefixSeparator
-
-	var prefix []byte
-	if len(prefixes) > 0 {
-		prefix = MakePrefix(prefixes)
-	} else {
-		kpSep = ""
+// MakeKey construct a key from the key and prefixes
+func MakeKey(key []byte, prefixes ...[]byte) []byte {
+	var prefix = MakePrefix(prefixes...)
+	var sep = []byte(KeyPrefixSeparator)
+	if len(key) == 0 || len(prefix) == 0 {
+		sep = []byte{}
 	}
-
-	if len(key) == 0 {
-		kpSep = ""
-	}
-
-	return []byte(fmt.Sprintf("%s%s%s", prefix, kpSep, key))
+	return append(prefix, append(sep, key...)...)
 }
 
-// GetKey creates and returns the object key which is combined with the prefixes
-func (o *KVObject) GetKey() []byte {
-	return MakeKey(o.Key, o.Prefixes)
+// GetKey creates and returns the key
+func (kv *KVObject) GetKey() []byte {
+	return MakeKey(kv.Key, kv.Prefix)
+}
+
+// Equal performs equality check with another KVObject
+func (kv *KVObject) Equal(other *KVObject) bool {
+	return bytes.Equal(kv.Key, other.Key) && bytes.Equal(kv.Value, other.Value)
 }
 
 // NewKVObject creates a key value object.
 // The prefixes provided is joined together and prepended to the key before insertion.
-func NewKVObject(key, value []byte, prefixes ...string) *KVObject {
-	return &KVObject{Key: key, Value: value, Prefixes: prefixes}
+func NewKVObject(key, value []byte, prefixes ...[]byte) *KVObject {
+	return &KVObject{Key: key, Value: value, Prefix: MakePrefix(prefixes...)}
 }
 
 // FromKeyValue takes a key and creates a KVObject
 func FromKeyValue(key []byte, value []byte) *KVObject {
-	var prefixes []string
-	var _key string
 
-	// break down the key to determine the prefixes and the original key
-	parts := strings.Split(string(key), KeyPrefixSeparator)
-	if len(parts) > 2 {
+	var k, p []byte
+
+	// break down the key to determine the prefix and the original key.
+	parts := bytes.Split(key, []byte(KeyPrefixSeparator))
+
+	// If there are more than 2 parts, it is an invalid key.
+	// If there are only two parts, then the 0 index is the prefix
+	// while the 1 index is the key.
+	// It there are only one part, the 0 part is considered the key.
+	partsLen := len(parts)
+	if partsLen > 2 {
 		panic("invalid key format")
-	} else if len(parts) == 2 {
-		prefixes = strings.Split(parts[0], PrefixSeparator)
-		_key = parts[1]
-	} else {
-		_key = parts[0]
+	} else if partsLen == 2 {
+		k = parts[1]
+		p = parts[0]
+	} else if partsLen == 1 {
+		k = parts[0]
 	}
 
 	return &KVObject{
-		Key:      []byte(_key),
-		Value:    value,
-		Prefixes: prefixes,
+		Key:    k,
+		Value:  value,
+		Prefix: p,
 	}
 }
 

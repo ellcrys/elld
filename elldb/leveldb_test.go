@@ -1,6 +1,7 @@
 package elldb
 
 import (
+	"bytes"
 	"os"
 
 	. "github.com/onsi/ginkgo"
@@ -60,10 +61,10 @@ var _ = Describe("Database", func() {
 			}
 			err = db.Put(objs)
 			Expect(err).To(BeNil())
-			results := db.GetByPrefix([]byte("obj"))
+			results := db.GetByPrefix(MakeKey([]byte("obj")))
 			Expect(results).To(HaveLen(2))
-			Expect(results[0]).To(Equal(objs[0]))
-			Expect(results[1]).To(Equal(objs[1]))
+			Expect(results[0].Equal(objs[0])).To(BeTrue())
+			Expect(results[1].Equal(objs[1])).To(BeTrue())
 		})
 	})
 
@@ -76,13 +77,13 @@ var _ = Describe("Database", func() {
 			})
 			Expect(err).To(BeNil())
 
-			err = db.DeleteByPrefix([]byte("object"))
+			err = db.DeleteByPrefix(MakeKey([]byte("object")))
 			Expect(err).To(BeNil())
 
-			objs := db.GetByPrefix([]byte("obj"))
+			objs := db.GetByPrefix(MakeKey([]byte("obj")))
 			Expect(objs).To(HaveLen(0))
 
-			objs = db.GetByPrefix([]byte("an"))
+			objs = db.GetByPrefix(MakeKey([]byte("an")))
 			Expect(objs).To(HaveLen(1))
 		})
 	})
@@ -94,20 +95,21 @@ var _ = Describe("Database", func() {
 		BeforeEach(func() {
 			key, val = []byte("age"), []byte("20")
 			key2, val2 = []byte("age"), []byte("20")
-			err = db.Put([]*KVObject{NewKVObject(key, val, "namespace.1")})
-			Expect(err).To(BeNil())
-			err = db.Put([]*KVObject{NewKVObject(key2, val2, "namespace.2")})
+			err = db.Put([]*KVObject{
+				NewKVObject(key, val, []byte("namespace.1")),
+				NewKVObject(key2, val2, []byte("namespace.2")),
+			})
 			Expect(err).To(BeNil())
 		})
 
 		It("should get the first item when first arg is set to true", func() {
-			obj := db.GetFirstOrLast([]byte("namespace"), true)
+			obj := db.GetFirstOrLast(MakeKey(nil, []byte("namespace")), true)
 			Expect(obj.Key).To(Equal(key))
 			Expect(obj.Value).To(Equal(val))
 		})
 
 		It("should get the last item when first arg is set to false", func() {
-			obj := db.GetFirstOrLast([]byte("namespace"), false)
+			obj := db.GetFirstOrLast(MakeKey(nil, []byte("namespace")), false)
 			Expect(obj.Key).To(Equal(key2))
 			Expect(obj.Value).To(Equal(val2))
 		})
@@ -141,7 +143,7 @@ var _ = Describe("Database", func() {
 				Expect(err).To(BeNil())
 				dbTx.Commit()
 
-				result := db.GetByPrefix(key)
+				result := db.GetByPrefix(MakeKey(key))
 				Expect(result).NotTo(BeEmpty())
 			})
 
@@ -152,7 +154,7 @@ var _ = Describe("Database", func() {
 				Expect(err).To(BeNil())
 				dbTx.Rollback()
 
-				result := db.GetByPrefix(key)
+				result := db.GetByPrefix(MakeKey(key))
 				Expect(result).To(BeEmpty())
 			})
 		})
@@ -161,28 +163,28 @@ var _ = Describe("Database", func() {
 			It("should get object by prefix", func() {
 				key := []byte("age")
 				val := []byte("20")
-				err = dbTx.Put([]*KVObject{NewKVObject(key, val, "namespace")})
+				err = dbTx.Put([]*KVObject{NewKVObject(key, val, []byte("namespace"))})
 				Expect(err).To(BeNil())
 
-				objs := dbTx.GetByPrefix([]byte("namespace"))
+				objs := dbTx.GetByPrefix(MakeKey(nil, []byte("namespace")))
 				Expect(objs).To(HaveLen(1))
 				dbTx.Commit()
 
-				objs = db.GetByPrefix([]byte("namespace"))
+				objs = db.GetByPrefix(MakeKey(nil, []byte("namespace")))
 				Expect(objs).To(HaveLen(1))
 			})
 
 			It("should not get object by prefix if rollback was called", func() {
 				key := []byte("age")
 				val := []byte("20")
-				err = dbTx.Put([]*KVObject{NewKVObject(key, val, "namespace")})
+				err = dbTx.Put([]*KVObject{NewKVObject(key, val, []byte("namespace"))})
 				Expect(err).To(BeNil())
 				dbTx.Rollback()
 
-				objs := dbTx.GetByPrefix([]byte("namespace"))
+				objs := dbTx.GetByPrefix(MakeKey(nil, []byte("namespace")))
 				Expect(objs).To(BeEmpty())
 
-				objs = db.GetByPrefix([]byte("namespace"))
+				objs = db.GetByPrefix(MakeKey(nil, []byte("namespace")))
 				Expect(objs).To(BeEmpty())
 			})
 		})
@@ -191,42 +193,43 @@ var _ = Describe("Database", func() {
 	Describe(".Iterate", func() {
 
 		BeforeEach(func() {
-			err = db.Put([]*KVObject{NewKVObject([]byte("some_key"), []byte("a"), "namespace.1")})
-			Expect(err).To(BeNil())
-			err = db.Put([]*KVObject{NewKVObject([]byte("some_key"), []byte("b"), "namespace.2")})
-			Expect(err).To(BeNil())
-			err = db.Put([]*KVObject{NewKVObject([]byte("some_key"), []byte("c"), "namespace.3")})
+			err = db.Put([]*KVObject{
+				NewKVObject([]byte("some_key"), []byte("a"), []byte("namespace.1")),
+				NewKVObject([]byte("some_key"), []byte("b"), []byte("namespace.2")),
+				NewKVObject([]byte("some_key"), []byte("c"), []byte("namespace.3")),
+			})
 			Expect(err).To(BeNil())
 		})
 
 		It("should find items in this order namespace.1, namespace.2, namespace.3", func() {
-			var itemsKey []string
+			var itemsKey [][]byte
 			db.Iterate([]byte("namespace"), true, func(kv *KVObject) bool {
-				itemsKey = append(itemsKey, kv.Prefixes[0])
+				itemsKey = append(itemsKey, kv.Prefix)
 				return false
 			})
-			Expect(itemsKey).To(Equal([]string{"namespace.1", "namespace.2", "namespace.3"}))
+			Expect(itemsKey).To(Equal([][]byte{[]byte("namespace.1"), []byte("namespace.2"), []byte("namespace.3")}))
 		})
 
 		It("should find items in this order namespace.3, namespace.2, namespace.1", func() {
-			var itemsKey []string
+			var itemsKey [][]byte
 			db.Iterate([]byte("namespace"), false, func(kv *KVObject) bool {
-				itemsKey = append(itemsKey, kv.Prefixes[0])
+				itemsKey = append(itemsKey, kv.Prefix)
 				return false
 			})
-			Expect(itemsKey).To(Equal([]string{"namespace.3", "namespace.2", "namespace.1"}))
+			Expect(itemsKey).To(Equal([][]byte{[]byte("namespace.3"), []byte("namespace.2"), []byte("namespace.1")}))
 		})
 
 		It("should find item namespace.2 only", func() {
-			var itemsKey []string
+			var itemsKey [][]byte
 			db.Iterate([]byte("namespace"), true, func(kv *KVObject) bool {
-				if kv.Prefixes[0] == "namespace.2" {
-					itemsKey = append(itemsKey, kv.Prefixes[0])
+				if bytes.Equal(kv.Prefix, []byte("namespace.2")) {
+					itemsKey = append(itemsKey, kv.Prefix)
 					return true
 				}
 				return false
 			})
-			Expect(itemsKey).To(Equal([]string{"namespace.2"}))
+			Expect(itemsKey).To(Not(BeEmpty()))
+			Expect(itemsKey[0]).To(Equal([]byte("namespace.2")))
 		})
 	})
 })

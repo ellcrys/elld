@@ -24,7 +24,7 @@ var err error
 var testStore common.ChainStorer
 var db elldb.DB
 var bc *Blockchain
-var chainID = "chain1"
+var chainID = util.String("chain1")
 var genesisChain *Chain
 var genesisBlock *wire.Block
 var txPool *txpool.TxPool
@@ -88,7 +88,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		Expect(bc.putAccount(1, genesisChain, &wire.Account{
 			Type:    wire.AccountTypeBalance,
-			Address: sender.Addr(),
+			Address: util.String(sender.Addr()),
 			Balance: "1000",
 		})).To(BeNil())
 	})
@@ -96,7 +96,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
 			Transactions: []*wire.Transaction{
-				wire.NewTx(wire.TxTypeBalance, 123, receiver.Addr(), sender, "1", "0.1", 1532730722),
+				wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 			},
 			Creator:    sender,
 			Nonce:      wire.EncodeNonce(1),
@@ -117,8 +117,8 @@ var _ = Describe("Blockchain", func() {
 
 	var tests = []func() bool{
 		BlockchainTest,
-		// ChainTest,
-		// ProcessTest,
+		ChainTest,
+		ProcessTest,
 		BlockTest,
 		AccountTest,
 		CacheTest,

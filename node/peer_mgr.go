@@ -475,7 +475,7 @@ func (m *Manager) savePeers() error {
 				"addr": p.GetMultiAddr(),
 				"ts":   p.GetTimestamp().Unix(),
 			})
-			objectsToStore = append(objectsToStore, elldb.NewKVObject(key, value, "address"))
+			objectsToStore = append(objectsToStore, elldb.NewKVObject(key, value, []byte("address")))
 			numAddrs++
 		}
 	}
@@ -496,7 +496,7 @@ func (m *Manager) loadPeers() error {
 
 	// get addresses from database
 	var result = make(chan []*elldb.KVObject, 1)
-	m.localNode.logicEvt.Publish("objects.get", "address", result)
+	m.localNode.logicEvt.Publish("objects.get", []byte("address"), result)
 
 	// create remote nodes objects to represent the addresses
 	// and add them to the managers active peer list

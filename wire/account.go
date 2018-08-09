@@ -2,6 +2,7 @@ package wire
 
 import (
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/util"
 )
 
 const (
@@ -19,8 +20,8 @@ type AccountInfo struct {
 // Account represents an entity on the network.
 type Account struct {
 	Type        int32        `json:"type" msgpack:"type"`
-	Address     string       `json:"address" msgpack:"address"`
-	Balance     string       `json:"balance" msgpack:"balance"`
+	Address     util.String  `json:"address" msgpack:"address"`
+	Balance     util.String  `json:"balance" msgpack:"balance"`
 	AccountInfo *AccountInfo `json:"accountInfo" msgpack:"accountInfo"`
 }
 
@@ -32,7 +33,7 @@ func ValidateAccount(account *Account) error {
 		return fieldError("address", "address is required")
 	}
 
-	if err := crypto.IsValidAddr(account.Address); err != nil {
+	if err := crypto.IsValidAddr(account.Address.String()); err != nil {
 		return fieldError("address", err.Error())
 	}
 

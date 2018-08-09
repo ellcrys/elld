@@ -201,7 +201,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 func (v *BlockValidator) duplicateCheck(b *wire.Block) (errs []error) {
 
 	if v.bchain != nil {
-		known, reason, err := v.bchain.IsKnownBlock(b.Hash.HexStr())
+		known, reason, err := v.bchain.IsKnownBlock(b.Hash)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("duplicate check error: %s", err))
 		} else if known {

@@ -55,6 +55,14 @@ type ConsensusConfig struct {
 	NumBlocksForTicketMaturity uint
 }
 
+// MonetaryConfig defines configuration for the native coin and
+// other financial settings
+type MonetaryConfig struct {
+
+	// Decimals is the number of coin decimal places
+	Decimals int32
+}
+
 // EngineConfig represents the client's configuration
 type EngineConfig struct {
 
@@ -69,6 +77,9 @@ type EngineConfig struct {
 
 	// Chain holds blockchain related configurations
 	Chain *ChainConfig `json:"chain"`
+
+	// Monetary holds monetary configurations
+	Monetary *MonetaryConfig `json:"monetary"`
 
 	// configDir is where the node's config and data is stored
 	configDir string
@@ -125,6 +136,10 @@ func init() {
 
 	defaultConfig.TxPool = &TxPoolConfig{
 		Capacity: 1000,
+	}
+
+	defaultConfig.Monetary = &MonetaryConfig{
+		Decimals: 16,
 	}
 
 	defaultConfig.Chain = &ChainConfig{

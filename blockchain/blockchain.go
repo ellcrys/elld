@@ -48,7 +48,7 @@ type Blockchain struct {
 	bestChain *Chain
 
 	// chains holds all known chains
-	chains map[string]*Chain
+	chains map[util.String]*Chain
 
 	// orphanBlocks stores blocks whose parents are unknown
 	orphanBlocks *Cache
@@ -69,7 +69,7 @@ func New(txPool *txpool.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bl
 	bc.cfg = cfg
 	bc.chainLock = &sync.RWMutex{}
 	bc.mLock = &sync.Mutex{}
-	bc.chains = make(map[string]*Chain)
+	bc.chains = make(map[util.String]*Chain)
 	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
 	return bc
@@ -106,7 +106,7 @@ func (b *Blockchain) Up() error {
 
 		// The ID of the genesis chain is the hash of the genesis block hash.
 		gChainID := util.ToHex(util.Blake2b256(gBlock.Hash.Bytes()))
-		gChain := NewChain(gChainID, b.db, b.cfg, b.log)
+		gChain := NewChain(util.String(gChainID), b.db, b.cfg, b.log)
 		// Save the chain the chain (which also adds it to the chain cache)
 		if err := b.saveChain(gChain, "", 0); err != nil {
 			return fmt.Errorf("failed to save genesis chain: %s", err)
@@ -141,7 +141,7 @@ func (b *Blockchain) Up() error {
 // of a chain using the chain's ChainInfo
 func (b *Blockchain) getChainParentBlock(ci *common.ChainInfo) (*wire.Block, error) {
 
-	r := b.db.GetByPrefix(common.MakeBlockKey(ci.ParentChainID, ci.ParentBlockNumber))
+	r := b.db.GetByPrefix(common.MakeBlockKey(ci.ParentChainID.Bytes(), ci.ParentBlockNumber))
 	if len(r) == 0 {
 		return nil, common.ErrBlockNotFound
 	}
@@ -226,7 +226,7 @@ func (b *Blockchain) HybridMode() (bool, error) {
 
 // findChainByBlockHash finds the chain where the block with the hash
 // provided hash exist on. It also returns the header of highest block of the chain.
-func (b *Blockchain) findChainByBlockHash(hash string) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
+func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block *wire.Block, chain *Chain, chainTipHeader *wire.Header, err error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -320,17 +320,17 @@ func (b *Blockchain) addOrphanBlock(block *wire.Block) {
 }
 
 // isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
-func (b *Blockchain) isOrphanBlock(blockHash string) bool {
+func (b *Blockchain) isOrphanBlock(blockHash util.Hash) bool {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
-	return b.orphanBlocks.Get(blockHash) != nil
+	return b.orphanBlocks.Get(blockHash.HexStr()) != nil
 }
 
 // findChainInfo finds information about chain
-func (b *Blockchain) findChainInfo(chainID string) (*common.ChainInfo, error) {
+func (b *Blockchain) findChainInfo(chainID util.String) (*common.ChainInfo, error) {
 
 	var chainInfo common.ChainInfo
-	var chainKey = common.MakeChainKey(chainID)
+	var chainKey = common.MakeChainKey(chainID.Bytes())
 
 	result := b.db.GetByPrefix(chainKey)
 	if len(result) == 0 {
@@ -346,7 +346,7 @@ func (b *Blockchain) findChainInfo(chainID string) (*common.ChainInfo, error) {
 
 // saveChain store a record about this new chain on the database.
 // It will also cache the chain in memory that future query will be faster.
-func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNumber uint64, opts ...common.CallOp) error {
+func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBlockNumber uint64, opts ...common.CallOp) error {
 
 	var err error
 	var txOp = common.GetTxOp(b.db, opts...)
@@ -357,7 +357,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID string, parentBlockNu
 		ParentChainID:     parentChainID,
 	}
 
-	chainKey := common.MakeChainKey(chain.GetID())
+	chainKey := common.MakeChainKey(chain.GetID().Bytes())
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(chainKey, util.ObjectToBytes(chain.info))})
 	if err != nil {
 		txOp.Rollback()
@@ -436,7 +436,7 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock *wire.Block, parentBlock
 	// deterministic id to it. This is the blake2b
 	// 256 hash of the initial block hash.
 	chainID := util.ToHex(util.Blake2b256(append([]byte{}, initialBlock.Hash.Bytes()...)))
-	chain := NewChain(chainID, b.db, b.cfg, b.log)
+	chain := NewChain(util.String(chainID), b.db, b.cfg, b.log)
 
 	// Set the parent block and parent chain on the
 	// new chain.
@@ -449,7 +449,7 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock *wire.Block, parentBlock
 }
 
 // GetTransaction finds a transaction in the main chain and returns it
-func (b *Blockchain) GetTransaction(hash string) (*wire.Transaction, error) {
+func (b *Blockchain) GetTransaction(hash util.Hash) (*wire.Transaction, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 

@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -18,7 +19,7 @@ func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Acco
 //
 // If the account is not found in the chain, the parent chain
 // and its parent is checked up to the root chain.
-func (b *Blockchain) getAccount(chain common.Chainer, address string, opts ...common.CallOp) (*wire.Account, error) {
+func (b *Blockchain) getAccount(chain common.Chainer, address util.String, opts ...common.CallOp) (*wire.Account, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 

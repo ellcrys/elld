@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	"github.com/vmihailenco/msgpack"
 )
@@ -67,9 +68,9 @@ type Object interface {
 
 // ChainInfo describes a chain
 type ChainInfo struct {
-	ID                string `json:"id"`
-	ParentChainID     string `json:"parentChainID"`
-	ParentBlockNumber uint64 `json:"parentBlockNumber"`
+	ID                util.String `json:"id"`
+	ParentChainID     util.String `json:"parentChainID"`
+	ParentBlockNumber uint64      `json:"parentBlockNumber"`
 }
 
 // BlockchainMeta includes information about the blockchain
@@ -110,7 +111,7 @@ type Chainer interface {
 	Current(opts ...CallOp) (*wire.Header, error)
 
 	// GetID gets the chain ID
-	GetID() string
+	GetID() util.String
 
 	// GetBlock gets a block in the chain
 	GetBlock(uint64) (*wire.Block, error)
@@ -125,13 +126,13 @@ type Chainer interface {
 	CreateAccount(targetBlockNum uint64, account *wire.Account, opts ...CallOp) error
 
 	// GetAccount gets an account
-	GetAccount(address string, opts ...CallOp) (*wire.Account, error)
+	GetAccount(address util.String, opts ...CallOp) (*wire.Account, error)
 
 	// PutTransactions stores a collection of transactions
 	PutTransactions(txs []*wire.Transaction, opts ...CallOp) error
 
 	// GetTransaction gets a transaction by hash
-	GetTransaction(hash string) *wire.Transaction
+	GetTransaction(hash util.Hash) *wire.Transaction
 }
 
 // Blockchain defines an interface for a blockchain manager
@@ -144,13 +145,13 @@ type Blockchain interface {
 	GetBestChain() Chainer
 
 	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
-	IsKnownBlock(hash string) (bool, string, error)
+	IsKnownBlock(hash util.Hash) (bool, string, error)
 
 	// HaveBlock checks if a block exists on the main or side chains
-	HaveBlock(hash string) (bool, error)
+	HaveBlock(hash util.Hash) (bool, error)
 
 	// GetTransaction finds and returns a transaction on the main chain
-	GetTransaction(hash string) (*wire.Transaction, error)
+	GetTransaction(hash util.Hash) (*wire.Transaction, error)
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
 	ProcessBlock(*wire.Block) (Chainer, error)

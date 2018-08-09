@@ -2,9 +2,7 @@ package logic
 
 import (
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/wire"
-	"github.com/shopspring/decimal"
 )
 
 // TransactionAdd adds a transaction to the transaction pool.
@@ -18,19 +16,6 @@ func (l *Logic) TransactionAdd(tx *wire.Transaction, errCh chan error) error {
 
 	switch tx.Type {
 	case wire.TxTypeBalance:
-		// For balance transaction, ensure the value is not set to
-		// zero or a non-numeric value.
-		value, _ := decimal.NewFromString(tx.Value)
-		if value.LessThanOrEqual(decimal.NewFromFloat(0)) {
-			return sendErr(errCh, wire.ErrTxLowValue)
-		}
-
-		// Do not allow a transaction with fee below the minimum
-		// network transaction fee.
-		fee, _ := decimal.NewFromString(tx.Fee)
-		if fee.Cmp(constants.BalanceTxMinimumFee) == -1 {
-			return sendErr(errCh, wire.ErrTxInsufficientFee)
-		}
 
 		// Add the transaction to the transaction pool where
 		// it will be picked and broadcast to other peers
