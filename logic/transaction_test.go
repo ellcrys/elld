@@ -6,6 +6,7 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -54,8 +55,8 @@ var _ = Describe("Transaction", func() {
 		It("should return err = 'value must be greater than zero' when tx type is wire.TxTypeBalance and has <= 0 value", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "0", "0.1", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "0", "0.1", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			tx.Sig = sig
@@ -68,8 +69,8 @@ var _ = Describe("Transaction", func() {
 		It("should return err when tx type is wire.TxTypeBalance and fee is less than min fee", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "0.0000000001", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "10", "0.0000000001", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			tx.Hash = tx.ComputeHash()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
@@ -83,8 +84,8 @@ var _ = Describe("Transaction", func() {
 		It("should return err when tx type is unknown", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(0x300, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(0x300, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "10", "100", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			tx.Hash = tx.ComputeHash()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())
@@ -98,8 +99,8 @@ var _ = Describe("Transaction", func() {
 		It("should successfully add tx to transaction session", func() {
 			address, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "10", "100", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "10", "100", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			tx.Hash = tx.ComputeHash()
 			sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 			Expect(err).To(BeNil())

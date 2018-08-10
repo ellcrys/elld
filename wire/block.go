@@ -45,16 +45,16 @@ type Block struct {
 
 // Header represents the header of a block
 type Header struct {
-	Number           uint64     `json:"number" msgpack:"number"`
-	Nonce            BlockNonce `json:"nonce" msgpack:"nonce"`
-	MixHash          util.Hash  `json:"mixHash" msgpack:"mixHash"`
-	Timestamp        int64      `json:"timestamp" msgpack:"timestamp"`
-	CreatorPubKey    string     `json:"creatorPubKey" msgpack:"creatorPubKey"`
-	ParentHash       util.Hash  `json:"ParentHash" msgpack:"ParentHash"`
-	StateRoot        util.Hash  `json:"stateRoot" msgpack:"stateRoot"`
-	TransactionsRoot util.Hash  `json:"transactionsRoot" msgpack:"transactionsRoot"`
-	Difficulty       *big.Int   `json:"difficulty" msgpack:"difficulty"`
-	Extra            []byte     `json:"extra" msgpack:"extra"`
+	Number           uint64      `json:"number" msgpack:"number"`
+	Nonce            BlockNonce  `json:"nonce" msgpack:"nonce"`
+	MixHash          util.Hash   `json:"mixHash" msgpack:"mixHash"`
+	Timestamp        int64       `json:"timestamp" msgpack:"timestamp"`
+	CreatorPubKey    util.String `json:"creatorPubKey" msgpack:"creatorPubKey"`
+	ParentHash       util.Hash   `json:"ParentHash" msgpack:"ParentHash"`
+	StateRoot        util.Hash   `json:"stateRoot" msgpack:"stateRoot"`
+	TransactionsRoot util.Hash   `json:"transactionsRoot" msgpack:"transactionsRoot"`
+	Difficulty       *big.Int    `json:"difficulty" msgpack:"difficulty"`
+	Extra            []byte      `json:"extra" msgpack:"extra"`
 }
 
 // GetNumber returns the header number which is the block number
@@ -197,7 +197,7 @@ func BlockVerify(block *Block) error {
 		return fieldError("sig", "signature not set")
 	}
 
-	pubKey, err := crypto.PubKeyFromBase58(block.Header.CreatorPubKey)
+	pubKey, err := crypto.PubKeyFromBase58(block.Header.CreatorPubKey.String())
 	if err != nil {
 		return fieldError("header.creatorPubKey", err.Error())
 	}

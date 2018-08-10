@@ -50,10 +50,10 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 	return have, reason, nil
 }
 
-// GenerateBlock produces a valid block for a target chain. By default
+// Generate produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
+func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
 
 	var chain *Chain
 	var block *wire.Block
@@ -101,7 +101,7 @@ func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...c
 	block = &wire.Block{
 		Header: &wire.Header{
 			ParentHash:       util.EmptyHash,
-			CreatorPubKey:    params.Creator.PubKey().Base58(),
+			CreatorPubKey:    util.String(params.Creator.PubKey().Base58()),
 			Number:           1,
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,

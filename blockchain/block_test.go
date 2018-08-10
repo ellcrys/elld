@@ -119,13 +119,13 @@ var BlockTest = func() bool {
 				}
 
 				for m, r := range cases {
-					_, err = bc.GenerateBlock(m)
+					_, err = bc.Generate(m)
 					Expect(err).To(Equal(r))
 				}
 			})
 
 			It("should successfully create a new and valid block", func() {
-				blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+				blk, err := bc.Generate(&common.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
 					Nonce:        wire.EncodeNonce(1),
@@ -141,7 +141,7 @@ var BlockTest = func() bool {
 
 			When("chain is directly passed", func() {
 				It("should successfully create a new and valid block", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
@@ -163,7 +163,7 @@ var BlockTest = func() bool {
 				})
 
 				It("should return error if not target chain", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
@@ -186,7 +186,7 @@ var BlockTest = func() bool {
 				})
 
 				It("should return error sender account is not found in the target chain", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
@@ -219,7 +219,7 @@ var BlockTest = func() bool {
 				})
 
 				It("should successfully create a new and valid block", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
@@ -252,7 +252,7 @@ var BlockTest = func() bool {
 				})
 
 				It("should create a 'genesis' block", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),

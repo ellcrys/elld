@@ -51,9 +51,9 @@ var BlockValidatorTest = func() bool {
 			It("should check for validation errors", func() {
 				key := crypto.NewKeyFromIntSeed(1)
 				var cases = map[*wire.Block]interface{}{
-					&wire.Block{Header: &wire.Header{}}:                                     fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
-					&wire.Block{Header: &wire.Header{CreatorPubKey: "invalid"}}:             fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
-					&wire.Block{Header: &wire.Header{CreatorPubKey: key.PubKey().Base58()}}: fmt.Errorf("field:sig, error:signature is not valid"),
+					&wire.Block{Header: &wire.Header{}}:                                                  fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
+					&wire.Block{Header: &wire.Header{CreatorPubKey: "invalid"}}:                          fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
+					&wire.Block{Header: &wire.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
 				}
 				for b, err := range cases {
 					validator := NewBlockValidator(b, nil, nil, false)

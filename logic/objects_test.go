@@ -56,8 +56,8 @@ var _ = Describe("Transaction", func() {
 
 		It("should successfully get objects without error", func() {
 			addresses := []*elldb.KVObject{
-				elldb.NewKVObject([]byte("age"), []byte("20"), "ns"),
-				elldb.NewKVObject([]byte("sex"), []byte("unknown"), "ns"),
+				elldb.NewKVObject([]byte("age"), []byte("20"), []byte("ns")),
+				elldb.NewKVObject([]byte("sex"), []byte("unknown"), []byte("ns")),
 			}
 			errCh = make(chan error, 1)
 			logic.ObjectsPut(addresses, errCh)

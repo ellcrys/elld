@@ -37,7 +37,7 @@ func TestBlockchain(t *testing.T) {
 }
 
 func MakeTestBlock(bc common.Blockchain, chain *Chain, gp *common.GenerateBlockParams) *wire.Block {
-	blk, err := bc.GenerateBlock(gp, ChainOp{Chain: chain})
+	blk, err := bc.Generate(gp, ChainOp{Chain: chain})
 	if err != nil {
 		panic(err)
 	}

@@ -93,7 +93,7 @@ func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 	// and must be decodeable
 	if len(h.CreatorPubKey) == 0 {
 		errs = append(errs, fieldError("creatorPubKey", "creator's public key is required"))
-	} else if _, err := crypto.PubKeyFromBase58(h.CreatorPubKey); err != nil {
+	} else if _, err := crypto.PubKeyFromBase58(h.CreatorPubKey.String()); err != nil {
 		errs = append(errs, fieldError("creatorPubKey", err.Error()))
 	}
 
@@ -179,7 +179,7 @@ func (v *BlockValidator) check() (errs []error) {
 // signature to be set.
 func (v *BlockValidator) checkSignature() (errs []error) {
 
-	pubKey, err := crypto.PubKeyFromBase58(v.block.Header.CreatorPubKey)
+	pubKey, err := crypto.PubKeyFromBase58(v.block.Header.CreatorPubKey.String())
 	if err != nil {
 		errs = append(errs, fieldError("header.creatorPubKey", err.Error()))
 		return

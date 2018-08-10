@@ -62,8 +62,8 @@ var _ = Describe("Transactions", func() {
 
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(addr.Addr()), util.String(sender.PubKey().Base58()), "10", "10", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
 			tx.Hash = util.StrToHash("invalid_hash")
 
@@ -90,8 +90,8 @@ var _ = Describe("Transactions", func() {
 
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(addr.Addr()), util.String(sender.PubKey().Base58()), "10", "10", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
 			tx.Hash = tx.ComputeHash()
 
