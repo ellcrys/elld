@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node"
@@ -34,7 +35,8 @@ var _ = Describe("Transaction", func() {
 		err = n.OpenDB()
 		Expect(err).To(BeNil())
 
-		logic, _ = New(n, log)
+		event := EventBus.New()
+		logic = New(n, event, log)
 	})
 
 	AfterEach(func() {

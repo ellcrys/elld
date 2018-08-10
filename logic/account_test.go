@@ -3,6 +3,7 @@ package logic
 import (
 	path "path/filepath"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 
 	"github.com/ellcrys/elld/accountmgr"
@@ -29,7 +30,8 @@ var _ = Describe("Account", func() {
 		errCh = make(chan error)
 		n, err = node.NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 		Expect(err).To(BeNil())
-		logic, _ = New(n, log)
+		event := EventBus.New()
+		logic = New(n, event, log)
 	})
 
 	AfterEach(func() {

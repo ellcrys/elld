@@ -481,7 +481,7 @@ func (m *Manager) savePeers() error {
 	}
 
 	var errCh = make(chan error, 1)
-	m.localNode.logicEvt.Publish("objects.put", objectsToStore, errCh)
+	m.localNode.event.Publish("objects.put", objectsToStore, errCh)
 	if err := <-errCh; err != nil {
 		return err
 	}
@@ -496,7 +496,7 @@ func (m *Manager) loadPeers() error {
 
 	// get addresses from database
 	var result = make(chan []*elldb.KVObject, 1)
-	m.localNode.logicEvt.Publish("objects.get", []byte("address"), result)
+	m.localNode.event.Publish("objects.get", []byte("address"), result)
 
 	// create remote nodes objects to represent the addresses
 	// and add them to the managers active peer list

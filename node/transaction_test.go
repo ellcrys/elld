@@ -24,7 +24,6 @@ func TransactionTest() bool {
 			var n, rp *Node
 			var proto, rpProto types.Gossip
 			var sender, address *crypto.Key
-			var nBus, rpBus evbus.Bus
 
 			BeforeEach(func() {
 				address, _ = crypto.NewKey(nil)
@@ -40,8 +39,9 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				proto = NewGossip(n, log)
 				n.SetGossipProtocol(proto)
-				_, nBus = logic.New(n, log)
-				n.SetLogicBus(nBus)
+				event := evbus.New()
+				logic.New(n, event, log)
+				n.SetEventBus(event)
 			})
 
 			BeforeEach(func() {
@@ -50,8 +50,9 @@ func TransactionTest() bool {
 				rpProto = NewGossip(rp, log)
 				rp.SetGossipProtocol(rpProto)
 				rp.SetProtocolHandler(config.TxVersion, rpProto.OnTx)
-				_, rpBus = logic.New(rp, log)
-				rp.SetLogicBus(rpBus)
+				event := evbus.New()
+				logic.New(rp, event, log)
+				rp.SetEventBus(event)
 			})
 
 			AfterEach(func() {

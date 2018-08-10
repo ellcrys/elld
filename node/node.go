@@ -56,7 +56,7 @@ type Node struct {
 	db                      elldb.DB                // used to access and modify local database
 	signatory               *d_crypto.Key           // signatory address used to get node ID and for signing
 	historyCache            *histcache.HistoryCache // Used to track objects and behaviours
-	logicEvt                evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	event                   evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
@@ -226,9 +226,9 @@ func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
-// SetLogicBus sets the logic event bus
-func (n *Node) SetLogicBus(bus evbus.Bus) {
-	n.logicEvt = bus
+// SetEventBus set the event bus used to broadcast events across the engine
+func (n *Node) SetEventBus(bus evbus.Bus) {
+	n.event = bus
 }
 
 // SetLocalNode sets the local peer

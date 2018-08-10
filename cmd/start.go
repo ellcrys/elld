@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/logic"
 
 	"github.com/ellcrys/elld/rpc"
@@ -132,6 +133,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 // - add bootstrap node from config file if any
 // - open database
 // - initialize protocol instance along with message handlers
+// - create global event handler
 // - create logic handler and pass it to the node
 // - start RPC server if enabled
 // - start console if enabled
@@ -204,14 +206,20 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 
-	lgc, logicEvt := logic.New(n, log)
-	n.SetLogicBus(logicEvt)
+	// Create event the global event handler
+	event := EventBus.New()
+
+	// Create logic provider
+	logicProvider := logic.New(n, event, log)
+
+	// Set the event handler in the node
+	n.SetEventBus(event)
 
 	n.Start()
 
 	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = rpc.NewServer(rpcAddress, lgc, log)
+		rpcServer = rpc.NewServer(rpcAddress, logicProvider, log)
 		go rpcServer.Serve()
 	}
 

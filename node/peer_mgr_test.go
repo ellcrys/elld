@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -54,8 +55,9 @@ func PeerManagerTest() bool {
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localNode = p
-			_, bus := logic.New(p, log)
-			p.SetLogicBus(bus)
+			event := EventBus.New()
+			logic.New(p, event, log)
+			p.SetEventBus(event)
 		})
 
 		Describe(".AddOrUpdatePeer", func() {

@@ -16,7 +16,7 @@ import (
 // protocol. This can include peer discovery, configuration,
 // APIs etc.
 type Engine interface {
-	SetLogicBus(bus evbus.Bus)              // Set the event bus used to perform logical operations against the blockchain
+	SetEventBus(bus evbus.Bus)              // Set the event bus used to broadcast events across the engine
 	Cfg() *config.EngineConfig              // Returns the engine configuration
 	DB() elldb.DB                           // The engine's database instance
 	AddTxSession(txID string)               // Add new transaction session

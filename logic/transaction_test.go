@@ -3,6 +3,7 @@ package logic
 import (
 	"time"
 
+	"github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
@@ -37,7 +38,8 @@ var _ = Describe("Transaction", func() {
 			Expect(err).To(BeNil())
 			gossip := node.NewGossip(n, log)
 			n.SetGossipProtocol(gossip)
-			logic, _ = New(n, log)
+			event := EventBus.New()
+			logic = New(n, event, log)
 		})
 
 		AfterEach(func() {

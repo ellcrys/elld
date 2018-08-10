@@ -61,7 +61,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 		// Add the transaction to the transaction pool and wait for error response
 		var errCh = make(chan error)
-		g.engine.logicEvt.Publish("transaction.add", msg, errCh)
+		g.engine.event.Publish("transaction.add", msg, errCh)
 		if err := <-errCh; err != nil {
 			s.Reset()
 			g.log.Error("failed to add transaction to pool", "Err", err)

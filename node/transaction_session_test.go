@@ -18,7 +18,7 @@ func TransactionSessionTest() bool {
 		BeforeEach(func() {
 			n, err = NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
 			Expect(err).To(BeNil())
-			n.SetLogicBus(evbus.New())
+			n.SetEventBus(evbus.New())
 		})
 
 		Describe(".HasTxSession", func() {
