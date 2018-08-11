@@ -35,21 +35,15 @@ func (s *Service) TransactionAdd(payload SendTxPayload, result *Result) error {
 	switch tx.Type {
 	case wire.TxTypeBalance:
 
-		// s.engine.
-		// var errCh = make(chan error, 1)
-		// err = s.logic.TransactionAdd(&tx, errCh)
-		// if err != nil {
-		// 	return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
-		// }
+		apiFunc := s.engine.MustGet("TransactionAdd")
+		_, err := apiFunc(&tx)
+		if err != nil {
+			return NewErrorResult(result, err.Error(), errCodeTransaction, 500)
+		}
 
-		// if err = <-errCh; err != nil {
-		// 	return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
-		// }
-
-		// return NewOKResult(result, 200, map[string]interface{}{
-		// 	"txId": string(tx.ID()),
-		// })
-		return nil
+		return NewOKResult(result, 200, map[string]interface{}{
+			"txId": string(tx.ID()),
+		})
 
 	default:
 		return NewErrorResult(result, "unknown transaction type", errCodeUnknownTransactionType, 400)
