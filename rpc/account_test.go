@@ -3,11 +3,9 @@ package rpc
 import (
 	"path"
 
-	"github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
 	. "github.com/onsi/ginkgo"
@@ -39,11 +37,10 @@ var _ = Describe("Accounts", func() {
 	})
 
 	Describe(".AccountsGet", func() {
-		service := new(Service)
+		var service *Service
 
 		BeforeEach(func() {
-			event := EventBus.New()
-			service.logic = logic.New(n, event, log)
+			service = NewService(n.APIs(), cfg)
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {

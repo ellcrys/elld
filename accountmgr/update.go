@@ -21,7 +21,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	}
 
 	// find the account with a matching address
-	accounts, err := am.GetAccountsOnDisk()
+	accounts, err := am.ListAccounts()
 	if err != nil {
 		return err
 	}

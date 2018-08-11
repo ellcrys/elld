@@ -1,5 +1,7 @@
 package config
 
+import "github.com/ellcrys/elld/miner/ethash"
+
 // PeerConfig represents peer configuration
 type PeerConfig struct {
 
@@ -66,9 +68,8 @@ type MonetaryConfig struct {
 // MinerConfig defines configuration for mining
 type MinerConfig struct {
 
-	// DataDir is the path in which the ethash dataset and cache
-	// will be located.
-	DataDir string `json:"dataDir"`
+	// Mode describes the ethash mining mode
+	Mode ethash.Mode `json:"-"`
 }
 
 // EngineConfig represents the client's configuration
@@ -89,8 +90,8 @@ type EngineConfig struct {
 	// Monetary holds monetary configurations
 	Monetary *MonetaryConfig `json:"monetary"`
 
-	// Mining holds mining configuration
-	Mining *MinerConfig `json:"mining"`
+	// Miner holds mining configuration
+	Miner *MinerConfig `json:"mining"`
 
 	// configDir is where the node's config and data is stored
 	configDir string
@@ -156,5 +157,9 @@ func init() {
 	defaultConfig.Chain = &ChainConfig{
 		Checkpoints:           nil,
 		TargetHybridModeBlock: 80640,
+	}
+
+	defaultConfig.Miner = &MinerConfig{
+		Mode: ethash.ModeNormal,
 	}
 }

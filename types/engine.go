@@ -3,11 +3,11 @@ package types
 import (
 	"time"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/emitter"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -16,7 +16,7 @@ import (
 // protocol. This can include peer discovery, configuration,
 // APIs etc.
 type Engine interface {
-	SetEventBus(bus evbus.Bus)              // Set the event bus used to broadcast events across the engine
+	SetEventBus(*emitter.Emitter)           // Set the event bus used to broadcast events across the engine
 	Cfg() *config.EngineConfig              // Returns the engine configuration
 	DB() elldb.DB                           // The engine's database instance
 	AddTxSession(txID string)               // Add new transaction session

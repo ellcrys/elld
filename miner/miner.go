@@ -1,9 +1,24 @@
 package miner
 
 import (
+	"math/big"
+	"path/filepath"
+	"time"
+
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/miner/ethash"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/elld/wire"
+)
+
+const (
+	// EventAborted defines an event about an aborted PoW operation
+	EventAborted = "event.aborted"
 )
 
 // Miner provides mining, block header modification and
@@ -11,21 +26,179 @@ import (
 // leverages Ethash to performing PoW computation.
 type Miner struct {
 
+	// minerKey is the key associated with the loaded account (a.k.a coinbase)
+	minerKey *crypto.Key
+
 	// cfg is the miner configuration
-	cfg *config.MinerConfig
+	cfg *config.EngineConfig
 
 	// log is the logger for the miner
 	log logger.Logger
 
 	// blockMaker provides functions for creating a block
 	blockMaker common.BlockMaker
+
+	// event is the engine event emitter
+	event *emitter.Emitter
+
+	// ethash instance
+	ethash *ethash.Ethash
+
+	// stop indicates a request to stop all mining
+	stop bool
+
+	// abort forces the current mining operations to stop
+	abort chan struct{}
+
+	aborted bool
+
+	// proposedBlock is the block currently being mined
+	proposedBlock *wire.Block
 }
 
 // New creates and returns a new Miner instance
-func New(blockMaker common.Blockchain, cfg *config.MinerConfig, log logger.Logger) *Miner {
-	return &Miner{
+func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitter, cfg *config.EngineConfig, log logger.Logger) *Miner {
+	ethash.SetLogger(log)
+
+	m := &Miner{
+		minerKey:   mineKey,
 		cfg:        cfg,
 		log:        log,
 		blockMaker: blockMaker,
+		event:      event,
+		abort:      make(chan struct{}),
+		ethash: ethash.New(ethash.Config{
+			DatasetDir:     filepath.Join(cfg.ConfigDir(), "dataset"),
+			CacheDir:       filepath.Join(cfg.ConfigDir(), "dataset"),
+			CachesInMem:    2,
+			CachesOnDisk:   3,
+			DatasetsInMem:  1,
+			DatasetsOnDisk: 2,
+			PowMode:        cfg.Miner.Mode,
+		}),
+	}
+
+	// Subscribe to the global event emitter to learn
+	// about new blocks that may invalidate the currently
+	// proposed block
+	go func() {
+		for event := range m.event.On(common.EventNewBlock) {
+			m.handleNewBlockEvt(event.Args[0].(*wire.Block))
+		}
+	}()
+
+	return m
+}
+
+// setFakeDelay sets the delay duration for ModeFake
+func (m *Miner) setFakeDelay(d time.Duration) {
+	m.ethash.SetFakeDelay(d)
+}
+
+// getProposedBlock creates a full valid block compatible with the
+// main chain.
+func (m *Miner) getProposedBlock(txs []*wire.Transaction) (*wire.Block, error) {
+	proposedBlock, err := m.blockMaker.Generate(&common.GenerateBlockParams{
+		Transactions: txs,
+		Creator:      m.minerKey,
+		Nonce:        wire.EncodeNonce(1),
+		MixHash:      util.BytesToHash([]byte("mix hash")),
+		Difficulty:   new(big.Int).SetInt64(1),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return proposedBlock, nil
+}
+
+// abortCurrent forces the currently running mining threads to
+// stop. This will cause a new proposed block to be created.
+func (m *Miner) abortCurrent() {
+	if m.aborted {
+		return
+	}
+	close(m.abort)
+	m.aborted = true
+}
+
+// Stop stops the miner completely
+func (m *Miner) Stop() {
+	m.stop = true
+	m.abortCurrent()
+}
+
+// handleNewBlockEvt detects and processes event about
+// a new block being accepted in the main chain. This
+// will wire cause the current proposed block to dumped
+// and it also emits an EventAborted event
+func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
+	if m.proposedBlock == nil || !m.proposedBlock.Hash.Equal(newBlock.Hash) {
+		m.log.Debug("New block found. Proposed blocks has been invalidated", "Number", newBlock.Header.Number)
+		go m.event.Emit(EventAborted, m.proposedBlock)
+		m.abortCurrent()
+	}
+}
+
+// Mine begins the mining process
+func (m *Miner) Mine() {
+	for !m.stop {
+
+		var err error
+		m.aborted = false
+
+		// Get a proposed block compatible with the
+		// main chain and the current block.
+		m.proposedBlock, err = m.getProposedBlock([]*wire.Transaction{
+			wire.NewTx(wire.TxTypeBalance, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
+		})
+		if err != nil {
+			m.log.Error("Proposed block is not valid", "Error", err)
+			return
+		}
+
+		// Prepare the proposed block. It will calculate
+		// the difficulty and update the proposed block difficulty
+		// field in its header
+		m.ethash.Prepare(m.blockMaker.ChainReader(), m.proposedBlock.GetHeader())
+
+		// Begin the PoW computation
+		startTime := time.Now()
+		block, err := m.ethash.Seal(m.proposedBlock, m.abort)
+		if err != nil {
+			m.log.Error(err.Error())
+			return
+		}
+
+		if block == nil || m.stop {
+			continue
+		}
+
+		// Finalize the block. Calculate rewards etc
+		block, err = m.ethash.Finalize(m.blockMaker, block)
+		if err != nil {
+			m.log.Error("Block finalization failed", "Err", err)
+			return
+		}
+
+		// Recompute hash and signature
+		block.Hash = block.ComputeHash()
+		block.Sig, err = wire.BlockSign(block, m.minerKey.PrivKey().Base58())
+
+		// Attempt to add to the blockchain to the main chain.
+		if m.cfg.Miner.Mode != ethash.ModeFake {
+			_, err = m.blockMaker.ProcessBlock(block)
+			if err != nil {
+				m.log.Error("Failed to process block", "Err", err.Error())
+				return
+			}
+		}
+
+		m.log.Info("New block mined",
+			"Number", block.Header.Number,
+			"Difficulty", block.Header.Difficulty,
+			"Hashrate", m.ethash.Hashrate(),
+			"PoW Time", time.Since(startTime))
+
+		time.Sleep(1 * time.Second)
 	}
 }

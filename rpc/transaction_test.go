@@ -3,8 +3,6 @@ package rpc
 import (
 	"time"
 
-	"github.com/asaskevich/EventBus"
-	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 
@@ -42,11 +40,10 @@ var _ = Describe("Transactions", func() {
 	})
 
 	Describe(".Send", func() {
-		service := new(Service)
+		var service *Service
 
 		BeforeEach(func() {
-			event := EventBus.New()
-			service.logic = logic.New(n, event, log)
+			service = NewService(n.APIs(), cfg)
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {

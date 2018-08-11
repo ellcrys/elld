@@ -16,6 +16,31 @@ func makeTxHistoryKey(tx *wire.Transaction, peer types.Engine) histcache.MultiKe
 	return []interface{}{tx.ID(), peer.StringID()}
 }
 
+// addTransaction adds a transaction to the transaction pool.
+func (n *Node) addTransaction(tx *wire.Transaction) error {
+
+	// Validate the transactions
+	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain(), true)
+	if errs := txValidator.Validate(); len(errs) > 0 {
+		return errs[0]
+	}
+
+	switch tx.Type {
+	case wire.TxTypeBalance:
+
+		// Add the transaction to the transaction pool where
+		// it will be broadcast to other peers and included in a block
+		if err := n.GetTxPool().Put(tx); err != nil {
+			return err
+		}
+
+		return nil
+
+	default:
+		return wire.ErrTxTypeUnknown
+	}
+}
+
 // OnTx handles incoming transaction message
 func (g *Gossip) OnTx(s net.Stream) {
 
@@ -60,11 +85,8 @@ func (g *Gossip) OnTx(s net.Stream) {
 	if !g.engine.History().Has(historyKey) {
 
 		// Add the transaction to the transaction pool and wait for error response
-		var errCh = make(chan error)
-		g.engine.event.Publish("transaction.add", msg, errCh)
-		if err := <-errCh; err != nil {
-			s.Reset()
-			g.log.Error("failed to add transaction to pool", "Err", err)
+		if err := g.engine.addTransaction(msg); err != nil {
+			g.log.Error("failed to add transaction to pool")
 			return
 		}
 
@@ -82,7 +104,6 @@ func (g *Gossip) RelayTx(tx *wire.Transaction, remotePeers []types.Engine) error
 	sent := 0
 
 	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
-
 	for _, peer := range remotePeers {
 
 		historyKey := makeTxHistoryKey(tx, peer)

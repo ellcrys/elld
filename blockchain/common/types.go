@@ -154,7 +154,7 @@ type Blockchain interface {
 	GetTransaction(hash util.Hash) (*wire.Transaction, error)
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(*wire.Block) (Chainer, error)
+	ProcessBlock(*wire.Block) (ChainReader, error)
 
 	// Generate creates a new block for a target chain.
 	// The Chain is specified by passing to ChainOp.
@@ -167,11 +167,17 @@ type Blockchain interface {
 	GetChainsReader() (readers []ChainReader)
 }
 
-// BlockMaker defines an interface providing the ability
-// to create a new block
+// BlockMaker defines an interface providing the
+// necessary functions to create new blocks
 type BlockMaker interface {
 
 	// Generate creates a new block for a target chain.
 	// The Chain is specified by passing to ChainOp.
 	Generate(*GenerateBlockParams, ...CallOp) (*wire.Block, error)
+
+	// ChainReader gets a Reader for reading the main chain
+	ChainReader() ChainReader
+
+	// ProcessBlock attempts to process and append a block to the main or side chains
+	ProcessBlock(*wire.Block) (ChainReader, error)
 }

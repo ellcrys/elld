@@ -21,6 +21,11 @@ func NewChainReader(store common.ChainStorer, chainID util.String) *ChainRead {
 	}
 }
 
+// GetID gets the chain ID
+func (r *ChainRead) GetID() util.String {
+	return util.String(r.chainID)
+}
+
 // GetBlock finds and returns a block associated with chainID.
 // When 0 is passed, it should return the block with the highest number
 func (r *ChainRead) GetBlock(number uint64, opts ...common.CallOp) (*wire.Block, error) {

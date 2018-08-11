@@ -4,11 +4,9 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -31,17 +29,10 @@ func TransactionTest() bool {
 			})
 
 			BeforeEach(func() {
-				// bchain = blockchain.New()
-			})
-
-			BeforeEach(func() {
 				n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				proto = NewGossip(n, log)
 				n.SetGossipProtocol(proto)
-				event := evbus.New()
-				logic.New(n, event, log)
-				n.SetEventBus(event)
 			})
 
 			BeforeEach(func() {
@@ -50,9 +41,6 @@ func TransactionTest() bool {
 				rpProto = NewGossip(rp, log)
 				rp.SetGossipProtocol(rpProto)
 				rp.SetProtocolHandler(config.TxVersion, rpProto.OnTx)
-				event := evbus.New()
-				logic.New(rp, event, log)
-				rp.SetEventBus(event)
 			})
 
 			AfterEach(func() {

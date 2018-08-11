@@ -27,7 +27,7 @@ type StoredAccount struct {
 // AccountExist checks if an account with a matching address exists
 func (am *AccountManager) AccountExist(address string) (bool, error) {
 
-	accounts, err := am.GetAccountsOnDisk()
+	accounts, err := am.ListAccounts()
 	if err != nil {
 		return false, err
 	}
@@ -44,7 +44,7 @@ func (am *AccountManager) AccountExist(address string) (bool, error) {
 // GetDefault gets the oldest account. Usually the account with 0 index.
 func (am *AccountManager) GetDefault() (*StoredAccount, error) {
 
-	accounts, err := am.GetAccountsOnDisk()
+	accounts, err := am.ListAccounts()
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (am *AccountManager) GetDefault() (*StoredAccount, error) {
 // list of accounts which is ordered by the time of creation.
 func (am *AccountManager) GetByIndex(i int) (*StoredAccount, error) {
 
-	accounts, err := am.GetAccountsOnDisk()
+	accounts, err := am.ListAccounts()
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (am *AccountManager) GetByIndex(i int) (*StoredAccount, error) {
 // list of accounts which is ordered by the time of creation.
 func (am *AccountManager) GetByAddress(addr string) (*StoredAccount, error) {
 
-	accounts, err := am.GetAccountsOnDisk()
+	accounts, err := am.ListAccounts()
 	if err != nil {
 		return nil, err
 	}

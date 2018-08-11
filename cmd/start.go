@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/asaskevich/EventBus"
-	"github.com/ellcrys/elld/logic"
 
 	"github.com/ellcrys/elld/rpc"
 
@@ -209,9 +208,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Create event the global event handler
 	event := EventBus.New()
 
-	// Create logic provider
-	logicProvider := logic.New(n, event, log)
-
 	// Set the event handler in the node
 	n.SetEventBus(event)
 
@@ -219,7 +215,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = rpc.NewServer(rpcAddress, logicProvider, log)
+		rpcServer = rpc.NewServer(rpcAddress, n.APIs(), cfg, log)
 		go rpcServer.Serve()
 	}
 
