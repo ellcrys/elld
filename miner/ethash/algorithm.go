@@ -321,6 +321,8 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 	pend.Wait()
 }
 
+// func blakeimoto(hash []byte, nonce uint64, )
+
 // hashimoto aggregates data from the full dataset in order to produce our final
 // value for a particular header hash and nonce.
 func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32) []uint32) ([]byte, []byte) {

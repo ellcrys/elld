@@ -19,6 +19,7 @@ package ethash
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"runtime"
 	"time"
@@ -28,7 +29,6 @@ import (
 	"github.com/ellcrys/elld/wire"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -42,81 +42,49 @@ var (
 // codebase, inherently breaking if the engine is swapped out. Please put common
 // error types into the consensus package.
 var (
-	errLargeBlockTime    = errors.New("timestamp too big")
 	errZeroBlockTime     = errors.New("timestamp equals parent's")
-	errTooManyUncles     = errors.New("too many uncles")
-	errDuplicateUncle    = errors.New("duplicate uncle")
-	errUncleIsAncestor   = errors.New("uncle is ancestor")
-	errDanglingUncle     = errors.New("uncle's parent is not ancestor")
 	errInvalidDifficulty = errors.New("non-positive difficulty")
 	errInvalidMixDigest  = errors.New("invalid mix digest")
 	errInvalidPoW        = errors.New("invalid proof-of-work")
 )
 
-// verifyHeader checks whether a header conforms to the consensus rules of the
+// VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 // See YP section 4.3.4. "Block Header Validity"
-func (ethash *Ethash) verifyHeader(chain consensus.ChainReader, header, parent *types.Header, uncle bool, seal bool) error {
+func (ethash *Ethash) VerifyHeader(chain c.ChainReader, header, parent *wire.Header, seal bool) error {
+
 	// Ensure that the header's extra-data section is of a reasonable size
-	// if uint64(len(header.Extra)) > params.MaximumExtraDataSize {
-	// 	return fmt.Errorf("extra-data too long: %d > %d", len(header.Extra), params.MaximumExtraDataSize)
-	// }
-	// // Verify the header's timestamp
-	// if uncle {
-	// 	if header.Time.Cmp(math.MaxBig256) > 0 {
-	// 		return errLargeBlockTime
-	// 	}
-	// } else {
-	// 	if header.Time.Cmp(big.NewInt(time.Now().Add(allowedFutureBlockTime).Unix())) > 0 {
-	// 		return consensus.ErrFutureBlock
-	// 	}
-	// }
-	// if header.Time.Cmp(parent.Time) <= 0 {
-	// 	return errZeroBlockTime
-	// }
-	// // Verify the block's difficulty based in it's timestamp and parent's difficulty
-	// expected := ethash.CalcDifficulty(chain, header.Time.Uint64(), parent)
+	if uint64(len(header.Extra)) > params.MaximumExtraDataSize {
+		return fmt.Errorf("extra-data too long: %d > %d", len(header.Extra), params.MaximumExtraDataSize)
+	}
 
-	// if expected.Cmp(header.Difficulty) != 0 {
-	// 	return fmt.Errorf("invalid difficulty: have %v, want %v", header.Difficulty, expected)
-	// }
-	// // Verify that the gas limit is <= 2^63-1
-	// cap := uint64(0x7fffffffffffffff)
-	// if header.GasLimit > cap {
-	// 	return fmt.Errorf("invalid gasLimit: have %v, max %v", header.GasLimit, cap)
-	// }
-	// // Verify that the gasUsed is <= gasLimit
-	// if header.GasUsed > header.GasLimit {
-	// 	return fmt.Errorf("invalid gasUsed: have %d, gasLimit %d", header.GasUsed, header.GasLimit)
-	// }
+	// Verify the header's timestamp
+	if time.Unix(header.Timestamp, 0).After(time.Now().Add(allowedFutureBlockTime)) {
+		return consensus.ErrFutureBlock
+	}
 
-	// // Verify that the gas limit remains within allowed bounds
-	// diff := int64(parent.GasLimit) - int64(header.GasLimit)
-	// if diff < 0 {
-	// 	diff *= -1
-	// }
-	// limit := parent.GasLimit / params.GasLimitBoundDivisor
+	if header.Timestamp <= parent.Timestamp {
+		return errZeroBlockTime
+	}
 
-	// if uint64(diff) >= limit || header.GasLimit < params.MinGasLimit {
-	// 	return fmt.Errorf("invalid gas limit: have %d, want %d += %d", header.GasLimit, parent.GasLimit, limit)
-	// }
-	// // Verify that the block number is parent's +1
-	// if diff := new(big.Int).Sub(header.Number, parent.Number); diff.Cmp(big.NewInt(1)) != 0 {
-	// 	return consensus.ErrInvalidNumber
-	// }
-	// // Verify the engine specific seal securing the block
-	// if seal {
-	// 	if err := ethash.VerifySeal(chain, header); err != nil {
-	// 		return err
-	// 	}
-	// }
-	// // If all checks passed, validate any special fields for hard forks
-	// if err := misc.VerifyDAOHeaderExtraData(chain.Config(), header); err != nil {
-	// 	return err
-	// }
-	// if err := misc.VerifyForkHashes(chain.Config(), header, uncle); err != nil {
-	// 	return err
-	// }
+	// Verify the block's difficulty based in it's timestamp and parent's difficulty
+	expected := ethash.CalcDifficulty(chain, uint64(header.Timestamp), parent)
+	if expected.Cmp(header.Difficulty) != 0 {
+		return fmt.Errorf("invalid difficulty: have %v, want %v", header.Difficulty, expected)
+	}
+
+	// Verify that the block number is parent's +1
+	if diff := header.Number - parent.Number; diff != 1 {
+		return consensus.ErrInvalidNumber
+	}
+
+	// Verify the engine specific seal securing the block
+	if seal {
+		if err := ethash.VerifySeal(chain, header); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

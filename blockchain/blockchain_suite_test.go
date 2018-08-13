@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/miner/ethash"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
@@ -32,6 +34,7 @@ var sender, receiver *crypto.Key
 
 func TestBlockchain(t *testing.T) {
 	log = logger.NewLogrusNoOp()
+	ethash.SetLogger(log)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Blockchain Suite")
 }
@@ -98,10 +101,11 @@ var _ = Describe("Blockchain", func() {
 			Transactions: []*wire.Transaction{
 				wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 			},
-			Creator:    sender,
-			Nonce:      wire.EncodeNonce(1),
-			MixHash:    util.BytesToHash([]byte("mix hash")),
-			Difficulty: new(big.Int).SetInt64(500),
+			Creator:           sender,
+			Nonce:             wire.EncodeNonce(1),
+			MixHash:           util.BytesToHash([]byte("mix hash")),
+			Difficulty:        new(big.Int).SetInt64(131072),
+			OverrideTimestamp: time.Now().Add(-2 * time.Second).Unix(),
 		})
 		err = genesisChain.append(genesisBlock)
 		Expect(err).To(BeNil())

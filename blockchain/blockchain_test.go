@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
@@ -82,7 +83,7 @@ var BlockchainTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
@@ -104,7 +105,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 					block.Header.Number = 2
 					GenesisBlock = block
@@ -135,7 +136,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 					block.Transactions[0].From = "unknown_account"
 					block.Hash = block.ComputeHash()
@@ -162,7 +163,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 					GenesisBlock = block
 				})
@@ -262,7 +263,7 @@ var BlockchainTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
 				Expect(err).To(BeNil())
@@ -299,7 +300,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 					err = genesisChain.append(b2)
 					Expect(err).To(BeNil())
@@ -338,7 +339,7 @@ var BlockchainTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
 				err = chain.append(block)
@@ -416,7 +417,7 @@ var BlockchainTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
 				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
@@ -427,7 +428,8 @@ var BlockchainTest = func() bool {
 					Creator:            sender,
 					Nonce:              wire.EncodeNonce(1),
 					MixHash:            util.BytesToHash([]byte("mix hash")),
-					Difficulty:         new(big.Int).SetInt64(500),
+					Difficulty:         new(big.Int).SetInt64(131072),
+					OverrideTimestamp:  time.Now().Add(2 * time.Second).Unix(),
 				})
 
 				unknownParent = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
@@ -438,7 +440,8 @@ var BlockchainTest = func() bool {
 					OverrideParentHash: util.StrToHash("unknown"),
 					Nonce:              wire.EncodeNonce(1),
 					MixHash:            util.BytesToHash([]byte("mix hash")),
-					Difficulty:         new(big.Int).SetInt64(500),
+					Difficulty:         new(big.Int).SetInt64(131072),
+					OverrideTimestamp:  time.Now().Add(3 * time.Second).Unix(),
 				})
 			})
 
@@ -488,7 +491,7 @@ var BlockchainTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
 				chain.append(block)
@@ -574,7 +577,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
 					err = chainA.append(block)
@@ -593,7 +596,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
 					err = chainB.append(block)
@@ -612,7 +615,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 					err = chainC.append(block)
 					Expect(err).To(BeNil())
@@ -624,7 +627,7 @@ var BlockchainTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 					err = chainC.append(block2)
 					Expect(err).To(BeNil())

@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
@@ -317,7 +318,7 @@ var ProcessTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 				})
 
@@ -343,7 +344,7 @@ var ProcessTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
@@ -397,10 +398,11 @@ var ProcessTest = func() bool {
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
-							Creator:    sender,
-							Nonce:      wire.EncodeNonce(1),
-							MixHash:    util.BytesToHash([]byte("mix hash")),
-							Difficulty: new(big.Int).SetInt64(500),
+							Creator:           sender,
+							Nonce:             wire.EncodeNonce(1),
+							MixHash:           util.BytesToHash([]byte("mix hash")),
+							Difficulty:        new(big.Int).SetInt64(131072),
+							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 						})
 						err = genesisChain.append(block2)
 						Expect(err).To(BeNil())
@@ -409,10 +411,11 @@ var ProcessTest = func() bool {
 							Transactions: []*wire.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 							},
-							Creator:    sender,
-							Nonce:      wire.EncodeNonce(1),
-							MixHash:    util.BytesToHash([]byte("mix hash 2")),
-							Difficulty: new(big.Int).SetInt64(500),
+							Creator:           sender,
+							Nonce:             wire.EncodeNonce(1),
+							MixHash:           util.BytesToHash([]byte("mix hash 2")),
+							Difficulty:        new(big.Int).SetInt64(131072),
+							OverrideTimestamp: time.Now().Add(3 * time.Second).Unix(),
 						})
 						err = genesisChain.append(block3)
 						Expect(err).To(BeNil())
@@ -441,7 +444,7 @@ var ProcessTest = func() bool {
 							Creator:    sender,
 							Nonce:      wire.EncodeNonce(1),
 							MixHash:    util.BytesToHash([]byte("mix hash")),
-							Difficulty: new(big.Int).SetInt64(500),
+							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
 						block2_2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
@@ -451,7 +454,7 @@ var ProcessTest = func() bool {
 							Creator:    sender,
 							Nonce:      wire.EncodeNonce(4),
 							MixHash:    util.BytesToHash([]byte("mix hash 2")),
-							Difficulty: new(big.Int).SetInt64(500),
+							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
 						err = genesisChain.append(block2)
@@ -481,7 +484,7 @@ var ProcessTest = func() bool {
 							Creator:    sender,
 							Nonce:      wire.EncodeNonce(1),
 							MixHash:    util.BytesToHash([]byte("mix hash")),
-							Difficulty: new(big.Int).SetInt64(500),
+							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
 						block3.Header.Number = 3
@@ -509,7 +512,7 @@ var ProcessTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
 					blockInvalidStateRoot.Header.StateRoot = util.StrToHash("incorrect")
@@ -523,7 +526,7 @@ var ProcessTest = func() bool {
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
 						MixHash:    util.BytesToHash([]byte("mix hash")),
-						Difficulty: new(big.Int).SetInt64(500),
+						Difficulty: new(big.Int).SetInt64(131072),
 					})
 				})
 
@@ -579,7 +582,7 @@ var ProcessTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 				_, err = bc.ProcessBlock(parent1)
 				Expect(err).To(BeNil())
@@ -588,10 +591,11 @@ var ProcessTest = func() bool {
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730730),
 					},
-					Creator:    sender,
-					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Creator:           sender,
+					Nonce:             wire.EncodeNonce(1),
+					MixHash:           util.BytesToHash([]byte("mix hash")),
+					Difficulty:        new(big.Int).SetInt64(131072),
+					OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 				})
 				_, err = bc.ProcessBlock(orphanParent)
 				Expect(err).To(BeNil())
@@ -600,10 +604,11 @@ var ProcessTest = func() bool {
 					Transactions: []*wire.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
 					},
-					Creator:    sender,
-					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Creator:           sender,
+					Nonce:             wire.EncodeNonce(1),
+					MixHash:           util.BytesToHash([]byte("mix hash")),
+					Difficulty:        new(big.Int).SetInt64(131072),
+					OverrideTimestamp: time.Now().Add(4 * time.Second).Unix(),
 				})
 				_, err = bc.ProcessBlock(orphan)
 				Expect(err).To(BeNil())

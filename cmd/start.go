@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asaskevich/EventBus"
-
 	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/emitter"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
@@ -206,7 +205,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 
 	// Create event the global event handler
-	event := EventBus.New()
+	event := &emitter.Emitter{}
 
 	// Set the event handler in the node
 	n.SetEventBus(event)

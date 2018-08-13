@@ -22,7 +22,6 @@ const (
 	TypeTx DocType = 0x2
 )
 
-
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
@@ -75,4 +74,5 @@ type GenerateBlockParams struct {
 	MixHash            util.Hash
 	Difficulty         *big.Int
 	OverrideStateRoot  util.Hash
+	OverrideTimestamp  int64
 }

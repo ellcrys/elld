@@ -27,7 +27,7 @@ var BlockTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
@@ -65,7 +65,7 @@ var BlockTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
@@ -130,7 +130,7 @@ var BlockTest = func() bool {
 					Creator:      sender,
 					Nonce:        wire.EncodeNonce(1),
 					MixHash:      util.BytesToHash([]byte("mix hash")),
-					Difficulty:   new(big.Int).SetInt64(500),
+					Difficulty:   new(big.Int).SetInt64(131072),
 				})
 				Expect(err).To(BeNil())
 				Expect(blk).ToNot(BeNil())
@@ -146,7 +146,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: genesisChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
@@ -168,7 +168,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
@@ -191,7 +191,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
@@ -224,7 +224,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
@@ -257,7 +257,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())

@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/ellcrys/elld/util"
@@ -26,7 +27,7 @@ var MinerTest = func() bool {
 		Describe(".getProposedBlock", func() {
 			It("should get a block", func() {
 				b, err := miner.getProposedBlock([]*wire.Transaction{
-					wire.NewTx(wire.TxTypeBalance, 124, util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
+					wire.NewTx(wire.TxTypeBalance, int64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
 				})
 				Expect(err).To(BeNil())
 				Expect(b).ToNot(BeNil())

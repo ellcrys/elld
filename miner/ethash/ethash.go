@@ -443,6 +443,20 @@ func New(config Config) *Ethash {
 	}
 }
 
+// ConfiguredEthash creates an Ethash instance pre-configured
+// using the engine configuration.
+func ConfiguredEthash(configDir string, mode Mode) *Ethash {
+	return New(Config{
+		DatasetDir:     filepath.Join(configDir, "dataset"),
+		CacheDir:       filepath.Join(configDir, "dataset"),
+		CachesInMem:    2,
+		CachesOnDisk:   3,
+		DatasetsInMem:  1,
+		DatasetsOnDisk: 2,
+		PowMode:        mode,
+	})
+}
+
 // NewTester creates a small sized ethash PoW scheme useful only for testing
 // purposes.
 func NewTester() *Ethash {

@@ -16,7 +16,7 @@ import (
 // passes this validation is considered safe to add to the chain.
 func (b *Blockchain) validateBlock(block *wire.Block) error {
 
-	blockValidator := NewBlockValidator(block, b.txPool, b, true)
+	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg)
 	if errs := blockValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}
@@ -431,7 +431,11 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (common.ChainReader, error)
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.Hash.HexStr())
 
-	return store.NewChainReader(chain.store, chain.id), nil
+	if chain != nil {
+		return store.NewChainReader(chain.store, chain.id), nil
+	}
+
+	return nil, nil
 }
 
 // execBlock execute the transactions of the blocks to

@@ -112,6 +112,12 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 		Transactions: params.Transactions,
 	}
 
+	// override the block's timestamp if a timestamp is
+	// provided in the given param.
+	if params.OverrideTimestamp > 0 {
+		block.Header.Timestamp = params.OverrideTimestamp
+	}
+
 	// If the chain has no tip block but it has a parent,
 	// then we set the block's parent hash to the parent's hash
 	// and set the block number to BlockNumber(parent) + 1
@@ -159,8 +165,8 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 
 	// Finally, validate the block to ensure it meets every
 	// requirement for a valid block.
-	errs := NewBlockValidator(block, b.txPool, b, true).Validate()
-	if len(errs) > 0 {
+	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg)
+	if errs := bv.Validate(); len(errs) > 0 {
 		return nil, fmt.Errorf("failed final validation: %s", errs[0])
 	}
 

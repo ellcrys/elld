@@ -2,7 +2,6 @@ package miner
 
 import (
 	"math/big"
-	"path/filepath"
 	"time"
 
 	"github.com/olebedev/emitter"
@@ -67,15 +66,7 @@ func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitt
 		blockMaker: blockMaker,
 		event:      event,
 		abort:      make(chan struct{}),
-		ethash: ethash.New(ethash.Config{
-			DatasetDir:     filepath.Join(cfg.ConfigDir(), "dataset"),
-			CacheDir:       filepath.Join(cfg.ConfigDir(), "dataset"),
-			CachesInMem:    2,
-			CachesOnDisk:   3,
-			DatasetsInMem:  1,
-			DatasetsOnDisk: 2,
-			PowMode:        cfg.Miner.Mode,
-		}),
+		ethash:     ethash.ConfiguredEthash(cfg.ConfigDir(), cfg.Miner.Mode),
 	}
 
 	// Subscribe to the global event emitter to learn
@@ -139,6 +130,12 @@ func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
 	}
 }
 
+// ValidateHeader validates a given header according to
+// the Ethash specification.
+func (m *Miner) ValidateHeader(chain common.ChainReader, header, parent *wire.Header, seal bool) {
+	m.ethash.VerifyHeader(chain, header, parent, seal)
+}
+
 // Mine begins the mining process
 func (m *Miner) Mine() {
 	for !m.stop {
@@ -199,6 +196,11 @@ func (m *Miner) Mine() {
 			"Hashrate", m.ethash.Hashrate(),
 			"PoW Time", time.Since(startTime))
 
-		time.Sleep(1 * time.Second)
+		// in test or fake wait for a second before continues to next block
+		// TODO: remove when we are sure duplicate transactions do not exist in
+		// the proposed block.
+		if m.cfg.Miner.Mode == ethash.ModeFake || m.cfg.Miner.Mode == ethash.ModeTest {
+			time.Sleep(1 * time.Second)
+		}
 	}
 }
