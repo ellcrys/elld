@@ -66,8 +66,6 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 		return nil, fmt.Errorf("creator's key is required")
 	} else if params.Difficulty == nil || params.Difficulty.Cmp(util.Big0) == 0 {
 		return nil, fmt.Errorf("difficulty is required")
-	} else if params.MixHash.IsEmpty() {
-		return nil, fmt.Errorf("mix hash is required")
 	}
 
 	// Determine if an explicit chain is to be used as
@@ -105,7 +103,6 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 			Number:           1,
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
-			MixHash:          params.MixHash,
 			Difficulty:       params.Difficulty,
 			Timestamp:        time.Now().Unix(),
 		},

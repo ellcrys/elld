@@ -10,7 +10,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
@@ -34,7 +33,6 @@ var sender, receiver *crypto.Key
 
 func TestBlockchain(t *testing.T) {
 	log = logger.NewLogrusNoOp()
-	blakimoto.SetLogger(log)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Blockchain Suite")
 }
@@ -103,7 +101,6 @@ var _ = Describe("Blockchain", func() {
 			},
 			Creator:           sender,
 			Nonce:             wire.EncodeNonce(1),
-			MixHash:           util.BytesToHash([]byte("mix hash")),
 			Difficulty:        new(big.Int).SetInt64(131072),
 			OverrideTimestamp: time.Now().Add(-2 * time.Second).Unix(),
 		})

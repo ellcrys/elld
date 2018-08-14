@@ -116,7 +116,6 @@ var ChainTest = func() bool {
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
