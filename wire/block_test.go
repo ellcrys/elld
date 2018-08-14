@@ -66,7 +66,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -102,7 +102,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -116,11 +116,11 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
-			b.Header.CreatorPubKey = key.PubKey().Base58()
+			b.Header.CreatorPubKey = util.String(key.PubKey().Base58())
 
 			err := BlockVerify(&b)
 			Expect(err).ToNot(BeNil())
@@ -131,11 +131,11 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
-			b.Header.CreatorPubKey = key.PubKey().Base58()
+			b.Header.CreatorPubKey = util.String(key.PubKey().Base58())
 
 			t1 := b.Transactions[0]
 			t1.Hash = t1.ComputeHash()
@@ -156,11 +156,11 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: key.PubKey().Base58(), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
-			b.Header.CreatorPubKey = key.PubKey().Base58()
+			b.Header.CreatorPubKey = util.String(key.PubKey().Base58())
 
 			t1 := b.Transactions[0]
 			t1.Hash = t1.ComputeHash()

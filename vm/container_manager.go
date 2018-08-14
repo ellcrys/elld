@@ -61,7 +61,7 @@ func (cm *ContainerManager) newContainer() (*Container, error) {
 // - Construct and pass argument to blockcode for execution
 func (cm *ContainerManager) execTx(tx *wire.Transaction, output chan []byte, done chan error) {
 
-	bcode, err := cm.blockchain.GetBlockCode(tx.To)
+	bcode, err := cm.blockchain.GetBlockCode(tx.To.String())
 	if err != nil {
 		done <- fmt.Errorf("failed to get blockcode. %s", err)
 		return
@@ -150,7 +150,7 @@ func (cm *ContainerManager) execTx(tx *wire.Transaction, output chan []byte, don
 		Payload: tx.InvokeArgs.Params,
 		Tx: &Tx{
 			ID:    tx.ID(),
-			Value: tx.Value,
+			Value: tx.Value.String(),
 		},
 	}
 

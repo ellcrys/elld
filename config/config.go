@@ -7,6 +7,8 @@ import (
 	path "path/filepath"
 	"strings"
 
+	"github.com/imdario/mergo"
+
 	"github.com/ellcrys/elld/util"
 	"github.com/jinzhu/configor"
 
@@ -116,6 +118,10 @@ func LoadCfg(cfgDirPath string) (*EngineConfig, error) {
 
 	cfg, err := cfgDir.Load()
 	if err != nil {
+		return nil, err
+	}
+
+	if err := mergo.Merge(cfg, defaultConfig); err != nil {
 		return nil, err
 	}
 

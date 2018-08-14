@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -21,7 +23,6 @@ import (
 
 	"github.com/ellcrys/elld/config"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/thoas/go-funk"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -56,7 +57,7 @@ type Node struct {
 	db                      elldb.DB                // used to access and modify local database
 	signatory               *d_crypto.Key           // signatory address used to get node ID and for signing
 	historyCache            *histcache.HistoryCache // Used to track objects and behaviours
-	logicEvt                evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	event                   *emitter.Emitter        // Provides access event emitting service
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
@@ -106,6 +107,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, signatory
 		rSeed:     util.RandBytes(64),
 		signatory: signatory,
 		db:        db,
+		event:     &emitter.Emitter{},
 		mtx:       &sync.RWMutex{},
 		openTransactionsSession: make(map[string]struct{}),
 		transactionsPool:        txpool.NewTxPool(config.TxPool.Capacity),
@@ -226,9 +228,9 @@ func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
-// SetLogicBus sets the logic event bus
-func (n *Node) SetLogicBus(bus evbus.Bus) {
-	n.logicEvt = bus
+// SetEventBus set the event bus used to broadcast events across the engine
+func (n *Node) SetEventBus(ee *emitter.Emitter) {
+	n.event = ee
 }
 
 // SetLocalNode sets the local peer

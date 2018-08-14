@@ -101,3 +101,4 @@ func Blake2b256(v []byte) []byte {
 	hash.Write(v)
 	return hash.Sum(nil)
 }
+

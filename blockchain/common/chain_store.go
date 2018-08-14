@@ -9,6 +9,9 @@ import (
 // ChainReader defines an interface for reading a chain
 type ChainReader interface {
 
+	// GetID gets the chain ID
+	GetID() util.String
+
 	// GetBlock finds and returns a block associated with chainID.
 	// When 0 is passed, it should return the block with the highest number
 	GetBlock(number uint64, opts ...CallOp) (*wire.Block, error)

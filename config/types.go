@@ -1,5 +1,7 @@
 package config
 
+import "github.com/ellcrys/elld/miner/blakimoto"
+
 // PeerConfig represents peer configuration
 type PeerConfig struct {
 
@@ -48,11 +50,11 @@ type ConsensusConfig struct {
 
 	// MaxEndorsementPeriodInBlocks is the amount of blocks after ticket maturity an endorser can
 	// continue to perform endorsement functions.
-	MaxEndorsementPeriodInBlocks uint
+	MaxEndorsementPeriodInBlocks uint `json:"maxEndorsementPeriodInBlocks"`
 
 	// NumBlocksForTicketMaturity is the number of blocks before an endorser ticket
 	// is considered mature.
-	NumBlocksForTicketMaturity uint
+	NumBlocksForTicketMaturity uint `json:"numBlocksForTicketMaturity"`
 }
 
 // MonetaryConfig defines configuration for the native coin and
@@ -60,7 +62,14 @@ type ConsensusConfig struct {
 type MonetaryConfig struct {
 
 	// Decimals is the number of coin decimal places
-	Decimals int32
+	Decimals int32 `json:"decimals"`
+}
+
+// MinerConfig defines configuration for mining
+type MinerConfig struct {
+
+	// Mode describes the blakimoto mining mode
+	Mode blakimoto.Mode `json:"-"`
 }
 
 // EngineConfig represents the client's configuration
@@ -80,6 +89,9 @@ type EngineConfig struct {
 
 	// Monetary holds monetary configurations
 	Monetary *MonetaryConfig `json:"monetary"`
+
+	// Miner holds mining configuration
+	Miner *MinerConfig `json:"mining"`
 
 	// configDir is where the node's config and data is stored
 	configDir string
@@ -145,5 +157,9 @@ func init() {
 	defaultConfig.Chain = &ChainConfig{
 		Checkpoints:           nil,
 		TargetHybridModeBlock: 80640,
+	}
+
+	defaultConfig.Miner = &MinerConfig{
+		Mode: blakimoto.ModeNormal,
 	}
 }

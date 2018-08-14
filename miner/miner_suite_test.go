@@ -1,16 +1,16 @@
-package blockchain
+package miner
 
 import (
 	"fmt"
-	"math/big"
 	"testing"
-	"time"
 
+	"github.com/olebedev/emitter"
+
+	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
@@ -25,22 +25,23 @@ var cfg *config.EngineConfig
 var err error
 var testStore common.ChainStorer
 var db elldb.DB
-var bc *Blockchain
+var bc *blockchain.Blockchain
 var chainID = util.String("chain1")
-var genesisChain *Chain
+var genesisChain *blockchain.Chain
 var genesisBlock *wire.Block
 var txPool *txpool.TxPool
 var sender, receiver *crypto.Key
+var event *emitter.Emitter
 
 func TestBlockchain(t *testing.T) {
-	log = logger.NewLogrusNoOp()
-	blakimoto.SetLogger(log)
+	log = logger.NewLogrus()
+	log.SetToDebug()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Blockchain Suite")
 }
 
-func MakeTestBlock(bc common.Blockchain, chain *Chain, gp *common.GenerateBlockParams) *wire.Block {
-	blk, err := bc.Generate(gp, ChainOp{Chain: chain})
+func MakeTestBlock(bc common.BlockMaker, chain *blockchain.Chain, gp *common.GenerateBlockParams) *wire.Block {
+	blk, err := bc.Generate(gp, blockchain.ChainOp{Chain: chain})
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +68,7 @@ var _ = Describe("Blockchain", func() {
 	// on the blockchain.
 	BeforeEach(func() {
 		txPool = txpool.NewTxPool(100)
-		bc = New(txPool, cfg, log)
+		bc = blockchain.New(txPool, cfg, log)
 		bc.SetDB(db)
 	})
 
@@ -78,36 +79,12 @@ var _ = Describe("Blockchain", func() {
 		receiver = crypto.NewKeyFromIntSeed(2)
 	})
 
-	// create default test chain and add it to
-	// the blockchain. Also append the test block
-	// to the chain
 	BeforeEach(func() {
-		genesisChain = NewChain(chainID, db, cfg, log)
-		bc.addChain(genesisChain)
-		bc.bestChain = genesisChain
-	})
-
-	// create test accounts here
-	BeforeEach(func() {
-		Expect(bc.putAccount(1, genesisChain, &wire.Account{
-			Type:    wire.AccountTypeBalance,
-			Address: util.String(sender.Addr()),
-			Balance: "1000",
-		})).To(BeNil())
+		event = &emitter.Emitter{}
 	})
 
 	BeforeEach(func() {
-		genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-			Transactions: []*wire.Transaction{
-				wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-			},
-			Creator:           sender,
-			Nonce:             wire.EncodeNonce(1),
-			MixHash:           util.BytesToHash([]byte("mix hash")),
-			Difficulty:        new(big.Int).SetInt64(131072),
-			OverrideTimestamp: time.Now().Add(-2 * time.Second).Unix(),
-		})
-		err = genesisChain.append(genesisBlock)
+		err = bc.Up()
 		Expect(err).To(BeNil())
 	})
 
@@ -120,15 +97,7 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	var tests = []func() bool{
-		BlockchainTest,
-		ChainTest,
-		ProcessTest,
-		BlockTest,
-		AccountTest,
-		CacheTest,
-		MetadataTest,
-		TransactionValidatorTest,
-		BlockValidatorTest,
+		MinerTest,
 	}
 
 	for i, t := range tests {

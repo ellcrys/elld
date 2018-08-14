@@ -5,15 +5,21 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"path/filepath"
 
-	"github.com/ellcrys/elld/logic"
+	"github.com/ellcrys/elld/types"
+
+	"github.com/ellcrys/elld/accountmgr"
+
+	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/util/logger"
 )
 
 // Service provides functionalities accessible through JSON-RPC
 type Service struct {
-	logic *logic.Logic
+	accountMgr types.APISet
+	engine     types.APISet
 }
 
 // Result represent a response to a service method call
@@ -26,26 +32,35 @@ type Result struct {
 
 // Server represents a rpc server
 type Server struct {
-	addr  string
-	log   logger.Logger
-	conn  net.Listener
-	logic *logic.Logic
+	addr      string
+	cfg       *config.EngineConfig
+	log       logger.Logger
+	conn      net.Listener
+	engineAPI types.APISet
 }
 
 // NewServer creates a new RPC server
-func NewServer(addr string, logic *logic.Logic, log logger.Logger) *Server {
+func NewServer(addr string, engineAPI types.APISet, cfg *config.EngineConfig, log logger.Logger) *Server {
 	s := new(Server)
 	s.addr = addr
 	s.log = log
-	s.logic = logic
+	s.cfg = cfg
+	s.engineAPI = engineAPI
 	return s
+}
+
+// NewService creates a Service instance
+func NewService(engine types.APISet, cfg *config.EngineConfig) *Service {
+	return &Service{
+		accountMgr: accountmgr.New(filepath.Join(cfg.ConfigDir(), config.AccountDirName)).APIs(),
+		engine:     engine,
+	}
 }
 
 // Serve starts the server
 func (s *Server) Serve() error {
 
-	service := new(Service)
-	service.logic = s.logic
+	service := NewService(s.engineAPI, s.cfg)
 	err := rpc.Register(service)
 	if err != nil {
 		return fmt.Errorf("failed to start rpc server. %s", err)

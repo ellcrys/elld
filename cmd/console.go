@@ -41,12 +41,16 @@ var consoleCmd = &cobra.Command{
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		node, rpcServer, _ := start(cmd, args, true)
+		node, rpcServer, _, miner := start(cmd, args, true)
 
 		onTerminate = func() {
+
+			if miner != nil {
+				miner.Stop()
+			}
+
 			node.Stop()
 			rpcServer.Stop()
-
 		}
 
 		node.Wait()
@@ -61,4 +65,5 @@ func init() {
 	consoleCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
 	consoleCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
 	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
+	consoleCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
 }

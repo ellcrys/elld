@@ -8,6 +8,7 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -40,9 +41,9 @@ func (es *BalanceService) Send(params map[string]interface{}) interface{} {
 	tx := &wire.Transaction{
 		Type:         wire.TxTypeBalance,
 		Nonce:        1, // TODO: fetch current nonce
-		SenderPubKey: es.key.PubKey().Base58(),
-		To:           params["to"].(string),
-		Value:        params["value"].(string),
+		SenderPubKey: util.String(es.key.PubKey().Base58()),
+		To:           util.String(params["to"].(string)),
+		Value:        util.String(params["value"].(string)),
 		Fee:          "1", // TODO: if params["fee"] is null, use as default
 		Timestamp:    time.Now().Unix(),
 	}

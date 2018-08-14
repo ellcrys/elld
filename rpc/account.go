@@ -1,18 +1,15 @@
 package rpc
 
-import (
-	"github.com/ellcrys/elld/accountmgr"
-)
+import "github.com/ellcrys/elld/accountmgr"
 
 // AccountGetAllPayload is used to define payload for AccountsGet
 type AccountGetAllPayload map[string]interface{}
 
-// AccountGetAll returns all accounts known to the node
+// AccountGetAll returns all accounts known to account manager
 func (s *Service) AccountGetAll(payload AccountGetAllPayload, result *Result) error {
 
-	var errCh = make(chan error, 1)
-	var accts = make(chan []*accountmgr.StoredAccount, 1)
-	err := s.logic.AccountsGet(accts, errCh)
+	apiFunc := s.accountMgr.MustGet("ListAccounts")
+	apiResult, err := apiFunc()
 	if err != nil {
 		return NewErrorResult(result, err.Error(), errCodeAccountStoredAccount, 500)
 	}
@@ -21,7 +18,7 @@ func (s *Service) AccountGetAll(payload AccountGetAllPayload, result *Result) er
 		"accounts": []string{},
 	}
 
-	for _, a := range <-accts {
+	for _, a := range apiResult.([]*accountmgr.StoredAccount) {
 		resp["accounts"] = append(resp["accounts"].([]string), a.Address)
 	}
 

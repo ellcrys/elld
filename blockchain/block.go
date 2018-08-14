@@ -50,10 +50,10 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 	return have, reason, nil
 }
 
-// GenerateBlock produces a valid block for a target chain. By default
+// Generate produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
+func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
 
 	var chain *Chain
 	var block *wire.Block
@@ -101,7 +101,7 @@ func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...c
 	block = &wire.Block{
 		Header: &wire.Header{
 			ParentHash:       util.EmptyHash,
-			CreatorPubKey:    params.Creator.PubKey().Base58(),
+			CreatorPubKey:    util.String(params.Creator.PubKey().Base58()),
 			Number:           1,
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
@@ -110,6 +110,12 @@ func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...c
 			Timestamp:        time.Now().Unix(),
 		},
 		Transactions: params.Transactions,
+	}
+
+	// override the block's timestamp if a timestamp is
+	// provided in the given param.
+	if params.OverrideTimestamp > 0 {
+		block.Header.Timestamp = params.OverrideTimestamp
 	}
 
 	// If the chain has no tip block but it has a parent,
@@ -159,8 +165,8 @@ func (b *Blockchain) GenerateBlock(params *common.GenerateBlockParams, opts ...c
 
 	// Finally, validate the block to ensure it meets every
 	// requirement for a valid block.
-	errs := NewBlockValidator(block, b.txPool, b, true).Validate()
-	if len(errs) > 0 {
+	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
+	if errs := bv.Validate(); len(errs) > 0 {
 		return nil, fmt.Errorf("failed final validation: %s", errs[0])
 	}
 

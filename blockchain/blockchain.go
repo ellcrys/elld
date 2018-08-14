@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
@@ -59,6 +61,10 @@ type Blockchain struct {
 
 	// txPool contains all transactions awaiting inclusion in a block
 	txPool *txpool.TxPool
+
+	// eventEmitter allows the manager to listen to specific
+	// events or broadcast events about its state
+	eventEmitter *emitter.Emitter
 }
 
 // New creates a Blockchain instance.
@@ -72,6 +78,7 @@ func New(txPool *txpool.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bl
 	bc.chains = make(map[util.String]*Chain)
 	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
+	bc.eventEmitter = &emitter.Emitter{}
 	return bc
 }
 
@@ -96,7 +103,7 @@ func (b *Blockchain) Up() error {
 	// If there are no known chains described in the metadata and none
 	// in the cache, then we create a new chain and save it
 	if len(chains) == 0 {
-		b.log.Debug("No existing chain found. Creating genesis chain")
+		b.log.Debug("No existing genesis block found. Creating genesis block")
 
 		// Create the genesis chain and the genesis block.
 		gBlock := GenesisBlock
@@ -118,6 +125,7 @@ func (b *Blockchain) Up() error {
 		}
 
 		b.bestChain = gChain
+		b.log.Debug("Genesis block successfully created", "Hash", gBlock.Hash)
 	}
 
 	// Load all known chains
@@ -127,14 +135,22 @@ func (b *Blockchain) Up() error {
 		}
 	}
 
+	if numChains := len(chains); numChains > 0 {
+		b.log.Info("Chain load completed", "NumChains", numChains)
+	}
+
 	// Using the best chain rule, we mush select the best chain
 	// and set it as the current bestChain.
 	b.bestChain, err = b.chooseBestChain()
 	if err != nil {
 		return fmt.Errorf("failed to determine best chain: %s", err)
 	}
-
 	return nil
+}
+
+// SetEventEmitter sets the event emitter
+func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
+	b.eventEmitter = ee
 }
 
 // getChainParentBlock find the parent chain and block
@@ -290,6 +306,7 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 
 	// When there is a definite best chain, we return it immediately
 	if len(bestChains) == 1 {
+		b.log.Info("Best chain selected", "ChainID", bestChains[0].GetID())
 		return bestChains[0], nil
 	}
 

@@ -27,7 +27,7 @@ var BlockTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
@@ -65,7 +65,7 @@ var BlockTest = func() bool {
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
 					MixHash:    util.BytesToHash([]byte("mix hash")),
-					Difficulty: new(big.Int).SetInt64(500),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
@@ -119,18 +119,18 @@ var BlockTest = func() bool {
 				}
 
 				for m, r := range cases {
-					_, err = bc.GenerateBlock(m)
+					_, err = bc.Generate(m)
 					Expect(err).To(Equal(r))
 				}
 			})
 
 			It("should successfully create a new and valid block", func() {
-				blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+				blk, err := bc.Generate(&common.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
 					Nonce:        wire.EncodeNonce(1),
 					MixHash:      util.BytesToHash([]byte("mix hash")),
-					Difficulty:   new(big.Int).SetInt64(500),
+					Difficulty:   new(big.Int).SetInt64(131072),
 				})
 				Expect(err).To(BeNil())
 				Expect(blk).ToNot(BeNil())
@@ -141,12 +141,12 @@ var BlockTest = func() bool {
 
 			When("chain is directly passed", func() {
 				It("should successfully create a new and valid block", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: genesisChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
@@ -163,12 +163,12 @@ var BlockTest = func() bool {
 				})
 
 				It("should return error if not target chain", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
@@ -186,12 +186,12 @@ var BlockTest = func() bool {
 				})
 
 				It("should return error sender account is not found in the target chain", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
@@ -219,12 +219,12 @@ var BlockTest = func() bool {
 				})
 
 				It("should successfully create a new and valid block", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
@@ -252,12 +252,12 @@ var BlockTest = func() bool {
 				})
 
 				It("should create a 'genesis' block", func() {
-					blk, err := bc.GenerateBlock(&common.GenerateBlockParams{
+					blk, err := bc.Generate(&common.GenerateBlockParams{
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
 						MixHash:      util.BytesToHash([]byte("mix hash")),
-						Difficulty:   new(big.Int).SetInt64(500),
+						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())

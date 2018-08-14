@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
@@ -460,33 +458,34 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 	return peers, nil
 }
 
-// savePeers stores peer addresses to a persistent store
+// savePeers stores active peer addresses
 func (m *Manager) savePeers() error {
 
 	var numAddrs = 0
-	var objectsToStore []*elldb.KVObject
+	var kvObjs []*elldb.KVObject
 
-	// determine the active addresses that are eligible for persistence
+	// Determine the active addresses that are eligible.
+	// Hardcoded seed peers are no eligible.
+	// Peers that are not up to 20 minutes old are also not
+	// eligible
 	peers := m.CopyActivePeers(0)
 	for _, p := range peers {
 		if !p.IsHardcodedSeed() && time.Now().Add(20*time.Minute).Before(p.GetTimestamp()) {
-			key := []byte(util.ToHex([]byte(p.GetMultiAddr())))
+			key := []byte(p.StringID())
 			value := util.ObjectToBytes(map[string]interface{}{
 				"addr": p.GetMultiAddr(),
 				"ts":   p.GetTimestamp().Unix(),
 			})
-			objectsToStore = append(objectsToStore, elldb.NewKVObject(key, value, []byte("address")))
+			kvObjs = append(kvObjs, elldb.NewKVObject(key, value, []byte("address")))
 			numAddrs++
 		}
 	}
 
-	var errCh = make(chan error, 1)
-	m.localNode.logicEvt.Publish("objects.put", objectsToStore, errCh)
-	if err := <-errCh; err != nil {
+	if err := m.localNode.db.Put(kvObjs); err != nil {
 		return err
 	}
 
-	m.log.Debug("Saved addresses", "NumAddrs", numAddrs)
+	m.log.Debug("Saved peer addresses", "NumAddrs", numAddrs)
 
 	return nil
 }
@@ -494,22 +493,20 @@ func (m *Manager) savePeers() error {
 // LoadPeers loads peers stored in the local database
 func (m *Manager) loadPeers() error {
 
-	// get addresses from database
-	var result = make(chan []*elldb.KVObject, 1)
-	m.localNode.logicEvt.Publish("objects.get", []byte("address"), result)
+	kvObjs := m.localNode.db.GetByPrefix([]byte("address"))
 
-	// create remote nodes objects to represent the addresses
+	// create remote node to represent the addresses
 	// and add them to the managers active peer list
-	for _, o := range <-result {
+	for _, o := range kvObjs {
 
 		var addrData map[string]interface{}
-		if err := mapstructure.Decode(o.Value, &addrData); err != nil {
+		if err := o.Scan(&addrData); err != nil {
 			return err
 		}
 
 		addr, _ := ma.NewMultiaddr(addrData["addr"].(string))
 		peer := NewRemoteNode(addr, m.localNode)
-		peer.Timestamp = time.Unix(int64(addrData["ts"].(float64)), 0)
+		peer.Timestamp = time.Unix(int64(addrData["ts"].(uint32)), 0)
 		m.AddOrUpdatePeer(peer)
 	}
 

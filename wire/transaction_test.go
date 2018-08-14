@@ -83,7 +83,7 @@ var _ = Describe("Transaction", func() {
 		It("should verify successfully", func() {
 			seed := int64(1)
 			a, _ := crypto.NewKey(&seed)
-			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: a.PubKey().Base58()}
+			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: util.String(a.PubKey().Base58())}
 			sig, err := TxSign(tx, a.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			Expect(sig).ToNot(BeEmpty())
@@ -96,7 +96,7 @@ var _ = Describe("Transaction", func() {
 		It("should return err = 'verify failed' when verification failed", func() {
 			seed := int64(1)
 			a, _ := crypto.NewKey(&seed)
-			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: a.PubKey().Base58()}
+			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: util.String(a.PubKey().Base58())}
 			sig, err := TxSign(tx, a.PrivKey().Base58())
 			Expect(err).To(BeNil())
 			Expect(sig).ToNot(BeEmpty())
@@ -113,7 +113,7 @@ var _ = Describe("Transaction", func() {
 		It("should successfully return hash", func() {
 			seed := int64(1)
 			a, _ := crypto.NewKey(&seed)
-			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: a.PubKey().Base58()}
+			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: util.String(a.PubKey().Base58())}
 			expected := util.BytesToHash([]byte{227, 245, 150, 232, 102, 136, 13, 163, 21, 114, 180, 15, 61, 191, 52, 60, 9, 50, 212, 196, 115, 235, 1, 181, 50, 212, 232, 44, 193, 175, 239, 61})
 			Expect(tx.ComputeHash()).To(Equal(expected))
 		})
@@ -123,7 +123,7 @@ var _ = Describe("Transaction", func() {
 		It("should return '0xe3f596e866880da31572b40f3dbf343c0932d4c473eb01b532d4e82cc1afef3d'", func() {
 			seed := int64(1)
 			a, _ := crypto.NewKey(&seed)
-			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: a.PubKey().Base58()}
+			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: util.String(a.PubKey().Base58())}
 			Expect(tx.ID()).To(Equal("0xe3f596e866880da31572b40f3dbf343c0932d4c473eb01b532d4e82cc1afef3d"))
 		})
 	})

@@ -6,6 +6,7 @@ import (
 	"github.com/ellcrys/elld/elldb"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
@@ -15,7 +16,7 @@ import (
 // passes this validation is considered safe to add to the chain.
 func (b *Blockchain) validateBlock(block *wire.Block) error {
 
-	blockValidator := NewBlockValidator(block, b.txPool, b, true)
+	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
 	if errs := blockValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}
@@ -382,12 +383,12 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 
 // ProcessBlock takes a block and attempts to add it to the
 // tip of one of the known chains (main chain or forked chain). It returns
-// the chain where the block was appended to.
-func (b *Blockchain) ProcessBlock(block *wire.Block) (common.Chainer, error) {
+// a chain reader associated with the chain in which the block belongs to.
+func (b *Blockchain) ProcessBlock(block *wire.Block) (common.ChainReader, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
-	b.log.Debug("Processing block", "Hash", block.Hash)
+	b.log.Debug("Processing block", "Hash", block.Hash.HexStr())
 
 	// If ever we forgot to set the transaction pool,
 	// the client should be forced to exit.
@@ -417,7 +418,7 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (common.Chainer, error) {
 		return nil, fmt.Errorf("failed to check block existence: %s", err)
 	}
 	if exists {
-		b.log.Debug("Block already exists", "Hash", block.Hash)
+		b.log.Debug("Block already exists", "Hash", block.Hash.HexStr())
 		return nil, common.ErrBlockExists
 	}
 
@@ -430,7 +431,11 @@ func (b *Blockchain) ProcessBlock(block *wire.Block) (common.Chainer, error) {
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.Hash.HexStr())
 
-	return chain, nil
+	if chain != nil {
+		return store.NewChainReader(chain.store, chain.id), nil
+	}
+
+	return nil, nil
 }
 
 // execBlock execute the transactions of the blocks to
