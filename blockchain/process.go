@@ -378,6 +378,14 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 	// if it has not been added.
 	b.addChain(chain)
 
+	// if the chain is the best chain, emit a new block
+	// event. This will cause the miner to abort and restart.
+	// It will also cause the peer manager to relay the block
+	// to other peers.
+	if b.bestChain.GetID() == chain.GetID() {
+		<-b.eventEmitter.Emit(common.EventNewBlock, block)
+	}
+
 	return chain, nil
 }
 

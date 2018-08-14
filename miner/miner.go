@@ -145,6 +145,7 @@ func (m *Miner) Mine() {
 
 		var err error
 		m.aborted = false
+		m.abort = make(chan struct{})
 
 		// Get a proposed block compatible with the
 		// main chain and the current block.
