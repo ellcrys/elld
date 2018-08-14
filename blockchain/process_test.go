@@ -317,7 +317,6 @@ var ProcessTest = func() bool {
 						},
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
-						MixHash:    util.BytesToHash([]byte("mix hash")),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 				})
@@ -343,7 +342,6 @@ var ProcessTest = func() bool {
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -400,7 +398,6 @@ var ProcessTest = func() bool {
 							},
 							Creator:           sender,
 							Nonce:             wire.EncodeNonce(1),
-							MixHash:           util.BytesToHash([]byte("mix hash")),
 							Difficulty:        new(big.Int).SetInt64(131072),
 							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 						})
@@ -412,8 +409,7 @@ var ProcessTest = func() bool {
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 							},
 							Creator:           sender,
-							Nonce:             wire.EncodeNonce(1),
-							MixHash:           util.BytesToHash([]byte("mix hash 2")),
+							Nonce:             wire.EncodeNonce(2),
 							Difficulty:        new(big.Int).SetInt64(131072),
 							OverrideTimestamp: time.Now().Add(3 * time.Second).Unix(),
 						})
@@ -422,7 +418,7 @@ var ProcessTest = func() bool {
 
 						copier.Copy(&staleBlock2, block2)
 						staleBlock2.Header.Number = 2
-						staleBlock2.Header.MixHash = util.BytesToHash([]byte("mix hash 3"))
+						staleBlock2.Header.Nonce = wire.EncodeNonce(3)
 						staleBlock2.Hash = staleBlock2.ComputeHash()
 						staleBlock2.Sig, _ = wire.BlockSign(&staleBlock2, sender.PrivKey().Base58())
 					})
@@ -443,7 +439,6 @@ var ProcessTest = func() bool {
 							},
 							Creator:    sender,
 							Nonce:      wire.EncodeNonce(1),
-							MixHash:    util.BytesToHash([]byte("mix hash")),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
@@ -453,7 +448,6 @@ var ProcessTest = func() bool {
 							},
 							Creator:    sender,
 							Nonce:      wire.EncodeNonce(4),
-							MixHash:    util.BytesToHash([]byte("mix hash 2")),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
@@ -483,7 +477,6 @@ var ProcessTest = func() bool {
 							},
 							Creator:    sender,
 							Nonce:      wire.EncodeNonce(1),
-							MixHash:    util.BytesToHash([]byte("mix hash")),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
@@ -511,7 +504,6 @@ var ProcessTest = func() bool {
 						},
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
-						MixHash:    util.BytesToHash([]byte("mix hash")),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
@@ -525,7 +517,6 @@ var ProcessTest = func() bool {
 						},
 						Creator:    sender,
 						Nonce:      wire.EncodeNonce(1),
-						MixHash:    util.BytesToHash([]byte("mix hash")),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 				})
@@ -581,7 +572,6 @@ var ProcessTest = func() bool {
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 				_, err = bc.ProcessBlock(parent1)
@@ -593,7 +583,6 @@ var ProcessTest = func() bool {
 					},
 					Creator:           sender,
 					Nonce:             wire.EncodeNonce(1),
-					MixHash:           util.BytesToHash([]byte("mix hash")),
 					Difficulty:        new(big.Int).SetInt64(131072),
 					OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 				})
@@ -606,7 +595,6 @@ var ProcessTest = func() bool {
 					},
 					Creator:           sender,
 					Nonce:             wire.EncodeNonce(1),
-					MixHash:           util.BytesToHash([]byte("mix hash")),
 					Difficulty:        new(big.Int).SetInt64(131072),
 					OverrideTimestamp: time.Now().Add(4 * time.Second).Unix(),
 				})

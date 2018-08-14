@@ -21,7 +21,6 @@ var _ = Describe("Block & Header", func() {
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
 				Nonce:            EncodeNonce(1),
-				MixHash:          util.BytesToHash([]byte("mixHash")),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
@@ -38,7 +37,6 @@ var _ = Describe("Block & Header", func() {
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
 				Nonce:            EncodeNonce(1),
-				MixHash:          util.BytesToHash([]byte("mixHash")),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
@@ -57,7 +55,6 @@ var _ = Describe("Block & Header", func() {
 			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 			StateRoot:        util.BytesToHash([]byte("tx_hash")),
 			Nonce:            EncodeNonce(1),
-			MixHash:          util.BytesToHash([]byte("mixHash")),
 			Difficulty:       new(big.Int).SetUint64(100),
 			Timestamp:        1500000,
 		}
@@ -93,7 +90,6 @@ var _ = Describe("Block & Header", func() {
 			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 			StateRoot:        util.BytesToHash([]byte("tx_hash")),
 			Nonce:            EncodeNonce(1),
-			MixHash:          util.BytesToHash([]byte("mixHash")),
 			Difficulty:       new(big.Int).SetUint64(100),
 			Timestamp:        1500000,
 		}
@@ -199,7 +195,6 @@ var _ = Describe("Block & Header", func() {
 					TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 					StateRoot:        util.BytesToHash([]byte("tx_hash")),
 					Nonce:            EncodeNonce(1),
-					MixHash:          util.BytesToHash([]byte("mixHash")),
 					Difficulty:       new(big.Int).SetUint64(100),
 					Timestamp:        1500000,
 				},

@@ -25,7 +25,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -36,7 +35,7 @@ func (b *Blakimoto) Seal(block *wire.Block, stop <-chan struct{}) (*wire.Block, 
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if b.config.PowMode == ModeTest {
 		header := block.GetHeader()
-		header.Nonce, header.MixHash = wire.EncodeNonce(0), util.Hash{}
+		header.Nonce = wire.EncodeNonce(0)
 		block.SetHeader(header)
 
 		// delay for the specified time

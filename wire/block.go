@@ -47,7 +47,6 @@ type Block struct {
 type Header struct {
 	Number           uint64      `json:"number" msgpack:"number"`
 	Nonce            BlockNonce  `json:"nonce" msgpack:"nonce"`
-	MixHash          util.Hash   `json:"mixHash" msgpack:"mixHash"`
 	Timestamp        int64       `json:"timestamp" msgpack:"timestamp"`
 	CreatorPubKey    util.String `json:"creatorPubKey" msgpack:"creatorPubKey"`
 	ParentHash       util.Hash   `json:"ParentHash" msgpack:"ParentHash"`
@@ -96,7 +95,6 @@ func (h *Header) Bytes() []byte {
 		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.MixHash,
 		h.Difficulty,
 		h.Timestamp,
 		h.Nonce,

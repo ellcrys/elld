@@ -3,7 +3,6 @@ package blockchain
 import (
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
@@ -34,14 +33,13 @@ var BlockValidatorTest = func() bool {
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.creatorPubKey, error:creator's public key is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.transactionsRoot, error:transaction root is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.stateRoot, error:state root is required"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.mixHash, error:mix hash is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.difficulty, error:difficulty must be non-zero and non-negative"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.timestamp, error:timestamp must not be greater or equal to 1"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:transactions, error:at least one transaction is required"),
 					&wire.Block{Header: &wire.Header{}, Transactions: []*wire.Transaction{&wire.Transaction{Type: 109}}}: fmt.Errorf("tx:0, field:type, error:unsupported transaction type"),
 				}
 				for b, err := range cases {
-					validator := NewBlockValidator(b, nil, nil, false, cfg)
+					validator := NewBlockValidator(b, nil, nil, false, cfg, log)
 					errs := validator.check()
 					Expect(errs).To(ContainElement(err))
 				}
@@ -57,7 +55,7 @@ var BlockValidatorTest = func() bool {
 					&wire.Block{Header: &wire.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
 				}
 				for b, err := range cases {
-					validator := NewBlockValidator(b, nil, nil, false, cfg)
+					validator := NewBlockValidator(b, nil, nil, false, cfg, log)
 					errs := validator.checkSignature()
 					Expect(errs).To(ContainElement(err))
 				}
@@ -75,7 +73,6 @@ var BlockValidatorTest = func() bool {
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -86,7 +83,7 @@ var BlockValidatorTest = func() bool {
 			})
 
 			It("should return if block and a transaction in the block exist", func() {
-				validator := NewBlockValidator(block, nil, bc, true, cfg)
+				validator := NewBlockValidator(block, nil, bc, true, cfg, log)
 				errs := validator.Validate()
 				Expect(errs).To(ContainElement(fmt.Errorf("error:block found in chain")))
 				Expect(errs).To(ContainElement(fmt.Errorf("tx:0, error:transaction already exist in main chain")))
@@ -94,20 +91,19 @@ var BlockValidatorTest = func() bool {
 		})
 
 		Describe("", func() {
-			var block *wire.Block
+			// var block *wire.Block
 
-			BeforeEach(func() {
-				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-					},
-					Creator:           sender,
-					Nonce:             wire.EncodeNonce(1),
-					MixHash:           util.BytesToHash([]byte("mix hash")),
-					Difficulty:        new(big.Int).SetInt64(131072),
-					OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
-				})
-			})
+			// BeforeEach(func() {
+			// 	block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+			// 		Transactions: []*wire.Transaction{
+			// 			wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+			// 		},
+			// 		Creator:           sender,
+			// 		Nonce:             wire.EncodeNonce(1),
+			// 		Difficulty:        new(big.Int).SetInt64(131072),
+			// 		OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+			// 	})
+			// })
 
 			It("", func() {
 				// validator := NewBlockValidator(block, nil, bc, true, cfg)

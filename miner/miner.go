@@ -15,7 +15,6 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
-	"github.com/ellcrys/go-ethereum/log"
 )
 
 const (
@@ -95,7 +94,6 @@ func (m *Miner) getProposedBlock(txs []*wire.Transaction) (*wire.Block, error) {
 		Transactions: txs,
 		Creator:      m.minerKey,
 		Nonce:        wire.EncodeNonce(1),
-		MixHash:      util.BytesToHash([]byte("mix hash")),
 		Difficulty:   new(big.Int).SetInt64(1),
 	})
 	if err != nil {
@@ -141,7 +139,7 @@ func (m *Miner) ValidateHeader(chain common.ChainReader, header, parent *wire.He
 // Mine begins the mining process
 func (m *Miner) Mine() {
 
-	log.Info("Beginning mining protocol")
+	m.log.Info("Beginning mining protocol")
 
 	for !m.stop {
 
