@@ -1,4 +1,4 @@
-package ethash
+package blakimoto
 
 import (
 	"fmt"

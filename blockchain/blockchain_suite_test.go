@@ -10,7 +10,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/miner/ethash"
+	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
@@ -34,7 +34,7 @@ var sender, receiver *crypto.Key
 
 func TestBlockchain(t *testing.T) {
 	log = logger.NewLogrusNoOp()
-	ethash.SetLogger(log)
+	blakimoto.SetLogger(log)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Blockchain Suite")
 }

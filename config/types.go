@@ -1,6 +1,6 @@
 package config
 
-import "github.com/ellcrys/elld/miner/ethash"
+import "github.com/ellcrys/elld/miner/blakimoto"
 
 // PeerConfig represents peer configuration
 type PeerConfig struct {
@@ -68,8 +68,8 @@ type MonetaryConfig struct {
 // MinerConfig defines configuration for mining
 type MinerConfig struct {
 
-	// Mode describes the ethash mining mode
-	Mode ethash.Mode `json:"-"`
+	// Mode describes the blakimoto mining mode
+	Mode blakimoto.Mode `json:"-"`
 }
 
 // EngineConfig represents the client's configuration
@@ -160,6 +160,6 @@ func init() {
 	}
 
 	defaultConfig.Miner = &MinerConfig{
-		Mode: ethash.ModeNormal,
+		Mode: blakimoto.ModeNormal,
 	}
 }

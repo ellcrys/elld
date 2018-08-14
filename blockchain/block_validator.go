@@ -8,7 +8,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/miner/ethash"
+	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -51,8 +51,8 @@ type BlockValidator struct {
 	// will be considered invalid.
 	allowDuplicateCheck bool
 
-	// ethash is an instance of a modified Ethash implementation
-	ethash *ethash.Ethash
+	// blakimoto is an instance of PoW implementation
+	blakimoto *blakimoto.Blakimoto
 
 	// verSeal seal instructs the validator whether or not
 	// to verify the difficult and PoW fields of a given block
@@ -67,7 +67,7 @@ func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
 		txpool:              txPool,
 		bchain:              bchain,
 		allowDuplicateCheck: allowDupCheck,
-		ethash:              ethash.ConfiguredEthash(cfg.ConfigDir(), ethash.ModeNormal),
+		blakimoto:           blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal),
 	}
 }
 
@@ -149,7 +149,7 @@ func (v *BlockValidator) validateHeader(h *wire.Header) (errs []error) {
 			errs = append(errs, fieldError("parentHash", err.Error()))
 		}
 
-		if err := v.ethash.VerifyHeader(v.bchain.ChainReader(), h, parentHeader, v.verSeal); err != nil {
+		if err := v.blakimoto.VerifyHeader(v.bchain.ChainReader(), h, parentHeader, v.verSeal); err != nil {
 			errs = append(errs, fieldError("parentHash", err.Error()))
 		}
 	}

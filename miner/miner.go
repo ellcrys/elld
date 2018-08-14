@@ -9,7 +9,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/miner/ethash"
+	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
@@ -40,8 +40,8 @@ type Miner struct {
 	// event is the engine event emitter
 	event *emitter.Emitter
 
-	// ethash instance
-	ethash *ethash.Ethash
+	// blakimoto instance
+	blakimoto *blakimoto.Blakimoto
 
 	// stop indicates a request to stop all mining
 	stop bool
@@ -57,7 +57,7 @@ type Miner struct {
 
 // New creates and returns a new Miner instance
 func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitter, cfg *config.EngineConfig, log logger.Logger) *Miner {
-	ethash.SetLogger(log)
+	blakimoto.SetLogger(log)
 
 	m := &Miner{
 		minerKey:   mineKey,
@@ -66,7 +66,7 @@ func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitt
 		blockMaker: blockMaker,
 		event:      event,
 		abort:      make(chan struct{}),
-		ethash:     ethash.ConfiguredEthash(cfg.ConfigDir(), cfg.Miner.Mode),
+		blakimoto:  blakimoto.ConfiguredBlakimoto(cfg.Miner.Mode),
 	}
 
 	// Subscribe to the global event emitter to learn
@@ -83,7 +83,7 @@ func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitt
 
 // setFakeDelay sets the delay duration for ModeFake
 func (m *Miner) setFakeDelay(d time.Duration) {
-	m.ethash.SetFakeDelay(d)
+	m.blakimoto.SetFakeDelay(d)
 }
 
 // getProposedBlock creates a full valid block compatible with the
@@ -133,7 +133,7 @@ func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
 // ValidateHeader validates a given header according to
 // the Ethash specification.
 func (m *Miner) ValidateHeader(chain common.ChainReader, header, parent *wire.Header, seal bool) {
-	m.ethash.VerifyHeader(chain, header, parent, seal)
+	m.blakimoto.VerifyHeader(chain, header, parent, seal)
 }
 
 // Mine begins the mining process
@@ -156,11 +156,11 @@ func (m *Miner) Mine() {
 		// Prepare the proposed block. It will calculate
 		// the difficulty and update the proposed block difficulty
 		// field in its header
-		m.ethash.Prepare(m.blockMaker.ChainReader(), m.proposedBlock.GetHeader())
+		m.blakimoto.Prepare(m.blockMaker.ChainReader(), m.proposedBlock.GetHeader())
 
 		// Begin the PoW computation
 		startTime := time.Now()
-		block, err := m.ethash.Seal(m.proposedBlock, m.abort)
+		block, err := m.blakimoto.Seal(m.proposedBlock, m.abort)
 		if err != nil {
 			m.log.Error(err.Error())
 			return
@@ -171,7 +171,7 @@ func (m *Miner) Mine() {
 		}
 
 		// Finalize the block. Calculate rewards etc
-		block, err = m.ethash.Finalize(m.blockMaker, block)
+		block, err = m.blakimoto.Finalize(m.blockMaker, block)
 		if err != nil {
 			m.log.Error("Block finalization failed", "Err", err)
 			return
@@ -182,7 +182,7 @@ func (m *Miner) Mine() {
 		block.Sig, err = wire.BlockSign(block, m.minerKey.PrivKey().Base58())
 
 		// Attempt to add to the blockchain to the main chain.
-		if m.cfg.Miner.Mode != ethash.ModeFake {
+		if m.cfg.Miner.Mode != blakimoto.ModeTest {
 			_, err = m.blockMaker.ProcessBlock(block)
 			if err != nil {
 				m.log.Error("Failed to process block", "Err", err.Error())
@@ -193,14 +193,14 @@ func (m *Miner) Mine() {
 		m.log.Info("New block mined",
 			"Number", block.Header.Number,
 			"Difficulty", block.Header.Difficulty,
-			"Hashrate", m.ethash.Hashrate(),
+			"Hashrate", m.blakimoto.Hashrate(),
 			"PoW Time", time.Since(startTime))
 
 		// in test or fake wait for a second before continues to next block
 		// TODO: remove when we are sure duplicate transactions do not exist in
 		// the proposed block.
-		if m.cfg.Miner.Mode == ethash.ModeFake || m.cfg.Miner.Mode == ethash.ModeTest {
-			time.Sleep(1 * time.Second)
-		}
+		// if m.cfg.Miner.Mode == blakimoto.ModeFake || m.cfg.Miner.Mode == blakimoto.ModeTest {
+		// 	time.Sleep(3 * time.Second)
+		// }
 	}
 }
