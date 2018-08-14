@@ -378,6 +378,12 @@ func (b *Blockchain) maybeAcceptBlock(block *wire.Block, chain *Chain) (*Chain, 
 	// if it has not been added.
 	b.addChain(chain)
 
+	// decide and set which chain is the best chain
+	// This could potentially cause a reorganization
+	if err := b.decideBestChain(); err != nil {
+		return nil, fmt.Errorf("failed to choose best chain: %s", err)
+	}
+
 	// if the chain is the best chain, emit a new block
 	// event. This will cause the miner to abort and restart.
 	// It will also cause the peer manager to relay the block

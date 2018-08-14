@@ -23,11 +23,10 @@ import (
 	"time"
 
 	c "github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/util/math"
 
 	"github.com/ellcrys/elld/wire"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/params"
 )
 
 var (
@@ -55,7 +54,7 @@ func (b *Blakimoto) VerifyHeader(chain c.ChainReader, header, parent *wire.Heade
 
 	// Verify the header's timestamp
 	if time.Unix(header.Timestamp, 0).After(time.Now().Add(allowedFutureBlockTime)) {
-		return consensus.ErrFutureBlock
+		return ErrFutureBlock
 	}
 
 	if header.Timestamp <= parent.Timestamp {
@@ -70,7 +69,7 @@ func (b *Blakimoto) VerifyHeader(chain c.ChainReader, header, parent *wire.Heade
 
 	// Verify that the block number is parent's +1
 	if diff := header.Number - parent.Number; diff != 1 {
-		return consensus.ErrInvalidNumber
+		return ErrInvalidNumber
 	}
 
 	// Verify the engine specific seal securing the block

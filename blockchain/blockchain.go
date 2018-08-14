@@ -125,7 +125,7 @@ func (b *Blockchain) Up() error {
 		}
 
 		b.bestChain = gChain
-		b.log.Debug("Genesis block successfully created", "Hash", gBlock.Hash)
+		b.log.Debug("Genesis block successfully created", "Hash", gBlock.Hash.HexStr())
 	}
 
 	// Load all known chains
@@ -141,10 +141,11 @@ func (b *Blockchain) Up() error {
 
 	// Using the best chain rule, we mush select the best chain
 	// and set it as the current bestChain.
-	b.bestChain, err = b.chooseBestChain()
+	err = b.decideBestChain()
 	if err != nil {
 		return fmt.Errorf("failed to determine best chain: %s", err)
 	}
+
 	return nil
 }
 
@@ -276,9 +277,9 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block *wire.Block, ch
 
 // chooseBestChain returns the chain that is considered the
 // legitimate chain. The longest chain is considered the best chain.
+//
+// NOTE: This method must be called with chain lock held by the caller.
 func (b *Blockchain) chooseBestChain() (*Chain, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 
 	var bestChains []*Chain
 	var curHeight uint64
@@ -306,7 +307,6 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 
 	// When there is a definite best chain, we return it immediately
 	if len(bestChains) == 1 {
-		b.log.Info("Best chain selected", "ChainID", bestChains[0].GetID())
 		return bestChains[0], nil
 	}
 
@@ -314,6 +314,31 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 	// We need to perform tie breaker algorithms.
 
 	return bestChains[0], nil
+}
+
+// decideBestChain determines and sets the current best chain
+// based on the split resolution rules.
+func (b *Blockchain) decideBestChain() error {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	newBestChain, err := b.chooseBestChain()
+	if err != nil {
+		b.log.Error("Unable to determine best chain", "Err", err.Error())
+		return err
+	}
+
+	if b.bestChain != nil && b.bestChain.GetID() != newBestChain.GetID() {
+		// TODO: re-organization rules here
+		b.log.Info("New best chain discovered. Attempting chain reorganization.",
+			"CurrentBestChainID", b.bestChain.GetID(), "NewBestChainID", newBestChain.GetID())
+		return err
+	}
+
+	b.log.Info("Best chain selected", "ChainID", newBestChain.GetID())
+	b.bestChain = newBestChain
+
+	return nil
 }
 
 func (b *Blockchain) addRejectedBlock(block *wire.Block) {
