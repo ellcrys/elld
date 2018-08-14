@@ -23,20 +23,7 @@ var (
 
 	// dumpMagic is a dataset dump header to sanity check a data dump.
 	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
-
-	// Ethash log
-	log = logger.NewLogrus()
 )
-
-// GetLogger returns the log instance
-func GetLogger() logger.Logger {
-	return log
-}
-
-// SetLogger sets the package logger
-func SetLogger(l logger.Logger) {
-	log = l
-}
 
 // Mode defines the type and amount of PoW verification an blakimoto engine makes.
 type Mode uint
@@ -56,6 +43,8 @@ type Config struct {
 type Blakimoto struct {
 	config Config
 
+	log logger.Logger
+
 	// Mining related fields
 	rand     *rand.Rand    // Properly seeded random source for nonces
 	threads  int           // Number of threads to mine on if mining
@@ -69,20 +58,21 @@ type Blakimoto struct {
 }
 
 // New creates a full sized blakimoto PoW scheme.
-func New(config Config) *Blakimoto {
+func New(config Config, log logger.Logger) *Blakimoto {
 	return &Blakimoto{
 		config:   config,
 		update:   make(chan struct{}),
 		hashrate: metrics.NewMeter(),
+		log:      log,
 	}
 }
 
 // ConfiguredBlakimoto creates an Blakimoto instance pre-configured
 // using the engine configuration.
-func ConfiguredBlakimoto(mode Mode) *Blakimoto {
+func ConfiguredBlakimoto(mode Mode, log logger.Logger) *Blakimoto {
 	return New(Config{
 		PowMode: mode,
-	})
+	}, log)
 }
 
 // SetFakeDelay sets the delay duration for ModeFake

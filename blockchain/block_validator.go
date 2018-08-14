@@ -11,6 +11,7 @@ import (
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -61,13 +62,13 @@ type BlockValidator struct {
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
-	bchain common.Blockchain, allowDupCheck bool, cfg *config.EngineConfig) *BlockValidator {
+	bchain common.Blockchain, allowDupCheck bool, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:               block,
 		txpool:              txPool,
 		bchain:              bchain,
 		allowDuplicateCheck: allowDupCheck,
-		blakimoto:           blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal),
+		blakimoto:           blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
 	}
 }
 

@@ -165,7 +165,7 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 
 	// Finally, validate the block to ensure it meets every
 	// requirement for a valid block.
-	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg)
+	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
 	if errs := bv.Validate(); len(errs) > 0 {
 		return nil, fmt.Errorf("failed final validation: %s", errs[0])
 	}

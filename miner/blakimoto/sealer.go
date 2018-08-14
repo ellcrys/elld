@@ -98,24 +98,28 @@ func (b *Blakimoto) Seal(block *wire.Block, stop <-chan struct{}) (*wire.Block, 
 // mine is the actual proof-of-work miner that searches for a nonce starting from
 // seed that results in correct final block difficulty.
 func (b *Blakimoto) mine(block *wire.Block, id int, seed uint64, abort chan struct{}, found chan *wire.Block) {
+
 	// Extract some data from the header
 	var (
 		header = block.GetHeader()
 		hash   = header.HashNoNonce().Bytes()
 		target = new(big.Int).Div(maxUint256, header.Difficulty)
 	)
+
 	// Start generating random nonces until we abort or find a good one
 	var (
 		attempts = int64(0)
 		nonce    = seed
 	)
-	log.Debug("Started blakimoto search for new nonces", "seed", seed, "id", id)
+
+	b.log.Debug("Started blakimoto search for new nonces", "Seed", seed, "WorkerID", id)
+
 search:
 	for {
 		select {
 		case <-abort:
 			// Mining terminated, update stats and abort
-			log.Debug("Ethash nonce search aborted", "attempts", nonce-seed, "id", id)
+			b.log.Debug("Blakimoto nonce search aborted", "Attempts", nonce-seed, "WorkerID", id)
 			b.hashrate.Mark(attempts)
 			break search
 
@@ -126,20 +130,21 @@ search:
 				b.hashrate.Mark(attempts)
 				attempts = 0
 			}
+
 			// Compute the PoW value of this nonce
 			result := blakimoto(hash, nonce)
 			if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
+
 				// Correct nonce found, create a new header with it
 				header = wire.CopyHeader(header)
 				header.Nonce = wire.EncodeNonce(nonce)
-				// header.MixHash = util.BytesToHash(digest)
 
 				// Seal and return a block (if still needed)
 				select {
 				case found <- block.WithSeal(header):
-					log.Debug("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce, "id", id)
+					b.log.Debug("Blakimoto nonce found and reported", "Attempts", nonce-seed, "Nonce", nonce, "WorkerID", id)
 				case <-abort:
-					log.Debug("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce, "id", id)
+					b.log.Debug("Blakimoto nonce found but discarded", "Attempts", nonce-seed, "Nonce", nonce, "WorkerID", id)
 				}
 				break search
 			}

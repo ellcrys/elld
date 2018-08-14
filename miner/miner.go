@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/fatih/color"
+
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -13,6 +15,7 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/go-ethereum/log"
 )
 
 const (
@@ -57,7 +60,6 @@ type Miner struct {
 
 // New creates and returns a new Miner instance
 func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitter, cfg *config.EngineConfig, log logger.Logger) *Miner {
-	blakimoto.SetLogger(log)
 
 	m := &Miner{
 		minerKey:   mineKey,
@@ -66,7 +68,7 @@ func New(mineKey *crypto.Key, blockMaker common.Blockchain, event *emitter.Emitt
 		blockMaker: blockMaker,
 		event:      event,
 		abort:      make(chan struct{}),
-		blakimoto:  blakimoto.ConfiguredBlakimoto(cfg.Miner.Mode),
+		blakimoto:  blakimoto.ConfiguredBlakimoto(cfg.Miner.Mode, log),
 	}
 
 	// Subscribe to the global event emitter to learn
@@ -138,6 +140,9 @@ func (m *Miner) ValidateHeader(chain common.ChainReader, header, parent *wire.He
 
 // Mine begins the mining process
 func (m *Miner) Mine() {
+
+	log.Info("Beginning mining protocol")
+
 	for !m.stop {
 
 		var err error
@@ -146,7 +151,7 @@ func (m *Miner) Mine() {
 		// Get a proposed block compatible with the
 		// main chain and the current block.
 		m.proposedBlock, err = m.getProposedBlock([]*wire.Transaction{
-			wire.NewTx(wire.TxTypeBalance, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
+			wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
 		})
 		if err != nil {
 			m.log.Error("Proposed block is not valid", "Error", err)
@@ -190,7 +195,7 @@ func (m *Miner) Mine() {
 			}
 		}
 
-		m.log.Info("New block mined",
+		m.log.Info(color.GreenString("New block mined"),
 			"Number", block.Header.Number,
 			"Difficulty", block.Header.Difficulty,
 			"Hashrate", m.blakimoto.Hashrate(),

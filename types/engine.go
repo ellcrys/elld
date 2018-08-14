@@ -3,11 +3,12 @@ package types
 import (
 	"time"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/txpool"
-	"github.com/ellcrys/emitter"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 )

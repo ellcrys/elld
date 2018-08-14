@@ -16,7 +16,7 @@ import (
 // passes this validation is considered safe to add to the chain.
 func (b *Blockchain) validateBlock(block *wire.Block) error {
 
-	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg)
+	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
 	if errs := blockValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}

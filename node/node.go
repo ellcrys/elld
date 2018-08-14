@@ -8,13 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
-	"github.com/ellcrys/emitter"
 
 	"github.com/ellcrys/elld/txpool"
 

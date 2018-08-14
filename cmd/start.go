@@ -7,8 +7,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/olebedev/emitter"
+
+	"github.com/ellcrys/elld/blockchain"
+	"github.com/ellcrys/elld/miner"
 	"github.com/ellcrys/elld/rpc"
-	"github.com/ellcrys/emitter"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
@@ -136,7 +139,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 // - start RPC server if enabled
 // - start console if enabled
 // - connect console to rpc server and prepare console vm if rpc server is enabled
-func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console) {
+func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console, *miner.Miner) {
 
 	var err error
 
@@ -147,10 +150,12 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	account, _ := cmd.Flags().GetString("account")
 	password, _ := cmd.Flags().GetString("pwd")
 	seed, _ := cmd.Flags().GetInt64("seed")
+	mine, _ := cmd.Flags().GetBool("mine")
 
 	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
 	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
+
 	cfg.Monetary.Decimals = 16
 
 	if devMode {
@@ -207,6 +212,18 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Create event the global event handler
 	event := &emitter.Emitter{}
 
+	// Instantiate the blockchain manager,
+	// set db, event emitter and pass it to the engine
+	bchain := blockchain.New(n.GetTxPool(), cfg, log)
+	bchain.SetDB(n.DB())
+	bchain.SetEventEmitter(event)
+	n.SetBlockchain(bchain)
+
+	// power up the blockchain manager
+	if err := bchain.Up(); err != nil {
+		log.Fatal("failed to load blockchain manager", "Err", err.Error())
+	}
+
 	// Set the event handler in the node
 	n.SetEventBus(event)
 
@@ -240,7 +257,13 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		go cs.Run()
 	}
 
-	return n, rpcServer, cs
+	// Start the miner if enabled
+	miner := miner.New(loadedAddress, bchain, event, cfg, log)
+	if mine {
+		go miner.Mine()
+	}
+
+	return n, rpcServer, cs, miner
 }
 
 // startCmd represents the start command
@@ -265,9 +288,14 @@ var startCmd = &cobra.Command{
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		n, rpcServer, _ := start(cmd, args, false)
+		n, rpcServer, _, miner := start(cmd, args, false)
 
 		onTerminate = func() {
+
+			if miner != nil {
+				miner.Stop()
+			}
+
 			rpcServer.Stop()
 			n.Stop()
 		}
@@ -285,4 +313,5 @@ func init() {
 	startCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
 	startCmd.Flags().String("pwd", "", "Used as password during initial account creation or to unlock an account")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for account creation (not recommended)")
+	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
 }
