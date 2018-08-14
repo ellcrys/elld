@@ -71,7 +71,6 @@ type GenerateBlockParams struct {
 	Transactions       []*wire.Transaction
 	Creator            *crypto.Key
 	Nonce              wire.BlockNonce
-	MixHash            util.Hash
 	Difficulty         *big.Int
 	OverrideStateRoot  util.Hash
 	OverrideTimestamp  int64

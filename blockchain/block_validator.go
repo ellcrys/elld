@@ -122,11 +122,6 @@ func (v *BlockValidator) validateHeader(h *wire.Header) (errs []error) {
 		errs = append(errs, fieldError("stateRoot", "state root is required"))
 	}
 
-	// MixHash must be provided
-	if h.MixHash == util.EmptyHash {
-		errs = append(errs, fieldError("mixHash", "mix hash is required"))
-	}
-
 	// Difficulty must be a numeric value
 	// and greater than zero
 	if h.Difficulty == nil || h.Difficulty.Cmp(util.Big0) == 0 {

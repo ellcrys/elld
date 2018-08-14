@@ -26,7 +26,6 @@ var BlockTest = func() bool {
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -64,7 +63,6 @@ var BlockTest = func() bool {
 					},
 					Creator:    sender,
 					Nonce:      wire.EncodeNonce(1),
-					MixHash:    util.BytesToHash([]byte("mix hash")),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -112,10 +110,9 @@ var BlockTest = func() bool {
 
 			It("should validate params", func() {
 				var cases = map[*common.GenerateBlockParams]interface{}{
-					&common.GenerateBlockParams{}:                                                                         fmt.Errorf("at least one transaction is required"),
-					&common.GenerateBlockParams{Transactions: txs}:                                                        fmt.Errorf("creator's key is required"),
-					&common.GenerateBlockParams{Transactions: txs, Creator: sender}:                                       fmt.Errorf("difficulty is required"),
-					&common.GenerateBlockParams{Transactions: txs, Creator: sender, Difficulty: new(big.Int).SetInt64(1)}: fmt.Errorf("mix hash is required"),
+					&common.GenerateBlockParams{}:                                   fmt.Errorf("at least one transaction is required"),
+					&common.GenerateBlockParams{Transactions: txs}:                  fmt.Errorf("creator's key is required"),
+					&common.GenerateBlockParams{Transactions: txs, Creator: sender}: fmt.Errorf("difficulty is required"),
 				}
 
 				for m, r := range cases {
@@ -129,7 +126,6 @@ var BlockTest = func() bool {
 					Transactions: txs,
 					Creator:      sender,
 					Nonce:        wire.EncodeNonce(1),
-					MixHash:      util.BytesToHash([]byte("mix hash")),
 					Difficulty:   new(big.Int).SetInt64(131072),
 				})
 				Expect(err).To(BeNil())
@@ -145,7 +141,6 @@ var BlockTest = func() bool {
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
-						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: genesisChain})
 					Expect(err).To(BeNil())
@@ -167,7 +162,6 @@ var BlockTest = func() bool {
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
-						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(131072),
 					})
 					Expect(err).ToNot(BeNil())
@@ -190,7 +184,6 @@ var BlockTest = func() bool {
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
-						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).ToNot(BeNil())
@@ -223,7 +216,6 @@ var BlockTest = func() bool {
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
-						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
@@ -256,7 +248,6 @@ var BlockTest = func() bool {
 						Transactions: txs,
 						Creator:      sender,
 						Nonce:        wire.EncodeNonce(1),
-						MixHash:      util.BytesToHash([]byte("mix hash")),
 						Difficulty:   new(big.Int).SetInt64(131072),
 					}, ChainOp{Chain: targetChain})
 					Expect(err).To(BeNil())
