@@ -16,7 +16,7 @@ var _ = Describe("TxPool", func() {
 		It("should return err = 'capacity reached' when txpool capacity is reached", func() {
 			tp := NewTxPool(0)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("capacity reached"))
@@ -25,9 +25,9 @@ var _ = Describe("TxPool", func() {
 		It("should return err = 'exact transaction already in pool' when transaction has already been added", func() {
 			tp := NewTxPool(10)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			err = tp.Put(tx)
@@ -37,9 +37,9 @@ var _ = Describe("TxPool", func() {
 		It("should return err = 'unknown transaction type' when tx type is unknown", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(10200, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(10200, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unknown transaction type"))
@@ -48,9 +48,9 @@ var _ = Describe("TxPool", func() {
 		It("should return nil and added to queue", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
@@ -64,9 +64,9 @@ var _ = Describe("TxPool", func() {
 				return nil
 			})
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
@@ -78,9 +78,9 @@ var _ = Describe("TxPool", func() {
 		It("should return true when transaction is not in the queue", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
@@ -92,9 +92,9 @@ var _ = Describe("TxPool", func() {
 		It("should return false when transaction is not in the queue", func() {
 			tp := NewTxPool(1)
 			a, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", a.PubKey().Base58(), "0", "0", time.Now().Unix())
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = util.ToHex(sig)
+			tx.Sig = sig
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			Expect(tp.queue.Size()).To(Equal(int64(1)))

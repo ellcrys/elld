@@ -8,19 +8,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/olebedev/emitter"
+
+	"github.com/ellcrys/elld/blockchain/common"
 	d_crypto "github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
 
-	"github.com/ellcrys/elld/database"
 	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/ellcrys/elld/config"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/thoas/go-funk"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -52,18 +54,18 @@ type Node struct {
 	stopped                 bool                    // flag to tell if node has stopped
 	log                     logger.Logger           // node logger
 	rSeed                   []byte                  // random 256 bit seed to be used for seed random operations
-	db                      database.DB             // used to access and modify local database
+	db                      elldb.DB                // used to access and modify local database
 	signatory               *d_crypto.Key           // signatory address used to get node ID and for signing
 	historyCache            *histcache.HistoryCache // Used to track objects and behaviours
-	logicEvt                evbus.Bus               // Provides access to a logic handles capable of mutating and querying the node's blockchain state
+	event                   *emitter.Emitter        // Provides access event emitting service
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
-	bchain                  types.Blockchain        // The blockchain manager
+	bchain                  common.Blockchain       // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port
-func newNode(db database.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db elldb.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 
 	if signatory == nil {
 		return nil, fmt.Errorf("signatory address required")
@@ -105,6 +107,7 @@ func newNode(db database.DB, config *config.EngineConfig, address string, signat
 		rSeed:     util.RandBytes(64),
 		signatory: signatory,
 		db:        db,
+		event:     &emitter.Emitter{},
 		mtx:       &sync.RWMutex{},
 		openTransactionsSession: make(map[string]struct{}),
 		transactionsPool:        txpool.NewTxPool(config.TxPool.Capacity),
@@ -133,7 +136,7 @@ func NewNode(config *config.EngineConfig, address string, signatory *d_crypto.Ke
 }
 
 // NewNodeWithDB is like NewNode but it accepts a db instance
-func NewNodeWithDB(db database.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 	return newNode(db, config, address, signatory, log)
 }
 
@@ -156,7 +159,7 @@ func (n *Node) OpenDB() error {
 		return fmt.Errorf("db already open")
 	}
 
-	n.db = database.NewLevelDB(n.cfg.ConfigDir())
+	n.db = elldb.NewDB(n.cfg.ConfigDir())
 	var namespace string
 	if n.DevMode() {
 		namespace = n.StringID()
@@ -166,7 +169,7 @@ func (n *Node) OpenDB() error {
 }
 
 // DB returns the database instance
-func (n *Node) DB() database.DB {
+func (n *Node) DB() elldb.DB {
 	return n.db
 }
 
@@ -196,12 +199,12 @@ func (n *Node) IsSame(node types.Engine) bool {
 }
 
 // GetBlockchain returns the blockchain manager
-func (n *Node) GetBlockchain() types.Blockchain {
+func (n *Node) GetBlockchain() common.Blockchain {
 	return n.bchain
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain types.Blockchain) {
+func (n *Node) SetBlockchain(bchain common.Blockchain) {
 	n.bchain = bchain
 }
 
@@ -225,9 +228,9 @@ func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
-// SetLogicBus sets the logic event bus
-func (n *Node) SetLogicBus(bus evbus.Bus) {
-	n.logicEvt = bus
+// SetEventBus set the event bus used to broadcast events across the engine
+func (n *Node) SetEventBus(ee *emitter.Emitter) {
+	n.event = ee
 }
 
 // SetLocalNode sets the local peer

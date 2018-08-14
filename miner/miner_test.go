@@ -1,127 +1,75 @@
 package miner
 
 import (
-	"runtime"
+	"time"
 
 	"github.com/ellcrys/elld/util"
+
+	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Miner", func() {
-	miner := New(Config{
-		NumCPU:         1,
-		CachesOnDisk:   1,
-		CacheDir:       "CacheFile",
-		CachesInMem:    0,
-		DatasetDir:     "DagFile",
-		DatasetsInMem:  0,
-		DatasetsOnDisk: 1,
-		PowMode:        ModeTest,
-	})
+var MinerTest = func() bool {
 
-	b := &wire.Block{
-		Header: &wire.Header{
-			Number:     1,
-			Difficulty: "50000",
-		},
-	}
+	return Describe("Miner", func() {
 
-	var MixHash []byte
-	var Nonce uint64
+		var miner *Miner
 
-	Describe(".Begin", func() {
-		Context("Begin function using default Nthread and numCpu", func() {
-
-			It("err should be nil", func() {
-
-				res, err := miner.Begin(b.Header)
-				Nonce = res.nonce
-				MixHash = res.digest
-
-				Expect(len(res.digest)).ShouldNot(BeZero())
-				Expect(len(res.result)).ShouldNot(BeZero())
-				Expect(err).Should(BeNil())
-			})
-
+		BeforeEach(func() {
+			cfg.Miner.Mode = blakimoto.ModeTest
+			miner = New(sender, bc, event, cfg, log)
 		})
 
-		Context("Setting NumCpu to 0", func() {
+		// Describe(".getProposedBlock", func() {
+		// 	It("should get a block", func() {
+		// 		b, err := miner.getProposedBlock([]*wire.Transaction{
+		// 			wire.NewTx(wire.TxTypeBalance, int64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
+		// 		})
+		// 		Expect(err).To(BeNil())
+		// 		Expect(b).ToNot(BeNil())
+		// 	})
+		// })
 
-			It("err Should be Nil", func() {
+		// Describe(".Stop", func() {
+		// 	It("should stop miner", func() {
+		// 		time.AfterFunc(1*time.Second, func() {
+		// 			defer GinkgoRecover()
+		// 			miner.Stop()
+		// 			Expect(miner.stop).To(BeTrue())
+		// 		})
+		// 		miner.Mine()
+		// 	})
+		// })
 
-				miner.config.NumCPU = 0
+		Describe(".Mine", func() {
 
-				res, err := miner.Begin(b.Header)
-				Nonce = res.nonce
-				MixHash = res.digest
+			var newBlock *wire.Block
 
-				Expect(len(res.digest)).ShouldNot(BeZero())
-				Expect(len(res.result)).ShouldNot(BeZero())
-				Expect(err).Should(BeNil())
+			BeforeEach(func() {
+				newBlock, err = miner.getProposedBlock([]*wire.Transaction{
+					wire.NewTx(wire.TxTypeBalance, 125, util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
+				})
+				Expect(err).To(BeNil())
 			})
 
-		})
+			It("should abort when a new block has been found", func() {
+				cfg.Miner.Mode = blakimoto.ModeNormal
+				miner = New(sender, bc, event, cfg, log)
+				miner.setFakeDelay(2 * time.Second)
+				// go func() {
+				// 	for range miner.event.On(EventAborted) {
+				// 		miner.Stop()
+				// 	}
+				// }()
 
-		Context("Setting Nthread and numCpu to higher value", func() {
-
-			It("err must be nil", func() {
-
-				numCPU := runtime.NumCPU()
-				nThreads := miner.config.NumCPU + numCPU
-				miner.config.NumCPU = nThreads
-
-				res, err := miner.Begin(b.Header)
-				Nonce = res.nonce
-				MixHash = res.digest
-
-				Expect(len(res.digest)).ShouldNot(BeZero())
-				Expect(len(res.result)).ShouldNot(BeZero())
-				Expect(err).Should(BeNil())
+				// time.AfterFunc(1*time.Second, func() {
+				// 	miner.event.Emit(common.EventNewBlock, newBlock)
+				// })
+				_ = newBlock
+				miner.Mine()
 			})
-
 		})
 	})
-
-	Describe(".VerifyPoW", func() {
-
-		Context("VerifyPoW err should be nil if all parameters are valid", func() {
-			It("It should be nil", func() {
-				b.Header.MixHash = util.ToHex(MixHash)
-				b.Header.Nonce = Nonce
-				errPow := miner.VerifyPoW(b.Header)
-				Expect(errPow).Should(BeNil())
-			})
-		})
-
-		Context("VerifyPoW should generate error when block number is 0", func() {
-
-			It("It should not be nil", func() {
-				b.Header.Number = 0
-				errPow := miner.VerifyPoW(b.Header)
-				Expect(errPow).ShouldNot(BeNil())
-			})
-
-		})
-
-		Context("If PowMode == ModeTest", func() {
-			It("It should not be Nil", func() {
-				miner.config.PowMode = ModeTest
-				b.Header.MixHash = util.ToHex(MixHash)
-				b.Header.Nonce = Nonce
-				b.Header.Number = 54
-
-				errPow := miner.VerifyPoW(b.Header)
-				Expect(errPow).ShouldNot(BeNil())
-			})
-		})
-
-	})
-
-	Describe(".Threads", func() {
-		It("It Should not be zero", func() {
-			Expect(miner.Threads()).ShouldNot(BeZero())
-		})
-	})
-})
+}

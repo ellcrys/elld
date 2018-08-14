@@ -1,4 +1,4 @@
-package database
+package elldb
 
 import (
 	"fmt"
@@ -18,8 +18,8 @@ type LevelDB struct {
 	ldb    *leveldb.DB
 }
 
-// NewLevelDB creates a new instance of LevelDB
-func NewLevelDB(cfgDir string) *LevelDB {
+// NewDB creates a new instance of the Ellcrys DB
+func NewDB(cfgDir string) *LevelDB {
 	db := new(LevelDB)
 	db.cfgDir = cfgDir
 	return db

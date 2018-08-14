@@ -40,19 +40,19 @@ type InvokeArgs struct {
 type Transaction struct {
 	Type         int64       `json:"type" msgpack:"type"`
 	Nonce        int64       `json:"nonce" msgpack:"nonce"`
-	To           string      `json:"to" msgpack:"to"`
-	From         string      `json:"from" msgpack:"from"`
-	SenderPubKey string      `json:"senderPubKey" msgpack:"senderPubKey"`
-	Value        string      `json:"value" msgpack:"value"`
+	To           util.String `json:"to" msgpack:"to"`
+	From         util.String `json:"from" msgpack:"from"`
+	SenderPubKey util.String `json:"senderPubKey" msgpack:"senderPubKey"`
+	Value        util.String `json:"value" msgpack:"value"`
 	Timestamp    int64       `json:"Timestamp" msgpack:"Timestamp"`
-	Fee          string      `json:"Fee" msgpack:"Fee"`
+	Fee          util.String `json:"Fee" msgpack:"Fee"`
 	InvokeArgs   *InvokeArgs `json:"InvokeArgs" msgpack:"InvokeArgs"`
 	Sig          []byte      `json:"sig" msgpack:"sig"`
 	Hash         util.Hash   `json:"hash" msgpack:"hash"`
 }
 
 // NewTransaction creates a new transaction
-func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, value string, fee string, timestamp int64) (tx *Transaction) {
+func NewTransaction(txType int64, nonce int64, to util.String, senderPubKey util.String, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
@@ -65,13 +65,13 @@ func NewTransaction(txType int64, nonce int64, to string, senderPubKey string, v
 }
 
 // NewTx creates a new, signed transaction
-func NewTx(txType int64, nonce int64, to string, senderKey *crypto.Key, value string, fee string, timestamp int64) (tx *Transaction) {
+func NewTx(txType int64, nonce int64, to util.String, senderKey *crypto.Key, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
 	tx.To = to
-	tx.SenderPubKey = senderKey.PubKey().Base58()
-	tx.From = senderKey.Addr()
+	tx.SenderPubKey = util.String(senderKey.PubKey().Base58())
+	tx.From = util.String(senderKey.Addr())
 	tx.Value = value
 	tx.Timestamp = timestamp
 	tx.Fee = fee
@@ -146,7 +146,7 @@ func TxVerify(tx *Transaction) error {
 		return fieldError("sig", "signature not set")
 	}
 
-	pubKey, err := crypto.PubKeyFromBase58(tx.SenderPubKey)
+	pubKey, err := crypto.PubKeyFromBase58(string(tx.SenderPubKey))
 	if err != nil {
 		return fieldError("senderPubKey", err.Error())
 	}

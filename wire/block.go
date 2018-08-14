@@ -3,7 +3,6 @@ package wire
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -46,15 +45,16 @@ type Block struct {
 
 // Header represents the header of a block
 type Header struct {
-	Number           uint64     `json:"number" msgpack:"number"`
-	Nonce            BlockNonce `json:"nonce" msgpack:"nonce"`
-	MixHash          util.Hash  `json:"mixHash" msgpack:"mixHash"`
-	Timestamp        int64      `json:"timestamp" msgpack:"timestamp"`
-	CreatorPubKey    string     `json:"creatorPubKey" msgpack:"creatorPubKey"`
-	ParentHash       util.Hash  `json:"ParentHash" msgpack:"ParentHash"`
-	StateRoot        util.Hash  `json:"stateRoot" msgpack:"stateRoot"`
-	TransactionsRoot util.Hash  `json:"transactionsRoot" msgpack:"transactionsRoot"`
-	Difficulty       *big.Int   `json:"difficulty" msgpack:"difficulty"`
+	Number           uint64      `json:"number" msgpack:"number"`
+	Nonce            BlockNonce  `json:"nonce" msgpack:"nonce"`
+	MixHash          util.Hash   `json:"mixHash" msgpack:"mixHash"`
+	Timestamp        int64       `json:"timestamp" msgpack:"timestamp"`
+	CreatorPubKey    util.String `json:"creatorPubKey" msgpack:"creatorPubKey"`
+	ParentHash       util.Hash   `json:"ParentHash" msgpack:"ParentHash"`
+	StateRoot        util.Hash   `json:"stateRoot" msgpack:"stateRoot"`
+	TransactionsRoot util.Hash   `json:"transactionsRoot" msgpack:"transactionsRoot"`
+	Difficulty       *big.Int    `json:"difficulty" msgpack:"difficulty"`
+	Extra            []byte      `json:"extra" msgpack:"extra"`
 }
 
 // GetNumber returns the header number which is the block number
@@ -68,17 +68,9 @@ func (b *Block) GetHash() util.Hash {
 }
 
 // HashToHex returns the block's hex equivalent of its hash
-// preceeded with 0x
+// preceded by 0x
 func (b *Block) HashToHex() string {
 	return b.GetHash().HexStr()
-}
-
-// BlockFromString unmarshal a json string into a Block
-func BlockFromString(str string) (*Block, error) {
-	var block Block
-	var err error
-	err = json.Unmarshal([]byte(str), &block)
-	return &block, err
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
@@ -86,54 +78,14 @@ func (h *Header) HashNoNonce() util.Hash {
 	result := getBytes([]interface{}{
 		h.ParentHash,
 		h.Number,
+		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
 		h.Difficulty,
 		h.Timestamp,
+		h.Extra,
 	})
 	return sha256.Sum256(result)
-}
-
-// Validate the header
-func (h *Header) Validate() error {
-
-	if h.Number < 1 {
-		return fieldError("number", "number must be greater or equal to 1")
-	}
-
-	if h.Number != 1 && h.ParentHash == util.EmptyHash {
-		return fieldError("parentHash", "parent hash is required")
-	}
-
-	if h.Number == 1 && h.ParentHash != util.EmptyHash {
-		return fieldError("parentHash", "should be empty since block number is 1")
-	}
-
-	if len(h.CreatorPubKey) == 0 {
-		return fieldError("creatorPubKey", "creator public key is required")
-	}
-
-	if _, err := crypto.PubKeyFromBase58(h.CreatorPubKey); err != nil {
-		return fieldError("creatorPubKey", err.Error())
-	}
-
-	if h.TransactionsRoot == util.EmptyHash {
-		return fieldError("transactionsRoot", "transaction root is required")
-	}
-
-	if h.StateRoot == util.EmptyHash {
-		return fieldError("stateRoot", "state root is required")
-	}
-
-	if h.Nonce == EmptyBlockNonce {
-		return fieldError("nonce", "nonce is required")
-	}
-
-	if h.Timestamp <= 0 {
-		return fieldError("timestamp", "timestamp must not be empty or a negative value")
-	}
-
-	return nil
 }
 
 // Bytes return the bytes representation of the header
@@ -141,12 +93,14 @@ func (h *Header) Bytes() []byte {
 	return getBytes([]interface{}{
 		h.ParentHash,
 		h.Number,
+		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.Nonce,
 		h.MixHash,
 		h.Difficulty,
 		h.Timestamp,
+		h.Nonce,
+		h.Extra,
 	})
 }
 
@@ -172,12 +126,38 @@ func (b *Block) Bytes() []byte {
 	})
 }
 
+// GetHeader gets the block's header
+func (b *Block) GetHeader() *Header { return b.Header }
+
+// SetHeader sets the block header
+func (b *Block) SetHeader(h *Header) { b.Header = h }
+
 // ComputeHash returns the SHA256 hash of the header as a hex string
 // prefixed by '0x'
 func (b *Block) ComputeHash() util.Hash {
 	bs := b.Bytes()
 	hash := sha256.Sum256(bs)
 	return util.BytesToHash(hash[:])
+}
+
+// CopyHeader creates a copy of a block header
+func CopyHeader(h *Header) *Header {
+	newH := *h
+	if newH.Difficulty = new(big.Int); h.Difficulty != nil {
+		newH.Difficulty.Set(h.Difficulty)
+	}
+	return &newH
+}
+
+// WithSeal returns a new block with the data from b but the header replaced with
+// the sealed one.
+func (b *Block) WithSeal(header *Header) *Block {
+	cpy := *header
+
+	return &Block{
+		Header:       &cpy,
+		Transactions: b.Transactions,
+	}
 }
 
 // BlockSign signs a block.
@@ -217,7 +197,7 @@ func BlockVerify(block *Block) error {
 		return fieldError("sig", "signature not set")
 	}
 
-	pubKey, err := crypto.PubKeyFromBase58(block.Header.CreatorPubKey)
+	pubKey, err := crypto.PubKeyFromBase58(block.Header.CreatorPubKey.String())
 	if err != nil {
 		return fieldError("header.creatorPubKey", err.Error())
 	}

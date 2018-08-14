@@ -1,30 +1,17 @@
 package common
 
 import (
-	"encoding/json"
 	"time"
 
-	"github.com/ellcrys/elld/database"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
+	"github.com/vmihailenco/msgpack"
 )
-
-// Block defines an interface for a block
-type Block interface {
-
-	// GetNumber returns the block number
-	GetNumber() uint64
-
-	// ComputeHash computes and returns the hash
-	ComputeHash() util.Hash
-
-	// GetHash returns the already computed hash
-	GetHash() util.Hash
-}
 
 // OrphanBlock represents an orphan block
 type OrphanBlock struct {
-	Block      Block
+	Block      *wire.Block
 	Expiration time.Time
 }
 
@@ -35,8 +22,14 @@ type CallOp interface {
 
 // TxOp defines a method option for passing external transactions
 type TxOp struct {
-	Tx        database.Tx
+	Tx        elldb.Tx
 	CanFinish bool
+	finished  bool
+}
+
+// Closed gets the status of the transaction
+func (t TxOp) Closed() bool {
+	return t.finished
 }
 
 // GetName returns the name of the op
@@ -44,39 +37,28 @@ func (t TxOp) GetName() string {
 	return "TxOp"
 }
 
-// Store defines an interface for storing objects and metadata
-// of the blockchain.
-type Store interface {
+// Commit commits the transaction if it has not been done before.
+// It ignores the call if CanFinish is false.
+func (t TxOp) Commit() error {
+	if !t.CanFinish || t.finished {
+		return nil
+	}
+	if err := t.Tx.Commit(); err != nil {
+		return err
+	}
+	t.finished = true
+	return nil
+}
 
-	// PutBlock adds a block to the store
-	PutBlock(chainID string, block *wire.Block, opts ...CallOp) error
-
-	// GetBlock finds and returns a block associated with chainID.
-	// When 0 is passed, it should return the block with the highest number
-	GetBlock(chainID string, number uint64, opts ...CallOp) (*wire.Block, error)
-
-	// GetBlockByHash finds and returns a block associated with chainID.
-	GetBlockByHash(chainID string, hash string, opts ...CallOp) (*wire.Block, error)
-
-	// GetBlockHeader gets the header of a block.
-	// When 0 is passed, it should return the header of the block with the highest number
-	GetBlockHeader(chainID string, number uint64, opts ...CallOp) (*wire.Header, error)
-
-	// GetBlockHeaderByHash finds and returns the header of a block matching hash
-	GetBlockHeaderByHash(chainID string, hash string) (*wire.Header, error)
-
-	// Put store an arbitrary value
-	Put(key []byte, value []byte, opts ...CallOp) error
-
-	// Get retrieves an arbitrary value
-	Get(key []byte, result *[]*database.KVObject)
-
-	// GetFirstOrLast returns the first or last object matching the key.
-	// Set first to true to return the first or false for last.
-	GetFirstOrLast(first bool, key []byte, result *database.KVObject)
-
-	// NewTx creates and returns a transaction
-	NewTx() (database.Tx, error)
+// Rollback rolls back the transaction if it has not been done before.
+// It ignores the call if CanFinish is false.
+func (t TxOp) Rollback() error {
+	if !t.CanFinish || t.finished {
+		return nil
+	}
+	t.Tx.Rollback()
+	t.finished = true
+	return nil
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice
@@ -86,9 +68,9 @@ type Object interface {
 
 // ChainInfo describes a chain
 type ChainInfo struct {
-	ID                string `json:"id"`
-	ParentChainID     string `json:"parentChainID"`
-	ParentBlockNumber uint64 `json:"parentBlockNumber"`
+	ID                util.String `json:"id"`
+	ParentChainID     util.String `json:"parentChainID"`
+	ParentBlockNumber uint64      `json:"parentBlockNumber"`
 }
 
 // BlockchainMeta includes information about the blockchain
@@ -97,10 +79,10 @@ type BlockchainMeta struct {
 
 // JSON returns the JSON encoded equivalent
 func (m *BlockchainMeta) JSON() ([]byte, error) {
-	return json.Marshal(m)
+	return msgpack.Marshal(m)
 }
 
-// StateObject describes an object to be stored in a database.StateObject.
+// StateObject describes an object to be stored in a elldb.StateObject.
 // Usually created after processing a Transition object.
 type StateObject struct {
 
@@ -117,4 +99,85 @@ type StateObject struct {
 	// object. It is written to the database
 	// and the tree
 	Value []byte
+}
+
+// Chainer defines an interface for Chain
+type Chainer interface {
+
+	// NewStateTree returns a new tree
+	NewStateTree(noBackLink bool, opts ...CallOp) (*Tree, error)
+
+	// Current gets the header of the tip block
+	Current(opts ...CallOp) (*wire.Header, error)
+
+	// GetID gets the chain ID
+	GetID() util.String
+
+	// GetBlock gets a block in the chain
+	GetBlock(uint64) (*wire.Block, error)
+
+	// GetParentBlock gets the chain's parent block if it has one
+	GetParentBlock() *wire.Block
+
+	// GetParentInfo gets the chain's parent information
+	GetParentInfo() *ChainInfo
+
+	// CreateAccount creates an account on a target block
+	CreateAccount(targetBlockNum uint64, account *wire.Account, opts ...CallOp) error
+
+	// GetAccount gets an account
+	GetAccount(address util.String, opts ...CallOp) (*wire.Account, error)
+
+	// PutTransactions stores a collection of transactions
+	PutTransactions(txs []*wire.Transaction, opts ...CallOp) error
+
+	// GetTransaction gets a transaction by hash
+	GetTransaction(hash util.Hash) *wire.Transaction
+}
+
+// Blockchain defines an interface for a blockchain manager
+type Blockchain interface {
+
+	// Up initializes and loads the blockchain manager
+	Up() error
+
+	// GetBestChain gets the chain that is currently considered the main chain
+	GetBestChain() Chainer
+
+	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
+	IsKnownBlock(hash util.Hash) (bool, string, error)
+
+	// HaveBlock checks if a block exists on the main or side chains
+	HaveBlock(hash util.Hash) (bool, error)
+
+	// GetTransaction finds and returns a transaction on the main chain
+	GetTransaction(hash util.Hash) (*wire.Transaction, error)
+
+	// ProcessBlock attempts to process and append a block to the main or side chains
+	ProcessBlock(*wire.Block) (ChainReader, error)
+
+	// Generate creates a new block for a target chain.
+	// The Chain is specified by passing to ChainOp.
+	Generate(*GenerateBlockParams, ...CallOp) (*wire.Block, error)
+
+	// ChainReader gets a Reader for reading the main chain
+	ChainReader() ChainReader
+
+	// GetChainsReader gets chain reader for all known chains
+	GetChainsReader() (readers []ChainReader)
+}
+
+// BlockMaker defines an interface providing the
+// necessary functions to create new blocks
+type BlockMaker interface {
+
+	// Generate creates a new block for a target chain.
+	// The Chain is specified by passing to ChainOp.
+	Generate(*GenerateBlockParams, ...CallOp) (*wire.Block, error)
+
+	// ChainReader gets a Reader for reading the main chain
+	ChainReader() ChainReader
+
+	// ProcessBlock attempts to process and append a block to the main or side chains
+	ProcessBlock(*wire.Block) (ChainReader, error)
 }

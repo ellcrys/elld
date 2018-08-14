@@ -3,7 +3,6 @@ package rpc
 import (
 	"time"
 
-	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 
@@ -41,10 +40,10 @@ var _ = Describe("Transactions", func() {
 	})
 
 	Describe(".Send", func() {
-		service := new(Service)
+		var service *Service
 
 		BeforeEach(func() {
-			service.logic, _ = logic.New(n, log)
+			service = NewService(n.APIs(), cfg)
 		})
 
 		It("should return 0 addresses when no accounts exists", func() {
@@ -62,10 +61,10 @@ var _ = Describe("Transactions", func() {
 
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(addr.Addr()), util.String(sender.PubKey().Base58()), "10", "10", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
-			tx.Hash = "invalid_hash"
+			tx.Hash = util.StrToHash("invalid_hash")
 
 			payload := map[string]interface{}{
 				"type":         tx.Type,
@@ -76,24 +75,24 @@ var _ = Describe("Transactions", func() {
 				"value":        tx.Value,
 				"fee":          tx.Fee,
 				"timestamp":    tx.Timestamp,
-				"sig":          util.ToHex(sig),
+				"sig":          sig,
 				"hash":         tx.Hash,
 			}
 
 			var result Result
-			service.TransactionAdd(payload, &result)
+			err = service.TransactionAdd(payload, &result)
 			Expect(result.Error).ToNot(BeEmpty())
-			Expect(result.Error).To(Equal("field:hash, error:expected 66 characters"))
+			Expect(result.Error).To(Equal("index:0, field:hash, error:hash is not correct"))
 		})
 
 		It("should successfully send transaction", func() {
 
 			addr, _ := crypto.NewKey(nil)
 			sender, _ := crypto.NewKey(nil)
-			tx := wire.NewTransaction(wire.TxTypeBalance, 1, addr.Addr(), sender.PubKey().Base58(), "10", "10", time.Now().Unix())
-			tx.From = sender.Addr()
+			tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(addr.Addr()), util.String(sender.PubKey().Base58()), "10", "10", time.Now().Unix())
+			tx.From = util.String(sender.Addr())
 			sig, _ := wire.TxSign(tx, sender.PrivKey().Base58())
-			tx.Hash = util.ToHex(tx.ComputeHash())
+			tx.Hash = tx.ComputeHash()
 
 			payload := map[string]interface{}{
 				"type":         tx.Type,
@@ -104,7 +103,7 @@ var _ = Describe("Transactions", func() {
 				"value":        tx.Value,
 				"fee":          tx.Fee,
 				"timestamp":    tx.Timestamp,
-				"sig":          util.ToHex(sig),
+				"sig":          sig,
 				"hash":         tx.Hash,
 			}
 

@@ -1,4 +1,4 @@
-package leveldb
+package elldb_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestLeveldb(t *testing.T) {
+func TestDatabase(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Leveldb Suite")
+	RunSpecs(t, "Database Suite")
 }

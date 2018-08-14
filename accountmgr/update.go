@@ -1,12 +1,12 @@
 package accountmgr
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
 	"github.com/btcsuite/btcutil/base58"
+	"github.com/vmihailenco/msgpack"
 
 	"github.com/ellcrys/elld/util"
 	"github.com/thoas/go-funk"
@@ -21,7 +21,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	}
 
 	// find the account with a matching address
-	accounts, err := am.GetAccountsOnDisk()
+	accounts, err := am.ListAccounts()
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 
 	// attempt to decode to ensure content is json encoded
 	var accountData map[string]string
-	if err := json.Unmarshal(acctBytesBase58Dec, &accountData); err != nil {
+	if err := msgpack.Unmarshal(acctBytesBase58Dec, &accountData); err != nil {
 		printErr("Unable to parse unlocked account data")
 		return err
 	}

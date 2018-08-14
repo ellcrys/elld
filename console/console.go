@@ -1,7 +1,6 @@
 package console
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/rpc"
@@ -10,6 +9,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/console/spell"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/vmihailenco/msgpack"
 
 	prompt "github.com/c-bata/go-prompt"
 )
@@ -40,7 +40,7 @@ func New(signatory *crypto.Key, historyFilePath string) *Console {
 	var history []string
 	histBs, _ := ioutil.ReadFile(historyFilePath)
 	if len(histBs) > 0 {
-		json.Unmarshal(histBs, &history)
+		msgpack.Unmarshal(histBs, &history)
 	}
 
 	histOpt := prompt.OptionHistory(history)
@@ -110,7 +110,8 @@ func (c *Console) saveHistory() {
 	if len(c.history) == 0 {
 		return
 	}
-	bs, _ := json.Marshal(c.history)
+
+	bs, _ := msgpack.Marshal(c.history)
 	err := ioutil.WriteFile(c.historyFile, bs, 0644)
 	if err != nil {
 		panic(err)

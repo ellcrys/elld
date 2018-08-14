@@ -2,8 +2,10 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
+	"time"
 
-	"github.com/ellcrys/elld/blockchain/testdata"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
@@ -15,7 +17,7 @@ var BlockValidatorTest = func() bool {
 	return Describe("BlockValidator", func() {
 
 		BeforeEach(func() {
-			bc.bestChain = chain
+			bc.bestChain = genesisChain
 		})
 
 		Describe(".check", func() {
@@ -39,7 +41,7 @@ var BlockValidatorTest = func() bool {
 					&wire.Block{Header: &wire.Header{}, Transactions: []*wire.Transaction{&wire.Transaction{Type: 109}}}: fmt.Errorf("tx:0, field:type, error:unsupported transaction type"),
 				}
 				for b, err := range cases {
-					validator := NewBlockValidator(b, nil, nil, false)
+					validator := NewBlockValidator(b, nil, nil, false, cfg)
 					errs := validator.check()
 					Expect(errs).To(ContainElement(err))
 				}
@@ -50,12 +52,12 @@ var BlockValidatorTest = func() bool {
 			It("should check for validation errors", func() {
 				key := crypto.NewKeyFromIntSeed(1)
 				var cases = map[*wire.Block]interface{}{
-					&wire.Block{Header: &wire.Header{}}:                                     fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
-					&wire.Block{Header: &wire.Header{CreatorPubKey: "invalid"}}:             fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
-					&wire.Block{Header: &wire.Header{CreatorPubKey: key.PubKey().Base58()}}: fmt.Errorf("field:sig, error:signature is not valid"),
+					&wire.Block{Header: &wire.Header{}}:                                                  fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
+					&wire.Block{Header: &wire.Header{CreatorPubKey: "invalid"}}:                          fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
+					&wire.Block{Header: &wire.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
 				}
 				for b, err := range cases {
-					validator := NewBlockValidator(b, nil, nil, false)
+					validator := NewBlockValidator(b, nil, nil, false, cfg)
 					errs := validator.checkSignature()
 					Expect(errs).To(ContainElement(err))
 				}
@@ -64,16 +66,55 @@ var BlockValidatorTest = func() bool {
 
 		Describe(".Validate", func() {
 
+			var block *wire.Block
+
 			BeforeEach(func() {
-				_, err = bc.ProcessBlock(testdata.Block2)
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+			})
+
+			BeforeEach(func() {
+				_, err = bc.ProcessBlock(block)
 				Expect(err).To(BeNil())
 			})
 
 			It("should return if block and a transaction in the block exist", func() {
-				validator := NewBlockValidator(block, nil, bc, true)
+				validator := NewBlockValidator(block, nil, bc, true, cfg)
 				errs := validator.Validate()
 				Expect(errs).To(ContainElement(fmt.Errorf("error:block found in chain")))
 				Expect(errs).To(ContainElement(fmt.Errorf("tx:0, error:transaction already exist in main chain")))
+			})
+		})
+
+		Describe("", func() {
+			var block *wire.Block
+
+			BeforeEach(func() {
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+					},
+					Creator:           sender,
+					Nonce:             wire.EncodeNonce(1),
+					MixHash:           util.BytesToHash([]byte("mix hash")),
+					Difficulty:        new(big.Int).SetInt64(131072),
+					OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+				})
+			})
+
+			It("", func() {
+				// validator := NewBlockValidator(block, nil, bc, true, cfg)
+				// // errs := validator.Validate()
+				// parent, _ := bc.ChainReader().GetBlockByHash(block.Header.ParentHash)
+				// err = validator.ethash.VerifyHeader(bc.ChainReader(), block.Header, parent.Header, false)
+				// pp.Println(err, parent.Header.Timestamp, block.Header.Timestamp)
 			})
 		})
 	})

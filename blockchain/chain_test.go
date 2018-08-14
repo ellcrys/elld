@@ -1,8 +1,9 @@
 package blockchain
 
 import (
+	"math/big"
+
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/blockchain/testdata"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -34,7 +35,7 @@ var ChainTest = func() bool {
 			Context("with empty chain", func() {
 				When("and back linking enabled", func() {
 					It("should successfully create a tree, added 2 items and return root", func() {
-						emptyChain := NewChain("my_chain", store, cfg, log)
+						emptyChain := NewChain("my_chain", db, cfg, log)
 						tree, err := emptyChain.NewStateTree(false)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
@@ -49,7 +50,7 @@ var ChainTest = func() bool {
 
 				When("and back linking disabled", func() {
 					It("should successfully create a tree and same root as an empty chain", func() {
-						emptyChain := NewChain("my_chain", store, cfg, log)
+						emptyChain := NewChain("my_chain", db, cfg, log)
 						tree, err := emptyChain.NewStateTree(true)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
@@ -65,15 +66,16 @@ var ChainTest = func() bool {
 
 			Context("with a non-empty chain", func() {
 				When("and back linking enabled", func() {
+
 					It("should successfully create seeded state tree", func() {
-						tree, err := chain.NewStateTree(false)
+						tree, err := genesisChain.NewStateTree(false)
 						Expect(err).To(BeNil())
 						initialRoot := tree.Root()
 
 						Describe("tree must be seeded with the state root of the tip block", func() {
 							curItems := tree.GetItems()
 							Expect(curItems).To(HaveLen(1))
-							Expect(curItems[0]).To(Equal(common.TreeItem(testdata.GenesisBlock.Header.StateRoot.Bytes())))
+							Expect(curItems[0]).To(Equal(common.TreeItem(genesisBlock.Header.StateRoot.Bytes())))
 						})
 
 						Describe("must derive new state root after adding items to tree", func() {
@@ -83,7 +85,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{62, 249, 156, 202, 216, 252, 54, 66, 242, 156, 178, 183, 239, 44, 150, 250, 124, 8, 58, 154, 119, 151, 123, 153, 31, 143, 132, 164, 15, 184, 85, 139}
+							expected := util.Hash{111, 183, 233, 32, 210, 221, 41, 140, 249, 7, 72, 33, 13, 169, 116, 214, 218, 129, 230, 179, 131, 136, 26, 83, 184, 122, 230, 224, 55, 64, 244, 159}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 
@@ -92,7 +94,7 @@ var ChainTest = func() bool {
 
 				When("and back linking disabled", func() {
 					It("should successfully create state tree that has not been seeded", func() {
-						tree, err := chain.NewStateTree(true)
+						tree, err := genesisChain.NewStateTree(true)
 						Expect(err).To(BeNil())
 						Expect(tree.Root()).To(Equal(emptyTreeRoot))
 
@@ -107,32 +109,38 @@ var ChainTest = func() bool {
 		})
 
 		Describe(".append", func() {
-
-			var block2, block2_2, block3 *wire.Block
-
 			BeforeEach(func() {
-				block2 = testdata.BlockSet1[0]
-				block3 = testdata.BlockSet1[1]
-				block2_2 = testdata.BlockSet1[3]
+				genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
 			})
 
 			It("should return err when the block number does not serially match the current tip number", func() {
-				err = chain.append(block3)
+				genesisBlock.Header.Number = 3
+				err = genesisChain.append(genesisBlock)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("unable to append: candidate block number {3} is not the expected block number {expected=2}"))
 			})
 
 			It("should return err when the block's parent hash does not match the hash of the current tip block", func() {
-				err = chain.append(block2)
+				err = genesisChain.append(genesisBlock)
 				Expect(err).To(BeNil())
 
-				err = chain.append(block2_2)
+				genesisBlock.Header.Number = 3
+				genesisBlock.Header.ParentHash = util.StrToHash("incorrect")
+				err = genesisChain.append(genesisBlock)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("unable to append block: parent hash does not match the hash of the current block"))
 			})
 
 			It("should return no error", func() {
-				err = chain.append(block2)
+				err = genesisChain.append(genesisBlock)
 				Expect(err).To(BeNil())
 			})
 		})
@@ -140,13 +148,13 @@ var ChainTest = func() bool {
 		Describe(".hashBlock", func() {
 
 			It("should return false if block does not exist in the chain", func() {
-				exist, err := chain.hasBlock("some_unknown_hash")
+				exist, err := genesisChain.hasBlock(util.Hash{1, 2, 3})
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeFalse())
 			})
 
 			It("should return true if block exist in the chain", func() {
-				exist, err := chain.hasBlock(block.GetHash().HexStr())
+				exist, err := genesisChain.hasBlock(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeTrue())
 			})
@@ -157,7 +165,7 @@ var ChainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", store, cfg, log)
+				chain = NewChain("chain_a", db, cfg, log)
 			})
 
 			It("should return zero if chain has no block", func() {
@@ -167,7 +175,7 @@ var ChainTest = func() bool {
 			})
 
 			It("should return 1 if chain contains 1 block", func() {
-				err := chain.append(block)
+				err := chain.append(genesisBlock)
 				Expect(err).To(BeNil())
 
 				height, err := chain.height()
@@ -179,13 +187,13 @@ var ChainTest = func() bool {
 		Describe(".getBlockHeaderByHash", func() {
 
 			It("should return err if block was not found", func() {
-				header, err := chain.getBlockHeaderByHash("unknown")
+				header, err := genesisChain.getBlockHeaderByHash(util.Hash{1, 2, 3})
 				Expect(err).To(Equal(common.ErrBlockNotFound))
 				Expect(header).To(BeNil())
 			})
 
 			It("should successfully get block header by hash", func() {
-				header, err := chain.getBlockHeaderByHash(block.GetHash().HexStr())
+				header, err := genesisChain.getBlockHeaderByHash(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(header).ToNot(BeNil())
 			})
@@ -193,13 +201,13 @@ var ChainTest = func() bool {
 
 		Describe(".getBlockByHash", func() {
 			It("should return error if block is not found", func() {
-				block, err := chain.getBlockByHash("unknown")
+				block, err := genesisChain.getBlockByHash(util.Hash{1, 2, 3})
 				Expect(err).To(Equal(common.ErrBlockNotFound))
 				Expect(block).To(BeNil())
 			})
 
 			It("should successfully get block by hash", func() {
-				block, err := chain.getBlockByHash(block.GetHash().HexStr())
+				block, err := genesisChain.getBlockByHash(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(block).ToNot(BeNil())
 			})

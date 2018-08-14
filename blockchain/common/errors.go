@@ -44,4 +44,12 @@ var (
 
 	// ErrTxNotFound means a transaction was not found
 	ErrTxNotFound = fmt.Errorf("transaction not found")
+
+	// ErrDecodeFailed means an attempt to decode data failed
+	ErrDecodeFailed = func(msg string) error {
+		if msg != "" {
+			msg = ": " + msg
+		}
+		return fmt.Errorf("decode attempt failed%s", msg)
+	}
 )

@@ -133,7 +133,7 @@ var _ = Describe("Container", func() {
 		BeforeEach(func() {
 			bc, err = blockcode.FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Len()).NotTo(BeZero())
+			Expect(bc.Size()).NotTo(BeZero())
 		})
 
 		BeforeEach(func() {

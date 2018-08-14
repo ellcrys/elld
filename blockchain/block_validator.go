@@ -5,10 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/txpool"
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -41,24 +44,36 @@ type BlockValidator struct {
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
-	bchain types.Blockchain
+	bchain common.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
 	// a collection such as the transaction pool, chains etc
 	// will be considered invalid.
 	allowDuplicateCheck bool
+
+	// blakimoto is an instance of PoW implementation
+	blakimoto *blakimoto.Blakimoto
+
+	// verSeal seal instructs the validator whether or not
+	// to verify the difficult and PoW fields of a given block
+	verSeal bool
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
-	bchain types.Blockchain, allowDupCheck bool) *BlockValidator {
+	bchain common.Blockchain, allowDupCheck bool, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:               block,
 		txpool:              txPool,
 		bchain:              bchain,
 		allowDuplicateCheck: allowDupCheck,
+		blakimoto:           blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
 	}
+}
+
+func (v *BlockValidator) verifySeal() {
+	v.verSeal = true
 }
 
 // Validate runs a series of checks against the loaded block
@@ -72,14 +87,14 @@ func (v *BlockValidator) Validate() (errs []error) {
 	return errs
 }
 
-// CheckHeaderFormatAndValue checks that an header fields and
+// validateHeader checks that an header fields and
 // value format or type is valid.
-func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
+func (v *BlockValidator) validateHeader(h *wire.Header) (errs []error) {
 
 	// For non-genesis block, parent hash must be set
-	if h.Number != 1 && h.ParentHash == util.EmptyHash {
+	if h.Number != 1 && h.ParentHash.IsEmpty() {
 		errs = append(errs, fieldError("parentHash", "parent hash is required"))
-	} else if h.Number == 1 && h.ParentHash != util.EmptyHash {
+	} else if h.Number == 1 && !h.ParentHash.IsEmpty() {
 		// For genesis block, parent hash is not required
 		errs = append(errs, fieldError("parentHash", "parent hash is not expected in a genesis block"))
 	}
@@ -93,7 +108,7 @@ func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 	// and must be decodeable
 	if len(h.CreatorPubKey) == 0 {
 		errs = append(errs, fieldError("creatorPubKey", "creator's public key is required"))
-	} else if _, err := crypto.PubKeyFromBase58(h.CreatorPubKey); err != nil {
+	} else if _, err := crypto.PubKeyFromBase58(h.CreatorPubKey.String()); err != nil {
 		errs = append(errs, fieldError("creatorPubKey", err.Error()))
 	}
 
@@ -126,6 +141,20 @@ func CheckHeaderFormatAndValue(h *wire.Header) (errs []error) {
 		errs = append(errs, fieldError("timestamp", "timestamp is over 2 hours in the future"))
 	}
 
+	// Verify the proof of work and difficulty
+	if v.verSeal && !h.ParentHash.IsEmpty() {
+
+		// get the parent header
+		parentHeader, err := v.bchain.ChainReader().GetHeaderByHash(h.ParentHash)
+		if err != nil {
+			errs = append(errs, fieldError("parentHash", err.Error()))
+		}
+
+		if err := v.blakimoto.VerifyHeader(v.bchain.ChainReader(), h, parentHeader, v.verSeal); err != nil {
+			errs = append(errs, fieldError("parentHash", err.Error()))
+		}
+	}
+
 	return
 }
 
@@ -143,7 +172,7 @@ func (v *BlockValidator) check() (errs []error) {
 	if v.block.Header == nil {
 		errs = append(errs, fieldError("header", "header is required"))
 	} else {
-		for _, err := range CheckHeaderFormatAndValue(v.block.Header) {
+		for _, err := range v.validateHeader(v.block.Header) {
 			errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "field:", "field:header.", -1)))
 		}
 	}
@@ -179,7 +208,7 @@ func (v *BlockValidator) check() (errs []error) {
 // signature to be set.
 func (v *BlockValidator) checkSignature() (errs []error) {
 
-	pubKey, err := crypto.PubKeyFromBase58(v.block.Header.CreatorPubKey)
+	pubKey, err := crypto.PubKeyFromBase58(v.block.Header.CreatorPubKey.String())
 	if err != nil {
 		errs = append(errs, fieldError("header.creatorPubKey", err.Error()))
 		return
@@ -201,7 +230,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 func (v *BlockValidator) duplicateCheck(b *wire.Block) (errs []error) {
 
 	if v.bchain != nil {
-		known, reason, err := v.bchain.IsKnownBlock(b.Hash.HexStr())
+		known, reason, err := v.bchain.IsKnownBlock(b.Hash)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("duplicate check error: %s", err))
 		} else if known {

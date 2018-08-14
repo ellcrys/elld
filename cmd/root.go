@@ -44,9 +44,9 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "druid",
-	Short: "druid is a cryptocurrency based on the original bitcoin protocol",
-	Long:  `druid is a cryptocurrency based on the original bitcoin protocol`,
+	Use:   "elld",
+	Short: "elld is a decentralized git hosting and collaboration protocol",
+	Long:  `elld is a decentralized git hosting and collaboration protocol`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },

@@ -1,4 +1,4 @@
-package database
+package elldb
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -9,64 +9,64 @@ var _ = Describe("Types", func() {
 
 	Describe("NewKVObject.GetKey", func() {
 		It("should create key", func() {
-			kv := NewKVObject([]byte("age"), []byte("20"), "prefix")
+			kv := NewKVObject([]byte("age"), []byte("20"), []byte("prefix"))
 			key := kv.GetKey()
 			Expect(key).ToNot(BeEmpty())
-			Expect(key).To(Equal([]byte{112, 114, 101, 102, 105, 120, 58, 97, 103, 101}))
+			Expect(key).To(Equal([]byte("prefix_$$_age")))
 		})
 	})
 
 	Describe(".FromKeyValue", func() {
-		When("key has no prefix", func() {
-			It("should return object that contains key=age, value=20 and prefixes=nil", func() {
+		When("key has no KeyPrefixSeparator", func() {
+			It("should return object that contains key=age, prefix= value=20 and GetKey=age/", func() {
 				o := FromKeyValue([]byte("age"), []byte("20"))
+				Expect(o.Prefix).To(BeEmpty())
 				Expect(o.Key).To(Equal([]byte("age")))
 				Expect(o.Value).To(Equal([]byte("20")))
-				Expect(o.Prefixes).To(BeEmpty())
 				Expect(o.GetKey()).To(Equal([]byte("age")))
 			})
 		})
 
-		When("key has prefix", func() {
-			It("should return object that contains key=age, value=20, ", func() {
-				o := FromKeyValue([]byte("prefixA~prefixB:age"), []byte("20"))
+		When("key has KeyPrefixSeparator", func() {
+			It("should return object that contains key=age, value=20, prefix=prefixA", func() {
+				o := FromKeyValue([]byte("prefixA_$$_age"), []byte("20"))
 				Expect(o.Key).To(Equal([]byte("age")))
 				Expect(o.Value).To(Equal([]byte("20")))
-				Expect(o.GetKey()).To(Equal([]byte("prefixA~prefixB:age")))
-				Expect(o.Prefixes).To(Equal([]string{"prefixA", "prefixB"}))
+				Expect(o.GetKey()).To(Equal([]byte("prefixA_$$_age")))
+				Expect(o.Prefix).To(Equal([]byte("prefixA")))
 			})
 		})
 	})
 
 	Describe(".MakePrefix", func() {
 		It("should return 'prefixA~prefixB'", func() {
-			actual := MakePrefix([]string{"prefixA", "prefixB"})
-			Expect(string(actual)).To(Equal("prefixA~prefixB"))
+			actual := MakePrefix([]byte("prefixA"), []byte("prefixB"))
+			Expect(string(actual)).To(Equal("prefixAprefixB"))
 		})
 
 		It("should return 'prefixA'", func() {
-			actual := MakePrefix([]string{"prefixA"})
+			actual := MakePrefix([]byte("prefixA"))
 			Expect(string(actual)).To(Equal("prefixA"))
 		})
 
 		It("should return empty string when prefixes are not provided", func() {
-			actual := MakePrefix([]string{})
+			actual := MakePrefix()
 			Expect(string(actual)).To(Equal(""))
 		})
 	})
 
 	Describe(".MakeKey", func() {
-		It("should return 'prefixA~prefixB:age' when key and prefixes are provided", func() {
-			actual := MakeKey([]byte("age"), []string{"prefixA", "prefixB"})
-			Expect(string(actual)).To(Equal("prefixA~prefixB:age"))
+		It("should return 'prefixAprefixB/age' when key and prefixes are provided", func() {
+			actual := MakeKey([]byte("age"), []byte("prefixA"), []byte("prefixB"))
+			Expect(string(actual)).To(Equal("prefixAprefixB_$$_age"))
 		})
 
-		It("should return only concatenated prefixes 'prefixA~prefixB' when key is not provided", func() {
-			actual := MakeKey(nil, []string{"prefixA", "prefixB"})
-			Expect(string(actual)).To(Equal("prefixA~prefixB"))
+		It("should return only concatenated prefixes 'prefixAprefixB' with no KeyPrefixSeparator when key is not provided", func() {
+			actual := MakeKey(nil, []byte("prefixA"), []byte("prefixB"))
+			Expect(string(actual)).To(Equal("prefixAprefixB"))
 		})
 
-		It("should return only key when prefixes are not provided", func() {
+		It("should return only key with no KeyPrefixSeparator when prefixes are not provided", func() {
 			actual := MakeKey([]byte("age"), nil)
 			Expect(string(actual)).To(Equal("age"))
 		})
@@ -79,14 +79,14 @@ var _ = Describe("Types", func() {
 
 	Describe("NewKVObject.GetKey vs .MakeKey", func() {
 		It("should return same result when key and prefixes are provided", func() {
-			kv := NewKVObject([]byte("age"), []byte("value"), "prefixA", "prefixB")
-			key := MakeKey([]byte("age"), []string{"prefixA", "prefixB"})
+			kv := NewKVObject([]byte("age"), []byte("value"), []byte("prefixA"), []byte("prefixB"))
+			key := MakeKey([]byte("age"), []byte("prefixA"), []byte("prefixB"))
 			Expect(kv.GetKey()).To(Equal(key))
 		})
 
 		It("should return same result when key is not provided", func() {
-			kv := NewKVObject(nil, []byte("value"), "prefixA", "prefixB")
-			key := MakeKey(nil, []string{"prefixA", "prefixB"})
+			kv := NewKVObject(nil, []byte("value"), []byte("prefixA"), []byte("prefixB"))
+			key := MakeKey(nil, []byte("prefixA"), []byte("prefixB"))
 			Expect(kv.GetKey()).To(Equal(key))
 		})
 

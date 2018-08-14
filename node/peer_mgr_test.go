@@ -8,8 +8,7 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/database"
-	"github.com/ellcrys/elld/logic"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types"
 	host "github.com/libp2p/go-libp2p-host"
@@ -35,12 +34,12 @@ func PeerManagerTest() bool {
 	return Describe("PeerManager", func() {
 
 		var err error
-		var db database.DB
+		var db elldb.DB
 		var p *Node
 		var mgr *Manager
 
 		BeforeEach(func() {
-			db = database.NewLevelDB(cfg.ConfigDir())
+			db = elldb.NewDB(cfg.ConfigDir())
 			err = db.Open("")
 			Expect(err).To(BeNil())
 		})
@@ -54,8 +53,6 @@ func PeerManagerTest() bool {
 			Expect(err).To(BeNil())
 			mgr = p.PM()
 			mgr.localNode = p
-			_, bus := logic.New(p, log)
-			p.SetLogicBus(bus)
 		})
 
 		Describe(".AddOrUpdatePeer", func() {
@@ -187,6 +184,29 @@ func PeerManagerTest() bool {
 				Expect(result).To(HaveLen(2))
 			})
 
+		})
+
+		Describe(".loadPeers", func() {
+			BeforeEach(func() {
+				addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+				addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+				p2 := NewRemoteNode(addr, p)
+				p2.Timestamp = time.Now().Add(21 * time.Minute)
+				p3 := NewRemoteNode(addr2, p)
+				p3.Timestamp = time.Now().Add(21 * time.Minute)
+				mgr.knownPeers[p2.StringID()] = p2
+				mgr.knownPeers[p3.StringID()] = p3
+				err := mgr.savePeers()
+				Expect(err).To(BeNil())
+				Expect(mgr.knownPeers).To(HaveLen(2))
+			})
+
+			It("should fetch", func() {
+				mgr.knownPeers = map[string]types.Engine{}
+				err = mgr.loadPeers()
+				Expect(err).To(BeNil())
+				Expect(mgr.knownPeers).To(HaveLen(2))
+			})
 		})
 
 		Describe(".GetKnownPeer", func() {

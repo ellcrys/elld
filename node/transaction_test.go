@@ -4,10 +4,9 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/logic"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/util"
 
-	evbus "github.com/asaskevich/EventBus"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -23,7 +22,6 @@ func TransactionTest() bool {
 			var n, rp *Node
 			var proto, rpProto types.Gossip
 			var sender, address *crypto.Key
-			var nBus, rpBus evbus.Bus
 
 			BeforeEach(func() {
 				address, _ = crypto.NewKey(nil)
@@ -31,16 +29,10 @@ func TransactionTest() bool {
 			})
 
 			BeforeEach(func() {
-				// bchain = blockchain.New()
-			})
-
-			BeforeEach(func() {
 				n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				proto = NewGossip(n, log)
 				n.SetGossipProtocol(proto)
-				_, nBus = logic.New(n, log)
-				n.SetLogicBus(nBus)
 			})
 
 			BeforeEach(func() {
@@ -49,8 +41,6 @@ func TransactionTest() bool {
 				rpProto = NewGossip(rp, log)
 				rp.SetGossipProtocol(rpProto)
 				rp.SetProtocolHandler(config.TxVersion, rpProto.OnTx)
-				_, rpBus = logic.New(rp, log)
-				rp.SetLogicBus(rpBus)
 			})
 
 			AfterEach(func() {
@@ -59,7 +49,7 @@ func TransactionTest() bool {
 			})
 
 			It("should return nil and history key of transaction should be in HistoryCache", func() {
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
+				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
 				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
@@ -72,8 +62,8 @@ func TransactionTest() bool {
 
 			It("remote node should add tx in its tx pool", func() {
 
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-				tx.From = sender.Addr()
+				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
 				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
@@ -91,8 +81,8 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				rp.SetGossipProtocol(proto)
 
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, address.Addr(), sender.PubKey().Base58(), "1", "0.1", time.Now().Unix())
-				tx.From = sender.Addr()
+				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
 				tx.Hash = tx.ComputeHash()
 				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())

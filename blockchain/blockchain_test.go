@@ -1,8 +1,11 @@
 package blockchain
 
 import (
+	"math/big"
+	"time"
+
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/blockchain/testdata"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -15,14 +18,13 @@ var BlockchainTest = func() bool {
 		Describe(".SetStore", func() {
 			It("should set store", func() {
 				bc := New(nil, cfg, log)
-				bc.SetStore(store)
-				Expect(bc.store).ToNot(BeNil())
+				bc.SetDB(db)
 			})
 		})
 
 		Describe(".addChain", func() {
 			It("should add chain", func() {
-				chain := NewChain("chain_id", store, cfg, log)
+				chain := NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 				Expect(bc.chains).To(HaveLen(1))
 				err = bc.addChain(chain)
@@ -36,7 +38,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_id", store, cfg, log)
+				chain = NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 				err = bc.addChain(chain)
 				Expect(err).To(BeNil())
@@ -55,7 +57,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_id", store, cfg, log)
+				chain = NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 			})
 
@@ -69,46 +71,80 @@ var BlockchainTest = func() bool {
 
 		Describe(".Up", func() {
 
-			var chain *Chain
+			var block2 *wire.Block
 
 			BeforeEach(func() {
-				bc.chains = make(map[string]*Chain)
-				chain = NewChain("c", store, cfg, log)
-				GenesisBlock = testdata.BlockWithSingleAllocTx
+				bc.chains = make(map[util.String]*Chain)
+				chain := NewChain("c1", db, cfg, log)
+				block2 = MakeTestBlock(bc, chain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
 			})
-
-			// BeforeEach(func() {
-			// 	blk, err := bc.GenerateBlock(&GenerateBlockParams{
-			// 		Transactions: []*wire.Transaction{
-			// 			wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
-			// 		},
-			// 		Creator:    sender,
-			// 		Nonce:      wire.EncodeNonce(1),
-			// 		MixHash:    util.BytesToHash([]byte("mix hash")),
-			// 		Difficulty: new(big.Int).SetInt64(500),
-			// 	}, ChainOp{Chain: chain})
-			// 	Expect(err).To(BeNil())
-			// 	Expect(blk).ToNot(BeNil())
-			// 	pp.Println(blk)
-			// })
 
 			It("should return error if store is not set", func() {
 				bc := New(nil, cfg, log)
 				err = bc.Up()
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("store has not been initialized"))
+				Expect(err.Error()).To(Equal("db has not been initialized"))
 			})
 
-			When("genesis block is not valid", func() {
+			When("genesis block is not valid: block number is > 1", func() {
+				BeforeEach(func() {
+					bc.chains = make(map[util.String]*Chain)
+					chain := NewChain("c1", db, cfg, log)
+					block := MakeTestBlock(bc, chain, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					block.Header.Number = 2
+					GenesisBlock = block
+				})
+
 				It("should return error if genesis block number is not equal to 1", func() {
-					GenesisBlock = testdata.GenesisBlockWithAllocTxAndNumber2
 					err = bc.Up()
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("genesis block error: expected block number 1"))
 				})
+			})
+
+			When("genesis block is not valid: sender account does not exist", func() {
+				BeforeEach(func() {
+					bc.chains = make(map[util.String]*Chain)
+					chain := NewChain("c1", db, cfg, log)
+
+					Expect(bc.putAccount(1, chain, &wire.Account{
+						Type:    wire.AccountTypeBalance,
+						Address: util.String(sender.Addr()),
+						Balance: "1000",
+					})).To(BeNil())
+
+					block := MakeTestBlock(bc, chain, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					block.Transactions[0].From = "unknown_account"
+					block.Hash = block.ComputeHash()
+					block.Sig, err = wire.BlockSign(block, sender.PrivKey().Base58())
+					GenesisBlock = block
+				})
 
 				It("should return error if a transaction's sender does not exists", func() {
-					GenesisBlock = testdata.GenesisBlockSenderNotFound
 					err = bc.Up()
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
@@ -116,8 +152,23 @@ var BlockchainTest = func() bool {
 			})
 
 			When("genesis block is valid", func() {
+
+				BeforeEach(func() {
+					bc.chains = make(map[util.String]*Chain)
+					chain := NewChain("c1", db, cfg, log)
+					block := MakeTestBlock(bc, chain, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					GenesisBlock = block
+				})
+
 				It("should assign new chain as the best chain if no chain is known", func() {
-					GenesisBlock = testdata.BlockWithSingleAllocTx
 					err = bc.Up()
 					Expect(err).To(BeNil())
 					Expect(bc.bestChain).ToNot(BeNil())
@@ -125,8 +176,10 @@ var BlockchainTest = func() bool {
 			})
 
 			It("should load all chains", func() {
-				c1 := NewChain("c1", store, cfg, log)
-				c2 := NewChain("c2", store, cfg, log)
+				GenesisBlock = block2
+
+				c1 := NewChain("c1", db, cfg, log)
+				c2 := NewChain("c2", db, cfg, log)
 
 				err = bc.saveChain(c1, "", 0)
 				Expect(err).To(BeNil())
@@ -170,7 +223,7 @@ var BlockchainTest = func() bool {
 		Describe(".HybridMode", func() {
 
 			BeforeEach(func() {
-				bc.bestChain = chain
+				bc.bestChain = genesisChain
 			})
 
 			It("should return false if we have not reached hybrid mode block height", func() {
@@ -189,60 +242,77 @@ var BlockchainTest = func() bool {
 
 		Describe(".findChainByLastBlockHash", func() {
 
-			var block *wire.Block
+			var b1 *wire.Block
 			var chain2 *Chain
 
 			BeforeEach(func() {
-				block = testdata.BlockSet1[0]
-
-				chain2 = NewChain("chain2", store, cfg, log)
-				Expect(err).To(BeNil())
-				err = chain2.append(block)
-				Expect(err).To(BeNil())
-
+				chain2 = NewChain("chain2", db, cfg, log)
 				err = bc.addChain(chain2)
 				Expect(err).To(BeNil())
 
-				err = chain2.store.PutBlock(chain2.id, block)
+				Expect(bc.putAccount(1, chain2, &wire.Account{
+					Type:    wire.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "1000",
+				})).To(BeNil())
+
+				b1 = MakeTestBlock(bc, chain2, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
 				Expect(err).To(BeNil())
+				err = chain2.append(b1)
 			})
 
 			It("should return chain=nil, header=nil, err=nil if no block on the chain matches the hash", func() {
-				_block, chain, header, err := bc.findBlockChainByHash("unknown")
+				_block, chain, header, err := bc.findChainByBlockHash(util.Hash{1, 2, 3})
 				Expect(err).To(BeNil())
 				Expect(_block).To(BeNil())
 				Expect(header).To(BeNil())
 				Expect(chain).To(BeNil())
 			})
 
-			Context("when the hash maps to the highest block in chain2", func() {
-				It("should return chain2 and header matching the header of the recently added block", func() {
-					_block, chain, header, err := bc.findBlockChainByHash(block.GetHash().HexStr())
+			Context("when the hash belongs to the highest block in chain2", func() {
+				It("should return chain2 and header must match the header of the recently added block", func() {
+					_block, chain, header, err := bc.findChainByBlockHash(b1.GetHash())
 					Expect(err).To(BeNil())
-					Expect(block).To(Equal(_block))
+					Expect(b1.Bytes()).To(Equal(_block.Bytes()))
 					Expect(chain.GetID()).To(Equal(chain2.id))
-					Expect(header.ComputeHash()).To(Equal(block.Header.ComputeHash()))
+					Expect(header.ComputeHash()).To(Equal(b1.Header.ComputeHash()))
 				})
 			})
 
-			Context("when the hash maps to a block that is not the highest block", func() {
+			Context("when the hash belongs to a block that is not the highest block", func() {
 
-				var block2 *wire.Block
+				var b2 *wire.Block
 
 				BeforeEach(func() {
-					block2 = testdata.BlockSet1[0]
-					Expect(err).To(BeNil())
-
-					err = chain2.store.PutBlock(chain2.id, block2)
+					b2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					err = genesisChain.append(b2)
 					Expect(err).To(BeNil())
 				})
 
-				It("should return chain (not chain2) and header matching the header of the recently aded block", func() {
-					_block, chain, tipHeader, err := bc.findBlockChainByHash(block.GetHash().HexStr())
+				It("should return chain and header matching the header of block 1", func() {
+					_block, chain, tipHeader, err := bc.findChainByBlockHash(genesisBlock.GetHash())
 					Expect(err).To(BeNil())
-					Expect(block).To(Equal(_block))
-					Expect(chain.GetID()).To(Equal(chain2.id))
-					Expect(tipHeader.ComputeHash()).To(Equal(block2.Header.ComputeHash()))
+					Expect(genesisBlock.Bytes()).To(Equal(_block.Bytes()))
+					Expect(genesisBlock.GetNumber()).To(Equal(uint64(1)))
+					Expect(chain.GetID()).To(Equal(chain.id))
+					Expect(tipHeader.ComputeHash()).To(Equal(b2.Header.ComputeHash()))
 				})
 			})
 		})
@@ -252,18 +322,26 @@ var BlockchainTest = func() bool {
 			var chain, subChain *Chain
 
 			BeforeEach(func() {
-				bc.chains = make(map[string]*Chain)
+				bc.chains = make(map[util.String]*Chain)
 			})
 
 			BeforeEach(func() {
-				chain = NewChain("chain_2", store, cfg, log)
-				subChain = NewChain("sub_chain", store, cfg, log)
-
-				block = testdata.BlockSet1[0]
-				Expect(err).To(BeNil())
-
+				chain = NewChain("chain_2", db, cfg, log)
 				err := bc.saveChain(chain, "", 0)
 				Expect(err).To(BeNil())
+
+				subChain = NewChain("sub_chain", db, cfg, log)
+
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
 				err = chain.append(block)
 				Expect(err).To(BeNil())
 
@@ -272,7 +350,7 @@ var BlockchainTest = func() bool {
 			})
 
 			It("should return error when only ParentBlockNumber is set but ParentChainID is unset", func() {
-				err = bc.loadChain(&common.ChainInfo{ID: chain.GetID(), ParentBlockNumber: 1})
+				err = bc.loadChain(&common.ChainInfo{ID: "some_id", ParentBlockNumber: 1})
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("chain load failed: parent chain id and parent block id are both required"))
 			})
@@ -309,7 +387,7 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", store, cfg, log)
+				chain = NewChain("chain_a", db, cfg, log)
 				err := bc.saveChain(chain, "", 0)
 				Expect(err).To(BeNil())
 			})
@@ -329,6 +407,44 @@ var BlockchainTest = func() bool {
 
 		Describe(".newChain", func() {
 
+			var parentBlock, block, unknownParent *wire.Block
+
+			BeforeEach(func() {
+				parentBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					OverrideParentHash: parentBlock.Hash,
+					Creator:            sender,
+					Nonce:              wire.EncodeNonce(1),
+					MixHash:            util.BytesToHash([]byte("mix hash")),
+					Difficulty:         new(big.Int).SetInt64(131072),
+					OverrideTimestamp:  time.Now().Add(2 * time.Second).Unix(),
+				})
+
+				unknownParent = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:            sender,
+					OverrideParentHash: util.StrToHash("unknown"),
+					Nonce:              wire.EncodeNonce(1),
+					MixHash:            util.BytesToHash([]byte("mix hash")),
+					Difficulty:         new(big.Int).SetInt64(131072),
+					OverrideTimestamp:  time.Now().Add(3 * time.Second).Unix(),
+				})
+			})
+
 			It("should return error if block is nil", func() {
 				_, err := bc.newChain(nil, nil, nil, nil)
 				Expect(err).ToNot(BeNil())
@@ -336,30 +452,28 @@ var BlockchainTest = func() bool {
 			})
 
 			It("should return error if initial block parent is nil", func() {
-				initialBlock := testdata.BlockSet1[0]
-				_, err := bc.newChain(nil, initialBlock, nil, nil)
+				_, err := bc.newChain(nil, block, nil, nil)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("initial block parent cannot be nil"))
 			})
 
 			It("should return error if initial block and parent are not related", func() {
-				initialBlock := testdata.BlockSet1[1]
-				initialBlockParent := testdata.BlockSet1[2]
-				_, err = bc.newChain(nil, initialBlock, initialBlockParent, nil)
+				_, err = bc.newChain(nil, block, unknownParent, nil)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("initial block and parent are not related"))
 			})
 
-			It("should successfully return a new chain", func() {
-				initialBlock := testdata.BlockSet1[1]
-				initialBlockParent := testdata.BlockSet1[0]
+			It("should return error if parent chain is nil", func() {
+				_, err = bc.newChain(nil, block, parentBlock, nil)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("parent chain cannot be nil"))
+			})
 
-				tx, _ := chain.store.NewTx()
-				chain, err := bc.newChain(tx, initialBlock, initialBlockParent, nil)
+			It("should successfully return a new chain", func() {
+				chain, err := bc.newChain(nil, block, parentBlock, genesisChain)
 				Expect(err).To(BeNil())
 				Expect(chain).ToNot(BeNil())
-				Expect(chain.parentBlock).To(Equal(initialBlockParent))
-				tx.Commit()
+				Expect(chain.parentBlock).To(Equal(parentBlock))
 			})
 		})
 
@@ -368,30 +482,40 @@ var BlockchainTest = func() bool {
 			var chain *Chain
 
 			BeforeEach(func() {
-				chain = NewChain("chain_a", store, cfg, log)
-				block = testdata.BlockSet1[0]
+				chain = NewChain("chain_a", db, cfg, log)
+
+				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
+					Transactions: []*wire.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      wire.EncodeNonce(1),
+					MixHash:    util.BytesToHash([]byte("mix hash")),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
 				chain.append(block)
-				err = chain.putTransactions(block.Transactions)
+				err = chain.PutTransactions(block.Transactions)
 				Expect(err).To(BeNil())
 			})
 
 			It("should return err = 'best chain unknown' if the best chain has not been decided", func() {
 				bc.bestChain = nil
-				_, err := bc.GetTransaction(block.Transactions[0].ID())
+				_, err := bc.GetTransaction(block.Transactions[0].Hash)
 				Expect(err).ToNot(BeNil())
 				Expect(err).To(Equal(common.ErrBestChainUnknown))
 			})
 
 			It("should return transaction and no error", func() {
 				bc.bestChain = chain
-				tx, err := bc.GetTransaction(block.Transactions[0].ID())
+				tx, err := bc.GetTransaction(block.Transactions[0].Hash)
 				Expect(err).To(BeNil())
 				Expect(tx).To(Equal(block.Transactions[0]))
 			})
 
 			It("should return err = 'transaction not found' when main chain does not have the transaction", func() {
 				bc.bestChain = chain
-				tx, err := bc.GetTransaction("unknown")
+				tx, err := bc.GetTransaction(util.Hash{1, 2, 3})
 				Expect(err).ToNot(BeNil())
 				Expect(err).To(Equal(common.ErrTxNotFound))
 				Expect(tx).To(BeNil())
@@ -405,11 +529,11 @@ var BlockchainTest = func() bool {
 			// 	var chainA, chainB *Chain
 
 			// 	BeforeEach(func() {
-			// 		bc.chains = make(map[string]*Chain)
+			// 		bc.chains = make(map[util.String]*Chain)
 			// 	})
 
 			// 	BeforeEach(func() {
-			// 		chainA = NewChain("chain_a", store, cfg, log)
+			// 		chainA = NewChain("chain_a", db, cfg, log)
 			// 		err := bc.saveChain(chainA, "", 0)
 			// 		Expect(err).To(BeNil())
 			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
@@ -418,7 +542,7 @@ var BlockchainTest = func() bool {
 			// 	})
 
 			// 	BeforeEach(func() {
-			// 		chainB = NewChain("chain_b", store, cfg, log)
+			// 		chainB = NewChain("chain_b", db, cfg, log)
 			// 		err := bc.saveChain(chainB, "", 0)
 			// 		Expect(err).To(BeNil())
 			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
@@ -432,40 +556,79 @@ var BlockchainTest = func() bool {
 			// 	})
 
 			// })
+
 			Context("with one highest block", func() {
 
 				var chainA, chainB, chainC *Chain
 
 				BeforeEach(func() {
-					bc.chains = make(map[string]*Chain)
+					bc.chains = make(map[util.String]*Chain)
 				})
 
 				BeforeEach(func() {
-					chainA = NewChain("chain_a", store, cfg, log)
+					chainA = NewChain("chain_a", db, cfg, log)
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
-					block = testdata.BlockSet1[0]
+
+					block := MakeTestBlock(bc, chainA, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+
 					err = chainA.append(block)
 					Expect(err).To(BeNil())
 				})
 
 				BeforeEach(func() {
-					chainB = NewChain("chain_b", store, cfg, log)
+					chainB = NewChain("chain_b", db, cfg, log)
 					err := bc.saveChain(chainB, "", 0)
 					Expect(err).To(BeNil())
-					block = testdata.BlockSet1[0]
+
+					block := MakeTestBlock(bc, chainB, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+
 					err = chainB.append(block)
 					Expect(err).To(BeNil())
 				})
 
 				BeforeEach(func() {
-					chainC = NewChain("chain_c", store, cfg, log)
+					chainC = NewChain("chain_c", db, cfg, log)
 					err := bc.saveChain(chainC, "", 0)
 					Expect(err).To(BeNil())
-					block = testdata.BlockSet1[0]
-					block2 := testdata.BlockSet1[1]
+
+					block := MakeTestBlock(bc, chainC, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
 					err = chainC.append(block)
 					Expect(err).To(BeNil())
+
+					block2 := MakeTestBlock(bc, chainC, &common.GenerateBlockParams{
+						Transactions: []*wire.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
+						},
+						Creator:    sender,
+						Nonce:      wire.EncodeNonce(1),
+						MixHash:    util.BytesToHash([]byte("mix hash")),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
 					err = chainC.append(block2)
 					Expect(err).To(BeNil())
 				})

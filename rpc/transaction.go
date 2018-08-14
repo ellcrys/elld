@@ -25,24 +25,20 @@ type SendTxPayload map[string]interface{}
 // The transaction is validated and verified before it is sent to the node.
 func (s *Service) TransactionAdd(payload SendTxPayload, result *Result) error {
 
+	// var err error
 	var tx wire.Transaction
+
 	if err := mapstructure.Decode(payload, &tx); err != nil {
 		return fmt.Errorf("failed to decode payload: %s", err)
 	}
 
-	var err error
-
 	switch tx.Type {
 	case wire.TxTypeBalance:
 
-		var errCh = make(chan error, 1)
-		err = s.logic.TransactionAdd(&tx, errCh)
+		apiFunc := s.engine.MustGet("TransactionAdd")
+		_, err := apiFunc(&tx)
 		if err != nil {
-			return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
-		}
-
-		if err = <-errCh; err != nil {
-			return NewErrorResult(result, err.Error(), errCodeTransaction, 400)
+			return NewErrorResult(result, err.Error(), errCodeTransaction, 500)
 		}
 
 		return NewOKResult(result, 200, map[string]interface{}{

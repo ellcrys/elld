@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 	funk "github.com/thoas/go-funk"
+	"github.com/vmihailenco/msgpack"
 	"golang.org/x/crypto/scrypt"
 
 	"github.com/fatih/color"
@@ -108,7 +108,7 @@ func (am *AccountManager) CreateAccount(address *crypto.Key, passphrase string) 
 	passphraseHardened := hardenPassword([]byte(passphrase))
 
 	// construct, json encode and encrypt account data
-	acctDataBs, _ := json.Marshal(map[string]string{
+	acctDataBs, _ := msgpack.Marshal(map[string]string{
 		"addr": address.Addr(),
 		"sk":   address.PrivKey().Base58(),
 		"pk":   address.PubKey().Base58(),

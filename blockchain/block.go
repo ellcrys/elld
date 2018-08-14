@@ -2,30 +2,16 @@ package blockchain
 
 import (
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
-// GenerateBlockParams represents parameters
-// required for block generation.
-type GenerateBlockParams struct {
-	OverrideParentHash util.Hash
-	Transactions       []*wire.Transaction
-	Creator            *crypto.Key
-	Nonce              wire.BlockNonce
-	MixHash            util.Hash
-	Difficulty         *big.Int
-	OverrideStateRoot  util.Hash
-}
-
 // HaveBlock checks whether we have a block in the
 // main chain or other chains.
-func (b *Blockchain) HaveBlock(hash string) (bool, error) {
+func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	for _, chain := range b.chains {
@@ -42,7 +28,7 @@ func (b *Blockchain) HaveBlock(hash string) (bool, error) {
 
 // IsKnownBlock checks whether a block with the has exists
 // in at least one of all block chains and caches (e.g orphan)
-func (b *Blockchain) IsKnownBlock(hash string) (bool, string, error) {
+func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	var have bool
@@ -64,10 +50,10 @@ func (b *Blockchain) IsKnownBlock(hash string) (bool, string, error) {
 	return have, reason, nil
 }
 
-// GenerateBlock produces a valid block for a target chain. By default
+// Generate produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
+func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
 
 	var chain *Chain
 	var block *wire.Block
@@ -92,7 +78,6 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 			break
 		}
 	}
-
 	// If an explicit chain has not been set, we use
 	// the main chain
 	if chain == nil {
@@ -106,7 +91,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 	}
 
 	// Get the latest block header
-	chainTip, err := chain.getBlock(0)
+	chainTip, err := chain.GetBlock(0)
 	if err != nil {
 		if err != common.ErrBlockNotFound {
 			return nil, err
@@ -116,7 +101,7 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 	block = &wire.Block{
 		Header: &wire.Header{
 			ParentHash:       util.EmptyHash,
-			CreatorPubKey:    params.Creator.PubKey().Base58(),
+			CreatorPubKey:    util.String(params.Creator.PubKey().Base58()),
 			Number:           1,
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
@@ -127,12 +112,18 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 		Transactions: params.Transactions,
 	}
 
+	// override the block's timestamp if a timestamp is
+	// provided in the given param.
+	if params.OverrideTimestamp > 0 {
+		block.Header.Timestamp = params.OverrideTimestamp
+	}
+
 	// If the chain has no tip block but it has a parent,
 	// then we set the block's parent hash to the parent's hash
 	// and set the block number to BlockNumber(parent) + 1
-	if chainTip == nil && chain.parentBlock != nil {
-		block.Header.ParentHash = chain.parentBlock.Hash
-		block.Header.Number = chain.parentBlock.Header.Number + 1
+	if chainTip == nil && chain.GetParentBlock() != nil {
+		block.Header.ParentHash = chain.GetParentBlock().Hash
+		block.Header.Number = chain.GetParentBlock().Header.Number + 1
 	}
 
 	// If a the chain tip exists, we set the block's parent
@@ -174,8 +165,8 @@ func (b *Blockchain) GenerateBlock(params *GenerateBlockParams, opts ...common.C
 
 	// Finally, validate the block to ensure it meets every
 	// requirement for a valid block.
-	errs := NewBlockValidator(block, b.txPool, b, true).Validate()
-	if len(errs) > 0 {
+	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
+	if errs := bv.Validate(); len(errs) > 0 {
 		return nil, fmt.Errorf("failed final validation: %s", errs[0])
 	}
 

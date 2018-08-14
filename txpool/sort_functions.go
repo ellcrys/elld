@@ -36,8 +36,8 @@ func (s ByTxFeeAsc) Swap(i, j int) {
 
 // Less checks the smallest value between two txs
 func (s ByTxFeeAsc) Less(i, j int) bool {
-	iTxFee := util.StrToDec(s[i].Fee)
-	jTxFee := util.StrToDec(s[j].Fee)
+	iTxFee := util.StrToDec(s[i].Fee.String())
+	jTxFee := util.StrToDec(s[j].Fee.String())
 	return iTxFee.Cmp(jTxFee) == -1
 }
 
@@ -57,7 +57,7 @@ func (s ByTxFeeDesc) Swap(i, j int) {
 
 // Less checks the smallest value between two txs
 func (s ByTxFeeDesc) Less(i, j int) bool {
-	iTxFee := util.StrToDec(s[i].Fee)
-	jTxFee := util.StrToDec(s[j].Fee)
+	iTxFee := s[i].Fee.Decimal()
+	jTxFee := s[j].Fee.Decimal()
 	return iTxFee.Cmp(jTxFee) == 1
 }

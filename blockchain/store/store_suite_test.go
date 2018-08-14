@@ -1,4 +1,4 @@
-package database_test
+package store
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDatabase(t *testing.T) {
+func TestStore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Database Suite")
+	RunSpecs(t, "Store Suite")
 }
