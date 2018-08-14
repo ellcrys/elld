@@ -21,3 +21,4 @@ changelog:
     exclude:
     - '^docs:'
     - '^test:'
+    - '^play'
