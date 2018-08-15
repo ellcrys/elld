@@ -368,18 +368,6 @@
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/keybase/go-codec"
-  packages = ["codec"]
-  revision = "73210629e9f31ec8745db957708cbcc344c6f173"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/keybase/go-merkle-tree"
-  packages = ["."]
-  revision = "90288bcf8366442e1d29ad22356fae3f2e8254a5"
-
-[[projects]]
   name = "github.com/libp2p/go-addr-util"
   packages = ["."]
   revision = "a9d6b939b59796c4933f56a8e628d6682d8d2a05"
@@ -1049,6 +1037,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b43574454f2dd2f9b3ee6e243ca6f2c5e1ec47c33c81cfe0405c58f0135a67b5"
+  inputs-digest = "3f3ca2ac3ec979aa489f76cd08f1bd6f908e2544cb141e6ce60fe8d29eefccb3"
   solver-name = "gps-cdcl"
   solver-version = 1
