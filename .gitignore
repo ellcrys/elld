@@ -1,6 +1,6 @@
 *coverprofile
 dist
-/vendor
+vendor
 CacheFile
 scribleDB
 DagFile

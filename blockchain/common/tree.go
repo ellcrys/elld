@@ -3,8 +3,8 @@ package common
 import (
 	"bytes"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/merkletree"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -12,15 +12,15 @@ import (
 type TreeItem []byte
 
 // CalculateHash returns the blake2b-256 hash of the item
-func (i TreeItem) CalculateHash() []byte {
+func (i TreeItem) CalculateHash() ([]byte, error) {
 	h, _ := blake2b.New256(nil)
-	h.Write(i)
-	return h.Sum(nil)
+	_, err := h.Write(i)
+	return h.Sum(nil), err
 }
 
 // Equals checks whether the item equal another item
-func (i TreeItem) Equals(other merkletree.Content) bool {
-	return bytes.Equal(i, other.(TreeItem))
+func (i TreeItem) Equals(other merkletree.Content) (bool, error) {
+	return bytes.Equal(i, other.(TreeItem)), nil
 }
 
 // Tree provides merkle tree functionality with
