@@ -22,7 +22,6 @@ import (
 	"math/big"
 	"time"
 
-	c "github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/math"
@@ -181,7 +180,7 @@ func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 }
 
 // Finalize accumulates rewards, computes the final state and assembling the block.
-func (b *Blakimoto) Finalize(chain c.BlockMaker, block core.Block) (core.Block, error) {
+func (b *Blakimoto) Finalize(chain core.BlockMaker, block core.Block) (core.Block, error) {
 	// TODO: accumulate rewards, recompute state and update block header
 	return block, nil
 }

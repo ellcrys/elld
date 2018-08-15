@@ -124,6 +124,11 @@ func (h *Header) Copy() core.Header {
 	return &newH
 }
 
+// GetChainReader gets the chain reader
+func (b *Block) GetChainReader() core.ChainReader {
+	return b.ChainReader
+}
+
 // GetHash returns the block's hash
 func (b *Block) GetHash() util.Hash {
 	return b.Hash

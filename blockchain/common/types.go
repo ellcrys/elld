@@ -77,18 +77,3 @@ type StateObject struct {
 	// and the tree
 	Value []byte
 }
-
-// BlockMaker defines an interface providing the
-// necessary functions to create new blocks
-type BlockMaker interface {
-
-	// Generate creates a new block for a target chain.
-	// The Chain is specified by passing to ChainOp.
-	Generate(*core.GenerateBlockParams, ...core.CallOp) (core.Block, error)
-
-	// ChainReader gets a Reader for reading the main chain
-	ChainReader() core.ChainReader
-
-	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(core.Block) (core.ChainReader, error)
-}

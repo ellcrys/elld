@@ -387,6 +387,13 @@ func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error)
 	return &chainInfo, nil
 }
 
+// IsMainChain checks whether cr is the main chain
+func (b *Blockchain) IsMainChain(cr core.ChainReader) bool {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	return b.bestChain.GetID() == cr.GetID()
+}
+
 // saveChain store a record about this new chain on the database.
 // It will also cache the chain in memory that future query will be faster.
 func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBlockNumber uint64, opts ...core.CallOp) error {

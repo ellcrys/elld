@@ -18,5 +18,5 @@ var (
 	GenesisDifficulty = big.NewInt(131072)
 
 	// MinimumDifficulty is the minimum that the difficulty may ever be.
-	MinimumDifficulty = big.NewInt(67239936)
+	MinimumDifficulty = big.NewInt(100000)
 )

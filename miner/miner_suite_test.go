@@ -7,7 +7,6 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
@@ -42,7 +41,7 @@ func TestBlockchain(t *testing.T) {
 	RunSpecs(t, "Blockchain Suite")
 }
 
-func MakeTestBlock(bc common.BlockMaker, chain *blockchain.Chain, gp *core.GenerateBlockParams) core.Block {
+func MakeTestBlock(bc core.BlockMaker, chain *blockchain.Chain, gp *core.GenerateBlockParams) core.Block {
 	blk, err := bc.Generate(gp, blockchain.ChainOp{Chain: chain})
 	if err != nil {
 		panic(err)
@@ -70,8 +69,10 @@ var _ = Describe("Blockchain", func() {
 	// on the blockchain.
 	BeforeEach(func() {
 		txPool = txpool.NewTxPool(100)
+		event = &emitter.Emitter{}
 		bc = blockchain.New(txPool, cfg, log)
 		bc.SetDB(db)
+		bc.SetEventEmitter(event)
 	})
 
 	// Create default test block
@@ -79,10 +80,6 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		sender = crypto.NewKeyFromIntSeed(1)
 		receiver = crypto.NewKeyFromIntSeed(2)
-	})
-
-	BeforeEach(func() {
-		event = &emitter.Emitter{}
 	})
 
 	BeforeEach(func() {

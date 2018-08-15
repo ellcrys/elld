@@ -7,7 +7,6 @@ import (
 	"github.com/ellcrys/elld/types/core"
 
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
@@ -385,16 +384,16 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		return nil, fmt.Errorf("failed to choose best chain: %s", err)
 	}
 
+	// set the chain reader on the block
+	block.SetChainReader(chain.ChainReader())
+
 	// if the chain is the best chain, emit a new block
 	// event. This will cause the miner to abort and restart.
 	// It will also cause the peer manager to relay the block
 	// to other peers.
 	if b.bestChain.GetID() == chain.GetID() {
-		<-b.eventEmitter.Emit(common.EventNewBlock, block)
+		<-b.eventEmitter.Emit(core.EventNewBlock, block)
 	}
-
-	// set the chain reader on the block
-	block.SetChainReader(chain.ChainReader())
 
 	return chain, nil
 }
@@ -441,7 +440,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	}
 
 	// attempt to add the block to a chain
-	chain, err := b.maybeAcceptBlock(block, nil)
+	_, err = b.maybeAcceptBlock(block, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -449,11 +448,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.GetHash().HexStr())
 
-	if chain != nil {
-		return store.NewChainReader(chain.store, chain.id), nil
-	}
-
-	return nil, nil
+	return block.GetChainReader(), nil
 }
 
 // execBlock execute the transactions of the blocks to

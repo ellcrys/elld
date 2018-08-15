@@ -70,6 +70,24 @@ type Blockchain interface {
 	GetChainsReader() (readers []ChainReader)
 }
 
+// BlockMaker defines an interface providing the
+// necessary functions to create new blocks
+type BlockMaker interface {
+
+	// Generate creates a new block for a target chain.
+	// The Chain is specified by passing to ChainOp.
+	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
+
+	// ChainReader gets a Reader for reading the main chain
+	ChainReader() ChainReader
+
+	// ProcessBlock attempts to process and append a block to the main or side chains
+	ProcessBlock(Block) (ChainReader, error)
+
+	// IsMainChain checks whether a chain is the main chain
+	IsMainChain(ChainReader) bool
+}
+
 // ChainReader defines an interface for reading a chain
 type ChainReader interface {
 

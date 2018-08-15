@@ -484,7 +484,7 @@ func (n *Node) handleEvents() {
 
 	// handle event about a new block being accepted
 	// into the main chain.
-	for evt := range n.event.On(common.EventNewBlock) {
+	for evt := range n.event.On(core.EventNewBlock) {
 		_ = evt
 	}
 }

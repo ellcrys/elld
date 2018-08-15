@@ -18,11 +18,6 @@ import (
 	"github.com/ellcrys/elld/wire"
 )
 
-const (
-	// EventAborted defines an event about an aborted PoW operation
-	EventAborted = "event.aborted"
-)
-
 // Miner provides mining, block header modification and
 // validation capabilities with respect to PoW. The miner
 // leverages Ethash to performing PoW computation.
@@ -38,7 +33,7 @@ type Miner struct {
 	log logger.Logger
 
 	// blockMaker provides functions for creating a block
-	blockMaker common.BlockMaker
+	blockMaker core.BlockMaker
 
 	// event is the engine event emitter
 	event *emitter.Emitter
@@ -59,7 +54,7 @@ type Miner struct {
 }
 
 // New creates and returns a new Miner instance
-func New(mineKey *crypto.Key, blockMaker core.Blockchain, event *emitter.Emitter, cfg *config.EngineConfig, log logger.Logger) *Miner {
+func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter, cfg *config.EngineConfig, log logger.Logger) *Miner {
 
 	m := &Miner{
 		minerKey:   mineKey,
@@ -75,7 +70,7 @@ func New(mineKey *crypto.Key, blockMaker core.Blockchain, event *emitter.Emitter
 	// about new blocks that may invalidate the currently
 	// proposed block
 	go func() {
-		for event := range m.event.On(common.EventNewBlock) {
+		for event := range m.event.On(core.EventNewBlock) {
 			m.handleNewBlockEvt(event.Args[0].(*wire.Block))
 		}
 	}()
@@ -120,13 +115,16 @@ func (m *Miner) Stop() {
 }
 
 // handleNewBlockEvt detects and processes event about
-// a new block being accepted in the main chain. This
-// will wire cause the current proposed block to dumped
-// and it also emits an EventAborted event
+// a new block being accepted in a chain. Since the
+// miner always mines on the main chain, it will
+// will cause the current proposed block to be dumped
+// if the new block was appended to the main chain.
+// Additionally, it emits a core.EventAborted event.
 func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
-	if m.proposedBlock == nil || !m.proposedBlock.GetHash().Equal(newBlock.GetHash()) {
-		m.log.Debug("New block found. Proposed blocks has been invalidated", "Number", newBlock.Header.Number)
-		go m.event.Emit(EventAborted, m.proposedBlock)
+	if m.proposedBlock == nil ||
+		(m.blockMaker.IsMainChain(newBlock.ChainReader) && !m.proposedBlock.GetHash().Equal(newBlock.GetHash())) {
+		m.log.Debug("New block found. Any proposed block will be invalidated", "Number", newBlock.Header.Number)
+		go m.event.Emit(core.EventAborted, m.proposedBlock)
 		m.abortCurrent()
 	}
 }
@@ -206,7 +204,7 @@ func (m *Miner) Mine() {
 		// TODO: remove when we are sure duplicate transactions do not exist in
 		// the proposed block.
 		// if m.cfg.Miner.Mode == blakimoto.ModeFake || m.cfg.Miner.Mode == blakimoto.ModeTest {
-		// 	time.Sleep(3 * time.Second)
+		time.Sleep(3 * time.Second)
 		// }
 	}
 }
