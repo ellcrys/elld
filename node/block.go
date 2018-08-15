@@ -67,8 +67,6 @@ func (g *Gossip) OnBlock(s net.Stream) {
 	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
-	g.log.Info("Received a block", "PeerID", remotePeerIDShort)
-
 	// read the message
 	block := &wire.Block{}
 	if err := readStream(s, block); err != nil {
@@ -76,6 +74,8 @@ func (g *Gossip) OnBlock(s net.Stream) {
 		g.log.Error("Failed to read block message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
+
+	g.log.Info("Received a block", "BlockNo", block.GetNumber(), "Difficulty", block.GetHeader().GetDifficulty())
 
 	// make a key for this block to be added to the history cache
 	// so we always know when we have processed it in case

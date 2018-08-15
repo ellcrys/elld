@@ -424,10 +424,11 @@ var ProcessTest = func() bool {
 						staleBlock2.Sig, _ = wire.BlockSign(&staleBlock2, sender.PrivKey().Base58())
 					})
 
-					It("should return ErrVeryStaleBlock", func() {
+					It("should return nil and create a new chain", func() {
+						Expect(bc.chains).To(HaveLen(1))
 						_, err = bc.ProcessBlock(&staleBlock2)
-						Expect(err).ToNot(BeNil())
-						Expect(err).To(Equal(core.ErrVeryStaleBlock))
+						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(2))
 					})
 				})
 
@@ -467,12 +468,13 @@ var ProcessTest = func() bool {
 					})
 				})
 
-				When("a block number is greater than chain tip block number by 1", func() {
+				When("a block number is the same as the chain height", func() {
 
-					var block3 core.Block
+					var block2 core.Block
 
 					BeforeEach(func() {
-						block3 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+
+						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
@@ -481,16 +483,20 @@ var ProcessTest = func() bool {
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
-						block3.GetHeader().SetNumber(3)
-						block3.SetHash(block3.ComputeHash())
-						block3Sig, _ := wire.BlockSign(block3, sender.PrivKey().Base58())
-						block3.SetSignature(block3Sig)
+						block2.GetHeader().SetNumber(2)
+						block2.SetHash(block2.ComputeHash())
+						block3Sig, _ := wire.BlockSign(block2, sender.PrivKey().Base58())
+						block2.SetSignature(block3Sig)
+
+						err = genesisChain.append(block)
+						Expect(err).To(BeNil())
 					})
 
-					It("should return error", func() {
-						_, err := bc.ProcessBlock(block3)
-						Expect(err).ToNot(BeNil())
-						Expect(err).To(Equal(core.ErrBlockFailedValidation))
+					It("should return nil and create a new chain", func() {
+						Expect(bc.chains).To(HaveLen(1))
+						_, err := bc.ProcessBlock(block2)
+						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(2))
 					})
 				})
 			})

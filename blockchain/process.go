@@ -15,21 +15,21 @@ import (
 
 // validateBlock handles block validation. A block that successfully
 // passes this validation is considered safe to add to the chain.
-func (b *Blockchain) validateBlock(block core.Block) (*BlockValidator, error) {
+func (b *Blockchain) validateBlock(block core.Block) error {
 
-	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
+	blockValidator := b.createBlockValidator(block)
 
 	if errs := blockValidator.Validate(); len(errs) > 0 {
-		return blockValidator, errs[0]
+		return errs[0]
 	}
 
 	// TODO: move this to the block validator
 	// validate the transaction root
 	if !block.GetHeader().GetTransactionsRoot().Equal(common.ComputeTxsRoot(block.GetTransactions())) {
-		return blockValidator, fmt.Errorf("failed transaction root check")
+		return fmt.Errorf("failed transaction root check")
 	}
 
-	return blockValidator, nil
+	return nil
 }
 
 // addOp adds a transition operation object to the list of
@@ -289,12 +289,11 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 
 	var parentBlock core.Block
 	var chainTip core.Header
+	var doNewChain bool
 	var err error
 
+	// find the chain that is compatible with the block.
 	if chain == nil {
-		// find the chain where the parent of the block exists on. If a chain is not found,
-		// then the block is considered an orphan. If the chain is found but the block at the tip
-		// is has the same or a greater block number compared to the new block, it is considered a stale block.
 		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash())
 		if err != nil {
 			if err != core.ErrBlockNotFound {
@@ -303,19 +302,36 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 			b.log.Debug("Block is not compatible with any chain", "BlockNo", block.GetNumber(), "Err", err.Error())
 
 		} else if chain == nil {
+			// Since we are unable to find a chain for this block,
+			// we will add it to the orphan cache awaiting a time when
+			// it's parent is found and processed.
 			b.addOrphanBlock(block)
 			return nil, nil
 
 		} else if block.GetHeader().GetNumber() < chainTip.GetNumber() {
-			// This is a much older stale block. We only support stale blocks of same height
-			// as the current block on the chain.
-			// TODO: This should be a fork too; New chain should be created
-			b.addRejectedBlock(block)
-			return nil, core.ErrVeryStaleBlock
+			// Since this block is of a lower height than the current
+			// block in the chain, it should result in new chain.
+			doNewChain = true
+			b.log.Info("Stale block found. Chain height is higher. Child chain will be created",
+				"BlockNo", block.GetNumber(),
+				"ChainHeight", chainTip.GetNumber())
 
-		} else if block.GetNumber()-chainTip.GetNumber() > 1 {
-			b.addRejectedBlock(block)
-			return nil, core.ErrBlockFailedValidation
+		} else if block.GetNumber() == chainTip.GetNumber() {
+			// Here block height and the chain height are the same.
+			// A new chain must be created
+			doNewChain = true
+			b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
+				"BlockNo", block.GetNumber(),
+				"ChainHeight", chainTip.GetNumber())
+		}
+	}
+
+	// verify the block's PoW for non-genesis blocks
+	// Only do this in production or development mode
+	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev && block.GetNumber() > 1 {
+		if errs := b.createBlockValidator(block).checkPoW(); len(errs) > 0 {
+			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", err)
+			return nil, errs[0]
 		}
 	}
 
@@ -324,7 +340,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
-	if chainTip != nil && block.GetNumber() == chainTip.GetNumber() {
+	if chainTip != nil && doNewChain {
 		// create the new chain, set its root to the parent of the forked block
 		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
 			tx.Rollback()
@@ -428,8 +444,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	}
 
 	// validate the block
-	blockValidator, err := b.validateBlock(block)
-	if err != nil {
+	if err := b.validateBlock(block); err != nil {
 		b.log.Error("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
@@ -455,15 +470,6 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	if exists {
 		b.log.Debug("Block already exists", "BlockNo", block.GetNumber())
 		return nil, core.ErrBlockExists
-	}
-
-	// verify the block's PoW.
-	// Only do this in production or development mode
-	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev {
-		if errs := blockValidator.checkPoW(block.GetHeader()); len(errs) > 0 {
-			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", err)
-			return nil, errs[0]
-		}
 	}
 
 	// attempt to add the block to a chain

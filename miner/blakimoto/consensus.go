@@ -54,7 +54,7 @@ func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Hea
 	if time.Unix(header.GetTimestamp(), 0).After(time.Now().Add(allowedFutureBlockTime)) {
 		return ErrFutureBlock
 	}
-	fmt.Println(header.GetNumber(), header.GetParentHash(), "==", parent)
+
 	if header.GetTimestamp() <= parent.GetTimestamp() {
 		return errZeroBlockTime
 	}

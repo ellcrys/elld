@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/vmihailenco/msgpack"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -138,6 +140,22 @@ func (b *Block) GetHash() util.Hash {
 // preceded by 0x
 func (b *Block) HashToHex() string {
 	return b.GetHash().HexStr()
+}
+
+// EncodeMsgpack implements msgpack.CustomEncoder
+func (b *Block) EncodeMsgpack(enc *msgpack.Encoder) error {
+	difficultyStr := b.Header.Difficulty.String()
+	return enc.Encode(b.Header, b.Transactions, b.Hash, b.Sig, difficultyStr)
+}
+
+// DecodeMsgpack implements msgpack.CustomDecoder
+func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
+	var difficultyStr string
+	if err := dec.Decode(&b.Header, &b.Transactions, &b.Hash, &b.Sig, &difficultyStr); err != nil {
+		return err
+	}
+	b.Header.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
+	return nil
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.

@@ -124,8 +124,10 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 
 	// Difficulty must be a numeric value
 	// and greater than zero
-	if h.GetDifficulty() == nil || h.GetDifficulty().Cmp(util.Big0) == 0 {
-		errs = append(errs, fieldError("difficulty", "difficulty must be non-zero and non-negative"))
+	if !h.GetParentHash().IsEmpty() {
+		if h.GetDifficulty() == nil || h.GetDifficulty().Cmp(util.Big0) == 0 {
+			errs = append(errs, fieldError("difficulty", "difficulty must be non-zero and non-negative"))
+		}
 	}
 
 	// Timestamp must not be zero or greater than
@@ -138,22 +140,22 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 
 	// Verify the proof of work and difficulty
 	if v.verSeal && !h.GetParentHash().IsEmpty() {
-		errs = append(errs, v.checkPoW(h)...)
+		errs = append(errs, v.checkPoW()...)
 	}
 
 	return
 }
 
 // checkPoW checks the PoW and difficulty values in the header
-func (v *BlockValidator) checkPoW(h core.Header) (errs []error) {
+func (v *BlockValidator) checkPoW() (errs []error) {
 
 	// get the parent header
-	parentHeader, err := v.bchain.ChainReader().GetHeaderByHash(h.GetParentHash())
+	parentHeader, err := v.bchain.ChainReader().GetHeaderByHash(v.block.GetHeader().GetParentHash())
 	if err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
 	}
 
-	if err := v.blakimoto.VerifyHeader(v.bchain.ChainReader(), h, parentHeader, v.verSeal); err != nil {
+	if err := v.blakimoto.VerifyHeader(v.bchain.ChainReader(), v.block.GetHeader(), parentHeader, v.verSeal); err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
 	}
 

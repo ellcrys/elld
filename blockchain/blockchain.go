@@ -155,6 +155,10 @@ func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 	b.eventEmitter = ee
 }
 
+func (b *Blockchain) createBlockValidator(block core.Block) *BlockValidator {
+	return NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
+}
+
 // getChainParentBlock find the parent chain and block
 // of a chain using the chain's ChainInfo
 func (b *Blockchain) getChainParentBlock(ci *core.ChainInfo) (core.Block, error) {
@@ -360,6 +364,7 @@ func (b *Blockchain) addOrphanBlock(block core.Block) {
 	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration
 	b.orphanBlocks.AddWithExp(block.GetHash().HexStr(), block, time.Now().Add(time.Hour))
+	b.log.Debug("Added block to orphan cache", "BlockNo", block.GetNumber(), "CacheSize", b.orphanBlocks.Len())
 }
 
 // isOrphanBlock checks whether a block is present in the collection of orphaned blocks.
