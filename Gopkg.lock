@@ -55,12 +55,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/cbergoon/merkletree"
-  packages = ["."]
-  revision = "348a355d86ed09842d79abcc19e3b1495d346d16"
-
-[[projects]]
-  branch = "master"
   name = "github.com/cenkalti/hub"
   packages = ["."]
   revision = "11382a9960d39b0ecda16fd01c424c11ff765a34"
