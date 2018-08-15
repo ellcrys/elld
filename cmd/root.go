@@ -17,17 +17,36 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	path "path/filepath"
+	"syscall"
 
+	"github.com/ellcrys/elld/accountmgr"
+
+	homedir "github.com/mitchellh/go-homedir"
+
+	"github.com/ellcrys/elld/util/logger"
+
+	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
 
-var cfgFile string
+var (
+	cfg                    *config.EngineConfig
+	consoleHistoryFilePath string
+	log                    logger.Logger
+	devMode                bool
+	sigs                   chan os.Signal
+	done                   chan bool
+	accountMgr             *accountmgr.AccountManager
+	onTerminate            func()
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "druid",
-	Short: "druid is a cryptocurrency based on the original bitcoin protocol",
-	Long:  `druid is a cryptocurrency based on the original bitcoin protocol`,
+	Use:   "elld",
+	Short: "elld is a decentralized git hosting and collaboration protocol",
+	Long:  `elld is a decentralized git hosting and collaboration protocol`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
@@ -43,9 +62,44 @@ func Execute() {
 }
 
 func init() {
+	sigs = make(chan os.Signal, 1)
+	done = make(chan bool, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		if onTerminate != nil {
+			onTerminate()
+		}
+		done <- true
+	}()
+
+	rootCmd.PersistentFlags().String("cfgdir", "", "Set configuration directory")
+	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	cobra.OnInitialize(initConfig)
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+
+	var err error
+
+	log = logger.NewLogrus()
+
+	devMode, _ = rootCmd.Flags().GetBool("dev")
+	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
+
+	if devMode && cfgDirPath == "" {
+		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev"))
+		os.MkdirAll(cfgDirPath, 0700)
+	}
+
+	cfg, err = config.LoadCfg(cfgDirPath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	cfg.Node.Test = false
+	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
+	consoleHistoryFilePath = path.Join(cfg.ConfigDir(), ".console_history")
 }
