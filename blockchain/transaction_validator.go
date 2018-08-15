@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-ozzo/ozzo-validation"
 
-	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types/core"
 
 	"github.com/shopspring/decimal"
 
@@ -30,14 +30,14 @@ var KnownTransactionTypes = []int64{
 type TxsValidator struct {
 
 	// txs are the transactions to be validated
-	txs []*wire.Transaction
+	txs []core.Transaction
 
 	// txpool refers to the transaction pool
 	txpool *txpool.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
-	bchain common.Blockchain
+	bchain core.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
@@ -51,8 +51,8 @@ type TxsValidator struct {
 }
 
 // NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool,
-	bchain common.Blockchain, allowDupCheck bool) *TxsValidator {
+func NewTxsValidator(txs []core.Transaction, txPool *txpool.TxPool,
+	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 txs,
 		txpool:              txPool,
@@ -62,10 +62,10 @@ func NewTxsValidator(txs []*wire.Transaction, txPool *txpool.TxPool,
 }
 
 // NewTxValidator is like NewTxsValidator except it accepts a single transaction
-func NewTxValidator(tx *wire.Transaction, txPool *txpool.TxPool,
-	bchain common.Blockchain, allowDupCheck bool) *TxsValidator {
+func NewTxValidator(tx core.Transaction, txPool *txpool.TxPool,
+	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
-		txs:                 []*wire.Transaction{tx},
+		txs:                 []core.Transaction{tx},
 		txpool:              txPool,
 		bchain:              bchain,
 		allowDuplicateCheck: allowDupCheck,
@@ -91,7 +91,7 @@ func appendErr(dest []error, err error) []error {
 
 // check check the field and their values and
 // does no integration check with other components.
-func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
+func (v *TxsValidator) check(tx core.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -183,68 +183,68 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 	}
 
 	// Transaction type is required and must match the known types
-	errs = appendErr(errs, validation.Validate(tx.Type,
+	errs = appendErr(errs, validation.Validate(tx.GetType(),
 		validation.By(validTypeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "type", "unsupported transaction type"))),
 	))
 
 	// Nonce must be a non-negative integer
-	errs = appendErr(errs, validation.Validate(tx.Nonce,
+	errs = appendErr(errs, validation.Validate(tx.GetNonce(),
 		validation.Min(0).Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "nonce", "nonce must be non-negative").Error()),
 	))
 
 	// Recipient's address must be set and it must be valid
-	errs = appendErr(errs, validation.Validate(tx.To,
+	errs = appendErr(errs, validation.Validate(tx.GetTo(),
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "to", "recipient address is required").Error()),
 		validation.By(validAddrRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "to", "recipient address is not valid"))),
 	))
 
 	// Sender's address must be set and it must be valid non-zero decimal
-	errs = appendErr(errs, validation.Validate(tx.Value,
+	errs = appendErr(errs, validation.Validate(tx.GetValue(),
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "value is required").Error()),
 		validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "could not convert to decimal"))),
 		validation.By(isZeroLessRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "value must be greater than zero"))),
 	))
 
 	// Timestamp is required.
-	errs = appendErr(errs, validation.Validate(tx.Timestamp,
+	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "timestamp", "timestamp is required").Error()),
 	))
 
 	// Sender's address must be set and must also be valid
-	errs = appendErr(errs, validation.Validate(tx.From,
+	errs = appendErr(errs, validation.Validate(tx.GetFrom(),
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender address is required").Error()),
 		validation.By(validAddrRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender address is not valid"))),
 	))
 
 	// Sender's public key is required and must be a valid base58 encoded key
-	errs = appendErr(errs, validation.Validate(tx.SenderPubKey,
+	errs = appendErr(errs, validation.Validate(tx.GetSenderPubKey(),
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", "sender public key is required").Error()),
 		validation.By(validPubKeyRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", "sender public key is not valid"))),
 	))
 
 	// Hash is required. It must also be correct
-	errs = appendErr(errs, validation.Validate(tx.Hash,
+	errs = appendErr(errs, validation.Validate(tx.GetHash(),
 		validation.By(requireHashRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is required"))),
 		validation.By(isSameHashRule(tx.ComputeHash(), fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is not correct"))),
 	))
 
 	// Signature must be set
-	errs = appendErr(errs, validation.Validate(tx.Sig,
+	errs = appendErr(errs, validation.Validate(tx.GetSignature(),
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "sig", "signature is required").Error()),
 	))
 
-	if tx.Type == wire.TxTypeBalance {
-		errs = appendErr(errs, validation.Validate(tx.Fee,
+	if tx.GetType() == wire.TxTypeBalance {
+		errs = appendErr(errs, validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "could not convert to decimal"))),
 			validation.By(isValidFeeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(16))))),
 		))
 	}
 
-	if tx.Type == wire.TxTypeAllocCoin {
+	if tx.GetType() == wire.TxTypeAllocCoin {
 		// Transaction sender must be the same as the recipient
-		errs = appendErr(errs, validation.Validate(tx.From,
-			validation.By(isSameStrRule(tx.To.String(), fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),
+		errs = appendErr(errs, validation.Validate(tx.GetFrom(),
+			validation.By(isSameStrRule(tx.GetTo().String(), fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),
 		))
 	}
 
@@ -253,16 +253,16 @@ func (v *TxsValidator) check(tx *wire.Transaction) (errs []error) {
 
 // checkSignature checks whether the signature is valid.
 // Expects the transaction to have a valid sender public key
-func (v *TxsValidator) checkSignature(tx *wire.Transaction) (errs []error) {
+func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
 
-	pubKey, err := crypto.PubKeyFromBase58(tx.SenderPubKey.String())
+	pubKey, err := crypto.PubKeyFromBase58(tx.GetSenderPubKey().String())
 	if err != nil {
 		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
 			"senderPubKey", err.Error()))
 		return
 	}
 
-	valid, err := pubKey.Verify(tx.Bytes(), tx.Sig)
+	valid, err := pubKey.Verify(tx.Bytes(), tx.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
 			"sig", err.Error()))
@@ -277,7 +277,7 @@ func (v *TxsValidator) checkSignature(tx *wire.Transaction) (errs []error) {
 // duplicateCheck checks whether the transaction exists in some
 // other components that do not accept duplicates. E.g transaction
 // pool, chains etc
-func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
+func (v *TxsValidator) duplicateCheck(tx core.Transaction) (errs []error) {
 
 	if v.txpool != nil && v.txpool.Has(tx) {
 		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
@@ -286,9 +286,9 @@ func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
 	}
 
 	if v.bchain != nil {
-		_, err := v.bchain.GetTransaction(tx.Hash)
+		_, err := v.bchain.GetTransaction(tx.GetHash())
 		if err != nil {
-			if err != common.ErrTxNotFound {
+			if err != core.ErrTxNotFound {
 				errs = append(errs, fmt.Errorf("get transaction error: %s", err))
 			}
 		} else {
@@ -302,7 +302,7 @@ func (v *TxsValidator) duplicateCheck(tx *wire.Transaction) (errs []error) {
 
 // ValidateTx validates a single transaction coming received
 // by the gossip handler..
-func (v *TxsValidator) ValidateTx(tx *wire.Transaction) []error {
+func (v *TxsValidator) ValidateTx(tx core.Transaction) []error {
 	errs := v.check(tx)
 	errs = append(errs, v.checkSignature(tx)...)
 	if v.allowDuplicateCheck {

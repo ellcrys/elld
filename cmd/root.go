@@ -99,7 +99,6 @@ func initConfig() {
 		log.Fatal(err.Error())
 	}
 
-	cfg.Node.Test = false
 	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
 	consoleHistoryFilePath = path.Join(cfg.ConfigDir(), ".console_history")
 }

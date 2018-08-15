@@ -7,6 +7,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	"github.com/jinzhu/copier"
@@ -64,7 +65,7 @@ var ProcessTest = func() bool {
 			})
 
 			It("should return error if sender does not exist in the best chain", func() {
-				var txs = []*wire.Transaction{
+				var txs = []core.Transaction{
 					&wire.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "1", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
@@ -78,7 +79,7 @@ var ProcessTest = func() bool {
 			})
 
 			It("should return error if sender account has insufficient value", func() {
-				var txs = []*wire.Transaction{
+				var txs = []core.Transaction{
 					&wire.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "10000000", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
@@ -92,7 +93,7 @@ var ProcessTest = func() bool {
 			})
 
 			It("should panic if sender value is could not be converted to decimal", func() {
-				var txs = []*wire.Transaction{
+				var txs = []core.Transaction{
 					&wire.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "100_333", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
@@ -108,7 +109,7 @@ var ProcessTest = func() bool {
 
 				It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient) and 2 OpNewAccountBalance (sender and recipient);
 					1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
-					var txs = []*wire.Transaction{
+					var txs = []core.Transaction{
 						&wire.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "1", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
@@ -121,15 +122,15 @@ var ProcessTest = func() bool {
 					Expect(ops).To(HaveLen(3))
 
 					Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpCreateAccount{}))
-					Expect(ops[0].Address()).To(Equal(txs[0].To))
+					Expect(ops[0].Address()).To(Equal(txs[0].GetTo()))
 
 					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-					Expect(ops[1].Address()).To(Equal(txs[0].From))
-					Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("9.0000000000000000")))
+					Expect(ops[1].Address()).To(Equal(txs[0].GetFrom()))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("9.0000000000000000")))
 
 					Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-					Expect(ops[2].Address()).To(Equal(txs[0].To))
-					Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("1.0000000000000000")))
+					Expect(ops[2].Address()).To(Equal(txs[0].GetTo()))
+					Expect(ops[2].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("1.0000000000000000")))
 				})
 			})
 
@@ -145,7 +146,7 @@ var ProcessTest = func() bool {
 				It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
 					1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
 
-					var txs = []*wire.Transaction{
+					var txs = []core.Transaction{
 						&wire.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "1", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
@@ -158,12 +159,12 @@ var ProcessTest = func() bool {
 					Expect(ops).To(HaveLen(2))
 
 					Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-					Expect(ops[0].Address()).To(Equal(txs[0].From))
-					Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("9.0000000000000000")))
+					Expect(ops[0].Address()).To(Equal(txs[0].GetFrom()))
+					Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("9.0000000000000000")))
 
 					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-					Expect(ops[1].Address()).To(Equal(txs[0].To))
-					Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("1.0000000000000000")))
+					Expect(ops[1].Address()).To(Equal(txs[0].GetTo()))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("1.0000000000000000")))
 				})
 			})
 
@@ -180,7 +181,7 @@ var ProcessTest = func() bool {
 
 					It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
 													1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 2`, func() {
-						var txs = []*wire.Transaction{
+						var txs = []core.Transaction{
 							&wire.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
@@ -198,19 +199,19 @@ var ProcessTest = func() bool {
 						Expect(ops).To(HaveLen(2))
 
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[0].Address()).To(Equal(txs[0].From))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("8.0000000000000000")))
+						Expect(ops[0].Address()).To(Equal(txs[0].GetFrom()))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.0000000000000000")))
 
 						Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[1].Address()).To(Equal(txs[0].To))
-						Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("2.0000000000000000")))
+						Expect(ops[1].Address()).To(Equal(txs[0].GetTo()))
+						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("2.0000000000000000")))
 					})
 				})
 
 				Context("recipient does not have an account", func() {
 					It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient), 2 OpNewAccountBalance (sender and recipient);
 														1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 2`, func() {
-						var txs = []*wire.Transaction{
+						var txs = []core.Transaction{
 							&wire.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
@@ -228,15 +229,15 @@ var ProcessTest = func() bool {
 						Expect(ops).To(HaveLen(3))
 
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpCreateAccount{}))
-						Expect(ops[0].Address()).To(Equal(txs[0].To))
+						Expect(ops[0].Address()).To(Equal(txs[0].GetTo()))
 
 						Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[1].Address()).To(Equal(txs[0].From))
-						Expect(ops[1].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("8.0000000000000000")))
+						Expect(ops[1].Address()).To(Equal(txs[0].GetFrom()))
+						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.0000000000000000")))
 
 						Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[2].Address()).To(Equal(txs[0].To))
-						Expect(ops[2].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("2.0000000000000000")))
+						Expect(ops[2].Address()).To(Equal(txs[0].GetTo()))
+						Expect(ops[2].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("2.0000000000000000")))
 					})
 				})
 			})
@@ -246,7 +247,7 @@ var ProcessTest = func() bool {
 			Context("only a single transaction", func() {
 				When("recipient account does not exist", func() {
 					It("should successfully return one state object = OpNewAccountBalance", func() {
-						var txs = []*wire.Transaction{
+						var txs = []core.Transaction{
 							&wire.Transaction{Type: wire.TxTypeAllocCoin, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "10", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
@@ -258,7 +259,7 @@ var ProcessTest = func() bool {
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(1))
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("10.0000000000000000")))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("10.0000000000000000")))
 					})
 				})
 
@@ -272,7 +273,7 @@ var ProcessTest = func() bool {
 					})
 
 					It("should successfully return one state object = OpNewAccountBalance and Balance = 110.0000000000000000", func() {
-						var txs = []*wire.Transaction{
+						var txs = []core.Transaction{
 							&wire.Transaction{Type: wire.TxTypeAllocCoin, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "10", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
@@ -283,7 +284,7 @@ var ProcessTest = func() bool {
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(1))
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.Balance).To(Equal(util.String("110.0000000000000000")))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("110.0000000000000000")))
 					})
 				})
 			})
@@ -291,7 +292,7 @@ var ProcessTest = func() bool {
 
 		Describe(".ComputeTxsRoot", func() {
 			It("should return expected root", func() {
-				txs := []*wire.Transaction{
+				txs := []core.Transaction{
 					&wire.Transaction{Sig: []byte("b"), Hash: util.StrToHash("hash_1")},
 					&wire.Transaction{Sig: []byte("a"), Hash: util.StrToHash("hash_2")},
 				}
@@ -308,22 +309,22 @@ var ProcessTest = func() bool {
 		Describe(".execBlock", func() {
 			Context("when block has invalid transaction", func() {
 
-				var block *wire.Block
+				var block core.Block
 
 				BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-						Transactions: []*wire.Transaction{
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
-						Nonce:      wire.EncodeNonce(1),
+						Nonce:      core.EncodeNonce(1),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 				})
 
 				It("should return err ", func() {
 					newSender := crypto.NewKeyFromIntSeed(3)
-					block.Transactions[0].From = util.String(newSender.Addr())
+					block.GetTransactions()[0].SetFrom(util.String(newSender.Addr()))
 					_, _, err := bc.execBlock(genesisChain, block)
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("transaction error: index{0}: failed to get sender's account: account not found"))
@@ -333,15 +334,15 @@ var ProcessTest = func() bool {
 
 		Describe(".ProcessBlock", func() {
 
-			var block *wire.Block
+			var block core.Block
 
 			BeforeEach(func() {
-				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
+				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
-					Nonce:      wire.EncodeNonce(1),
+					Nonce:      core.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -350,7 +351,7 @@ var ProcessTest = func() bool {
 				bc.rejectedBlocks.Add(block.HashToHex(), struct{}{})
 				_, err = bc.ProcessBlock(block)
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(common.ErrBlockRejected))
+				Expect(err).To(Equal(core.ErrBlockRejected))
 			})
 
 			It("should return error if block already exists in one of the known chains", func() {
@@ -371,10 +372,10 @@ var ProcessTest = func() bool {
 			When("a block's parent does not exist in any chain", func() {
 
 				BeforeEach(func() {
-					block.Header.ParentHash = util.StrToHash("unknown")
-					block.Hash = block.ComputeHash()
-					block.Sig, _ = wire.BlockSign(block, sender.PrivKey().Base58())
-
+					block.GetHeader().SetParentHash(util.StrToHash("unknown"))
+					block.SetHash(block.ComputeHash())
+					blockSig, _ := wire.BlockSign(block, sender.PrivKey().Base58())
+					block.SetSignature(blockSig)
 				})
 
 				It("should return nil and be added to the orphan block cache", func() {
@@ -385,31 +386,31 @@ var ProcessTest = func() bool {
 			})
 
 			When("a block's parent exists in a chain", func() {
-				// var block2, block2_2, block3, block4 *wire.Block
+				// var block2, block2_2, block3, block4 core.Block
 
 				When("block number is less than the chain tip block number", func() {
 
 					var staleBlock2 wire.Block
 
 					BeforeEach(func() {
-						block2 := MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-							Transactions: []*wire.Transaction{
+						block2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:           sender,
-							Nonce:             wire.EncodeNonce(1),
+							Nonce:             core.EncodeNonce(1),
 							Difficulty:        new(big.Int).SetInt64(131072),
 							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 						})
 						err = genesisChain.append(block2)
 						Expect(err).To(BeNil())
 
-						block3 := MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-							Transactions: []*wire.Transaction{
+						block3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 							},
 							Creator:           sender,
-							Nonce:             wire.EncodeNonce(2),
+							Nonce:             core.EncodeNonce(2),
 							Difficulty:        new(big.Int).SetInt64(131072),
 							OverrideTimestamp: time.Now().Add(3 * time.Second).Unix(),
 						})
@@ -417,37 +418,38 @@ var ProcessTest = func() bool {
 						Expect(err).To(BeNil())
 
 						copier.Copy(&staleBlock2, block2)
-						staleBlock2.Header.Number = 2
-						staleBlock2.Header.Nonce = wire.EncodeNonce(3)
+						staleBlock2.GetHeader().SetNumber(2)
+						staleBlock2.GetHeader().SetNonce(core.EncodeNonce(3))
 						staleBlock2.Hash = staleBlock2.ComputeHash()
 						staleBlock2.Sig, _ = wire.BlockSign(&staleBlock2, sender.PrivKey().Base58())
 					})
 
-					It("should return ErrVeryStaleBlock", func() {
+					It("should return nil and create a new chain", func() {
+						Expect(bc.chains).To(HaveLen(1))
 						_, err = bc.ProcessBlock(&staleBlock2)
-						Expect(err).ToNot(BeNil())
-						Expect(err).To(Equal(common.ErrVeryStaleBlock))
+						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(2))
 					})
 				})
 
 				When("a block has same number as the chainTip", func() {
-					var block2, block2_2 *wire.Block
+					var block2, block2_2 core.Block
 					BeforeEach(func() {
-						block2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-							Transactions: []*wire.Transaction{
+						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:    sender,
-							Nonce:      wire.EncodeNonce(1),
+							Nonce:      core.EncodeNonce(1),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
-						block2_2 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-							Transactions: []*wire.Transaction{
+						block2_2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 							},
 							Creator:    sender,
-							Nonce:      wire.EncodeNonce(4),
+							Nonce:      core.EncodeNonce(4),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
@@ -459,64 +461,71 @@ var ProcessTest = func() bool {
 						ch, err := bc.ProcessBlock(block2_2)
 						Expect(err).To(BeNil())
 						Expect(bc.chains).To(HaveLen(2))
-						Expect(bc.chains[ch.GetID()].parentBlock.Hash).To(Equal(genesisBlock.Hash))
-						hasBlock, err := bc.chains[ch.GetID()].hasBlock(block2_2.Hash)
+						Expect(bc.chains[ch.GetID()].parentBlock.GetHash()).To(Equal(genesisBlock.GetHash()))
+						hasBlock, err := bc.chains[ch.GetID()].hasBlock(block2_2.GetHash())
 						Expect(err).To(BeNil())
 						Expect(hasBlock).To(BeTrue())
 					})
 				})
 
-				When("a block number is greater than chain tip block number by 1", func() {
+				When("a block number is the same as the chain height", func() {
 
-					var block3 *wire.Block
+					var block2 core.Block
 
 					BeforeEach(func() {
-						block3 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-							Transactions: []*wire.Transaction{
+
+						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
 								wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:    sender,
-							Nonce:      wire.EncodeNonce(1),
+							Nonce:      core.EncodeNonce(1),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
-						block3.Header.Number = 3
-						block3.Hash = block3.ComputeHash()
-						block3.Sig, _ = wire.BlockSign(block3, sender.PrivKey().Base58())
+						block2.GetHeader().SetNumber(2)
+						block2.SetHash(block2.ComputeHash())
+						block3Sig, _ := wire.BlockSign(block2, sender.PrivKey().Base58())
+						block2.SetSignature(block3Sig)
+
+						err = genesisChain.append(block)
+						Expect(err).To(BeNil())
 					})
 
-					It("should return error", func() {
-						_, err := bc.ProcessBlock(block3)
-						Expect(err).ToNot(BeNil())
-						Expect(err).To(Equal(common.ErrBlockFailedValidation))
+					It("should return nil and create a new chain", func() {
+						Expect(bc.chains).To(HaveLen(1))
+						_, err := bc.ProcessBlock(block2)
+						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(2))
 					})
 				})
 			})
 
 			Context("state root comparison", func() {
 
-				var blockInvalidStateRoot, okStateRoot *wire.Block
+				var blockInvalidStateRoot, okStateRoot core.Block
 
 				BeforeEach(func() {
-					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-						Transactions: []*wire.Transaction{
+					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
-						Nonce:      wire.EncodeNonce(1),
+						Nonce:      core.EncodeNonce(1),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
-					blockInvalidStateRoot.Header.StateRoot = util.StrToHash("incorrect")
-					blockInvalidStateRoot.Hash = blockInvalidStateRoot.ComputeHash()
-					blockInvalidStateRoot.Sig, _ = wire.BlockSign(blockInvalidStateRoot, sender.PrivKey().Base58())
+					blockInvalidStateRoot.GetHeader().SetStateRoot(util.StrToHash("incorrect"))
+					blockInvalidStateRoot.SetHash(blockInvalidStateRoot.ComputeHash())
+					blockInvalidStateRootSig, _ := wire.BlockSign(blockInvalidStateRoot, sender.PrivKey().Base58())
+					blockInvalidStateRoot.SetSignature(blockInvalidStateRootSig)
 
-					okStateRoot = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-						Transactions: []*wire.Transaction{
+					okStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
 							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
-						Nonce:      wire.EncodeNonce(1),
+						Nonce:      core.EncodeNonce(1),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 				})
@@ -524,7 +533,7 @@ var ProcessTest = func() bool {
 				It("should return error when block state root does not match", func() {
 					_, err = bc.ProcessBlock(blockInvalidStateRoot)
 					Expect(err).ToNot(BeNil())
-					Expect(err).To(Equal(common.ErrBlockStateRootInvalid))
+					Expect(err).To(Equal(core.ErrBlockStateRootInvalid))
 				})
 
 				It("should successfully accept state root of block", func() {
@@ -548,8 +557,8 @@ var ProcessTest = func() bool {
 					})
 
 					Describe("all transactions must be persisted", func() {
-						for _, tx := range okStateRoot.Transactions {
-							txKey := common.MakeTxKey(genesisChain.GetID().Bytes(), tx.Hash.Bytes())
+						for _, tx := range okStateRoot.GetTransactions() {
+							txKey := common.MakeTxKey(genesisChain.GetID().Bytes(), tx.GetHash().Bytes())
 							var result = db.GetByPrefix(txKey)
 							Expect(result).To(HaveLen(1))
 						}
@@ -560,41 +569,41 @@ var ProcessTest = func() bool {
 
 		Describe(".ProcessBlock: Test internal call of .processOrphanBlocks", func() {
 
-			var parent1, orphanParent, orphan *wire.Block
+			var parent1, orphanParent, orphan core.Block
 
 			// add blocks in their correct other.
 			// The tests will create new chains attempting to add the blocks
 			// in different order just to test orphan handling. This other chains are named replayChain
 			BeforeEach(func() {
-				parent1 = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
+				parent1 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
-					Nonce:      wire.EncodeNonce(1),
+					Nonce:      core.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 				_, err = bc.ProcessBlock(parent1)
 				Expect(err).To(BeNil())
 
-				orphanParent = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
+				orphanParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730730),
 					},
 					Creator:           sender,
-					Nonce:             wire.EncodeNonce(1),
+					Nonce:             core.EncodeNonce(1),
 					Difficulty:        new(big.Int).SetInt64(131072),
 					OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 				})
 				_, err = bc.ProcessBlock(orphanParent)
 				Expect(err).To(BeNil())
 
-				orphan = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
+				orphan = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
 					},
 					Creator:           sender,
-					Nonce:             wire.EncodeNonce(1),
+					Nonce:             core.EncodeNonce(1),
 					Difficulty:        new(big.Int).SetInt64(131072),
 					OverrideTimestamp: time.Now().Add(4 * time.Second).Unix(),
 				})
@@ -630,17 +639,17 @@ var ProcessTest = func() bool {
 				It("should successfully add block and recursively process add all orphans when their parent exists in a chain", func() {
 					_, err = bc.ProcessBlock(parent1)
 					Expect(err).To(BeNil())
-					Expect(replayChain.hasBlock(parent1.Hash)).To(BeTrue())
-					Expect(replayChain.hasBlock(orphanParent.Hash)).To(BeTrue())
+					Expect(replayChain.hasBlock(parent1.GetHash())).To(BeTrue())
+					Expect(replayChain.hasBlock(orphanParent.GetHash())).To(BeTrue())
 					Expect(bc.orphanBlocks.Len()).To(Equal(0))
 
 					Describe("chain must contain the previously orphaned block as the tip", func() {
-						has, err := replayChain.hasBlock(orphanParent.Hash)
+						has, err := replayChain.hasBlock(orphanParent.GetHash())
 						Expect(err).To(BeNil())
 						Expect(has).To(BeTrue())
 						tipHeader, err := replayChain.Current()
 						Expect(err).To(BeNil())
-						Expect(tipHeader.ComputeHash()).To(Equal(orphanParent.Header.ComputeHash()))
+						Expect(tipHeader.ComputeHash()).To(Equal(orphanParent.GetHeader().ComputeHash()))
 					})
 				})
 			})
@@ -675,18 +684,18 @@ var ProcessTest = func() bool {
 				It("should successfully add block and recursively process add all orphans when their parent exists in a chain", func() {
 					_, err = bc.ProcessBlock(parent1)
 					Expect(err).To(BeNil())
-					Expect(replayChain.hasBlock(parent1.Hash)).To(BeTrue())
-					Expect(replayChain.hasBlock(orphanParent.Hash)).To(BeTrue())
-					Expect(replayChain.hasBlock(orphan.Hash)).To(BeTrue())
+					Expect(replayChain.hasBlock(parent1.GetHash())).To(BeTrue())
+					Expect(replayChain.hasBlock(orphanParent.GetHash())).To(BeTrue())
+					Expect(replayChain.hasBlock(orphan.GetHash())).To(BeTrue())
 					Expect(bc.orphanBlocks.Len()).To(Equal(0))
 
 					Describe("chain must contain the previously orphaned block as the tip", func() {
-						has, err := replayChain.hasBlock(orphan.Hash)
+						has, err := replayChain.hasBlock(orphan.GetHash())
 						Expect(err).To(BeNil())
 						Expect(has).To(BeTrue())
 						tipHeader, err := replayChain.Current()
 						Expect(err).To(BeNil())
-						Expect(tipHeader.ComputeHash()).To(Equal(orphan.Header.ComputeHash()))
+						Expect(tipHeader.ComputeHash()).To(Equal(orphan.GetHeader().ComputeHash()))
 					})
 				})
 			})

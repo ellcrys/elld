@@ -3,6 +3,8 @@ package miner
 import (
 	"time"
 
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/miner/blakimoto"
@@ -16,6 +18,10 @@ var MinerTest = func() bool {
 	return Describe("Miner", func() {
 
 		var miner *Miner
+
+		BeforeEach(func() {
+			cfg.Node.Mode = config.ModeDev
+		})
 
 		BeforeEach(func() {
 			cfg.Miner.Mode = blakimoto.ModeTest
@@ -45,10 +51,10 @@ var MinerTest = func() bool {
 
 		Describe(".Mine", func() {
 
-			var newBlock *wire.Block
+			var newBlock core.Block
 
 			BeforeEach(func() {
-				newBlock, err = miner.getProposedBlock([]*wire.Transaction{
+				newBlock, err = miner.getProposedBlock([]core.Transaction{
 					wire.NewTx(wire.TxTypeBalance, 125, util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
 				})
 				Expect(err).To(BeNil())

@@ -1,8 +1,8 @@
 package blockchain
 
 import (
-	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -46,13 +46,13 @@ var AccountTest = func() bool {
 			It("should return error if account is not supplied", func() {
 				_, err := bc.getAccount(genesisChain, "")
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(common.ErrAccountNotFound))
+				Expect(err).To(Equal(core.ErrAccountNotFound))
 			})
 
 			It("should return error if account does not exist", func() {
 				_, err := bc.getAccount(genesisChain, "does_not_exist")
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(common.ErrAccountNotFound))
+				Expect(err).To(Equal(core.ErrAccountNotFound))
 			})
 
 			Context("with one object matching the account prefix", func() {
@@ -87,7 +87,7 @@ var AccountTest = func() bool {
 					Expect(err).To(BeNil())
 					Expect(a).ToNot(BeNil())
 					Expect(a).To(Equal(account))
-					Expect(a.Balance).To(Equal(util.String("100")))
+					Expect(a.GetBalance()).To(Equal(util.String("100")))
 				})
 			})
 

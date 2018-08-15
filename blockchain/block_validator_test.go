@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -21,7 +21,7 @@ var BlockValidatorTest = func() bool {
 
 		Describe(".check", func() {
 			It("should check for validation errors", func() {
-				var cases = map[*wire.Block]interface{}{
+				var cases = map[core.Block]interface{}{
 					nil:           fmt.Errorf("nil block"),
 					&wire.Block{}: fmt.Errorf("field:header, error:header is required"),
 					&wire.Block{}: fmt.Errorf("field:hash, error:hash is required"),
@@ -33,7 +33,7 @@ var BlockValidatorTest = func() bool {
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.creatorPubKey, error:creator's public key is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.transactionsRoot, error:transaction root is required"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.stateRoot, error:state root is required"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.difficulty, error:difficulty must be non-zero and non-negative"),
+					&wire.Block{Header: &wire.Header{ParentHash: util.StrToHash("abc")}}:                                 fmt.Errorf("field:header.difficulty, error:difficulty must be non-zero and non-negative"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.timestamp, error:timestamp must not be greater or equal to 1"),
 					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:transactions, error:at least one transaction is required"),
 					&wire.Block{Header: &wire.Header{}, Transactions: []*wire.Transaction{&wire.Transaction{Type: 109}}}: fmt.Errorf("tx:0, field:type, error:unsupported transaction type"),
@@ -49,7 +49,7 @@ var BlockValidatorTest = func() bool {
 		Describe(".checkSignature", func() {
 			It("should check for validation errors", func() {
 				key := crypto.NewKeyFromIntSeed(1)
-				var cases = map[*wire.Block]interface{}{
+				var cases = map[core.Block]interface{}{
 					&wire.Block{Header: &wire.Header{}}:                                                  fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
 					&wire.Block{Header: &wire.Header{CreatorPubKey: "invalid"}}:                          fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
 					&wire.Block{Header: &wire.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
@@ -64,15 +64,15 @@ var BlockValidatorTest = func() bool {
 
 		Describe(".Validate", func() {
 
-			var block *wire.Block
+			var block core.Block
 
 			BeforeEach(func() {
-				block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
+				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
-					Nonce:      wire.EncodeNonce(1),
+					Nonce:      core.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -91,15 +91,15 @@ var BlockValidatorTest = func() bool {
 		})
 
 		Describe("", func() {
-			// var block *wire.Block
+			// var block core.Block
 
 			// BeforeEach(func() {
-			// 	block = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-			// 		Transactions: []*wire.Transaction{
+			// 	block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+			// 		Transactions: []core.Transaction{
 			// 			wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 			// 		},
 			// 		Creator:           sender,
-			// 		Nonce:             wire.EncodeNonce(1),
+			// 		Nonce:             core.EncodeNonce(1),
 			// 		Difficulty:        new(big.Int).SetInt64(131072),
 			// 		OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 			// 	})

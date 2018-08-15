@@ -10,12 +10,11 @@ import (
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/blockchain/common"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/types/core"
 
 	"github.com/ellcrys/elld/txpool"
 
@@ -61,7 +60,7 @@ type Node struct {
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
-	bchain                  common.Blockchain       // The blockchain manager
+	bchain                  core.Blockchain         // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port
@@ -199,12 +198,12 @@ func (n *Node) IsSame(node types.Engine) bool {
 }
 
 // GetBlockchain returns the blockchain manager
-func (n *Node) GetBlockchain() common.Blockchain {
+func (n *Node) GetBlockchain() core.Blockchain {
 	return n.bchain
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain common.Blockchain) {
+func (n *Node) SetBlockchain(bchain core.Blockchain) {
 	n.bchain = bchain
 }
 
@@ -220,7 +219,17 @@ func (n *Node) SetTimestamp(newTime time.Time) {
 
 // DevMode checks whether the node is in dev mode
 func (n *Node) DevMode() bool {
-	return n.cfg.Node.Dev
+	return n.cfg.Node.Mode == config.ModeDev
+}
+
+// TestMode checks whether the node is in test mode
+func (n *Node) TestMode() bool {
+	return n.cfg.Node.Mode == config.ModeTest
+}
+
+// ProdMode checks whether the node is in production mode
+func (n *Node) ProdMode() bool {
+	return n.cfg.Node.Mode == config.ModeProd
 }
 
 // IsSameID is like IsSame except it accepts string
@@ -243,14 +252,14 @@ func (n *Node) SetLocalNode(node *Node) {
 // has been blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, string) {
 
-	// In dev mode, we cannot interact with a remote peer with a public IP
-	if n.isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+	// In non-production mode, we cannot interact with a remote peer with a public IP
+	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
 		return false, "in development mode, we cannot interact with peers with public IP"
 	}
 
 	// If the local peer does not know the remotePeer, it cannot interact with it.
-	// This does not apply in dev mode.
-	if !remotePeer.IsKnown() && !n.isDevMode() {
+	// This only applies in production mode.
+	if n.ProdMode() && !remotePeer.IsKnown() {
 		return false, "remote peer is unknown"
 	}
 
@@ -330,10 +339,6 @@ func (n *Node) Connected() bool {
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
 }
 
-func (n *Node) isDevMode() bool {
-	return n.cfg.Node.Dev
-}
-
 // IsKnown checks whether a peer is known to the local node
 func (n *Node) IsKnown() bool {
 	if n.localNode == nil {
@@ -390,17 +395,20 @@ func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
 
 	for _, addr := range peerAddresses {
 
+		// Check whether the address is valid
 		if !util.IsValidAddr(addr) {
 			n.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
 
-		if n.isDevMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
+		// In non-production mode, only local/private addresses are allowed
+		if !n.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
 			n.log.Debug("Only local or private address are allowed in dev mode", "Addr", addr)
 			continue
 		}
 
-		if !n.DevMode() && !util.IsRoutableAddr(addr) {
+		// In production mode, only routable addresses are allowed
+		if n.ProdMode() && !util.IsRoutableAddr(addr) {
 			n.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
 			continue
 		}
@@ -469,7 +477,7 @@ func (n *Node) Start() {
 
 	// before a transaction is added to the tx pool, it must be successfully
 	// added to the tx relay queue.
-	n.GetTxPool().BeforeAppend(func(tx *wire.Transaction) error {
+	n.GetTxPool().BeforeAppend(func(tx core.Transaction) error {
 		if !n.GetTxRelayQueue().Append(tx) {
 			return txpool.ErrQueueFull
 		}
@@ -477,6 +485,22 @@ func (n *Node) Start() {
 	})
 
 	go n.relayTx()
+	go n.handleEvents()
+}
+
+// relayBlock attempts to relay non-genesis a block to active peers.
+func (n *Node) relayBlock(block core.Block) {
+	if block.GetNumber() > 1 {
+		n.gProtoc.RelayBlock(block, n.peerManager.GetActivePeers(0))
+	}
+}
+
+func (n *Node) handleEvents() {
+
+	// handle event about a successfully processed block.
+	for evt := range n.event.On(core.EventNewBlock) {
+		n.relayBlock(evt.Args[0].(core.Block))
+	}
 }
 
 // Wait forces the current thread to wait for the node

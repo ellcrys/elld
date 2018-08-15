@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types/core"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -11,7 +11,7 @@ var MetadataTest = func() bool {
 
 		Context("Metadata", func() {
 
-			var meta = common.BlockchainMeta{}
+			var meta = core.BlockchainMeta{}
 
 			Describe(".UpdateMeta", func() {
 				It("should successfully save metadata", func() {

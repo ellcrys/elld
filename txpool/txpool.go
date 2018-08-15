@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/wire"
 )
 
@@ -11,10 +12,10 @@ import (
 // which is responsible for collecting, validating and providing processed
 // transactions for block inclusion and propagation.
 type TxPool struct {
-	gmx            *sync.Mutex                      // general mutex
-	queue          *TxQueue                         // transaction queue
-	queueMap       map[string]struct{}              // maps transactions present in queue by their hash
-	beforeAppendCB func(tx *wire.Transaction) error // called each time a transaction is queued
+	gmx            *sync.Mutex                     // general mutex
+	queue          *TxQueue                        // transaction queue
+	queueMap       map[string]struct{}             // maps transactions present in queue by their hash
+	beforeAppendCB func(tx core.Transaction) error // called each time a transaction is queued
 }
 
 // NewTxPool creates a new instance of TxPool
@@ -31,7 +32,7 @@ func NewTxPool(cap int64) *TxPool {
 // Put adds a transaction to the transaction pool queue.
 // Perform signature validation.
 // Timestamp validation.
-func (tp *TxPool) Put(tx *wire.Transaction) error {
+func (tp *TxPool) Put(tx core.Transaction) error {
 
 	if tp.queue.Full() {
 		return fmt.Errorf("capacity reached")
@@ -41,7 +42,7 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 		return fmt.Errorf("exact transaction already in pool")
 	}
 
-	switch tx.Type {
+	switch tx.GetType() {
 	case wire.TxTypeBalance:
 		return tp.addTx(tx)
 	default:
@@ -49,7 +50,7 @@ func (tp *TxPool) Put(tx *wire.Transaction) error {
 	}
 }
 
-func (tp *TxPool) addTx(tx *wire.Transaction) error {
+func (tp *TxPool) addTx(tx core.Transaction) error {
 
 	tp.gmx.Lock()
 	if tp.beforeAppendCB != nil {
@@ -71,12 +72,12 @@ func (tp *TxPool) addTx(tx *wire.Transaction) error {
 }
 
 // BeforeAppend sets the callback to be called before a transaction is added to the queue
-func (tp *TxPool) BeforeAppend(f func(tx *wire.Transaction) error) {
+func (tp *TxPool) BeforeAppend(f func(tx core.Transaction) error) {
 	tp.beforeAppendCB = f
 }
 
 // Has checks whether a transaction has been queued
-func (tp *TxPool) Has(tx *wire.Transaction) bool {
+func (tp *TxPool) Has(tx core.Transaction) bool {
 	tp.gmx.Lock()
 	defer tp.gmx.Unlock()
 	_, has := tp.queueMap[tx.ID()]

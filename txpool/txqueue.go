@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/types/core"
 )
 
 var (
@@ -18,8 +18,8 @@ var (
 // First and Last operations sort the transactions by fees in descending order.
 // The queue is synchronized and thread-safe.
 type TxQueue struct {
-	container        []*wire.Transaction // main transaction container (the pool)
-	cap              int64               // cap is the amount of transactions in the
+	container        []core.Transaction // main transaction container (the pool)
+	cap              int64              // cap is the amount of transactions in the
 	gmx              *sync.RWMutex
 	len              int64
 	disabledAutoSort bool
@@ -28,7 +28,7 @@ type TxQueue struct {
 // NewQueue creates a new queue
 func NewQueue(cap int64) *TxQueue {
 	q := new(TxQueue)
-	q.container = []*wire.Transaction{}
+	q.container = []core.Transaction{}
 	q.cap = cap
 	q.gmx = &sync.RWMutex{}
 	return q
@@ -38,7 +38,7 @@ func NewQueue(cap int64) *TxQueue {
 // insertion turned off.
 func NewQueueNoSort(cap int64) *TxQueue {
 	q := new(TxQueue)
-	q.container = []*wire.Transaction{}
+	q.container = []core.Transaction{}
 	q.cap = cap
 	q.gmx = &sync.RWMutex{}
 	q.disabledAutoSort = true
@@ -61,7 +61,7 @@ func (q *TxQueue) Full() bool {
 
 // Append adds a transaction to the end of the queue.
 // Returns false if queue capacity has been reached
-func (q *TxQueue) Append(tx *wire.Transaction) bool {
+func (q *TxQueue) Append(tx core.Transaction) bool {
 
 	if q.Full() {
 		return false
@@ -81,14 +81,14 @@ func (q *TxQueue) Append(tx *wire.Transaction) bool {
 
 // Prepend adds a transaction to the head of the queue.
 // Returns false if queue capacity has been reached
-func (q *TxQueue) Prepend(tx *wire.Transaction) bool {
+func (q *TxQueue) Prepend(tx core.Transaction) bool {
 
 	if q.Full() {
 		return false
 	}
 
 	q.gmx.Lock()
-	q.container = append([]*wire.Transaction{tx}, q.container...)
+	q.container = append([]core.Transaction{tx}, q.container...)
 	q.len++
 	q.gmx.Unlock()
 
@@ -101,7 +101,7 @@ func (q *TxQueue) Prepend(tx *wire.Transaction) bool {
 
 // First returns a single transaction at head.
 // Returns nil if queue is empty
-func (q *TxQueue) First() *wire.Transaction {
+func (q *TxQueue) First() core.Transaction {
 
 	if q.Size() <= 0 {
 		return nil
@@ -118,7 +118,7 @@ func (q *TxQueue) First() *wire.Transaction {
 
 // Last returns a single transaction at head.
 // Returns nil if queue is empty
-func (q *TxQueue) Last() *wire.Transaction {
+func (q *TxQueue) Last() core.Transaction {
 
 	if q.Size() <= 0 {
 		return nil
@@ -136,7 +136,7 @@ func (q *TxQueue) Last() *wire.Transaction {
 
 // Sort accepts a sort function and passes the container
 // to it to be sorted.
-func (q *TxQueue) Sort(sf func([]*wire.Transaction)) {
+func (q *TxQueue) Sort(sf func([]core.Transaction)) {
 	q.gmx.Lock()
 	defer q.gmx.Unlock()
 	sf(q.container)
