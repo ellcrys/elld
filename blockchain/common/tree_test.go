@@ -1,8 +1,8 @@
 package common
 
 import (
-	"github.com/cbergoon/merkletree"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/merkletree"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

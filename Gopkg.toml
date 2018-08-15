@@ -27,23 +27,11 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/cbergoon/merkletree"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/cenkalti/rpc2"
 
 [[constraint]]
   branch = "master"
   name = "github.com/dustin/go-humanize"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/edsrzf/mmap-go"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/ellcrys/go-ethereum"
 
 [[constraint]]
   branch = "master"
@@ -94,14 +82,6 @@
   name = "github.com/multiformats/go-multiaddr"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/multiformats/go-multicodec"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/nanobox-io/golang-scribble"
-
-[[constraint]]
   name = "github.com/onsi/gomega"
   version = "1.4.0"
 
@@ -130,9 +110,5 @@
   unused-packages = true
 
 [[constraint]]
-  name = "github.com/go-xorm/xorm"
-  version = "0.7.0"
-
-[[constraint]]
   branch = "master"
-  name = "github.com/lib/pq"
+  name = "github.com/ellcrys/merkletree"
