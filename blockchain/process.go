@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
 
@@ -17,6 +18,12 @@ import (
 func (b *Blockchain) validateBlock(block core.Block) error {
 
 	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
+
+	// Verify pow and difficulty in development and production mode
+	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev {
+		blockValidator.verifySeal()
+	}
+
 	if errs := blockValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}

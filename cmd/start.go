@@ -159,7 +159,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	cfg.Monetary.Decimals = 16
 
 	if devMode {
-		cfg.Node.Dev = devMode
+		cfg.Node.Mode = config.ModeDev
 		devDefaultConfig(cfg)
 	}
 

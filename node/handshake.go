@@ -62,8 +62,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.Engine())
 	remotePeerIDShort := remotePeer.ShortID()
 
-	// In dev mode, ensure messages from public address are ignored
-	if g.Engine().isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+	// In non-production mode, ensure messages from public addresses are ignored
+	if !g.Engine().ProdMode() && !util.IsDevAddr(remotePeer.IP) {
 		s.Reset()
 		g.log.Debug("In development mode, we cannot interact with peers with public IP", "Addr", remotePeer.GetMultiAddr(), "Msg", "Handshake")
 		return

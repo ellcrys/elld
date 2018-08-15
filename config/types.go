@@ -2,19 +2,20 @@ package config
 
 import "github.com/ellcrys/elld/miner/blakimoto"
 
+const (
+	ModeProd = iota
+	ModeDev
+	ModeTest
+)
+
 // PeerConfig represents peer configuration
 type PeerConfig struct {
 
 	// BootstrapNodes are the list of nodes to join in other to gain access to the network
 	BootstrapNodes []string `json:"boostrapNodes"`
 
-	// Dev, when set to true starts the node on a development. In
-	// dev mode, the node cannot communicate with nodes on the public, routable
-	// internet. It will also not use the production config directory.
-	Dev bool `json:"dev"`
-
-	// Test enables or disables features when running the node in a test environment
-	Test bool `json:"-"`
+	// Mode determines the current environment type
+	Mode int `json:"dev"`
 
 	// GetAddrInterval is the time interval when the node sends a GetAddr message to peers
 	GetAddrInterval int64 `json:"getAddrInt"`
@@ -139,6 +140,7 @@ func init() {
 		MaxAddrsExpected: 1000,
 		MaxConnections:   100,
 		ConnEstInterval:  600,
+		Mode:             ModeProd,
 	}
 
 	defaultConfig.Consensus = &ConsensusConfig{

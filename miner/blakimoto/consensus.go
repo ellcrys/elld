@@ -59,7 +59,7 @@ func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Hea
 		return errZeroBlockTime
 	}
 
-	// Verify the block's difficulty based in it's timestamp and parent's difficulty
+	// Verify the block's difficulty based on it's timestamp and parent's difficulty
 	expected := b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent)
 	if expected.Cmp(header.GetDifficulty()) != 0 {
 		return fmt.Errorf("invalid difficulty: have %v, want %v", header.GetDifficulty(), expected)

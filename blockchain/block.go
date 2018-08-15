@@ -104,7 +104,6 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 			Number:           1,
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
-			Difficulty:       params.Difficulty,
 			Timestamp:        time.Now().Unix(),
 		},
 		ChainReader: chain.ChainReader(),
@@ -140,6 +139,11 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	// in the params.
 	if !params.OverrideParentHash.IsEmpty() {
 		block.Header.SetParentHash(params.OverrideParentHash)
+	}
+
+	// Override difficulty if provided in params
+	if params.Difficulty != nil {
+		block.Header.Difficulty = params.Difficulty
 	}
 
 	// mock execute the transaction and set the new state root
