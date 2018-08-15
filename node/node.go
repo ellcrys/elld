@@ -475,15 +475,6 @@ func (n *Node) Start() {
 		go n.connectToNode(node)
 	}
 
-	// before a transaction is added to the tx pool, it must be successfully
-	// added to the tx relay queue.
-	n.GetTxPool().BeforeAppend(func(tx core.Transaction) error {
-		if !n.GetTxRelayQueue().Append(tx) {
-			return txpool.ErrQueueFull
-		}
-		return nil
-	})
-
 	go n.relayTx()
 	go n.handleEvents()
 }
@@ -497,9 +488,16 @@ func (n *Node) relayBlock(block core.Block) {
 
 func (n *Node) handleEvents() {
 
-	// handle event about a successfully processed block.
+	// handle core.EventNewBlock event
 	for evt := range n.event.On(core.EventNewBlock) {
 		n.relayBlock(evt.Args[0].(core.Block))
+	}
+
+	// handle core.EventNewTransaction event
+	for evt := range n.event.On(core.EventNewTransaction) {
+		if !n.GetTxRelayQueue().Append(evt.Args[0].(core.Transaction)) {
+			n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+		}
 	}
 }
 

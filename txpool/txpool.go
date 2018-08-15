@@ -6,16 +6,17 @@ import (
 
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/emitter"
 )
 
 // TxPool defines a structure and functionalities of a transaction pool
 // which is responsible for collecting, validating and providing processed
 // transactions for block inclusion and propagation.
 type TxPool struct {
-	gmx            *sync.Mutex                     // general mutex
-	queue          *TxQueue                        // transaction queue
-	queueMap       map[string]struct{}             // maps transactions present in queue by their hash
-	beforeAppendCB func(tx core.Transaction) error // called each time a transaction is queued
+	gmx      *sync.Mutex         // general mutex
+	queue    *TxQueue            // transaction queue
+	queueMap map[string]struct{} // maps transactions present in queue by their hash
+	event    *emitter.Emitter    // event emitter
 }
 
 // NewTxPool creates a new instance of TxPool
@@ -26,7 +27,13 @@ func NewTxPool(cap int64) *TxPool {
 	tp.queue = NewQueue(cap)
 	tp.gmx = &sync.Mutex{}
 	tp.queueMap = make(map[string]struct{})
+	tp.event = &emitter.Emitter{}
 	return tp
+}
+
+// SetEventEmitter sets the event emitter
+func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
+	tp.event = ee
 }
 
 // Put adds a transaction to the transaction pool queue.
@@ -50,15 +57,11 @@ func (tp *TxPool) Put(tx core.Transaction) error {
 	}
 }
 
+// addTx adds a transaction to the queue
+// and sends out core.EventNewTransaction event.
 func (tp *TxPool) addTx(tx core.Transaction) error {
-
 	tp.gmx.Lock()
-	if tp.beforeAppendCB != nil {
-		if err := tp.beforeAppendCB(tx); err != nil {
-			tp.gmx.Unlock()
-			return err
-		}
-	}
+	defer tp.gmx.Unlock()
 
 	tp.queueMap[tx.ID()] = struct{}{}
 	if !tp.queue.Append(tx) {
@@ -66,14 +69,9 @@ func (tp *TxPool) addTx(tx core.Transaction) error {
 		return ErrQueueFull
 	}
 
-	tp.gmx.Unlock()
+	<-tp.event.Emit(core.EventNewTransaction, tx)
 
 	return nil
-}
-
-// BeforeAppend sets the callback to be called before a transaction is added to the queue
-func (tp *TxPool) BeforeAppend(f func(tx core.Transaction) error) {
-	tp.beforeAppendCB = f
 }
 
 // Has checks whether a transaction has been queued
