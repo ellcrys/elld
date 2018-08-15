@@ -3,9 +3,9 @@ package core
 import (
 	"math/big"
 
-	"github.com/cbergoon/merkletree"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/merkletree"
 	"github.com/vmihailenco/msgpack"
 )
 
@@ -49,4 +49,3 @@ type GenerateBlockParams struct {
 	OverrideStateRoot  util.Hash
 	OverrideTimestamp  int64
 }
-
