@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ellcrys/elld/types/core"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 )
 
 // ChainOp defines a method option for passing a chain object
@@ -24,7 +25,7 @@ func (t ChainOp) GetName() string {
 }
 
 // Chain represents a chain of blocks
-// Implements common.Chainer
+// Implements core.Chainer
 type Chain struct {
 
 	// id represents the identifier of this chain
@@ -32,10 +33,10 @@ type Chain struct {
 
 	// parentBlock represents the block from which this chain is formed.
 	// A chain that is not a subtree of another chain will have this set to nil.
-	parentBlock *wire.Block
+	parentBlock core.Block
 
 	// info holds information about the chain
-	info *common.ChainInfo
+	info *core.ChainInfo
 
 	// cfg includes configuration parameters of the client
 	cfg *config.EngineConfig
@@ -45,7 +46,7 @@ type Chain struct {
 	chainLock *sync.RWMutex
 
 	// store provides functionalities for storing objects
-	store common.ChainStorer
+	store store.ChainStorer
 
 	// log is used for logging
 	log logger.Logger
@@ -60,7 +61,7 @@ func NewChain(id util.String, db elldb.DB, cfg *config.EngineConfig, log logger.
 	chain.store = store.New(db, chain.id)
 	chain.chainLock = &sync.RWMutex{}
 	chain.log = log
-	chain.info = &common.ChainInfo{
+	chain.info = &core.ChainInfo{
 		ID: id,
 	}
 	return chain
@@ -71,18 +72,23 @@ func (c *Chain) GetID() util.String {
 	return c.id
 }
 
+// ChainReader gets a chain reader for this chain
+func (c *Chain) ChainReader() core.ChainReader {
+	return store.NewChainReader(c.store, c.id)
+}
+
 // GetParentBlock gets the chain's parent block if it has one
-func (c *Chain) GetParentBlock() *wire.Block {
+func (c *Chain) GetParentBlock() core.Block {
 	return c.parentBlock
 }
 
 // GetParentInfo gets the parent info
-func (c *Chain) GetParentInfo() *common.ChainInfo {
+func (c *Chain) GetParentInfo() *core.ChainInfo {
 	return c.info
 }
 
 // GetBlock fetches a block by its number
-func (c *Chain) GetBlock(number uint64) (*wire.Block, error) {
+func (c *Chain) GetBlock(number uint64) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -95,7 +101,7 @@ func (c *Chain) GetBlock(number uint64) (*wire.Block, error) {
 }
 
 // Current returns the header of the highest block on this chain
-func (c *Chain) Current(opts ...common.CallOp) (*wire.Header, error) {
+func (c *Chain) Current(opts ...core.CallOp) (core.Header, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -110,10 +116,10 @@ func (c *Chain) Current(opts ...common.CallOp) (*wire.Header, error) {
 // height returns the height of this chain. The height can
 // be deduced by fetching the number of the most recent block
 // added to the chain.
-func (c *Chain) height(opts ...common.CallOp) (uint64, error) {
+func (c *Chain) height(opts ...core.CallOp) (uint64, error) {
 	tip, err := c.Current(opts...)
 	if err != nil {
-		if err != common.ErrBlockNotFound {
+		if err != core.ErrBlockNotFound {
 			return 0, err
 		}
 		return 0, nil
@@ -128,7 +134,7 @@ func (c *Chain) hasBlock(hash util.Hash) (bool, error) {
 
 	h, err := c.store.GetHeaderByHash(hash)
 	if err != nil {
-		if err != common.ErrBlockNotFound {
+		if err != core.ErrBlockNotFound {
 			return false, err
 		}
 	}
@@ -137,7 +143,7 @@ func (c *Chain) hasBlock(hash util.Hash) (bool, error) {
 }
 
 // getBlockHeaderByHash returns the header of a block that matches the hash on this chain
-func (c *Chain) getBlockHeaderByHash(hash util.Hash) (*wire.Header, error) {
+func (c *Chain) getBlockHeaderByHash(hash util.Hash) (core.Header, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -150,7 +156,7 @@ func (c *Chain) getBlockHeaderByHash(hash util.Hash) (*wire.Header, error) {
 }
 
 // getBlockByHash fetches a block by its hash
-func (c *Chain) getBlockByHash(hash util.Hash) (*wire.Block, error) {
+func (c *Chain) getBlockByHash(hash util.Hash) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
@@ -163,14 +169,14 @@ func (c *Chain) getBlockByHash(hash util.Hash) (*wire.Block, error) {
 }
 
 // CreateAccount creates an account on a target block
-func (c *Chain) CreateAccount(targetBlockNum uint64, account *wire.Account, opts ...common.CallOp) error {
+func (c *Chain) CreateAccount(targetBlockNum uint64, account core.Account, opts ...core.CallOp) error {
 	c.chainLock.Lock()
 	defer c.chainLock.Unlock()
 	return c.store.CreateAccount(targetBlockNum, account, opts...)
 }
 
 // GetAccount gets an account
-func (c *Chain) GetAccount(address util.String, opts ...common.CallOp) (*wire.Account, error) {
+func (c *Chain) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 	return c.store.GetAccount(address, opts...)
@@ -183,7 +189,7 @@ func (c *Chain) GetAccount(address util.String, opts ...common.CallOp) (*wire.Ac
 // the chain yet, then we assume this to be the first block of a fork.
 //
 // The caller is expected to validate the block before call.
-func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
+func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
 	c.chainLock.Lock()
 	defer c.chainLock.Unlock()
 
@@ -194,7 +200,7 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 	// Continue if no error or no block currently exist on the chain.
 	chainTip, err := c.store.Current(common.TxOp{Tx: txOp.Tx})
 	if err != nil {
-		if err != common.ErrBlockNotFound {
+		if err != core.ErrBlockNotFound {
 			txOp.Rollback()
 			return err
 		}
@@ -210,7 +216,7 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 
 	// If we found the current chainTip and its hash does not correspond with the
 	// hash of the block we are trying to append, then we return an error.
-	if chainTip != nil && chainTip.Hash != candidate.Header.ParentHash {
+	if chainTip != nil && !chainTip.GetHash().Equal(candidate.GetHeader().GetParentHash()) {
 		txOp.Rollback()
 		return fmt.Errorf("unable to append block: parent hash does not match the hash of the current block")
 	}
@@ -224,7 +230,7 @@ func (c *Chain) append(candidate *wire.Block, opts ...common.CallOp) error {
 //
 // When backLinked is set to false the tree is not seeded with the state root
 // of the previous tip block or chain parent block.
-func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tree, error) {
+func (c *Chain) NewStateTree(noBackLink bool, opts ...core.CallOp) (core.Tree, error) {
 
 	var prevRoot util.Hash
 
@@ -233,14 +239,14 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tr
 	if !noBackLink {
 		tipHeader, err := c.Current(opts...)
 		if err != nil {
-			if err != common.ErrBlockNotFound {
+			if err != core.ErrBlockNotFound {
 				return nil, err
 			}
 			if c.parentBlock != nil {
-				prevRoot = c.parentBlock.Header.StateRoot
+				prevRoot = c.parentBlock.GetHeader().GetStateRoot()
 			}
 		} else {
-			prevRoot = tipHeader.StateRoot
+			prevRoot = tipHeader.GetStateRoot()
 			if err != nil {
 				return nil, fmt.Errorf("failed to decode chain tip state root")
 			}
@@ -259,11 +265,11 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...common.CallOp) (*common.Tr
 }
 
 // PutTransactions stores a collection of transactions in the chain
-func (c *Chain) PutTransactions(txs []*wire.Transaction, opts ...common.CallOp) error {
+func (c *Chain) PutTransactions(txs []core.Transaction, opts ...core.CallOp) error {
 	return c.store.PutTransactions(txs, opts...)
 }
 
 // GetTransaction gets a transaction by hash
-func (c *Chain) GetTransaction(hash util.Hash) *wire.Transaction {
+func (c *Chain) GetTransaction(hash util.Hash) core.Transaction {
 	return c.store.GetTransaction(hash)
 }

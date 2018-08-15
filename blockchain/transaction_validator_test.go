@@ -6,6 +6,7 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -25,7 +26,7 @@ var TransactionValidatorTest = func() bool {
 			})
 
 			It("should test all validation rules", func() {
-				var cases = map[*wire.Transaction]interface{}{
+				var cases = map[core.Transaction]interface{}{
 					&wire.Transaction{Type: 0}:                                                                                                                 fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
 					&wire.Transaction{Type: wire.TxTypeBalance, Nonce: -1}:                                                                                     fmt.Errorf("index:0, field:nonce, error:nonce must be non-negative"),
 					&wire.Transaction{Type: wire.TxTypeBalance, Nonce: 0}:                                                                                      fmt.Errorf("index:0, field:to, error:recipient address is required"),
@@ -46,7 +47,7 @@ var TransactionValidatorTest = func() bool {
 					&wire.Transaction{Type: wire.TxTypeAllocCoin, From: util.String(sender.Addr()), To: util.String(receiver.Addr())}: fmt.Errorf("index:0, field:from, error:sender and recipient must be same address"),
 				}
 				for tx, err := range cases {
-					validator = NewTxsValidator([]*wire.Transaction{tx}, nil, bc, false)
+					validator = NewTxsValidator([]core.Transaction{tx}, nil, bc, false)
 					errs := validator.check(tx)
 					Expect(errs).To(ContainElement(err))
 				}
@@ -76,7 +77,7 @@ var TransactionValidatorTest = func() bool {
 				err = txp.Put(tx)
 				Expect(err).To(BeNil())
 
-				validator = NewTxsValidator([]*wire.Transaction{tx}, txp, bc, true)
+				validator = NewTxsValidator([]core.Transaction{tx}, txp, bc, true)
 				errs := validator.Validate()
 				Expect(errs).To(HaveLen(1))
 				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in tx pool")))
@@ -84,16 +85,16 @@ var TransactionValidatorTest = func() bool {
 
 			Context("transaction in main chain", func() {
 
-				var tx *wire.Transaction
+				var tx core.Transaction
 
 				BeforeEach(func() {
-					tx = genesisBlock.Transactions[0]
-					err = genesisChain.PutTransactions([]*wire.Transaction{tx})
+					tx = genesisBlock.GetTransactions()[0]
+					err = genesisChain.PutTransactions([]core.Transaction{tx})
 					Expect(err).To(BeNil())
 				})
 
 				It("should return error if transaction already exists in the main chain", func() {
-					validator = NewTxsValidator([]*wire.Transaction{tx}, nil, bc, true)
+					validator = NewTxsValidator([]core.Transaction{tx}, nil, bc, true)
 					errs := validator.Validate()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in main chain")))

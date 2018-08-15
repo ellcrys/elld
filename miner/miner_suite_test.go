@@ -8,11 +8,13 @@ import (
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
@@ -23,7 +25,7 @@ import (
 var log logger.Logger
 var cfg *config.EngineConfig
 var err error
-var testStore common.ChainStorer
+var testStore store.ChainStorer
 var db elldb.DB
 var bc *blockchain.Blockchain
 var chainID = util.String("chain1")
@@ -40,7 +42,7 @@ func TestBlockchain(t *testing.T) {
 	RunSpecs(t, "Blockchain Suite")
 }
 
-func MakeTestBlock(bc common.BlockMaker, chain *blockchain.Chain, gp *common.GenerateBlockParams) *wire.Block {
+func MakeTestBlock(bc common.BlockMaker, chain *blockchain.Chain, gp *core.GenerateBlockParams) core.Block {
 	blk, err := bc.Generate(gp, blockchain.ChainOp{Chain: chain})
 	if err != nil {
 		panic(err)

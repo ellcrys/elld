@@ -85,9 +85,59 @@ func NewTx(txType int64, nonce int64, to util.String, senderKey *crypto.Key, val
 	return
 }
 
+// SetFrom sets the sender
+func (tx *Transaction) SetFrom(from util.String) {
+	tx.From = from
+}
+
+// GetSignature gets the signature
+func (tx *Transaction) GetSignature() []byte {
+	return tx.Sig
+}
+
+// GetSenderPubKey gets the sender public key
+func (tx *Transaction) GetSenderPubKey() util.String {
+	return tx.SenderPubKey
+}
+
+// GetTimestamp gets the timestamp
+func (tx *Transaction) GetTimestamp() int64 {
+	return tx.Timestamp
+}
+
+// GetNonce gets the nonce
+func (tx *Transaction) GetNonce() int64 {
+	return tx.Nonce
+}
+
+// GetFee gets the value
+func (tx *Transaction) GetFee() util.String {
+	return tx.Fee
+}
+
+// GetValue gets the value
+func (tx *Transaction) GetValue() util.String {
+	return tx.Value
+}
+
+// GetTo gets the address of receiver
+func (tx *Transaction) GetTo() util.String {
+	return tx.To
+}
+
+// GetFrom gets the address of sender
+func (tx *Transaction) GetFrom() util.String {
+	return tx.From
+}
+
 // GetHash returns the hash of tx
 func (tx *Transaction) GetHash() util.Hash {
 	return tx.Hash
+}
+
+// GetType gets the transaction type
+func (tx *Transaction) GetType() int64 {
+	return tx.Type
 }
 
 // Bytes return the ASN.1 marshalled representation of the transaction.

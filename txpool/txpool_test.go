@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -59,7 +60,7 @@ var _ = Describe("TxPool", func() {
 		It("should return nil and call onQueueCB function ", func() {
 			onQueueFuncCalled := false
 			tp := NewTxPool(1)
-			tp.BeforeAppend(func(tx *wire.Transaction) error {
+			tp.BeforeAppend(func(tx core.Transaction) error {
 				onQueueFuncCalled = true
 				return nil
 			})

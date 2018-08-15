@@ -5,6 +5,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
@@ -30,10 +31,10 @@ func New(db elldb.DB, chainID util.String) *ChainStore {
 }
 
 // hasBlock checks whether a block exists
-func (s *ChainStore) hasBlock(number uint64, opts ...common.CallOp) (bool, error) {
+func (s *ChainStore) hasBlock(number uint64, opts ...core.CallOp) (bool, error) {
 	_, err := s.getBlock(number, opts...)
 	if err != nil {
-		if err != common.ErrBlockNotFound {
+		if err != core.ErrBlockNotFound {
 			return false, err
 		}
 		return false, nil
@@ -43,7 +44,7 @@ func (s *ChainStore) hasBlock(number uint64, opts ...common.CallOp) (bool, error
 
 // getBlock gets a block by the block number.
 // If number is 0, return the block with the highest block number
-func (s *ChainStore) getBlock(number uint64, opts ...common.CallOp) (*wire.Block, error) {
+func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 
@@ -56,7 +57,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...common.CallOp) (*wire.Block
 	r := txOp.Tx.GetByPrefix(common.MakeBlockKey(s.chainID.Bytes(), number))
 	if len(r) == 0 {
 		txOp.Rollback()
-		return nil, common.ErrBlockNotFound
+		return nil, core.ErrBlockNotFound
 	}
 
 	var block wire.Block
@@ -71,7 +72,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...common.CallOp) (*wire.Block
 }
 
 // GetHeader gets the header of the current block in the chain
-func (s *ChainStore) GetHeader(number uint64, opts ...common.CallOp) (*wire.Header, error) {
+func (s *ChainStore) GetHeader(number uint64, opts ...core.CallOp) (core.Header, error) {
 	var err error
 
 	block, err := s.getBlock(number, opts...)
@@ -79,23 +80,23 @@ func (s *ChainStore) GetHeader(number uint64, opts ...common.CallOp) (*wire.Head
 		return nil, err
 	}
 
-	return block.Header, nil
+	return block.GetHeader(), nil
 }
 
 // GetHeaderByHash returns the header of a block by searching using its hash
-func (s *ChainStore) GetHeaderByHash(hash util.Hash, opts ...common.CallOp) (*wire.Header, error) {
+func (s *ChainStore) GetHeaderByHash(hash util.Hash, opts ...core.CallOp) (core.Header, error) {
 
 	block, err := s.GetBlockByHash(hash, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	return block.Header, nil
+	return block.GetHeader(), nil
 }
 
 // GetBlock fetches a block by its block number.
 // If the block number begins with -1, the block with the highest block number is returned.
-func (s *ChainStore) GetBlock(number uint64, opts ...common.CallOp) (*wire.Block, error) {
+func (s *ChainStore) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
 	var err error
 
 	block, err := s.getBlock(number, opts...)
@@ -107,11 +108,11 @@ func (s *ChainStore) GetBlock(number uint64, opts ...common.CallOp) (*wire.Block
 }
 
 // PutTransactions stores a collection of transactions
-func (s *ChainStore) PutTransactions(txs []*wire.Transaction, opts ...common.CallOp) error {
+func (s *ChainStore) PutTransactions(txs []core.Transaction, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	for i, tx := range txs {
-		txKey := common.MakeTxKey(s.chainID.Bytes(), tx.Hash.Bytes())
+		txKey := common.MakeTxKey(s.chainID.Bytes(), tx.GetHash().Bytes())
 		if err := txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
 			txOp.Rollback()
 			return fmt.Errorf("index %d: %s", i, err)
@@ -122,7 +123,7 @@ func (s *ChainStore) PutTransactions(txs []*wire.Transaction, opts ...common.Cal
 }
 
 // Current gets the current block at the tip of the chain
-func (s *ChainStore) Current(opts ...common.CallOp) (*wire.Block, error) {
+func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 
 	var err error
 	var block wire.Block
@@ -143,12 +144,12 @@ func (s *ChainStore) Current(opts ...common.CallOp) (*wire.Block, error) {
 
 	if r == nil {
 		txOp.Rollback()
-		return nil, common.ErrBlockNotFound
+		return nil, core.ErrBlockNotFound
 	}
 
 	if err = r.Scan(&block); err != nil {
 		txOp.Rollback()
-		return nil, common.ErrDecodeFailed("")
+		return nil, core.ErrDecodeFailed("")
 	}
 
 	txOp.Commit()
@@ -157,7 +158,7 @@ func (s *ChainStore) Current(opts ...common.CallOp) (*wire.Block, error) {
 }
 
 // GetBlockByHash fetches a block by its block hash.
-func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...common.CallOp) (*wire.Block, error) {
+func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
 
 	var err error
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -180,7 +181,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...common.CallOp) (*wir
 
 	if !found {
 		txOp.Rollback()
-		return nil, common.ErrBlockNotFound
+		return nil, core.ErrBlockNotFound
 	}
 
 	txOp.Commit()
@@ -190,7 +191,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...common.CallOp) (*wir
 
 // PutBlock adds a block to the store.
 // Returns error if a block with same number exists.
-func (s *ChainStore) PutBlock(block *wire.Block, opts ...common.CallOp) error {
+func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	if err := s.putBlock(block, txOp); err != nil {
@@ -205,7 +206,7 @@ func (s *ChainStore) PutBlock(block *wire.Block, opts ...common.CallOp) error {
 
 // putBlock adds a block to the store using the provided transaction object.
 // Returns error if a block with same number exists.
-func (s *ChainStore) putBlock(block *wire.Block, opts ...common.CallOp) error {
+func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 
@@ -236,7 +237,7 @@ func (s *ChainStore) putBlock(block *wire.Block, opts ...common.CallOp) error {
 }
 
 // Put stores an object
-func (s *ChainStore) put(key []byte, value []byte, opts ...common.CallOp) error {
+func (s *ChainStore) put(key []byte, value []byte, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	obj := elldb.NewKVObject(key, value)
@@ -251,7 +252,7 @@ func (s *ChainStore) put(key []byte, value []byte, opts ...common.CallOp) error 
 }
 
 // Get an object by key (and optionally by prefixes)
-func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...common.CallOp) {
+func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.CallOp) {
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	r := txOp.Tx.GetByPrefix(key)
@@ -265,7 +266,7 @@ func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...common.C
 }
 
 // GetTransaction gets a transaction (by hash) belonging to a chain
-func (s *ChainStore) GetTransaction(hash util.Hash, opts ...common.CallOp) *wire.Transaction {
+func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) core.Transaction {
 	var result []*elldb.KVObject
 	var tx wire.Transaction
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -283,13 +284,13 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...common.CallOp) *wire
 }
 
 // CreateAccount creates an account on a target block
-func (s *ChainStore) CreateAccount(targetBlockNum uint64, account *wire.Account, opts ...common.CallOp) error {
-	key := common.MakeAccountKey(targetBlockNum, s.chainID.Bytes(), account.Address.Bytes())
+func (s *ChainStore) CreateAccount(targetBlockNum uint64, account core.Account, opts ...core.CallOp) error {
+	key := common.MakeAccountKey(targetBlockNum, s.chainID.Bytes(), account.GetAddress().Bytes())
 	return s.put(key, util.ObjectToBytes(account), opts...)
 }
 
 // GetAccount fetches the account with highest block number prefix.
-func (s *ChainStore) GetAccount(address util.String, opts ...common.CallOp) (*wire.Account, error) {
+func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
 
 	var key = common.QueryAccountKey(s.chainID.Bytes(), address.Bytes())
 	var highestBlockNum uint64
@@ -307,7 +308,7 @@ func (s *ChainStore) GetAccount(address util.String, opts ...common.CallOp) (*wi
 
 	if r == nil {
 		txOp.Rollback()
-		return nil, common.ErrAccountNotFound
+		return nil, core.ErrAccountNotFound
 	}
 
 	var account wire.Account

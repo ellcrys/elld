@@ -15,6 +15,7 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
@@ -61,7 +62,7 @@ type Node struct {
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
-	bchain                  common.Blockchain       // The blockchain manager
+	bchain                  core.Blockchain         // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port
@@ -199,12 +200,12 @@ func (n *Node) IsSame(node types.Engine) bool {
 }
 
 // GetBlockchain returns the blockchain manager
-func (n *Node) GetBlockchain() common.Blockchain {
+func (n *Node) GetBlockchain() core.Blockchain {
 	return n.bchain
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain common.Blockchain) {
+func (n *Node) SetBlockchain(bchain core.Blockchain) {
 	n.bchain = bchain
 }
 
@@ -446,7 +447,7 @@ func (n *Node) relayTx() {
 		}
 
 		tx := q.First()
-		n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+		n.gProtoc.RelayTx(tx.(*wire.Transaction), n.peerManager.GetActivePeers(0))
 	}
 }
 
@@ -469,7 +470,7 @@ func (n *Node) Start() {
 
 	// before a transaction is added to the tx pool, it must be successfully
 	// added to the tx relay queue.
-	n.GetTxPool().BeforeAppend(func(tx *wire.Transaction) error {
+	n.GetTxPool().BeforeAppend(func(tx core.Transaction) error {
 		if !n.GetTxRelayQueue().Append(tx) {
 			return txpool.ErrQueueFull
 		}
@@ -477,6 +478,15 @@ func (n *Node) Start() {
 	})
 
 	go n.relayTx()
+}
+
+func (n *Node) handleEvents() {
+
+	// handle event about a new block being accepted
+	// into the main chain.
+	for evt := range n.event.On(common.EventNewBlock) {
+		_ = evt
+	}
 }
 
 // Wait forces the current thread to wait for the node

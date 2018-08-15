@@ -5,6 +5,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -41,7 +42,7 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".PutTransactions", func() {
 
-		var txs = []*wire.Transaction{
+		var txs = []core.Transaction{
 			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
 			&wire.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
@@ -50,12 +51,12 @@ var _ = Describe("Leveldb", func() {
 			err = store.PutTransactions(txs)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[0].Hash.Bytes()))
+			r := store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
 			var tx wire.Transaction
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[0]))
 
-			r = store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[1].Hash.Bytes()))
+			r = store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[1].GetHash().Bytes()))
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[1]))
 		})
@@ -63,7 +64,7 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".GetTransaction", func() {
 
-		var txs = []*wire.Transaction{
+		var txs = []core.Transaction{
 			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
 			&wire.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
@@ -72,10 +73,10 @@ var _ = Describe("Leveldb", func() {
 			err = store.PutTransactions(txs)
 			Expect(err).To(BeNil())
 
-			tx := store.GetTransaction(txs[0].Hash)
+			tx := store.GetTransaction(txs[0].GetHash())
 			Expect(tx).ToNot(BeNil())
 			Expect(tx).To(Equal(txs[0]))
-			tx = store.GetTransaction(txs[1].Hash)
+			tx = store.GetTransaction(txs[1].GetHash())
 			Expect(tx).ToNot(BeNil())
 			Expect(tx).To(Equal(txs[1]))
 		})
@@ -193,7 +194,7 @@ var _ = Describe("Leveldb", func() {
 			It("should return ErrBlockNotFound", func() {
 				_, err := store.Current()
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(common.ErrBlockNotFound))
+				Expect(err).To(Equal(core.ErrBlockNotFound))
 			})
 		})
 	})
@@ -213,7 +214,7 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should get block by number", func() {
-			storedBlock, err := store.GetBlock(block.Header.Number)
+			storedBlock, err := store.GetBlock(block.Header.GetNumber())
 			Expect(err).To(BeNil())
 			Expect(storedBlock).ToNot(BeNil())
 		})
@@ -227,14 +228,14 @@ var _ = Describe("Leveldb", func() {
 		It("with block hash; return error if block does not exist", func() {
 			b, err := store.GetBlockByHash(util.Hash{1, 3, 4})
 			Expect(err).ToNot(BeNil())
-			Expect(err).To(Equal(common.ErrBlockNotFound))
+			Expect(err).To(Equal(core.ErrBlockNotFound))
 			Expect(b).To(BeNil())
 		})
 
 		It("with block number; return error if block does not exist", func() {
 			_, err = store.GetBlock(10000)
 			Expect(err).ToNot(BeNil())
-			Expect(err).To(Equal(common.ErrBlockNotFound))
+			Expect(err).To(Equal(core.ErrBlockNotFound))
 		})
 
 		It("should return the block with the hightest number if 0 is passed", func() {
@@ -268,7 +269,7 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should get block header by number", func() {
-			storedBlockHeader, err := store.GetHeader(block.Header.Number)
+			storedBlockHeader, err := store.GetHeader(block.Header.GetNumber())
 			Expect(err).To(BeNil())
 			Expect(storedBlockHeader).ToNot(BeNil())
 			Expect(storedBlockHeader).To(Equal(block.Header))

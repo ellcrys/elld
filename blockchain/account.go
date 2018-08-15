@@ -1,13 +1,12 @@
 package blockchain
 
 import (
-	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 )
 
 // putAccount adds an account to the store
-func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Account) error {
+func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account core.Account) error {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return chain.CreateAccount(blockNo, account)
@@ -19,11 +18,11 @@ func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account *wire.Acco
 //
 // If the account is not found in the chain, the parent chain
 // and its parent is checked up to the root chain.
-func (b *Blockchain) getAccount(chain common.Chainer, address util.String, opts ...common.CallOp) (*wire.Account, error) {
+func (b *Blockchain) getAccount(chain core.Chainer, address util.String, opts ...core.CallOp) (core.Account, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	var account *wire.Account
+	var account core.Account
 	var err error
 
 	for address != "" {
@@ -31,7 +30,7 @@ func (b *Blockchain) getAccount(chain common.Chainer, address util.String, opts 
 		// its parents up to the root parent checking each chain
 		// for the existence of the account
 		if account, err = chain.GetAccount(address, opts...); err != nil {
-			if err != common.ErrAccountNotFound {
+			if err != core.ErrAccountNotFound {
 				return nil, err
 			}
 		}
@@ -49,7 +48,7 @@ func (b *Blockchain) getAccount(chain common.Chainer, address util.String, opts 
 	}
 
 	if account == nil {
-		return nil, common.ErrAccountNotFound
+		return nil, core.ErrAccountNotFound
 	}
 
 	return account, nil

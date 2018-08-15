@@ -25,17 +25,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/types/core"
 )
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
-func (b *Blakimoto) Seal(block *wire.Block, stop <-chan struct{}) (*wire.Block, error) {
+func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, error) {
 
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if b.config.PowMode == ModeTest {
 		header := block.GetHeader()
-		header.Nonce = wire.EncodeNonce(0)
+		header.SetNonce(core.EncodeNonce(0))
 		block.SetHeader(header)
 
 		// delay for the specified time
@@ -46,7 +46,7 @@ func (b *Blakimoto) Seal(block *wire.Block, stop <-chan struct{}) (*wire.Block, 
 
 	// Create a runner and the multiple search threads it directs
 	abort := make(chan struct{})
-	found := make(chan *wire.Block)
+	found := make(chan core.Block)
 
 	b.lock.Lock()
 	threads := b.threads
@@ -75,7 +75,7 @@ func (b *Blakimoto) Seal(block *wire.Block, stop <-chan struct{}) (*wire.Block, 
 		}(i, uint64(b.rand.Int63()))
 	}
 	// Wait until sealing is terminated or a nonce is found
-	var result *wire.Block
+	var result core.Block
 	select {
 	case <-stop:
 		// Outside abort, stop all miner threads
@@ -96,13 +96,13 @@ func (b *Blakimoto) Seal(block *wire.Block, stop <-chan struct{}) (*wire.Block, 
 
 // mine is the actual proof-of-work miner that searches for a nonce starting from
 // seed that results in correct final block difficulty.
-func (b *Blakimoto) mine(block *wire.Block, id int, seed uint64, abort chan struct{}, found chan *wire.Block) {
+func (b *Blakimoto) mine(block core.Block, id int, seed uint64, abort chan struct{}, found chan core.Block) {
 
 	// Extract some data from the header
 	var (
 		header = block.GetHeader()
 		hash   = header.HashNoNonce().Bytes()
-		target = new(big.Int).Div(maxUint256, header.Difficulty)
+		target = new(big.Int).Div(maxUint256, header.GetDifficulty())
 	)
 
 	// Start generating random nonces until we abort or find a good one
@@ -135,8 +135,8 @@ search:
 			if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
 
 				// Correct nonce found, create a new header with it
-				header = wire.CopyHeader(header)
-				header.Nonce = wire.EncodeNonce(nonce)
+				header = header.Copy()
+				header.SetNonce(core.EncodeNonce(nonce))
 
 				// Seal and return a block (if still needed)
 				select {

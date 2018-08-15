@@ -24,9 +24,8 @@ import (
 
 	c "github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/math"
-
-	"github.com/ellcrys/elld/wire"
 )
 
 var (
@@ -45,30 +44,30 @@ var (
 )
 
 // VerifyHeader checks whether a header conforms to the consensus rules
-func (b *Blakimoto) VerifyHeader(chain c.ChainReader, header, parent *wire.Header, seal bool) error {
+func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Header, seal bool) error {
 
 	// Ensure that the header's extra-data section is of a reasonable size
-	if uint64(len(header.Extra)) > params.MaximumExtraDataSize {
-		return fmt.Errorf("extra-data too long: %d > %d", len(header.Extra), params.MaximumExtraDataSize)
+	if uint64(len(header.GetExtra())) > params.MaximumExtraDataSize {
+		return fmt.Errorf("extra-data too long: %d > %d", len(header.GetExtra()), params.MaximumExtraDataSize)
 	}
 
 	// Verify the header's timestamp
-	if time.Unix(header.Timestamp, 0).After(time.Now().Add(allowedFutureBlockTime)) {
+	if time.Unix(header.GetTimestamp(), 0).After(time.Now().Add(allowedFutureBlockTime)) {
 		return ErrFutureBlock
 	}
 
-	if header.Timestamp <= parent.Timestamp {
+	if header.GetTimestamp() <= parent.GetTimestamp() {
 		return errZeroBlockTime
 	}
 
 	// Verify the block's difficulty based in it's timestamp and parent's difficulty
-	expected := b.CalcDifficulty(chain, uint64(header.Timestamp), parent)
-	if expected.Cmp(header.Difficulty) != 0 {
-		return fmt.Errorf("invalid difficulty: have %v, want %v", header.Difficulty, expected)
+	expected := b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent)
+	if expected.Cmp(header.GetDifficulty()) != 0 {
+		return fmt.Errorf("invalid difficulty: have %v, want %v", header.GetDifficulty(), expected)
 	}
 
 	// Verify that the block number is parent's +1
-	if diff := header.Number - parent.Number; diff != 1 {
+	if diff := header.GetNumber() - parent.GetNumber(); diff != 1 {
 		return ErrInvalidNumber
 	}
 
@@ -85,14 +84,14 @@ func (b *Blakimoto) VerifyHeader(chain c.ChainReader, header, parent *wire.Heade
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func (b *Blakimoto) CalcDifficulty(chain c.ChainReader, time uint64, parent *wire.Header) *big.Int {
+func (b *Blakimoto) CalcDifficulty(chain core.ChainReader, time uint64, parent core.Header) *big.Int {
 	return CalcDifficulty(time, parent)
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func CalcDifficulty(time uint64, parent *wire.Header) *big.Int {
+func CalcDifficulty(time uint64, parent core.Header) *big.Int {
 	return calcDifficultyFrontier(time, parent)
 }
 
@@ -107,25 +106,25 @@ var (
 // calcDifficultyFrontier is the difficulty adjustment algorithm. It returns the
 // difficulty that a new block should have when created at time given the parent
 // block's time and difficulty. The calculation uses the Frontier rules.
-func calcDifficultyFrontier(time uint64, parent *wire.Header) *big.Int {
+func calcDifficultyFrontier(time uint64, parent core.Header) *big.Int {
 	diff := new(big.Int)
-	adjust := new(big.Int).Div(parent.Difficulty, params.DifficultyBoundDivisor)
+	adjust := new(big.Int).Div(parent.GetDifficulty(), params.DifficultyBoundDivisor)
 	bigTime := new(big.Int)
 	bigParentTime := new(big.Int)
 
 	bigTime.SetUint64(time)
-	bigParentTime.Set(new(big.Int).SetInt64(parent.Timestamp))
+	bigParentTime.Set(new(big.Int).SetInt64(parent.GetTimestamp()))
 
 	if bigTime.Sub(bigTime, bigParentTime).Cmp(params.DurationLimit) < 0 {
-		diff.Add(parent.Difficulty, adjust)
+		diff.Add(parent.GetDifficulty(), adjust)
 	} else {
-		diff.Sub(parent.Difficulty, adjust)
+		diff.Sub(parent.GetDifficulty(), adjust)
 	}
 	if diff.Cmp(params.MinimumDifficulty) < 0 {
 		diff.Set(params.MinimumDifficulty)
 	}
 
-	periodCount := new(big.Int).Add(new(big.Int).SetUint64(parent.Number), big1)
+	periodCount := new(big.Int).Add(new(big.Int).SetUint64(parent.GetNumber()), big1)
 	periodCount.Div(periodCount, expDiffPeriod)
 	if periodCount.Cmp(big1) > 0 {
 		// diff = diff + 2^(periodCount - 2)
@@ -139,7 +138,7 @@ func calcDifficultyFrontier(time uint64, parent *wire.Header) *big.Int {
 
 // VerifySeal checks whether the given block satisfies
 // the PoW difficulty requirements.
-func (b *Blakimoto) VerifySeal(chain c.ChainReader, header *wire.Header) error {
+func (b *Blakimoto) VerifySeal(chain core.ChainReader, header core.Header) error {
 	// If we're running a fake PoW, accept any seal as valid
 	if b.config.PowMode == ModeTest {
 		time.Sleep(b.fakeDelay)
@@ -150,14 +149,14 @@ func (b *Blakimoto) VerifySeal(chain c.ChainReader, header *wire.Header) error {
 	}
 
 	// Ensure that we have a valid difficulty for the block
-	if header.Difficulty.Sign() <= 0 {
+	if header.GetDifficulty().Sign() <= 0 {
 		return errInvalidDifficulty
 	}
 
 	// Recompute the digest and PoW value and verify against the header
-	result := blakimoto(header.HashNoNonce().Bytes(), header.Nonce.Uint64())
+	result := blakimoto(header.HashNoNonce().Bytes(), header.GetNonce().Uint64())
 
-	target := new(big.Int).Div(maxUint256, header.Difficulty)
+	target := new(big.Int).Div(maxUint256, header.GetDifficulty())
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
 		return errInvalidPoW
 	}
@@ -166,23 +165,23 @@ func (b *Blakimoto) VerifySeal(chain c.ChainReader, header *wire.Header) error {
 
 // Prepare initializes the difficulty field of a
 // header to conform to the protocol
-func (b *Blakimoto) Prepare(chain c.ChainReader, header *wire.Header) error {
+func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 
 	// Get the header of the block's parent.
-	parent, err := chain.GetHeaderByHash(header.ParentHash)
+	parent, err := chain.GetHeaderByHash(header.GetParentHash())
 	if err != nil {
-		if err != c.ErrBlockExists {
+		if err != core.ErrBlockExists {
 			return err
 		}
 		return ErrUnknownParent
 	}
 
-	header.Difficulty = b.CalcDifficulty(chain, uint64(header.Timestamp), parent)
+	header.SetDifficulty(b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent))
 	return nil
 }
 
 // Finalize accumulates rewards, computes the final state and assembling the block.
-func (b *Blakimoto) Finalize(chain c.BlockMaker, block *wire.Block) (*wire.Block, error) {
+func (b *Blakimoto) Finalize(chain c.BlockMaker, block core.Block) (core.Block, error) {
 	// TODO: accumulate rewards, recompute state and update block header
 	return block, nil
 }
