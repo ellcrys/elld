@@ -89,9 +89,8 @@ func SetTestCfg() (*config.EngineConfig, error) {
 	cfgDir := path.Join(dir, ".ellcrys_test")
 	os.MkdirAll(cfgDir, 0700)
 	cfg, err := config.LoadCfg(cfgDir)
-	cfg.Node.Dev = true
+	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5
-	cfg.Node.Test = true
 	return cfg, err
 }
 

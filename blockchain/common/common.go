@@ -2,13 +2,11 @@ package common
 
 import (
 	"bytes"
-	"math/big"
 	"sort"
 
-	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 )
 
 // DocType represents a document type
@@ -25,7 +23,7 @@ const (
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
-func GetTxOp(db elldb.TxCreator, opts ...CallOp) TxOp {
+func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) TxOp {
 	if len(opts) > 0 {
 		for _, op := range opts {
 			switch _op := op.(type) {
@@ -49,10 +47,10 @@ func GetTxOp(db elldb.TxCreator, opts ...CallOp) TxOp {
 // ComputeTxsRoot computes the merkle root of a set of transactions.
 // Transactions are first lexicographically sorted and added to a
 // brand new tree. Returns the tree root.
-func ComputeTxsRoot(txs []*wire.Transaction) util.Hash {
+func ComputeTxsRoot(txs []core.Transaction) util.Hash {
 
 	sort.Slice(txs, func(i, j int) bool {
-		return bytes.Compare(txs[i].Hash.Bytes(), txs[j].Hash.Bytes()) == -1
+		return bytes.Compare(txs[i].GetHash().Bytes(), txs[j].GetHash().Bytes()) == -1
 	})
 
 	tree := NewTree()
@@ -62,16 +60,4 @@ func ComputeTxsRoot(txs []*wire.Transaction) util.Hash {
 
 	tree.Build()
 	return tree.Root()
-}
-
-// GenerateBlockParams represents parameters
-// required for block generation.
-type GenerateBlockParams struct {
-	OverrideParentHash util.Hash
-	Transactions       []*wire.Transaction
-	Creator            *crypto.Key
-	Nonce              wire.BlockNonce
-	Difficulty         *big.Int
-	OverrideStateRoot  util.Hash
-	OverrideTimestamp  int64
 }

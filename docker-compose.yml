@@ -6,6 +6,7 @@ services:
       args: 
         seed: 1
         peed_id: 12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu
+        mine: "--mine"
     ports:
       - "9001:9000"
       - "8999:8999"

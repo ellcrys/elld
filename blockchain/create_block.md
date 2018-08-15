@@ -6,7 +6,7 @@ BeforeEach(func() {
     bc.chains = make(map[string]*Chain)
     chain := NewChain("c1", db, cfg, log)
     block2 = makeTestBlock(bc, chain, &common.GenerateBlockParams{
-        Transactions: []*wire.Transaction{
+        Transactions: []core.Transaction{
             wire.NewTx(wire.TxTypeAllocCoin, 123, sender.Addr(), sender, "1", "0.1", 1532730722),
         },
         Creator:    sender,

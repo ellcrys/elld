@@ -7,17 +7,18 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-func makeTxHistoryKey(tx *wire.Transaction, peer types.Engine) histcache.MultiKey {
+func makeTxHistoryKey(tx core.Transaction, peer types.Engine) histcache.MultiKey {
 	return []interface{}{tx.ID(), peer.StringID()}
 }
 
 // addTransaction adds a transaction to the transaction pool.
-func (n *Node) addTransaction(tx *wire.Transaction) error {
+func (n *Node) addTransaction(tx core.Transaction) error {
 
 	// Validate the transactions
 	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain(), true)
@@ -25,7 +26,7 @@ func (n *Node) addTransaction(tx *wire.Transaction) error {
 		return errs[0]
 	}
 
-	switch tx.Type {
+	switch tx.GetType() {
 	case wire.TxTypeBalance:
 
 		// Add the transaction to the transaction pool where
@@ -98,7 +99,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 }
 
 // RelayTx relays transactions to peers
-func (g *Gossip) RelayTx(tx *wire.Transaction, remotePeers []types.Engine) error {
+func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error {
 
 	txID := tx.ID()
 	sent := 0
@@ -108,8 +109,8 @@ func (g *Gossip) RelayTx(tx *wire.Transaction, remotePeers []types.Engine) error
 
 		historyKey := makeTxHistoryKey(tx, peer)
 
-		// check if we have an history of transaction with this remote peer,
-		// if yes, do not relay
+		// check if we have an history of sending or receiving this transaction
+		// from this remote peer. If yes, do not relay
 		if g.engine.History().Has(historyKey) {
 			continue
 		}

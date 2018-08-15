@@ -15,5 +15,7 @@ ARG addnode
 ENV addnode ${addnode}
 ARG seed
 ENV seed ${seed}
+ARG mine
+ENV mine ${mine}
 
-CMD ./elld start --dev -a 0.0.0.0:9000 -s ${seed} --pwd marvel ${addnode} --rpc --rpcaddress=:8999
+CMD ./elld start --dev -a 0.0.0.0:9000 ${mine} -s ${seed} --pwd marvel ${addnode} --rpc --rpcaddress=:8999

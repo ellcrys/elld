@@ -39,3 +39,18 @@ func ValidateAccount(account *Account) error {
 
 	return nil
 }
+
+// GetAddress gets the address
+func (a *Account) GetAddress() util.String {
+	return a.Address
+}
+
+// GetBalance gets the balance
+func (a *Account) GetBalance() util.String {
+	return a.Balance
+}
+
+// SetBalance sets the balance
+func (a *Account) SetBalance(b util.String) {
+	a.Balance = b
+}

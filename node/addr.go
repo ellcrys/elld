@@ -193,9 +193,9 @@ func (g *Gossip) RelayAddr(addrs []*wire.Address) []error {
 			continue
 		}
 
-		// In dev mode, we are allowed to relay non-routable addresses.
+		// In non-production mode, we are allowed to relay non-routable addresses.
 		// But we can't allow them in production
-		if !g.engine.DevMode() && !util.IsRoutableAddr(addr.Address) {
+		if g.engine.ProdMode() && !util.IsRoutableAddr(addr.Address) {
 			errs = append(errs, fmt.Errorf("address {%s} is not routable", addr.Address))
 			continue
 		}

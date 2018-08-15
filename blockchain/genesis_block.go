@@ -3,14 +3,15 @@ package blockchain
 import (
 	"math/big"
 
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
-var GenesisBlock = &wire.Block{
+var GenesisBlock core.Block = &wire.Block{
 	Header: &wire.Header{
 		Number: 0x0000000000000001,
-		Nonce: wire.BlockNonce{
+		Nonce: core.BlockNonce{
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
 		},
 		Timestamp:     1533829455,
