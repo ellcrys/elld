@@ -15,7 +15,6 @@ import (
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
 
@@ -455,7 +454,7 @@ func (n *Node) relayTx() {
 		}
 
 		tx := q.First()
-		n.gProtoc.RelayTx(tx.(*wire.Transaction), n.peerManager.GetActivePeers(0))
+		n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 	}
 }
 
@@ -486,14 +485,21 @@ func (n *Node) Start() {
 	})
 
 	go n.relayTx()
+	go n.handleEvents()
+}
+
+// relayBlock attempts to relay non-genesis a block to active peers.
+func (n *Node) relayBlock(block core.Block) {
+	if block.GetNumber() > 1 {
+		n.gProtoc.RelayBlock(block, n.peerManager.GetActivePeers(0))
+	}
 }
 
 func (n *Node) handleEvents() {
 
-	// handle event about a new block being accepted
-	// into the main chain.
+	// handle event about a successfully processed block.
 	for evt := range n.event.On(core.EventNewBlock) {
-		_ = evt
+		n.relayBlock(evt.Args[0].(core.Block))
 	}
 }
 

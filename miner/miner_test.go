@@ -3,6 +3,7 @@ package miner
 import (
 	"time"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 
@@ -17,6 +18,10 @@ var MinerTest = func() bool {
 	return Describe("Miner", func() {
 
 		var miner *Miner
+
+		BeforeEach(func() {
+			cfg.Node.Mode = config.ModeDev
+		})
 
 		BeforeEach(func() {
 			cfg.Miner.Mode = blakimoto.ModeTest

@@ -15,26 +15,21 @@ import (
 
 // validateBlock handles block validation. A block that successfully
 // passes this validation is considered safe to add to the chain.
-func (b *Blockchain) validateBlock(block core.Block) error {
+func (b *Blockchain) validateBlock(block core.Block) (*BlockValidator, error) {
 
 	blockValidator := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
 
-	// Verify pow and difficulty in development and production mode
-	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev {
-		blockValidator.verifySeal()
-	}
-
 	if errs := blockValidator.Validate(); len(errs) > 0 {
-		return errs[0]
+		return blockValidator, errs[0]
 	}
 
 	// TODO: move this to the block validator
 	// validate the transaction root
 	if !block.GetHeader().GetTransactionsRoot().Equal(common.ComputeTxsRoot(block.GetTransactions())) {
-		return fmt.Errorf("failed transaction root check")
+		return blockValidator, fmt.Errorf("failed transaction root check")
 	}
 
-	return nil
+	return blockValidator, nil
 }
 
 // addOp adds a transition operation object to the list of
@@ -305,7 +300,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 			if err != core.ErrBlockNotFound {
 				return nil, err
 			}
-			b.log.Debug("Block not compatible with any chain", "Err", err.Error())
+			b.log.Debug("Block is not compatible with any chain", "BlockNo", block.GetNumber(), "Err", err.Error())
 
 		} else if chain == nil {
 			b.addOrphanBlock(block)
@@ -335,6 +330,10 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 			tx.Rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
+		b.log.Debug("New chain created",
+			"ChainID", chain.GetID(),
+			"BlockNo", block.GetNumber(),
+			"ParentBlockNo", parentBlock.GetNumber())
 	}
 
 	// Execute block to derive the state objects and the resulting
@@ -342,6 +341,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
 		tx.Rollback()
+		b.log.Error("Block execution failed", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
 
@@ -349,6 +349,10 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	// from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
 		tx.Rollback()
+		b.log.Error("Compute state root and block state root do not match",
+			"BlockNo", block.GetNumber(),
+			"BlockStateRoot", block.GetHeader().GetStateRoot().HexStr(),
+			"ComputedStateRoot", newStateRoot.HexStr())
 		return nil, core.ErrBlockStateRootInvalid
 	}
 
@@ -388,6 +392,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	// decide and set which chain is the best chain
 	// This could potentially cause a reorganization
 	if err := b.decideBestChain(); err != nil {
+		b.log.Error("Failed to decide best chain")
 		return nil, fmt.Errorf("failed to choose best chain: %s", err)
 	}
 
@@ -401,6 +406,8 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	if b.bestChain.GetID() == chain.GetID() {
 		<-b.eventEmitter.Emit(core.EventNewBlock, block)
 	}
+
+	b.log.Info("Block has been successfully processed", "BlockNo", block.GetNumber())
 
 	return chain, nil
 }
@@ -420,19 +427,23 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 		panic("initialization error: transaction pool not set")
 	}
 
-	// validate the block. Although, we expect the block to have been
-	// validated on the gossip level before getting here
-	if err := b.validateBlock(block); err != nil {
+	// validate the block
+	blockValidator, err := b.validateBlock(block)
+	if err != nil {
+		b.log.Error("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
+
 	// if the block has been previously rejected, return err
 	if b.isRejected(block) {
+		b.log.Debug("Block had already been rejected", "BlockNo", block.GetNumber())
 		return nil, core.ErrBlockRejected
 	}
 
 	// check if the block has previously been detected as an orphan.
 	// We do not need to go re-process this block if it is an orphan.
 	if b.isOrphanBlock(block.GetHash()) {
+		b.log.Debug("Block is an orphan", "BlockNo", block.GetNumber())
 		return nil, core.ErrOrphanBlock
 	}
 
@@ -442,8 +453,17 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 		return nil, fmt.Errorf("failed to check block existence: %s", err)
 	}
 	if exists {
-		b.log.Debug("Block already exists", "Hash", block.GetHash().HexStr())
+		b.log.Debug("Block already exists", "BlockNo", block.GetNumber())
 		return nil, core.ErrBlockExists
+	}
+
+	// verify the block's PoW.
+	// Only do this in production or development mode
+	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev {
+		if errs := blockValidator.checkPoW(block.GetHeader()); len(errs) > 0 {
+			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", err)
+			return nil, errs[0]
+		}
 	}
 
 	// attempt to add the block to a chain
