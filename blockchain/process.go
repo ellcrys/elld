@@ -477,7 +477,6 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.GetHash().HexStr())
 
