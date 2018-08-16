@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 
+	mintly "github.com/ellcrys/elld/mint"
 	"github.com/spf13/cobra"
 )
 
@@ -32,6 +33,8 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("mint called")
+
+		mintly.Spec()
 	},
 }
 
