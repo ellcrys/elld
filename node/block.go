@@ -63,7 +63,6 @@ func (g *Gossip) RelayBlock(block core.Block, remotePeers []types.Engine) error 
 func (g *Gossip) OnBlock(s net.Stream) {
 
 	defer s.Close()
-
 	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 

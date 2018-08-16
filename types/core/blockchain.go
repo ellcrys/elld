@@ -1,7 +1,9 @@
 package core
 
 import (
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util"
+	"github.com/olebedev/emitter"
 )
 
 // Chainer defines an interface for Chain
@@ -68,6 +70,15 @@ type Blockchain interface {
 
 	// GetChainsReader gets chain reader for all known chains
 	GetChainsReader() (readers []ChainReader)
+
+	// SetDB sets the database
+	SetDB(elldb.DB)
+
+	// OrphanBlocks gets a reader for the orphan cache
+	OrphanBlocks() CacheReader
+
+	// GetEventEmitter gets the event emitter
+	GetEventEmitter() *emitter.Emitter
 }
 
 // BlockMaker defines an interface providing the
@@ -110,4 +121,17 @@ type ChainReader interface {
 
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)
+}
+
+// CacheReader provides an interface for reading the orphan cache
+type CacheReader interface {
+
+	// Len gets the number of orphans
+	Len() int
+
+	// Hash checks whether an item exists in the cache
+	Has(key interface{}) bool
+
+	// Get gets an item from the cache
+	Get(key interface{}) interface{}
 }

@@ -159,6 +159,16 @@ func (b *Blockchain) createBlockValidator(block core.Block) *BlockValidator {
 	return NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
 }
 
+// OrphanBlocks returns a cache reader for orphan blocks
+func (b *Blockchain) OrphanBlocks() core.CacheReader {
+	return b.orphanBlocks
+}
+
+// GetEventEmitter gets the event emitter
+func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
+	return b.eventEmitter
+}
+
 // getChainParentBlock find the parent chain and block
 // of a chain using the chain's ChainInfo
 func (b *Blockchain) getChainParentBlock(ci *core.ChainInfo) (core.Block, error) {

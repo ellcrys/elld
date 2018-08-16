@@ -4,8 +4,15 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/ellcrys/elld/blockchain"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"
 
@@ -22,6 +29,13 @@ func TestPeer(t *testing.T) {
 	RunSpecs(t, "Peer Suite")
 }
 
+var testStore store.ChainStorer
+var db, db2 elldb.DB
+var bc, bc2 core.Blockchain
+var chainID = util.String("chain1")
+var txPool, txPool2 *txpool.TxPool
+var sender, receiver *crypto.Key
+
 var _ = Describe("Engine", func() {
 
 	BeforeEach(func() {
@@ -34,6 +48,39 @@ var _ = Describe("Engine", func() {
 		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
+	BeforeEach(func() {
+		var err error
+		cfg, err = testutil.SetTestCfg()
+		Expect(err).To(BeNil())
+	})
+
+	// Create the databases
+	BeforeEach(func() {
+		db = elldb.NewDB(cfg.ConfigDir())
+		err = db.Open(util.RandString(5))
+		Expect(err).To(BeNil())
+		db2 = elldb.NewDB(cfg.ConfigDir())
+		err = db2.Open(util.RandString(5))
+		Expect(err).To(BeNil())
+	})
+
+	// Initialize the default test transaction pools
+	// and create the blockchain instances and set their db
+	BeforeEach(func() {
+		txPool = txpool.NewTxPool(100)
+		txPool2 = txpool.NewTxPool(100)
+		bc = blockchain.New(txPool, cfg, log)
+		bc2 = blockchain.New(txPool2, cfg, log)
+		bc.SetDB(db)
+		bc2.SetDB(db2)
+	})
+
+	// Create test account keys
+	BeforeEach(func() {
+		sender = crypto.NewKeyFromIntSeed(1)
+		receiver = crypto.NewKeyFromIntSeed(2)
+	})
+
 	var tests = []func() bool{
 		TransactionTest,
 		AddrTest,
@@ -44,6 +91,7 @@ var _ = Describe("Engine", func() {
 		PeerManagerTest,
 		NodeTest,
 		HandshakeTest,
+		BlockTest,
 	}
 
 	for i, t := range tests {
