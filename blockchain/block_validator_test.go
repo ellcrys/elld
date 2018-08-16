@@ -83,7 +83,7 @@ var BlockValidatorTest = func() bool {
 			})
 
 			It("should return if block and a transaction in the block exist", func() {
-				validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+				validator := NewBlockValidator(block, bc.txPool, bc, true, cfg, log)
 				errs := validator.Validate()
 				Expect(errs).To(ContainElement(fmt.Errorf("error:block found in chain")))
 				Expect(errs).To(ContainElement(fmt.Errorf("tx:0, error:transaction already exist in main chain")))

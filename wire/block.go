@@ -8,6 +8,7 @@ import (
 	"github.com/vmihailenco/msgpack"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 )
@@ -22,6 +23,10 @@ type Block struct {
 	// ChainReader holds the chain on which
 	// this block was added.
 	ChainReader core.ChainReader `json:"-" msgpack:"-"`
+
+	// Broadcaster is the peer responsible
+	// for sending this block.
+	Broadcaster types.Engine `json:"-" msgpack:"-"`
 }
 
 // Header represents the header of a block
@@ -129,6 +134,16 @@ func (h *Header) Copy() core.Header {
 // GetChainReader gets the chain reader
 func (b *Block) GetChainReader() core.ChainReader {
 	return b.ChainReader
+}
+
+// SetBroadcaster sets the originator
+func (b *Block) SetBroadcaster(o types.Engine) {
+	b.Broadcaster = o
+}
+
+// GetBroadcaster gets the originator
+func (b *Block) GetBroadcaster() types.Engine {
+	return b.Broadcaster
 }
 
 // GetHash returns the block's hash

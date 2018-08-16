@@ -39,4 +39,14 @@ var _ = Describe("Crypto", func() {
 			Expect(dec).To(Equal(msg))
 		})
 	})
+
+	Describe(".HexToHash", func() {
+		It("", func() {
+			hash := StrToHash("something")
+			hex := hash.HexStr()
+			result, err := HexToHash(hex)
+			Expect(err).To(BeNil())
+			Expect(result.Equal(hash)).To(BeTrue())
+		})
+	})
 })

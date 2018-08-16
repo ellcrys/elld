@@ -1,4 +1,4 @@
-package wire
+package messages
 
 // Handshake represents the first message between peers
 type Handshake struct {
@@ -34,4 +34,10 @@ type Reject struct {
 	Code      int32  `json:"code" msgpack:"code"`
 	Reason    string `json:"reason" msgpack:"reason"`
 	ExtraData []byte `json:"extraData" msgpack:"extraData"`
+}
+
+// RequestBlock represents a message requesting for a block
+type RequestBlock struct {
+	Hash   string `json:"hash" msgpack:"hash"`
+	Number uint64 `json:"number" msgpack:"number"`
 }

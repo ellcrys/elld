@@ -199,6 +199,39 @@ var _ = Describe("Leveldb", func() {
 		})
 	})
 
+	Describe(".GetBlockByNumberAndHash", func() {
+
+		var block = &wire.Block{
+			Header: &wire.Header{Number: 100},
+			Hash:   util.StrToHash("hash"),
+		}
+
+		BeforeEach(func() {
+			err = store.PutBlock(block)
+			Expect(err).To(BeNil())
+			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			Expect(result).To(HaveLen(1))
+		})
+
+		It("should return ErrBlockNotFound if block does not exist", func() {
+			_, err := store.GetBlockByNumberAndHash(1, block.Hash)
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(core.ErrBlockNotFound))
+		})
+
+		It("should return ErrBlockNotFound if block with number exist but hash does not match", func() {
+			_, err := store.GetBlockByNumberAndHash(block.GetNumber(), util.StrToHash("invalid_hash"))
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(core.ErrBlockNotFound))
+		})
+
+		It("should successfully get block", func() {
+			result, err := store.GetBlockByNumberAndHash(block.GetNumber(), block.Hash)
+			Expect(err).To(BeNil())
+			Expect(result).To(Equal(block))
+		})
+	})
+
 	Describe(".GetBlock", func() {
 
 		var block = &wire.Block{

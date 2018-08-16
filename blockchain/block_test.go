@@ -20,7 +20,6 @@ var BlockTest = func() bool {
 			var block core.Block
 
 			BeforeEach(func() {
-
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
@@ -51,6 +50,126 @@ var BlockTest = func() bool {
 				has, err := bc.HaveBlock(block.GetHash())
 				Expect(err).To(BeNil())
 				Expect(has).To(BeTrue())
+			})
+		})
+
+		Describe(".GetBlock", func() {
+			var block core.Block
+
+			BeforeEach(func() {
+				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				err = genesisChain.append(block)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrBlockNotFound if not found in any chain", func() {
+				_, err := bc.GetBlock(block.GetNumber(), util.StrToHash("invalid"))
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrBlockNotFound))
+			})
+
+			It("should successfully find the block", func() {
+				result, err := bc.GetBlock(block.GetNumber(), block.GetHash())
+				Expect(err).To(BeNil())
+				Expect(result.GetHash()).To(Equal(block.GetHash()))
+			})
+
+			Context("with two chains", func() {
+
+				var block3 core.Block
+
+				BeforeEach(func() {
+					chain2 := NewChain("chain_2", db, cfg, log)
+					err = chain2.append(genesisBlock)
+					Expect(err).To(BeNil())
+					err = chain2.append(block)
+					Expect(err).To(BeNil())
+
+					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+						},
+						Creator:    sender,
+						Nonce:      core.EncodeNonce(2),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+
+					err = genesisChain.append(block3)
+					Expect(err).To(BeNil())
+				})
+
+				It("should successfully find the block", func() {
+					result, err := bc.GetBlock(block3.GetNumber(), block3.GetHash())
+					Expect(err).To(BeNil())
+					Expect(result.GetHash()).To(Equal(block3.GetHash()))
+				})
+			})
+		})
+
+		Describe(".GetBlockByHash", func() {
+			var block core.Block
+
+			BeforeEach(func() {
+				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				err = genesisChain.append(block)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrBlockNotFound if not found in any chain", func() {
+				_, err := bc.GetBlockByHash(util.StrToHash("invalid"))
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrBlockNotFound))
+			})
+
+			It("should successfully find the block", func() {
+				result, err := bc.GetBlockByHash(block.GetHash())
+				Expect(err).To(BeNil())
+				Expect(result.GetHash()).To(Equal(block.GetHash()))
+			})
+
+			Context("with two chains", func() {
+
+				var block3 core.Block
+
+				BeforeEach(func() {
+					chain2 := NewChain("chain_2", db, cfg, log)
+					err = chain2.append(genesisBlock)
+					Expect(err).To(BeNil())
+					err = chain2.append(block)
+					Expect(err).To(BeNil())
+
+					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+						},
+						Creator:    sender,
+						Nonce:      core.EncodeNonce(2),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+
+					err = genesisChain.append(block3)
+					Expect(err).To(BeNil())
+				})
+
+				It("should successfully find the block", func() {
+					result, err := bc.GetBlockByHash(block3.GetHash())
+					Expect(err).To(BeNil())
+					Expect(result.GetHash()).To(Equal(block3.GetHash()))
+				})
 			})
 		})
 

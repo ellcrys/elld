@@ -189,6 +189,26 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 	return &block, nil
 }
 
+// GetBlockByNumberAndHash finds by number and hash
+func (s *ChainStore) GetBlockByNumberAndHash(number uint64, hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+
+	// find a block in the chain with a matching number.
+	// Expect to find 1 of such block
+	block, err := s.getBlock(number, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the found block does not have a hash that
+	// matches the given hash, we conclude that the block
+	// was not found.
+	if !block.GetHash().Equal(hash) {
+		return nil, core.ErrBlockNotFound
+	}
+
+	return block, nil
+}
+
 // PutBlock adds a block to the store.
 // Returns error if a block with same number exists.
 func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {

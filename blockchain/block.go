@@ -10,8 +10,8 @@ import (
 	"github.com/ellcrys/elld/wire"
 )
 
-// HaveBlock checks whether we have a block in the
-// main chain or other chains.
+// HaveBlock checks whether we have a block matching
+// the hash in any of the known chains
 func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
@@ -177,4 +177,39 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	}
 
 	return block, nil
+}
+
+// GetBlock finds a block in any chain with a matching
+// block number and hash.
+func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (core.Block, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	for _, chain := range b.chains {
+		block, err := chain.getBlockByNumberAndHash(number, hash)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return nil, err
+			}
+			continue
+		}
+		return block, nil
+	}
+	return nil, core.ErrBlockNotFound
+}
+
+// GetBlockByHash finds a block in any chain with a matching hash.
+func (b *Blockchain) GetBlockByHash(hash util.Hash) (core.Block, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	for _, chain := range b.chains {
+		block, err := chain.getBlockByHash(hash)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return nil, err
+			}
+			continue
+		}
+		return block, nil
+	}
+	return nil, core.ErrBlockNotFound
 }

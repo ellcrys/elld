@@ -172,7 +172,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	log.Info("Druid started", "Version", config.ClientVersion)
+	log.Info("Elld has started", "Version", config.ClientVersion)
 
 	n, err := node.NewNode(cfg, addressToListenOn, loadedAddress, log)
 	if err != nil {
@@ -209,6 +209,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 	n.SetProtocolHandler(config.BlockVersion, protocol.OnBlock)
+	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}

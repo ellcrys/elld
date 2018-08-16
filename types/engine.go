@@ -7,11 +7,17 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
+
+// TxPool represents a transactions pool
+type TxPool interface {
+	SetEventEmitter(ee *emitter.Emitter)
+	Put(tx core.Transaction) error
+	Has(tx core.Transaction) bool
+}
 
 // Engine represents node functionalities not provided by the
 // protocol. This can include peer discovery, configuration,
@@ -24,7 +30,7 @@ type Engine interface {
 	HasTxSession(txID string) bool        // Check if a transaction has an existing session
 	RemoveTxSession(txID string)          // Remove a transaction session
 	CountTxSession() int                  // Count the number of open transaction session
-	GetTxPool() *txpool.TxPool            // Returns the transaction pool
+	GetTxPool() TxPool                    // Returns the transaction pool
 	StringID() string                     // Returns the engine ID
 	ShortID() string                      // Return the short version of the engine ID
 	ID() peer.ID                          // Get the ID as issued by libp2p

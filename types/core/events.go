@@ -8,7 +8,10 @@ const (
 	// that was successfully added to the main chain
 	EventNewBlock = "event.newBlock"
 
-	// EventNewTransaction  represents an event about a new
-	// transaction that was received 
+	// EventNewTransaction represents an event about a new
+	// transaction that was received
 	EventNewTransaction = "event.newTx"
+
+	// EventOrphanBlock represents an event about an orphan block.
+	EventOrphanBlock = "event.orphanBlock"
 )
