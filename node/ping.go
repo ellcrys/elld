@@ -7,7 +7,7 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/wire/messages"
 
 	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
@@ -29,7 +29,7 @@ func (g *Gossip) sendPing(remotePeer types.Engine) error {
 	defer s.Close()
 
 	// construct the message and write it to the stream
-	msg := &wire.Ping{}
+	msg := &messages.Ping{}
 	if err := writeStream(s, msg); err != nil {
 		s.Reset()
 		g.log.Debug("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
@@ -39,7 +39,7 @@ func (g *Gossip) sendPing(remotePeer types.Engine) error {
 	g.log.Info("Sent ping to peer", "PeerID", remotePeerIDShort)
 
 	// receive pong response from the remote peer
-	pongMsg := &wire.Pong{}
+	pongMsg := &messages.Pong{}
 	if err := readStream(s, pongMsg); err != nil {
 		s.Reset()
 		g.log.Debug("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
@@ -81,7 +81,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	g.log.Info("Received ping message", "PeerID", remotePeerIDShort)
 
 	// read the message from the stream
-	msg := &wire.Ping{}
+	msg := &messages.Ping{}
 	if err := readStream(s, msg); err != nil {
 		s.Reset()
 		g.log.Error("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
@@ -89,7 +89,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	}
 
 	// send pong message
-	pongMsg := &wire.Pong{}
+	pongMsg := &messages.Pong{}
 	if err := writeStream(s, pongMsg); err != nil {
 		s.Reset()
 		g.log.Error("failed to send pong response", "Err", err)

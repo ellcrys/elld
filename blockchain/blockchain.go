@@ -11,7 +11,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
@@ -61,7 +61,7 @@ type Blockchain struct {
 	rejectedBlocks *Cache
 
 	// txPool contains all transactions awaiting inclusion in a block
-	txPool *txpool.TxPool
+	txPool types.TxPool
 
 	// eventEmitter allows the manager to listen to specific
 	// events or broadcast events about its state
@@ -69,7 +69,7 @@ type Blockchain struct {
 }
 
 // New creates a Blockchain instance.
-func New(txPool *txpool.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
+func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.txPool = txPool
 	bc.log = log

@@ -23,9 +23,9 @@ func BlockTest() bool {
 		var lpGossip, rpGossip *Gossip
 
 		BeforeEach(func() {
-			err := bc.Up()
+			err := lpBc.Up()
 			Expect(err).To(BeNil())
-			err = bc2.Up()
+			err = rpBc.Up()
 			Expect(err).To(BeNil())
 		})
 
@@ -33,7 +33,7 @@ func BlockTest() bool {
 			lp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(4), log)
 			Expect(err).To(BeNil())
 			lpGossip = NewGossip(lp, log)
-			lp.SetBlockchain(bc)
+			lp.SetBlockchain(lpBc)
 		})
 
 		BeforeEach(func() {
@@ -41,7 +41,7 @@ func BlockTest() bool {
 			Expect(err).To(BeNil())
 			rpGossip = NewGossip(rp, log)
 			rp.SetProtocolHandler(config.BlockVersion, rpGossip.OnBlock)
-			rp.SetBlockchain(bc2)
+			rp.SetBlockchain(rpBc)
 		})
 
 		AfterEach(func() {
@@ -54,7 +54,7 @@ func BlockTest() bool {
 			var block core.Block
 
 			BeforeEach(func() {
-				block, err = bc.Generate(&core.GenerateBlockParams{
+				block, err = lpBc.Generate(&core.GenerateBlockParams{
 					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 					},
@@ -66,7 +66,7 @@ func BlockTest() bool {
 			})
 
 			It("should successfully relay block to remote peer", func() {
-				rpCurBlock, err := bc2.ChainReader().Current()
+				rpCurBlock, err := rpBc.ChainReader().Current()
 				Expect(err).To(BeNil())
 				Expect(rpCurBlock.GetNumber()).To(Equal(uint64(1)))
 
@@ -74,7 +74,7 @@ func BlockTest() bool {
 				Expect(err).To(BeNil())
 
 				time.Sleep(10 * time.Millisecond)
-				rpCurBlock, err = bc2.ChainReader().Current()
+				rpCurBlock, err = rpBc.ChainReader().Current()
 				Expect(err).To(BeNil())
 				Expect(rpCurBlock.GetNumber()).To(Equal(block.GetNumber()))
 			})
@@ -83,8 +83,69 @@ func BlockTest() bool {
 				It("should emit core.EventNewBlock", func() {
 					err = lpGossip.RelayBlock(block, []types.Engine{rp})
 					Expect(err).To(BeNil())
-					evt := <-bc2.GetEventEmitter().Once(core.EventNewBlock)
+					evt := <-rpBc.GetEventEmitter().Once(core.EventNewBlock)
 					Expect(evt.Args[0].(core.Block).GetNumber()).To(Equal(block.GetNumber()))
+				})
+			})
+
+			Context("upon successful processing of an orphan", func() {
+
+				var block2, block3 core.Block
+
+				BeforeEach(func() {
+					block2, err = lpBc.Generate(&core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
+						},
+						Creator:    sender,
+						Nonce:      core.EncodeNonce(1),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					Expect(err).To(BeNil())
+					_, err = lpBc.ProcessBlock(block2)
+					Expect(err).To(BeNil())
+
+					block3, err = lpBc.Generate(&core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+						},
+						Creator:    sender,
+						Nonce:      core.EncodeNonce(1),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					Expect(err).To(BeNil())
+					_, err = lpBc.ProcessBlock(block3)
+					Expect(err).To(BeNil())
+				})
+
+				It("should emit core.EventOrphanBlock", func() {
+					err = lpGossip.RelayBlock(block3, []types.Engine{rp})
+					Expect(err).To(BeNil())
+					evt := <-rpBc.GetEventEmitter().Once(core.EventOrphanBlock)
+					orphanBlock := evt.Args[0].(*wire.Block)
+					Expect(orphanBlock.GetNumber()).To(Equal(block3.GetNumber()))
+					Expect(orphanBlock.Broadcaster.StringID()).To(Equal(lp.StringID()))
+
+					Describe(".RequestBlock", func() {
+
+						BeforeEach(func() {
+							Expect(rpBc.OrphanBlocks().Len()).To(Equal(1))
+						})
+
+						It("should return no error", func() {
+							err = rp.gProtoc.RequestBlock(lp, orphanBlock.Header.ParentHash)
+							Expect(err).To(BeNil())
+							Describe("orphan block must no longer be in the orphan cache", func() {
+								Expect(rpBc.OrphanBlocks().Len()).To(Equal(0))
+							})
+
+							Describe("current block must be the previously orphaned block", func() {
+								curBlock, err := rpBc.ChainReader().Current()
+								Expect(err).To(BeNil())
+								Expect(curBlock.GetHash()).To(Equal(orphanBlock.GetHash()))
+							})
+						})
+					})
 				})
 			})
 		})

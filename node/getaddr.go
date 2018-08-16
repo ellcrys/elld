@@ -7,14 +7,14 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/wire/messages"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-// sendGetAddr sends a wire.GetAddr message to a remote peer.
-// The remote peer will respond with a wire.Addr message which the function
+// sendGetAddr sends a messages.GetAddr message to a remote peer.
+// The remote peer will respond with a messages.Addr message which the function
 // must process using the OnAddr handler and return the response.
-func (g *Gossip) sendGetAddr(remotePeer types.Engine) ([]*wire.Address, error) {
+func (g *Gossip) sendGetAddr(remotePeer types.Engine) ([]*messages.Address, error) {
 
 	remotePeerIDShort := remotePeer.ShortID()
 
@@ -25,7 +25,7 @@ func (g *Gossip) sendGetAddr(remotePeer types.Engine) ([]*wire.Address, error) {
 	}
 	defer s.Close()
 
-	msg := &wire.GetAddr{}
+	msg := &messages.GetAddr{}
 	if err := writeStream(s, msg); err != nil {
 		s.Reset()
 		g.log.Debug("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
@@ -68,7 +68,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 	return nil
 }
 
-// OnGetAddr processes a wire.GetAddr request.
+// OnGetAddr processes a messages.GetAddr request.
 // Sends a list of active addresses to the sender
 func (g *Gossip) OnGetAddr(s net.Stream) {
 
@@ -88,7 +88,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	g.log.Debug("Received GetAddr message", "PeerID", remotePeerIDShort)
 
 	// read the message
-	msg := &wire.GetAddr{}
+	msg := &messages.GetAddr{}
 	if err := readStream(s, msg); err != nil {
 		s.Reset()
 		g.log.Error("failed to read getaddr message", "Err", err, "PeerID", remotePeerIDShort)
@@ -103,12 +103,12 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	}
 
 	// Construct an Addr message and add addresses to it
-	addr := &wire.Addr{}
+	addr := &messages.Addr{}
 	for _, peer := range activePeers {
 		// Ignore an address if it is the same with the local node
 		// and if it is a hardcoded seed address
 		if !g.PM().IsLocalNode(peer) && !peer.IsSame(remotePeer) && !peer.IsHardcodedSeed() {
-			addr.Addresses = append(addr.Addresses, &wire.Address{
+			addr.Addresses = append(addr.Addresses, &messages.Address{
 				Address:   peer.GetMultiAddr(),
 				Timestamp: peer.GetTimestamp().Unix(),
 			})

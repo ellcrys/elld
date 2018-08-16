@@ -8,7 +8,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
-	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
@@ -40,7 +40,7 @@ type BlockValidator struct {
 	block core.Block
 
 	// txpool refers to the transaction pool
-	txpool *txpool.TxPool
+	txpool types.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
@@ -61,7 +61,7 @@ type BlockValidator struct {
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
-func NewBlockValidator(block core.Block, txPool *txpool.TxPool,
+func NewBlockValidator(block core.Block, txPool types.TxPool,
 	bchain core.Blockchain, allowDupCheck bool, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:               block,

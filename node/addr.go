@@ -12,13 +12,13 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/wire/messages"
 	net "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
 // onAddr processes "addr" message
-func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
+func (g *Gossip) onAddr(s net.Stream) ([]*messages.Address, error) {
 
 	defer s.Reset()
 
@@ -27,7 +27,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 	remotePeerIDShort := remotePeer.ShortID()
 
 	// read message from the stream
-	resp := &wire.Addr{}
+	resp := &messages.Addr{}
 	if err := readStream(s, resp); err != nil {
 		g.log.Debug("Failed to read Addr response response", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("failed to read Addr response: %s", err)
@@ -99,7 +99,7 @@ func (g *Gossip) OnAddr(s net.Stream) {
 // for the next 24 hours. If we haven't determined these addresses or it has been 24 hours since
 // we last selected an addr, we randomly select new addresses from the candidate addresses otherwise,
 // we return the current relay addresses.
-func (g *Gossip) selectPeersToRelayTo(candidateAddrs []*wire.Address) [2]*Node {
+func (g *Gossip) selectPeersToRelayTo(candidateAddrs []*messages.Address) [2]*Node {
 
 	now := time.Now()
 	g.mtx.Lock()
@@ -131,13 +131,13 @@ func (g *Gossip) selectPeersToRelayTo(candidateAddrs []*wire.Address) [2]*Node {
 		util.AscOrderBigIntMeta(sortCandidateAddrs)
 
 		if len(sortCandidateAddrs) >= 1 {
-			p, _ := g.engine.NodeFromAddr(sortCandidateAddrs[0].Meta.(*wire.Address).Address, true)
-			p.Timestamp = time.Unix(sortCandidateAddrs[0].Meta.(*wire.Address).Timestamp, 0)
+			p, _ := g.engine.NodeFromAddr(sortCandidateAddrs[0].Meta.(*messages.Address).Address, true)
+			p.Timestamp = time.Unix(sortCandidateAddrs[0].Meta.(*messages.Address).Timestamp, 0)
 			g.addrRelayPeers[0] = p
 
 			if len(sortCandidateAddrs) >= 2 {
-				p2, _ := g.engine.NodeFromAddr(sortCandidateAddrs[1].Meta.(*wire.Address).Address, true)
-				p2.Timestamp = time.Unix(sortCandidateAddrs[1].Meta.(*wire.Address).Timestamp, 0)
+				p2, _ := g.engine.NodeFromAddr(sortCandidateAddrs[1].Meta.(*messages.Address).Address, true)
+				p2.Timestamp = time.Unix(sortCandidateAddrs[1].Meta.(*messages.Address).Timestamp, 0)
 				g.addrRelayPeers[1] = p2
 			}
 		}
@@ -150,7 +150,7 @@ func (g *Gossip) selectPeersToRelayTo(candidateAddrs []*wire.Address) [2]*Node {
 	return g.addrRelayPeers
 }
 
-func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) histcache.MultiKey {
+func makeAddrRelayHistoryKey(addr *messages.Addr, peer *Node) histcache.MultiKey {
 	return []interface{}{util.SerializeMsg(addr), peer.StringID()}
 }
 
@@ -159,10 +159,10 @@ func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) histcache.MultiKey {
 // * all addresses must be valid and different from the local peer address
 // * Only addresses within 60 minutes from the current time.
 // * Only routable addresses are allowed.
-func (g *Gossip) RelayAddr(addrs []*wire.Address) []error {
+func (g *Gossip) RelayAddr(addrs []*messages.Address) []error {
 
 	var errs []error
-	var relayable []*wire.Address
+	var relayable []*messages.Address
 	now := time.Now()
 
 	// Do not proceed if addresses to be relayed are more than 10
@@ -221,7 +221,7 @@ func (g *Gossip) RelayAddr(addrs []*wire.Address) []error {
 	g.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", numRelayPeers)
 
 	successfullyRelayed := 0
-	addrMsg := &wire.Addr{Addresses: relayable}
+	addrMsg := &messages.Addr{Addresses: relayable}
 
 	for _, remotePeer := range relayPeers {
 

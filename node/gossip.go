@@ -12,7 +12,7 @@ import (
 	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/wire/messages"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
 )
@@ -90,7 +90,7 @@ func (g *Gossip) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
 // reject sends a reject message.
 // The caller is expected to close the stream after the call.
 func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extraData []byte) error {
-	rMsg := wire.Reject{
+	rMsg := messages.Reject{
 		Message:   msg,
 		Code:      int32(code),
 		Reason:    reason,
@@ -104,9 +104,9 @@ func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extra
 
 // isRejected checks if the message is a `reject`.
 // Returns the message`
-func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
+func (g *Gossip) isRejected(s net.Stream) (*messages.Reject, error) {
 
-	var msg wire.Reject
+	var msg messages.Reject
 	if err := readStream(s, &msg); err != nil {
 		return nil, fmt.Errorf("failed to read from stream. %s", err)
 	}

@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/wire"
-	"github.com/ellcrys/emitter"
 )
 
 // TxPool defines a structure and functionalities of a transaction pool

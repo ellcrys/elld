@@ -16,8 +16,11 @@ type ChainStorer interface {
 	// When 0 is passed, it should return the block with the highest number
 	GetBlock(number uint64, opts ...core.CallOp) (core.Block, error)
 
-	// GetBlockByHash finds and returns a block associated with chainID.
+	// GetBlockByHash finds a block by its hash
 	GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error)
+
+	// GetBlockByNumberAndHash finds by number and hash
+	GetBlockByNumberAndHash(number uint64, hash util.Hash, opts ...core.CallOp) (core.Block, error)
 
 	// GetHeader gets the header of a block.
 	// When 0 is passed, it should return the header of the block with the highest number

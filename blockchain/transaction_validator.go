@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-ozzo/ozzo-validation"
 
-	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 
 	"github.com/shopspring/decimal"
@@ -33,7 +33,7 @@ type TxsValidator struct {
 	txs []core.Transaction
 
 	// txpool refers to the transaction pool
-	txpool *txpool.TxPool
+	txpool types.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
@@ -51,7 +51,7 @@ type TxsValidator struct {
 }
 
 // NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []core.Transaction, txPool *txpool.TxPool,
+func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
 	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 txs,
@@ -62,7 +62,7 @@ func NewTxsValidator(txs []core.Transaction, txPool *txpool.TxPool,
 }
 
 // NewTxValidator is like NewTxsValidator except it accepts a single transaction
-func NewTxValidator(tx core.Transaction, txPool *txpool.TxPool,
+func NewTxValidator(tx core.Transaction, txPool types.TxPool,
 	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
 	return &TxsValidator{
 		txs:                 []core.Transaction{tx},
