@@ -15,6 +15,7 @@ import (
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
 
@@ -488,17 +489,32 @@ func (n *Node) relayBlock(block core.Block) {
 
 func (n *Node) handleEvents() {
 
-	// handle core.EventNewBlock event
-	for evt := range n.event.On(core.EventNewBlock) {
-		n.relayBlock(evt.Args[0].(core.Block))
-	}
-
-	// handle core.EventNewTransaction event
-	for evt := range n.event.On(core.EventNewTransaction) {
-		if !n.GetTxRelayQueue().Append(evt.Args[0].(core.Transaction)) {
-			n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+	go func() {
+		// handle core.EventNewBlock event
+		for evt := range n.event.On(core.EventNewBlock) {
+			n.relayBlock(evt.Args[0].(core.Block))
 		}
-	}
+	}()
+
+	go func() {
+		// handle core.EventNewTransaction event
+		for evt := range n.event.On(core.EventNewTransaction) {
+			if !n.GetTxRelayQueue().Append(evt.Args[0].(core.Transaction)) {
+				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+			}
+		}
+	}()
+
+	go func() {
+		// handle core.EventOrphanBlock event
+		for evt := range n.event.On(core.EventOrphanBlock) {
+			// We need to request the parent block from the
+			// peer who sent it to us (a.k.a broadcaster)
+			orphanBlock := evt.Args[0].(*wire.Block)
+			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo", orphanBlock.GetNumber(), "ParentBlockHash", orphanBlock.Hash.HexStr())
+			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, orphanBlock.GetHeader().GetParentHash())
+		}
+	}()
 }
 
 // Wait forces the current thread to wait for the node
@@ -594,6 +610,6 @@ func (n *Node) GetTxRelayQueue() *txpool.TxQueue {
 }
 
 // GetTxPool returns the unsigned transaction pool
-func (n *Node) GetTxPool() *txpool.TxPool {
+func (n *Node) GetTxPool() types.TxPool {
 	return n.transactionsPool
 }

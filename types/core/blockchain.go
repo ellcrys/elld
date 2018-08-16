@@ -52,7 +52,7 @@ type Blockchain interface {
 	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
 	IsKnownBlock(hash util.Hash) (bool, string, error)
 
-	// HaveBlock checks if a block exists on the main or side chains
+	// HaveBlock checks whether we have a block matching the hash in any of the known chains
 	HaveBlock(hash util.Hash) (bool, error)
 
 	// GetTransaction finds and returns a transaction on the main chain
@@ -79,6 +79,13 @@ type Blockchain interface {
 
 	// GetEventEmitter gets the event emitter
 	GetEventEmitter() *emitter.Emitter
+
+	// GetBlock finds a block in any chain with a matching
+	// block number and hash.
+	GetBlock(number uint64, hash util.Hash) (Block, error)
+
+	// GetBlockByHash finds a block in any chain with a matching hash.
+	GetBlockByHash(hash util.Hash) (Block, error)
 }
 
 // BlockMaker defines an interface providing the

@@ -306,6 +306,10 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 			// we will add it to the orphan cache awaiting a time when
 			// it's parent is found and processed.
 			b.addOrphanBlock(block)
+
+			// emit core.EventOrphanBlock
+			b.eventEmitter.Emit(core.EventOrphanBlock, block)
+
 			return nil, nil
 
 		} else if block.GetHeader().GetNumber() < chainTip.GetNumber() {
@@ -459,6 +463,10 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	// We do not need to go re-process this block if it is an orphan.
 	if b.isOrphanBlock(block.GetHash()) {
 		b.log.Debug("Block is an orphan", "BlockNo", block.GetNumber())
+
+		// emit core.EventOrphanBlock
+		b.eventEmitter.Emit(core.EventOrphanBlock, block)
+
 		return nil, core.ErrOrphanBlock
 	}
 

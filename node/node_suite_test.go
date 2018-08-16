@@ -31,7 +31,7 @@ func TestPeer(t *testing.T) {
 
 var testStore store.ChainStorer
 var db, db2 elldb.DB
-var bc, bc2 core.Blockchain
+var lpBc, rpBc core.Blockchain
 var chainID = util.String("chain1")
 var txPool, txPool2 *txpool.TxPool
 var sender, receiver *crypto.Key
@@ -69,10 +69,10 @@ var _ = Describe("Engine", func() {
 	BeforeEach(func() {
 		txPool = txpool.NewTxPool(100)
 		txPool2 = txpool.NewTxPool(100)
-		bc = blockchain.New(txPool, cfg, log)
-		bc2 = blockchain.New(txPool2, cfg, log)
-		bc.SetDB(db)
-		bc2.SetDB(db2)
+		lpBc = blockchain.New(txPool, cfg, log)
+		rpBc = blockchain.New(txPool2, cfg, log)
+		lpBc.SetDB(db)
+		rpBc.SetDB(db2)
 	})
 
 	// Create test account keys

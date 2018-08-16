@@ -155,17 +155,18 @@ func (c *Chain) getBlockHeaderByHash(hash util.Hash) (core.Header, error) {
 	return h, nil
 }
 
-// getBlockByHash fetches a block by its hash
+// getBlockByHash fetches a block by hash
 func (c *Chain) getBlockByHash(hash util.Hash) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
+	return c.store.GetBlockByHash(hash)
+}
 
-	block, err := c.store.GetBlockByHash(hash)
-	if err != nil {
-		return nil, err
-	}
-
-	return block, nil
+// getBlockByNumberAndHash fetches a block by number and hash
+func (c *Chain) getBlockByNumberAndHash(number uint64, hash util.Hash) (core.Block, error) {
+	c.chainLock.RLock()
+	defer c.chainLock.RUnlock()
+	return c.store.GetBlockByNumberAndHash(number, hash)
 }
 
 // CreateAccount creates an account on a target block
