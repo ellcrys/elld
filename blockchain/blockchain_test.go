@@ -390,6 +390,7 @@ var BlockchainTest = func() bool {
 				chInfo, err := bc.findChainInfo("chain_a")
 				Expect(err).To(BeNil())
 				Expect(chInfo.ID).To(Equal(chain.GetID()))
+				Expect(chInfo.Timestamp).ToNot(Equal(0))
 			})
 
 			It("should return err = 'chain not found' if chain does not exist", func() {

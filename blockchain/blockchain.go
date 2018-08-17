@@ -420,6 +420,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBl
 		ID:                chain.GetID(),
 		ParentBlockNumber: parentBlockNumber,
 		ParentChainID:     parentChainID,
+		Timestamp:         time.Now().Unix(),
 	}
 
 	chainKey := common.MakeChainKey(chain.GetID().Bytes())

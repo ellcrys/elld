@@ -24,9 +24,10 @@ type Tree interface {
 
 // ChainInfo describes a chain
 type ChainInfo struct {
-	ID                util.String `json:"id"`
-	ParentChainID     util.String `json:"parentChainID"`
-	ParentBlockNumber uint64      `json:"parentBlockNumber"`
+	ID                util.String `json:"id" msgpack:"json"`
+	ParentChainID     util.String `json:"parentChainID" msgpack:"parentChainID"`
+	ParentBlockNumber uint64      `json:"parentBlockNumber" msgpack:"parentBlockNumber"`
+	Timestamp         int64       `json:"timestamp" msgpack:"timestamp"`
 }
 
 // BlockchainMeta includes information about the blockchain
