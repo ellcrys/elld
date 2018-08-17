@@ -62,7 +62,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	// AllocCoin transactions are meant to be added by a miner
 	// to a block and not relayed like regular transactions.
-	if msg.Type == wire.TxTypeAllocCoin {
+	if msg.Type == wire.TxTypeAlloc {
 		s.Reset()
 		g.log.Error("cannot add <AllocCoin> transaction to pool")
 		return
