@@ -115,6 +115,12 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 		block.Transactions = append(block.Transactions, tx.(*wire.Transaction))
 	}
 
+	// override the total difficult if a
+	// total difficulty is provided in the given params
+	if params.OverrideTotalDifficulty != nil {
+		block.Header.TotalDifficulty = params.OverrideTotalDifficulty
+	}
+
 	// override the block's timestamp if a timestamp is
 	// provided in the given param.
 	if params.OverrideTimestamp > 0 {
