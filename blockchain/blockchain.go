@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -291,44 +292,91 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, cha
 }
 
 // chooseBestChain returns the chain that is considered the
-// legitimate chain. The longest chain is considered the best chain.
+// legitimate chain. It checks all chains according to the rules
+// defined below and return the chain that passes the rule on contested
+// by another chain.
+//
+// The rules (executed in the exact order) :
+// 1. The chain with the most difficulty wins.
+// 2. The chain that was received first.
+// 3. The chain with the larger pointer
 //
 // NOTE: This method must be called with chain lock held by the caller.
 func (b *Blockchain) chooseBestChain() (*Chain, error) {
 
-	var bestChains []*Chain
-	var curHeight uint64
+	var highTDChains = []*Chain{}
+	var curHighestTD = new(big.Int).SetInt64(0)
 
 	// If no chain exists on the blockchain, return nil
 	if len(b.chains) == 0 {
 		return nil, nil
 	}
 
-	// for each known chains, we must find the longest chain and
-	// add to bestChain. If two chains are of same height, then that indicates
-	// a tie and as such the bestChain will include these chains.
+	// for each known chains, we must find the chain with the largest total
+	// difficulty and add to highTDChains. If multiple chains have same
+	// difficulty, then that indicates a tie and as such the highTDChains
+	// will also include these chains.
 	for _, chain := range b.chains {
-		height, err := chain.height()
+		tip, err := chain.Current()
 		if err != nil {
+			// A chain with no tip is ignored.
+			if err == core.ErrBlockNotFound {
+				continue
+			}
 			return nil, err
 		}
-		if height > curHeight {
-			curHeight = height
-			bestChains = []*Chain{chain}
-		} else if height == curHeight {
-			bestChains = append(bestChains, chain)
+		cmpResult := tip.GetTotalDifficulty().Cmp(curHighestTD)
+		if cmpResult > 0 {
+			curHighestTD = tip.GetTotalDifficulty()
+			highTDChains = []*Chain{chain}
+		} else if cmpResult == 0 {
+			highTDChains = append(highTDChains, chain)
 		}
 	}
 
-	// When there is a definite best chain, we return it immediately
-	if len(bestChains) == 1 {
-		return bestChains[0], nil
+	// When there is no tie for the total difficulty rule,
+	// we return the only chain immediately
+	if len(highTDChains) == 1 {
+		return highTDChains[0], nil
 	}
 
-	// TODO: At this point there is a tie between two or more chains.
-	// We need to perform tie breaker algorithms.
+	// At this point there is a tie between two or more most difficult chains.
+	// We need to perform tie breaker using rule 2.
+	var oldestChains = []*Chain{}
+	var curOldestTimestamp int64
+	if len(highTDChains) > 1 {
+		for _, chain := range highTDChains {
+			if curOldestTimestamp == 0 || chain.info.Timestamp < curOldestTimestamp {
+				curOldestTimestamp = chain.info.Timestamp
+				oldestChains = []*Chain{chain}
+			} else if chain.info.Timestamp == curOldestTimestamp {
+				oldestChains = append(oldestChains, chain)
+			}
+		}
+	}
 
-	return bestChains[0], nil
+	// When we have just one oldest chain, we return it immediately
+	if len(oldestChains) == 1 {
+		return oldestChains[0], nil
+	}
+
+	// If at this point we still have a tie in
+	// the list of oldest chains, then we find the chain
+	// with the highest pointer address
+	var largestPointerAddrs = []*Chain{}
+	var curLargestPointerAddress *big.Int
+	if len(oldestChains) > 1 {
+		for _, chain := range oldestChains {
+			if curLargestPointerAddress == nil || util.GetPtrAddr(chain).Cmp(curLargestPointerAddress) > 0 {
+				curLargestPointerAddress = util.GetPtrAddr(chain)
+				largestPointerAddrs = []*Chain{chain}
+			} else if util.GetPtrAddr(chain).Cmp(curLargestPointerAddress) == 0 {
+				largestPointerAddrs = append(largestPointerAddrs, chain)
+			}
+		}
+	}
+
+	return largestPointerAddrs[0], nil
 }
 
 // decideBestChain determines and sets the current best chain
@@ -343,6 +391,13 @@ func (b *Blockchain) decideBestChain() error {
 		return err
 	}
 
+	// At this point, we were just not able to choose a best chain.
+	// This will be unlikely and only possible in tests
+	if newBestChain == nil {
+		b.log.Debug("Unable to choose best chain")
+		return fmt.Errorf("unable to choose best chain")
+	}
+
 	if b.bestChain != nil && b.bestChain.GetID() != newBestChain.GetID() {
 		// TODO: re-organization rules here
 		b.log.Info("New best chain discovered. Attempting chain reorganization.",
@@ -352,7 +407,6 @@ func (b *Blockchain) decideBestChain() error {
 
 	b.log.Info("Best chain selected", "ChainID", newBestChain.GetID())
 	b.bestChain = newBestChain
-
 	return nil
 }
 
@@ -420,7 +474,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBl
 		ID:                chain.GetID(),
 		ParentBlockNumber: parentBlockNumber,
 		ParentChainID:     parentChainID,
-		Timestamp:         time.Now().Unix(),
+		Timestamp:         chain.info.Timestamp,
 	}
 
 	chainKey := common.MakeChainKey(chain.GetID().Bytes())

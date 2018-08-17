@@ -74,7 +74,6 @@ var BlockchainTest = func() bool {
 			var block2 core.Block
 
 			BeforeEach(func() {
-				bc.chains = make(map[util.String]*Chain)
 				chain := NewChain("c1", db, cfg, log)
 				block2 = MakeTestBlock(bc, chain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
@@ -175,8 +174,8 @@ var BlockchainTest = func() bool {
 			It("should load all chains", func() {
 				GenesisBlock = block2
 
-				c1 := NewChain("c1", db, cfg, log)
-				c2 := NewChain("c2", db, cfg, log)
+				c1 := NewChain("c_1", db, cfg, log)
+				c2 := NewChain("c_2", db, cfg, log)
 
 				err = bc.saveChain(c1, "", 0)
 				Expect(err).To(BeNil())
@@ -184,11 +183,16 @@ var BlockchainTest = func() bool {
 				err = bc.saveChain(c2, "", 0)
 				Expect(err).To(BeNil())
 
+				err = c1.append(GenesisBlock)
+				Expect(err).To(BeNil())
+
 				err = bc.Up()
 				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(2))
-				Expect(bc.chains["c1"].id).To(Equal(c1.id))
-				Expect(bc.chains["c2"].id).To(Equal(c2.id))
+
+				Expect(bc.chains).To(HaveLen(3))
+				Expect(bc.chains["c_1"].id).To(Equal(c1.id))
+				Expect(bc.chains["c_2"].id).To(Equal(c2.id))
+				Expect(bc.bestChain.id).To(Equal(genesisChain.id))
 			})
 		})
 
@@ -515,115 +519,151 @@ var BlockchainTest = func() bool {
 
 		Describe(".chooseBestChain", func() {
 
-			// Context("with one highest block", func() {
+			var chainA, chainB *Chain
 
-			// 	var chainA, chainB *Chain
-
-			// 	BeforeEach(func() {
-			// 		bc.chains = make(map[util.String]*Chain)
-			// 	})
-
-			// 	BeforeEach(func() {
-			// 		chainA = NewChain("chain_a", db, cfg, log)
-			// 		err := bc.saveChain(chainA, "", 0)
-			// 		Expect(err).To(BeNil())
-			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
-			// 		err = chainA.append(block)
-			// 		Expect(err).To(BeNil())
-			// 	})
-
-			// 	BeforeEach(func() {
-			// 		chainB = NewChain("chain_b", db, cfg, log)
-			// 		err := bc.saveChain(chainB, "", 0)
-			// 		Expect(err).To(BeNil())
-			// 		block, err := wire.BlockFromString(testdata.ChooseBestChainData[0])
-			// 		err = chainB.append(block)
-			// 		Expect(err).To(BeNil())
-			// 	})
-
-			// 	It("should", func() {
-			// 		bc.chooseBestChain()
-			// 		_ = 2
-			// 	})
-
-			// })
-
-			Context("with one highest block", func() {
-
-				var chainA, chainB, chainC *Chain
-
-				BeforeEach(func() {
-					bc.chains = make(map[util.String]*Chain)
+			BeforeEach(func() {
+				genesisChainBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:                 sender,
+					Nonce:                   core.EncodeNonce(1),
+					Difficulty:              new(big.Int).SetInt64(1),
+					OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 				})
+				err := genesisChain.append(genesisChainBlock2)
+				Expect(err).To(BeNil())
+			})
 
-				BeforeEach(func() {
-					chainA = NewChain("chain_a", db, cfg, log)
-					err := bc.saveChain(chainA, "", 0)
-					Expect(err).To(BeNil())
+			Context("test difficulty rule", func() {
 
-					block := MakeTestBlock(bc, chainA, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
+				When("chainA has the most total difficulty", func() {
+
+					BeforeEach(func() {
+						chainA = NewChain("chain_a", db, cfg, log)
+						err := bc.saveChain(chainA, "", 0)
+						Expect(err).To(BeNil())
+
+						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							},
+							Creator:                 sender,
+							Nonce:                   core.EncodeNonce(1),
+							Difficulty:              new(big.Int).SetInt64(1),
+							OverrideTotalDifficulty: new(big.Int).SetInt64(100),
+						})
+
+						err = chainA.append(chainABlock1)
+						Expect(err).To(BeNil())
 					})
 
-					err = chainA.append(block)
-					Expect(err).To(BeNil())
+					It("should return chainA as the best chain since it has a higher total difficulty than the genesis chain", func() {
+						bc.bestChain = nil
+						Expect(bc.chains).To(HaveLen(2))
+						bestChain, err := bc.chooseBestChain()
+						Expect(err).To(BeNil())
+						Expect(bestChain.id).To(Equal(chainA.id))
+					})
 				})
 
-				BeforeEach(func() {
-					chainB = NewChain("chain_b", db, cfg, log)
-					err := bc.saveChain(chainB, "", 0)
-					Expect(err).To(BeNil())
+				When("chainB has the lowest total difficulty", func() {
+					BeforeEach(func() {
+						chainB = NewChain("chain_b", db, cfg, log)
+						err := bc.saveChain(chainB, "", 0)
+						Expect(err).To(BeNil())
 
-					block := MakeTestBlock(bc, chainB, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
+						chainBBlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+							},
+							Creator:                 sender,
+							Nonce:                   core.EncodeNonce(1),
+							Difficulty:              new(big.Int).SetInt64(1),
+							OverrideTotalDifficulty: new(big.Int).SetInt64(5),
+						})
+
+						err = chainB.append(chainBBlock1)
+						Expect(err).To(BeNil())
 					})
 
-					err = chainB.append(block)
-					Expect(err).To(BeNil())
+					It("should return genesis chain as the best chain since it has a higher total difficulty than chainB", func() {
+						bc.bestChain = nil
+						Expect(bc.chains).To(HaveLen(2))
+						bestChain, err := bc.chooseBestChain()
+						Expect(err).To(BeNil())
+						Expect(bestChain.id).To(Equal(genesisChain.id))
+					})
+				})
+			})
+
+			Context("test oldest chain rule", func() {
+
+				When("chainA and genesis chain have the same total difficulty but the genesis chain is older", func() {
+
+					BeforeEach(func() {
+						chainA = NewChain("chain_a", db, cfg, log)
+						err := bc.saveChain(chainA, "", 0)
+						Expect(err).To(BeNil())
+
+						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							},
+							Creator:                 sender,
+							Nonce:                   core.EncodeNonce(1),
+							Difficulty:              new(big.Int).SetInt64(1),
+							OverrideTotalDifficulty: new(big.Int).SetInt64(10),
+						})
+
+						err = chainA.append(chainABlock1)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return genesis chain as the best chain since it has an older chain timestamp", func() {
+						bc.bestChain = nil
+						Expect(bc.chains).To(HaveLen(2))
+						bestChain, err := bc.chooseBestChain()
+						Expect(err).To(BeNil())
+						Expect(bestChain.id).To(Equal(genesisChain.id))
+					})
 				})
 
-				BeforeEach(func() {
-					chainC = NewChain("chain_c", db, cfg, log)
-					err := bc.saveChain(chainC, "", 0)
-					Expect(err).To(BeNil())
+			})
 
-					block := MakeTestBlock(bc, chainC, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
+			Context("test largest point address rule", func() {
+				When("chainA and genesis chain have the same total difficulty and chain age", func() {
+
+					BeforeEach(func() {
+						chainA = NewChain("chain_a", db, cfg, log)
+						chainA.info.Timestamp = genesisChain.info.Timestamp
+						err := bc.saveChain(chainA, "", 0)
+						Expect(err).To(BeNil())
+
+						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							},
+							Creator:                 sender,
+							Nonce:                   core.EncodeNonce(1),
+							Difficulty:              new(big.Int).SetInt64(1),
+							OverrideTotalDifficulty: new(big.Int).SetInt64(10),
+						})
+
+						err = chainA.append(chainABlock1)
+						Expect(err).To(BeNil())
 					})
-					err = chainC.append(block)
-					Expect(err).To(BeNil())
 
-					block2 := MakeTestBlock(bc, chainC, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
+					It("should return the chain with the largest pointer address", func() {
+						bc.bestChain = nil
+						Expect(bc.chains).To(HaveLen(2))
+						bestChain, err := bc.chooseBestChain()
+						Expect(err).To(BeNil())
+						delete(bc.chains, bestChain.id)
+						for _, leastChain := range bc.chains {
+							Expect(util.GetPtrAddr(leastChain).Cmp(util.GetPtrAddr(bestChain))).To(Equal(-1))
+						}
 					})
-					err = chainC.append(block2)
-					Expect(err).To(BeNil())
-				})
-
-				It("should return 'chain_c' as the highest block", func() {
-					bestChain, err := bc.chooseBestChain()
-					Expect(err).To(BeNil())
-					Expect(bestChain).To(Equal(chainC))
 				})
 			})
 		})

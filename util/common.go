@@ -243,3 +243,12 @@ func StrToDecimal(v string) (decimal.Decimal, error) {
 	}
 	return decimal.NewFromString(v)
 }
+
+// GetPtrAddr takes a pointer and returns the address
+func GetPtrAddr(ptrAddr interface{}) *big.Int {
+	ptrAddrInt, ok := new(big.Int).SetString(fmt.Sprintf("%d", &ptrAddr), 10)
+	if !ok {
+		panic("could not convert pointer address to big.Int")
+	}
+	return ptrAddrInt
+}
