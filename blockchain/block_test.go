@@ -94,7 +94,7 @@ var BlockTest = func() bool {
 
 					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(2),
@@ -154,7 +154,7 @@ var BlockTest = func() bool {
 
 					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(2),

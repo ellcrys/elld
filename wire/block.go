@@ -39,6 +39,7 @@ type Header struct {
 	StateRoot        util.Hash       `json:"stateRoot" msgpack:"stateRoot"`
 	TransactionsRoot util.Hash       `json:"transactionsRoot" msgpack:"transactionsRoot"`
 	Difficulty       *big.Int        `json:"difficulty" msgpack:"difficulty"`
+	TotalDifficulty  *big.Int        `json:"totalDifficulty" msgpack:"totalDifficulty"`
 	Extra            []byte          `json:"extra" msgpack:"extra"`
 }
 
@@ -107,6 +108,16 @@ func (h *Header) GetDifficulty() *big.Int {
 	return h.Difficulty
 }
 
+// GetTotalDifficulty gets the total difficulty
+func (h *Header) GetTotalDifficulty() *big.Int {
+	return h.TotalDifficulty
+}
+
+// SetTotalDifficulty sets the total difficulty
+func (h *Header) SetTotalDifficulty(td *big.Int) {
+	h.TotalDifficulty = td
+}
+
 // GetTimestamp gets the time stamp
 func (h *Header) GetTimestamp() int64 {
 	return h.Timestamp
@@ -127,6 +138,9 @@ func (h *Header) Copy() core.Header {
 	newH := *h
 	if newH.Difficulty = new(big.Int); h.Difficulty != nil {
 		newH.Difficulty.Set(h.Difficulty)
+	}
+	if newH.TotalDifficulty = new(big.Int); h.TotalDifficulty != nil {
+		newH.TotalDifficulty.Set(h.TotalDifficulty)
 	}
 	return &newH
 }
@@ -160,16 +174,18 @@ func (b *Block) HashToHex() string {
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (b *Block) EncodeMsgpack(enc *msgpack.Encoder) error {
 	difficultyStr := b.Header.Difficulty.String()
-	return enc.Encode(b.Header, b.Transactions, b.Hash, b.Sig, difficultyStr)
+	tdStr := b.Header.TotalDifficulty.String()
+	return enc.Encode(b.Header, b.Transactions, b.Hash, b.Sig, difficultyStr, tdStr)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
-	var difficultyStr string
-	if err := dec.Decode(&b.Header, &b.Transactions, &b.Hash, &b.Sig, &difficultyStr); err != nil {
+	var difficultyStr, tdStr string
+	if err := dec.Decode(&b.Header, &b.Transactions, &b.Hash, &b.Sig, &difficultyStr, &tdStr); err != nil {
 		return err
 	}
 	b.Header.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
+	b.Header.TotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
 	return nil
 }
 

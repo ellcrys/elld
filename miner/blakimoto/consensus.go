@@ -45,6 +45,15 @@ var (
 // VerifyHeader checks whether a header conforms to the consensus rules
 func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Header, seal bool) error {
 
+	// Get the header of the block's parent.
+	parent, err := chain.GetHeaderByHash(header.GetParentHash())
+	if err != nil {
+		if err != core.ErrBlockExists {
+			return err
+		}
+		return ErrUnknownParent
+	}
+
 	// Ensure that the header's extra-data section is of a reasonable size
 	if uint64(len(header.GetExtra())) > params.MaximumExtraDataSize {
 		return fmt.Errorf("extra-data too long: %d > %d", len(header.GetExtra()), params.MaximumExtraDataSize)
@@ -63,6 +72,12 @@ func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Hea
 	expected := b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent)
 	if expected.Cmp(header.GetDifficulty()) != 0 {
 		return fmt.Errorf("invalid difficulty: have %v, want %v", header.GetDifficulty(), expected)
+	}
+
+	// Verify that the total difficulty is parent total difficulty + header total difficulty
+	expectedTd := new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty())
+	if headerTd := header.GetTotalDifficulty(); headerTd.Cmp(expectedTd) != 0 {
+		return fmt.Errorf("invalid total difficulty: have %v, want %v", headerTd, expectedTd)
 	}
 
 	// Verify that the block number is parent's +1
@@ -98,6 +113,7 @@ func CalcDifficulty(time uint64, parent core.Header) *big.Int {
 var (
 	// expDiffPeriod = big.NewInt(100000)
 	expDiffPeriod = big.NewInt(3)
+	big0          = big.NewInt(0)
 	big1          = big.NewInt(1)
 	big2          = big.NewInt(2)
 )
@@ -162,8 +178,8 @@ func (b *Blakimoto) VerifySeal(chain core.ChainReader, header core.Header) error
 	return nil
 }
 
-// Prepare initializes the difficulty field of a
-// header to conform to the protocol
+// Prepare initializes the difficulty and
+// total difficulty fields of a header to conform to the protocol
 func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 
 	// Get the header of the block's parent.
@@ -176,6 +192,7 @@ func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 	}
 
 	header.SetDifficulty(b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent))
+	header.SetTotalDifficulty(new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty()))
 	return nil
 }
 
