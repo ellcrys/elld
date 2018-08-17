@@ -439,7 +439,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
-	b.log.Debug("Processing block", "Hash", block.GetHash().HexStr())
+	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().HexStr())
 
 	// If ever we forgot to set the transaction pool,
 	// the client should be forced to exit.
