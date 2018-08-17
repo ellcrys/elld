@@ -148,7 +148,7 @@ func (m *Miner) Mine() {
 		// Get a proposed block compatible with the
 		// main chain and the current block.
 		m.proposedBlock, err = m.getProposedBlock([]core.Transaction{
-			wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
+			wire.NewTx(wire.TxTypeAlloc, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
 		})
 		if err != nil {
 			m.log.Error("Proposed block is not valid", "Error", err)
@@ -196,6 +196,7 @@ func (m *Miner) Mine() {
 		m.log.Info(color.GreenString("New block mined"),
 			"Number", block.GetNumber(),
 			"Difficulty", block.GetHeader().GetDifficulty(),
+			"TotalDifficulty", block.GetHeader().GetTotalDifficulty(),
 			"Hashrate", m.blakimoto.Hashrate(),
 			"PoW Time", time.Since(startTime))
 

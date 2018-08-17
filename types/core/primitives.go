@@ -48,6 +48,8 @@ type Header interface {
 	GetStateRoot() util.Hash
 	SetTransactionsRoot(txRoot util.Hash)
 	GetTransactionsRoot() util.Hash
+	GetTotalDifficulty() *big.Int
+	SetTotalDifficulty(*big.Int)
 }
 
 // Account defines an interface for an account

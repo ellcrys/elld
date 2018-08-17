@@ -259,7 +259,7 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 		switch tx.GetType() {
 		case wire.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
-		case wire.TxTypeAllocCoin:
+		case wire.TxTypeAlloc:
 			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
 

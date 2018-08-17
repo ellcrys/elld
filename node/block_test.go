@@ -56,7 +56,7 @@ func BlockTest() bool {
 			BeforeEach(func() {
 				block, err = lpBc.Generate(&core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+						wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -95,7 +95,7 @@ func BlockTest() bool {
 				BeforeEach(func() {
 					block2, err = lpBc.Generate(&core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
+							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -107,7 +107,7 @@ func BlockTest() bool {
 
 					block3, err = lpBc.Generate(&core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAllocCoin, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),

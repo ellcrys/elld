@@ -26,8 +26,8 @@ var (
 	// TxTypeBalance represents a transaction from an account to another account
 	TxTypeBalance int64 = 0x1
 
-	// TxTypeAllocCoin represents a transaction to alloc coins to an account
-	TxTypeAllocCoin int64 = 0x2
+	// TxTypeAlloc represents a transaction to alloc coins to an account
+	TxTypeAlloc int64 = 0x2
 )
 
 // InvokeArgs describes a function to be executed by a blockcode

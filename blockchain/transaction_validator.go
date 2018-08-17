@@ -21,7 +21,7 @@ import (
 // KnownTransactionTypes are the supported transaction types
 var KnownTransactionTypes = []int64{
 	wire.TxTypeBalance,
-	wire.TxTypeAllocCoin,
+	wire.TxTypeAlloc,
 }
 
 // TxsValidator implements a validator for checking
@@ -241,7 +241,7 @@ func (v *TxsValidator) check(tx core.Transaction) (errs []error) {
 		))
 	}
 
-	if tx.GetType() == wire.TxTypeAllocCoin {
+	if tx.GetType() == wire.TxTypeAlloc {
 		// Transaction sender must be the same as the recipient
 		errs = appendErr(errs, validation.Validate(tx.GetFrom(),
 			validation.By(isSameStrRule(tx.GetTo().String(), fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),

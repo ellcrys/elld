@@ -3,6 +3,9 @@ package blockchain
 import (
 	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/ellcrys/elld/miner/blakimoto"
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/types/core"
@@ -90,27 +93,80 @@ var BlockValidatorTest = func() bool {
 			})
 		})
 
-		Describe("", func() {
-			// var block core.Block
+		Describe(".checkPow", func() {
+			var block core.Block
 
-			// BeforeEach(func() {
-			// 	block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-			// 		Transactions: []core.Transaction{
-			// 			wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-			// 		},
-			// 		Creator:           sender,
-			// 		Nonce:             core.EncodeNonce(1),
-			// 		Difficulty:        new(big.Int).SetInt64(131072),
-			// 		OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
-			// 	})
-			// })
+			Context("with block that has an invalid difficulty", func() {
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131072),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+				})
 
-			It("", func() {
-				// validator := NewBlockValidator(block, nil, bc, true, cfg)
-				// // errs := validator.Validate()
-				// parent, _ := bc.ChainReader().GetBlockByHash(block.Header.ParentHash)
-				// err = validator.ethash.VerifyHeader(bc.ChainReader(), block.Header, parent.Header, false)
-				// pp.Println(err, parent.Header.Timestamp, block.Header.Timestamp)
+				It("should return error if difficulty is not valid", func() {
+					validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+					errs := validator.checkPoW()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid difficulty: have 131072, want 131136")))
+				})
+			})
+
+			Context("with block that has a valid difficulty", func() {
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(1),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+					block.GetHeader().SetDifficulty(blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader()))
+					block.SetHash(block.ComputeHash())
+					blockSig, _ := wire.BlockSign(block, sender.PrivKey().Base58())
+					block.SetSignature(blockSig)
+				})
+
+				It("should return error if total difficulty is invalid", func() {
+					validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+					errs := validator.checkPoW()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs[0].Error()).To(ContainSubstring("field:parentHash, error:invalid total difficulty"))
+				})
+			})
+
+			Context("with valid difficulty and total difficulty", func() {
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(1),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+					diff := blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader())
+					block.GetHeader().SetDifficulty(diff)
+					tDiff := new(big.Int).Add(genesisBlock.GetHeader().GetTotalDifficulty(), diff)
+					block.GetHeader().SetTotalDifficulty(tDiff)
+					block.SetHash(block.ComputeHash())
+					blockSig, _ := wire.BlockSign(block, sender.PrivKey().Base58())
+					block.SetSignature(blockSig)
+				})
+
+				It("should return nil; No error", func() {
+					validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+					errs := validator.checkPoW()
+					Expect(errs).To(BeNil())
+				})
 			})
 		})
 	})

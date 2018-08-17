@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -105,6 +106,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
 			Timestamp:        time.Now().Unix(),
+			TotalDifficulty:  new(big.Int).SetInt64(0),
 		},
 		ChainReader: chain.ChainReader(),
 	}
