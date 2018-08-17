@@ -42,11 +42,12 @@ func (m *BlockchainMeta) JSON() ([]byte, error) {
 // GenerateBlockParams represents parameters
 // required for block generation.
 type GenerateBlockParams struct {
-	OverrideParentHash util.Hash
-	Transactions       []Transaction
-	Creator            *crypto.Key
-	Nonce              BlockNonce
-	Difficulty         *big.Int
-	OverrideStateRoot  util.Hash
-	OverrideTimestamp  int64
+	OverrideParentHash      util.Hash
+	Transactions            []Transaction
+	Creator                 *crypto.Key
+	Nonce                   BlockNonce
+	Difficulty              *big.Int
+	OverrideTotalDifficulty *big.Int
+	OverrideStateRoot       util.Hash
+	OverrideTimestamp       int64
 }

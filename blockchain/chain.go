@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/ellcrys/elld/types/core"
 
@@ -62,7 +63,8 @@ func NewChain(id util.String, db elldb.DB, cfg *config.EngineConfig, log logger.
 	chain.chainLock = &sync.RWMutex{}
 	chain.log = log
 	chain.info = &core.ChainInfo{
-		ID: id,
+		ID:        id,
+		Timestamp: time.Now().UnixNano(),
 	}
 	return chain
 }
