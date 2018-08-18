@@ -289,7 +289,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 
 	var parentBlock core.Block
 	var chainTip core.Header
-	var doNewChain bool
+	var createNewChain bool
 	var err error
 
 	// find the chain that is compatible with the block.
@@ -315,7 +315,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		} else if block.GetHeader().GetNumber() < chainTip.GetNumber() {
 			// Since this block is of a lower height than the current
 			// block in the chain, it should result in new chain.
-			doNewChain = true
+			createNewChain = true
 			b.log.Info("Stale block found. Chain height is higher. Child chain will be created",
 				"BlockNo", block.GetNumber(),
 				"ChainHeight", chainTip.GetNumber())
@@ -323,7 +323,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		} else if block.GetNumber() == chainTip.GetNumber() {
 			// Here block height and the chain height are the same.
 			// A new chain must be created
-			doNewChain = true
+			createNewChain = true
 			b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
 				"BlockNo", block.GetNumber(),
 				"ChainHeight", chainTip.GetNumber())
@@ -344,7 +344,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
-	if chainTip != nil && doNewChain {
+	if chainTip != nil && createNewChain {
 		// create the new chain, set its root to the parent of the forked block
 		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
 			tx.Rollback()
@@ -365,8 +365,8 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		return nil, err
 	}
 
-	// Compare the state root in the block header with the root obtained
-	// from the mock execution of the block.
+	// Compare the state root in the block header with
+	// the root obtained from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
 		tx.Rollback()
 		b.log.Error("Compute state root and block state root do not match",
@@ -376,27 +376,30 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		return nil, core.ErrBlockStateRootInvalid
 	}
 
-	// Next we need to update the blockchain objects in the store
-	// as described by the state objects
-	var batchObjs []*elldb.KVObject
-	for _, so := range stateObjs {
-		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
-	}
-	if err := txOp.Tx.Put(batchObjs); err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("failed to add state object to store: %s", err)
+	if !createNewChain {
+		// For non-side chains, we need to update the world
+		// state using the latest state objects derived
+		// from executing the block
+		var batchObjs []*elldb.KVObject
+		for _, so := range stateObjs {
+			batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
+		}
+		if err := txOp.Tx.Put(batchObjs); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("failed to add state object to store: %s", err)
+		}
+
+		// We will also index the transactions so they can are queryable
+		if err := chain.PutTransactions(block.GetTransactions(), txOp); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("put transaction failed: %s", err)
+		}
 	}
 
 	// At this point, the block is good to go. We add it to the chain
 	if err := chain.append(block, txOp); err != nil {
 		tx.Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
-	}
-
-	// Index the transactions so they can be queried directly
-	if err := chain.PutTransactions(block.GetTransactions(), txOp); err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("put transaction failed: %s", err)
 	}
 
 	// Commit the transaction
