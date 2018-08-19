@@ -48,15 +48,15 @@ var _ = Describe("Leveldb", func() {
 		}
 
 		It("should successfully put transactions", func() {
-			err = store.PutTransactions(txs)
+			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
+			r := store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
 			var tx wire.Transaction
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[0]))
 
-			r = store.db.GetByPrefix(common.MakeTxKey(store.chainID.Bytes(), txs[1].GetHash().Bytes()))
+			r = store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[1].GetHash().Bytes()))
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[1]))
 		})
@@ -70,7 +70,7 @@ var _ = Describe("Leveldb", func() {
 		}
 
 		It("should successfully put transactions", func() {
-			err = store.PutTransactions(txs)
+			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
 			tx := store.GetTransaction(txs[0].GetHash())

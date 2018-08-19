@@ -490,7 +490,7 @@ var BlockchainTest = func() bool {
 				})
 
 				chain.append(block)
-				err = chain.PutTransactions(block.GetTransactions())
+				err = chain.PutTransactions(block.GetTransactions(), block.GetNumber())
 				Expect(err).To(BeNil())
 			})
 

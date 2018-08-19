@@ -108,11 +108,11 @@ func (s *ChainStore) GetBlock(number uint64, opts ...core.CallOp) (core.Block, e
 }
 
 // PutTransactions stores a collection of transactions
-func (s *ChainStore) PutTransactions(txs []core.Transaction, opts ...core.CallOp) error {
+func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	for i, tx := range txs {
-		txKey := common.MakeTxKey(s.chainID.Bytes(), tx.GetHash().Bytes())
+		txKey := common.MakeTxKey(s.chainID.Bytes(), blockNumber, tx.GetHash().Bytes())
 		if err := txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
 			txOp.Rollback()
 			return fmt.Errorf("index %d: %s", i, err)
@@ -291,7 +291,7 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) core.Tr
 	var tx wire.Transaction
 	var txOp = common.GetTxOp(s.db, opts...)
 
-	s.get(common.MakeTxKey(s.chainID.Bytes(), hash.Bytes()), &result, txOp)
+	s.get(common.MakeTxQueryKey(s.chainID.Bytes(), hash.Bytes()), &result, txOp)
 	if len(result) == 0 {
 		txOp.Rollback()
 		return nil

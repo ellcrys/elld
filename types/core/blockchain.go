@@ -34,7 +34,7 @@ type Chainer interface {
 	GetAccount(address util.String, opts ...CallOp) (Account, error)
 
 	// PutTransactions stores a collection of transactions
-	PutTransactions(txs []Transaction, opts ...CallOp) error
+	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
 	// GetTransaction gets a transaction by hash
 	GetTransaction(hash util.Hash) Transaction

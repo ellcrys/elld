@@ -410,6 +410,13 @@ func (b *Blockchain) decideBestChain() error {
 	return nil
 }
 
+// reOrg overwrites the main chain with the blocks of
+// the sidechain beginning from sidechain parent block + 1.
+// NOTE: This method must be called with chain lock held by the caller.
+func (b *Blockchain) reOrg(sidechain *Chain) error {
+	return nil
+}
+
 func (b *Blockchain) addRejectedBlock(block core.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()

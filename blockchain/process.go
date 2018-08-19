@@ -390,7 +390,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		}
 
 		// We will also index the transactions so they can are queryable
-		if err := chain.PutTransactions(block.GetTransactions(), txOp); err != nil {
+		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
 			tx.Rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
 		}
@@ -415,7 +415,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	// decide and set which chain is the best chain
 	// This could potentially cause a reorganization
 	if err := b.decideBestChain(); err != nil {
-		b.log.Error("Failed to decide best chain")
+		b.log.Error("Failed to decide best chain", "Err", err)
 		return nil, fmt.Errorf("failed to choose best chain: %s", err)
 	}
 

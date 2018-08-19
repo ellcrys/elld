@@ -89,7 +89,7 @@ var TransactionValidatorTest = func() bool {
 
 				BeforeEach(func() {
 					tx = genesisBlock.GetTransactions()[0]
-					err = genesisChain.PutTransactions([]core.Transaction{tx})
+					err = genesisChain.PutTransactions([]core.Transaction{tx}, genesisBlock.GetNumber())
 					Expect(err).To(BeNil())
 				})
 

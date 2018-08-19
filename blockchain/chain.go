@@ -268,11 +268,17 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...core.CallOp) (core.Tree, e
 }
 
 // PutTransactions stores a collection of transactions in the chain
-func (c *Chain) PutTransactions(txs []core.Transaction, opts ...core.CallOp) error {
-	return c.store.PutTransactions(txs, opts...)
+func (c *Chain) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
+	return c.store.PutTransactions(txs, blockNumber, opts...)
 }
 
 // GetTransaction gets a transaction by hash
 func (c *Chain) GetTransaction(hash util.Hash) core.Transaction {
 	return c.store.GetTransaction(hash)
+}
+
+// removeBlock deletes a block and all objects
+// associated to it such as transactions, accounts etc.
+func (c *Chain) removeBlock(number uint64) error {
+	return nil
 }

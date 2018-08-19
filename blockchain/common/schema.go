@@ -94,8 +94,19 @@ func MakeChainsQueryKey() []byte {
 }
 
 // MakeTxKey constructs a key for storing a transaction
-func MakeTxKey(chainID, txHash []byte) []byte {
-	return elldb.MakeKey(nil,
+func MakeTxKey(chainID []byte, blockNumber uint64, txHash []byte) []byte {
+	return elldb.MakeKey(
+		EncodeBlockNumber(blockNumber),
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeTransaction,
+		txHash,
+	)
+}
+
+// MakeTxQueryKey constructs a key for querying a transaction
+func MakeTxQueryKey(chainID []byte, txHash []byte) []byte {
+	return elldb.MakePrefix(
 		ObjectTypeChain,
 		chainID,
 		ObjectTypeTransaction,
