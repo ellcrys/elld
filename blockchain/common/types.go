@@ -21,18 +21,18 @@ type TxOp struct {
 }
 
 // Closed gets the status of the transaction
-func (t TxOp) Closed() bool {
+func (t *TxOp) Closed() bool {
 	return t.finished
 }
 
 // GetName returns the name of the op
-func (t TxOp) GetName() string {
+func (t *TxOp) GetName() string {
 	return "TxOp"
 }
 
 // Commit commits the transaction if it has not been done before.
 // It ignores the call if CanFinish is false.
-func (t TxOp) Commit() error {
+func (t *TxOp) Commit() error {
 	if !t.CanFinish || t.finished {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (t TxOp) Commit() error {
 
 // Rollback rolls back the transaction if it has not been done before.
 // It ignores the call if CanFinish is false.
-func (t TxOp) Rollback() error {
+func (t *TxOp) Rollback() error {
 	if !t.CanFinish || t.finished {
 		return nil
 	}

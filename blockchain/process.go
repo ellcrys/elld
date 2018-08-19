@@ -340,7 +340,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	}
 
 	tx, _ := chain.store.NewTx()
-	txOp := common.TxOp{Tx: tx, CanFinish: false}
+	txOp := &common.TxOp{Tx: tx, CanFinish: false}
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
@@ -360,7 +360,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	// state root should the state object be applied to the blockchain state tree.
 	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
-		tx.Rollback()
+		txOp.Rollback()
 		b.log.Error("Block execution failed", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	// Compare the state root in the block header with
 	// the root obtained from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
-		tx.Rollback()
+		txOp.Rollback()
 		b.log.Error("Compute state root and block state root do not match",
 			"BlockNo", block.GetNumber(),
 			"BlockStateRoot", block.GetHeader().GetStateRoot().HexStr(),
@@ -385,26 +385,27 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 			batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
 		}
 		if err := txOp.Tx.Put(batchObjs); err != nil {
-			tx.Rollback()
+			txOp.Rollback()
 			return nil, fmt.Errorf("failed to add state object to store: %s", err)
 		}
 
 		// We will also index the transactions so they can are queryable
 		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
-			tx.Rollback()
+			txOp.Rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
 		}
 	}
 
 	// At this point, the block is good to go. We add it to the chain
 	if err := chain.append(block, txOp); err != nil {
-		tx.Rollback()
+		txOp.Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
 
 	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
+	txOp.CanFinish = true
+	if err := txOp.Commit(); err != nil {
+		txOp.Rollback()
 		return nil, fmt.Errorf("commit error: %s", err)
 	}
 

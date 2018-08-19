@@ -66,9 +66,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, e
 		return nil, err
 	}
 
-	txOp.Commit()
-
-	return &block, nil
+	return &block, txOp.Commit()
 }
 
 // GetHeader gets the header of the current block in the chain
@@ -152,9 +150,7 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 		return nil, core.ErrDecodeFailed("")
 	}
 
-	txOp.Commit()
-
-	return &block, nil
+	return &block, txOp.Commit()
 }
 
 // GetBlockByHash fetches a block by its block hash.
@@ -184,9 +180,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 		return nil, core.ErrBlockNotFound
 	}
 
-	txOp.Commit()
-
-	return &block, nil
+	return &block, txOp.Commit()
 }
 
 // GetBlockByNumberAndHash finds by number and hash
@@ -213,15 +207,12 @@ func (s *ChainStore) GetBlockByNumberAndHash(number uint64, hash util.Hash, opts
 // Returns error if a block with same number exists.
 func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
-
 	if err := s.putBlock(block, txOp); err != nil {
 		txOp.Rollback()
 		return err
 	}
 
-	txOp.Commit()
-
-	return nil
+	return txOp.Commit()
 }
 
 // putBlock adds a block to the store using the provided transaction object.
@@ -231,13 +222,12 @@ func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	// check if block already exists. return nil if block exists.
-	hasBlock, err := s.hasBlock(block.GetNumber(), common.TxOp{Tx: txOp.Tx})
+	hasBlock, err := s.hasBlock(block.GetNumber(), &common.TxOp{Tx: txOp.Tx})
 	if err != nil {
 		txOp.Rollback()
 		return fmt.Errorf("failed to check block existence: %s", err)
 	} else if hasBlock {
-		txOp.Commit()
-		return nil
+		return txOp.Commit()
 	}
 
 	value := util.ObjectToBytes(block)
@@ -251,9 +241,18 @@ func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 		return fmt.Errorf("failed to put block: %s", err)
 	}
 
-	txOp.Commit()
+	return txOp.Commit()
+}
 
-	return nil
+// Delete deletes objects
+func (s *ChainStore) Delete(key []byte, opts ...core.CallOp) error {
+	var txOp = common.GetTxOp(s.db, opts...)
+	if err := txOp.Tx.DeleteByPrefix(key); err != nil {
+		txOp.Rollback()
+		return fmt.Errorf("failed to remove object: %s", err)
+	}
+
+	return txOp.Commit()
 }
 
 // Put stores an object
@@ -266,9 +265,7 @@ func (s *ChainStore) put(key []byte, value []byte, opts ...core.CallOp) error {
 		return fmt.Errorf("failed to put object: %s", err)
 	}
 
-	txOp.Commit()
-
-	return nil
+	return txOp.Commit()
 }
 
 // Get an object by key (and optionally by prefixes)
@@ -337,9 +334,7 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 		return nil, err
 	}
 
-	txOp.Commit()
-
-	return &account, nil
+	return &account, txOp.Commit()
 }
 
 // NewTx creates and returns a transaction

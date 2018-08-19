@@ -104,6 +104,9 @@ type Tx interface {
 	// If first is set to true, it begins from the first item, otherwise, the last
 	Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool)
 
+	// DeleteByPrefix deletes one or many records by prefix
+	DeleteByPrefix([]byte) error
+
 	// Commit commits the transaction
 	Commit() error
 

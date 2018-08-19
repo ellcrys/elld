@@ -44,6 +44,9 @@ type ChainStorer interface {
 	// Current gets the current block at the tip of the chain
 	Current(opts ...core.CallOp) (core.Block, error)
 
+	// Delete deletes objects
+	Delete(key []byte, opts ...core.CallOp) error
+
 	// NewTx creates and returns a transaction
 	NewTx() (elldb.Tx, error)
 }

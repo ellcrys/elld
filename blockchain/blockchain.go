@@ -126,8 +126,8 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("genesis block error: %s", err)
 		}
 
-		b.bestChain = gChain
 		b.log.Debug("Genesis block successfully created", "Hash", gBlock.GetHash().HexStr())
+		return nil
 	}
 
 	// Load all known chains
@@ -570,7 +570,7 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock 
 	chain.parentBlock = parentBlock
 
 	// store a record of this chain in the store
-	b.saveChain(chain, parentChain.GetID(), parentBlock.GetNumber(), common.TxOp{Tx: tx, CanFinish: false})
+	b.saveChain(chain, parentChain.GetID(), parentBlock.GetNumber(), &common.TxOp{Tx: tx, CanFinish: false})
 
 	return chain, nil
 }

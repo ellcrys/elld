@@ -15,59 +15,59 @@ var BlockchainTest = func() bool {
 
 	return Describe("Blockchain", func() {
 
-		Describe(".SetStore", func() {
-			It("should set store", func() {
-				bc := New(nil, cfg, log)
-				bc.SetDB(db)
-			})
-		})
+		// Describe(".SetStore", func() {
+		// 	It("should set store", func() {
+		// 		bc := New(nil, cfg, log)
+		// 		bc.SetDB(db)
+		// 	})
+		// })
 
-		Describe(".addChain", func() {
-			It("should add chain", func() {
-				chain := NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(1))
-				err = bc.addChain(chain)
-				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(2))
-			})
-		})
+		// Describe(".addChain", func() {
+		// 	It("should add chain", func() {
+		// 		chain := NewChain("chain_id", db, cfg, log)
+		// 		Expect(err).To(BeNil())
+		// 		Expect(bc.chains).To(HaveLen(1))
+		// 		err = bc.addChain(chain)
+		// 		Expect(err).To(BeNil())
+		// 		Expect(bc.chains).To(HaveLen(2))
+		// 	})
+		// })
 
-		Describe(".removeChain", func() {
+		// Describe(".removeChain", func() {
 
-			var chain *Chain
+		// 	var chain *Chain
 
-			BeforeEach(func() {
-				chain = NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-				err = bc.addChain(chain)
-				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(2))
-			})
+		// 	BeforeEach(func() {
+		// 		chain = NewChain("chain_id", db, cfg, log)
+		// 		Expect(err).To(BeNil())
+		// 		err = bc.addChain(chain)
+		// 		Expect(err).To(BeNil())
+		// 		Expect(bc.chains).To(HaveLen(2))
+		// 	})
 
-			It("should remove chain", func() {
-				bc.removeChain(chain)
-				Expect(bc.chains).To(HaveLen(1))
-				Expect(bc.chains[chain.GetID()]).To(BeNil())
-			})
-		})
+		// 	It("should remove chain", func() {
+		// 		bc.removeChain(chain)
+		// 		Expect(bc.chains).To(HaveLen(1))
+		// 		Expect(bc.chains[chain.GetID()]).To(BeNil())
+		// 	})
+		// })
 
-		Describe(".hasChain", func() {
+		// Describe(".hasChain", func() {
 
-			var chain *Chain
+		// 	var chain *Chain
 
-			BeforeEach(func() {
-				chain = NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-			})
+		// 	BeforeEach(func() {
+		// 		chain = NewChain("chain_id", db, cfg, log)
+		// 		Expect(err).To(BeNil())
+		// 	})
 
-			It("should return true if chain exists", func() {
-				Expect(bc.hasChain(chain)).To(BeFalse())
-				err = bc.addChain(chain)
-				Expect(err).To(BeNil())
-				Expect(bc.hasChain(chain)).To(BeTrue())
-			})
-		})
+		// 	It("should return true if chain exists", func() {
+		// 		Expect(bc.hasChain(chain)).To(BeFalse())
+		// 		err = bc.addChain(chain)
+		// 		Expect(err).To(BeNil())
+		// 		Expect(bc.hasChain(chain)).To(BeTrue())
+		// 	})
+		// })
 
 		Describe(".Up", func() {
 

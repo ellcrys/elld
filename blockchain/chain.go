@@ -201,7 +201,7 @@ func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
-	chainTip, err := c.store.Current(common.TxOp{Tx: txOp.Tx})
+	chainTip, err := c.store.Current(&common.TxOp{Tx: txOp.Tx})
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			txOp.Rollback()
