@@ -99,7 +99,7 @@ type Tx interface {
 	// GetByPrefix gets objects by prefix
 	GetByPrefix([]byte) (result []*KVObject)
 
-	// Iterate finds a set of objects by prefix and passes them ro iterFunc
+	// Iterate finds a set of objects by prefix and passes them to iterFunc
 	// for further processing. If iterFunc returns true, the iterator is immediately released.
 	// If first is set to true, it begins from the first item, otherwise, the last
 	Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool)

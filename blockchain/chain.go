@@ -280,5 +280,60 @@ func (c *Chain) GetTransaction(hash util.Hash) core.Transaction {
 // removeBlock deletes a block and all objects
 // associated to it such as transactions, accounts etc.
 func (c *Chain) removeBlock(number uint64) error {
-	return nil
+
+	var err error
+	tx, _ := c.store.NewTx()
+	txOp := &common.TxOp{Tx: tx, CanFinish: false}
+
+	// get the block.
+	// Returns ErrBlockNotFound if block does not exist
+	_, err = c.store.GetBlock(number, txOp)
+	if err != nil {
+		return err
+	}
+
+	// delete the block
+	blockKey := common.MakeBlockKey(c.id.Bytes(), number)
+	if err = c.store.Delete(blockKey, txOp); err != nil {
+		txOp.Tx.Rollback()
+		return fmt.Errorf("failed to delete block: %s", err)
+	}
+
+	// find account objects associated to this block
+	// in the chain and and delete them
+	err = nil
+	accountsKey := common.MakeAccountsKey(c.id.Bytes())
+	txOp.Tx.Iterate(accountsKey, false, func(kv *elldb.KVObject) bool {
+		var bn = common.DecodeBlockNumber(kv.Key)
+		if bn == number {
+			if err = txOp.Tx.DeleteByPrefix(kv.GetKey()); err != nil {
+				return true
+			}
+		}
+		return false
+	})
+	if err != nil {
+		txOp.Tx.Rollback()
+		return fmt.Errorf("failed to delete accounts: %s", err)
+	}
+
+	// find transactions objects associated to this block
+	// in the chain and delete them
+	err = nil
+	txsKey := common.MakeTxsQueryKey(c.id.Bytes())
+	txOp.Tx.Iterate(txsKey, false, func(kv *elldb.KVObject) bool {
+		var bn = common.DecodeBlockNumber(kv.Key)
+		if bn == number {
+			if err = txOp.Tx.DeleteByPrefix(kv.GetKey()); err != nil {
+				return true
+			}
+		}
+		return false
+	})
+	if err != nil {
+		txOp.Tx.Rollback()
+		return fmt.Errorf("failed to delete transactions: %s", err)
+	}
+
+	return txOp.Tx.Commit()
 }

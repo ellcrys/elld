@@ -82,6 +82,23 @@ var _ = Describe("Leveldb", func() {
 		})
 	})
 
+	Describe(".Delete", func() {
+		var txs = []core.Transaction{
+			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+		}
+
+		It("should successfully delete", func() {
+			err = store.PutTransactions(txs, 211)
+			Expect(err).To(BeNil())
+
+			err := store.Delete(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
+			Expect(err).To(BeNil())
+
+			tx := store.GetTransaction(txs[0].GetHash())
+			Expect(tx).To(BeNil())
+		})
+	})
+
 	Describe(".CreateAccount", func() {
 		It("should successfully create an account", func() {
 			var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
