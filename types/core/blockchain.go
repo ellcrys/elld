@@ -19,13 +19,16 @@ type Chainer interface {
 	GetID() util.String
 
 	// GetBlock gets a block in the chain
-	GetBlock(uint64) (Block, error)
+	GetBlock(uint64, ...CallOp) (Block, error)
 
 	// GetParentBlock gets the chain's parent block if it has one
 	GetParentBlock() Block
 
-	// GetParentInfo gets the chain's parent information
-	GetParentInfo() *ChainInfo
+	// GetInfo gets the chain's parent information
+	GetInfo() *ChainInfo
+
+	// GetParent returns the parent chain
+	GetParent() Chainer
 
 	// CreateAccount creates an account on a target block
 	CreateAccount(targetBlockNum uint64, account Account, opts ...CallOp) error
@@ -34,7 +37,7 @@ type Chainer interface {
 	GetAccount(address util.String, opts ...CallOp) (Account, error)
 
 	// PutTransactions stores a collection of transactions
-	PutTransactions(txs []Transaction, opts ...CallOp) error
+	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
 	// GetTransaction gets a transaction by hash
 	GetTransaction(hash util.Hash) Transaction

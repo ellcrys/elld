@@ -67,6 +67,9 @@ type Blockchain struct {
 	// eventEmitter allows the manager to listen to specific
 	// events or broadcast events about its state
 	eventEmitter *emitter.Emitter
+
+	// reOrgActive indicates an ongoing reorganization
+	reOrgActive bool
 }
 
 // New creates a Blockchain instance.
@@ -126,8 +129,8 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("genesis block error: %s", err)
 		}
 
-		b.bestChain = gChain
 		b.log.Debug("Genesis block successfully created", "Hash", gBlock.GetHash().HexStr())
+		return nil
 	}
 
 	// Load all known chains
@@ -259,7 +262,7 @@ func (b *Blockchain) HybridMode() (bool, error) {
 
 // findChainByBlockHash finds the chain where the block with the hash
 // provided hash exist on. It also returns the header of highest block of the chain.
-func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, chain *Chain, chainTipHeader core.Header, err error) {
+func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...core.CallOp) (block core.Block, chain *Chain, chainTipHeader core.Header, err error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -268,7 +271,7 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, cha
 		// Find the block by its hash. If we don't
 		// find the block in this chain, we continue to the
 		// next chain.
-		block, err := chain.getBlockByHash(hash)
+		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -278,7 +281,7 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, cha
 
 		// At the point, we have found chain the block belongs to.
 		// Next we get the header of the block at the tip of the chain.
-		chainTipHeader, err := chain.Current()
+		chainTipHeader, err := chain.Current(opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -385,7 +388,7 @@ func (b *Blockchain) decideBestChain() error {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	newBestChain, err := b.chooseBestChain()
+	proposedBestChain, err := b.chooseBestChain()
 	if err != nil {
 		b.log.Error("Unable to determine best chain", "Err", err.Error())
 		return err
@@ -393,21 +396,109 @@ func (b *Blockchain) decideBestChain() error {
 
 	// At this point, we were just not able to choose a best chain.
 	// This will be unlikely and only possible in tests
-	if newBestChain == nil {
+	if proposedBestChain == nil {
 		b.log.Debug("Unable to choose best chain")
 		return fmt.Errorf("unable to choose best chain")
 	}
 
-	if b.bestChain != nil && b.bestChain.GetID() != newBestChain.GetID() {
-		// TODO: re-organization rules here
+	// If the current best chain and the new best chain
+	// are not the same. Then we must reorganize
+	if b.bestChain != nil && b.bestChain.GetID() != proposedBestChain.GetID() {
 		b.log.Info("New best chain discovered. Attempting chain reorganization.",
-			"CurrentBestChainID", b.bestChain.GetID(), "NewBestChainID", newBestChain.GetID())
-		return err
+			"CurBestChainID", b.bestChain.GetID(), "ProposedChainID", proposedBestChain.GetID())
+
+		b.bestChain, err = b.reOrg(proposedBestChain)
+		if err != nil {
+			return fmt.Errorf("Reorganization error: %s", err)
+		}
+
+		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID())
 	}
 
-	b.log.Info("Best chain selected", "ChainID", newBestChain.GetID())
-	b.bestChain = newBestChain
+	// When no best chain has been set, set
+	// the best chain to the proposed best chain
+	if b.bestChain == nil {
+		b.bestChain = proposedBestChain
+		b.log.Info("Best chain set", "CurBestChainID", b.bestChain.GetID())
+	}
+
 	return nil
+}
+
+// reOrg overwrites the main chain with the blocks of
+// the sidechain beginning from sidechain parent block + 1.
+// Returns the re-organized chain or error.
+//
+// NOTE: This method must be called with write chain lock held by the caller.
+func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
+
+	// indicate the commencement of a re-org
+	b.reOrgActive = true
+	tx, _ := b.db.NewTx()
+	txOp := &common.TxOp{Tx: tx, CanFinish: false}
+
+	// get the tip of the current best chain
+	tip, err := b.bestChain.Current(txOp)
+	if err != nil {
+		txOp.AllowFinish().Rollback()
+		return nil, fmt.Errorf("failed to get best chain tip: %s", err)
+	}
+
+	// get the side chain tip
+	sideTip, err := sidechain.Current(txOp)
+	if err != nil {
+		txOp.AllowFinish().Rollback()
+		return nil, fmt.Errorf("failed to get side chain tip: %s", err)
+	}
+
+	// get the parent block of the side chain
+	parentBlock := sidechain.GetParentBlock()
+	if parentBlock == nil {
+		txOp.AllowFinish().Rollback()
+		return nil, fmt.Errorf("parent block not set on sidechain")
+	}
+
+	// delete blocks from the current best chain,
+	// starting from side chain parent block + 1
+	nextBlockNumber := parentBlock.GetNumber() + 1
+	for nextBlockNumber <= tip.GetNumber() {
+		b.bestChain.removeBlock(nextBlockNumber, txOp)
+		nextBlockNumber++
+	}
+
+	// At this point the blocks that are not in the
+	// side chain have been removed from the main chain.
+	// Now, we will re-process the blocks in the sidechain
+	// targetted for addition in the current best chain
+	nextBlockNumber = parentBlock.GetNumber() + 1
+	for nextBlockNumber <= sideTip.GetNumber() {
+
+		// get the side chain block
+		proposedBlock, err := sidechain.GetBlock(nextBlockNumber, txOp)
+		if err != nil {
+			txOp.AllowFinish().Rollback()
+			return nil, fmt.Errorf("failed to get proposed block: %s", err)
+		}
+
+		// attempt to process and append to
+		// the current main chain
+		if _, err := b.maybeAcceptBlock(proposedBlock, b.bestChain, txOp); err != nil {
+			txOp.AllowFinish().Rollback()
+			return nil, fmt.Errorf("proposed block was not accepted: %s", err)
+		}
+
+		nextBlockNumber++
+	}
+
+	if err := txOp.AllowFinish().Commit(); err != nil {
+		b.reOrgActive = false
+		txOp.AllowFinish().Rollback()
+		return nil, fmt.Errorf("failed to commit: %s", err)
+	}
+
+	b.reOrgActive = false
+
+	return b.bestChain, nil
 }
 
 func (b *Blockchain) addRejectedBlock(block core.Block) {
@@ -438,7 +529,16 @@ func (b *Blockchain) isOrphanBlock(blockHash util.Hash) bool {
 	return b.orphanBlocks.Get(blockHash.HexStr()) != nil
 }
 
+// NewChainFromChainInfo creates an instance of a Chain given a NewChainFromChainInfo
+func (b *Blockchain) NewChainFromChainInfo(ci *core.ChainInfo) *Chain {
+	ch := NewChain(ci.ID, b.db, b.cfg, b.log)
+	ch.info.ParentChainID = ci.ParentChainID
+	ch.info.ParentBlockNumber = ci.ParentBlockNumber
+	return ch
+}
+
 // findChainInfo finds information about chain
+// TODO: search cache first before database
 func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error) {
 
 	var chainInfo core.ChainInfo
@@ -563,7 +663,7 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock 
 	chain.parentBlock = parentBlock
 
 	// store a record of this chain in the store
-	b.saveChain(chain, parentChain.GetID(), parentBlock.GetNumber(), common.TxOp{Tx: tx, CanFinish: false})
+	b.saveChain(chain, parentChain.GetID(), parentBlock.GetNumber(), &common.TxOp{Tx: tx, CanFinish: false})
 
 	return chain, nil
 }

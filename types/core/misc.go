@@ -50,4 +50,5 @@ type GenerateBlockParams struct {
 	OverrideTotalDifficulty *big.Int
 	OverrideStateRoot       util.Hash
 	OverrideTimestamp       int64
+	OverrideChainTip        uint64
 }

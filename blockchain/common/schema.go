@@ -38,7 +38,7 @@ func DecodeBlockNumber(encNum []byte) uint64 {
 	return binary.BigEndian.Uint64(encNum)
 }
 
-// MakeAccountKey constructs a key for an account
+// MakeAccountKey constructs a key for storing/querying an account
 func MakeAccountKey(blockNum uint64, chainID, address []byte) []byte {
 	return elldb.MakeKey(
 		EncodeBlockNumber(blockNum),
@@ -46,6 +46,15 @@ func MakeAccountKey(blockNum uint64, chainID, address []byte) []byte {
 		chainID,
 		ObjectTypeAccount,
 		address,
+	)
+}
+
+// MakeAccountsKey constructs a key for querying all accounts
+func MakeAccountsKey(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeAccount,
 	)
 }
 
@@ -74,7 +83,7 @@ func MakeBlockKey(chainID []byte, blockNumber uint64) []byte {
 	)
 }
 
-// MakeBlocksQueryKey constructs a key for storing a block
+// MakeBlocksQueryKey constructs a key for querying all blocks
 func MakeBlocksQueryKey(chainID []byte) []byte {
 	return elldb.MakeKey(nil,
 		ObjectTypeChain,
@@ -94,12 +103,32 @@ func MakeChainsQueryKey() []byte {
 }
 
 // MakeTxKey constructs a key for storing a transaction
-func MakeTxKey(chainID, txHash []byte) []byte {
-	return elldb.MakeKey(nil,
+func MakeTxKey(chainID []byte, blockNumber uint64, txHash []byte) []byte {
+	return elldb.MakeKey(
+		EncodeBlockNumber(blockNumber),
 		ObjectTypeChain,
 		chainID,
 		ObjectTypeTransaction,
 		txHash,
+	)
+}
+
+// MakeTxQueryKey constructs a key for querying a transaction
+func MakeTxQueryKey(chainID []byte, txHash []byte) []byte {
+	return elldb.MakePrefix(
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeTransaction,
+		txHash,
+	)
+}
+
+// MakeTxsQueryKey constructs a key for querying all transactions in a chain
+func MakeTxsQueryKey(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeTransaction,
 	)
 }
 

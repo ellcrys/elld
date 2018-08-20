@@ -118,20 +118,21 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	var tests = []func() bool{
+		WorldReaderTest,
 		BlockchainTest,
 		ChainTest,
 		ProcessTest,
 		BlockTest,
-		AccountTest,
 		CacheTest,
 		MetadataTest,
 		TransactionValidatorTest,
 		BlockValidatorTest,
+		ChainTransverserTest,
 	}
 
-	for i, t := range tests {
-		Describe(fmt.Sprintf("Test %d", i), func() {
+	Describe(fmt.Sprintf("Tests"), func() {
+		for _, t := range tests {
 			t()
-		})
-	}
+		}
+	})
 })
