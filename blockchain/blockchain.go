@@ -388,7 +388,7 @@ func (b *Blockchain) decideBestChain() error {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
-	newBestChain, err := b.chooseBestChain()
+	proposedBestChain, err := b.chooseBestChain()
 	if err != nil {
 		b.log.Error("Unable to determine best chain", "Err", err.Error())
 		return err
@@ -396,20 +396,32 @@ func (b *Blockchain) decideBestChain() error {
 
 	// At this point, we were just not able to choose a best chain.
 	// This will be unlikely and only possible in tests
-	if newBestChain == nil {
+	if proposedBestChain == nil {
 		b.log.Debug("Unable to choose best chain")
 		return fmt.Errorf("unable to choose best chain")
 	}
 
-	if b.bestChain != nil && b.bestChain.GetID() != newBestChain.GetID() {
-		// TODO: re-organization rules here
+	// If the current best chain and the new best chain
+	// are not the same. Then we must reorganize
+	if b.bestChain != nil && b.bestChain.GetID() != proposedBestChain.GetID() {
 		b.log.Info("New best chain discovered. Attempting chain reorganization.",
-			"CurrentBestChainID", b.bestChain.GetID(), "NewBestChainID", newBestChain.GetID())
-		return err
+			"CurBestChainID", b.bestChain.GetID(), "ProposedChainID", proposedBestChain.GetID())
+
+		b.bestChain, err = b.reOrg(proposedBestChain)
+		if err != nil {
+			return fmt.Errorf("Reorganization error: %s", err)
+		}
+
+		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID())
 	}
 
-	b.log.Info("Best chain selected", "ChainID", newBestChain.GetID())
-	b.bestChain = newBestChain
+	// When no best chain has been set, set
+	// the best chain to the proposed best chain
+	if b.bestChain == nil {
+		b.bestChain = proposedBestChain
+		b.log.Info("Best chain set", "CurBestChainID", b.bestChain.GetID())
+	}
+
 	return nil
 }
 

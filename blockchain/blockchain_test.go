@@ -165,6 +165,7 @@ var BlockchainTest = func() bool {
 				})
 
 				It("should assign new chain as the best chain if no chain is known", func() {
+					bc.bestChain = nil
 					err = bc.Up()
 					Expect(err).To(BeNil())
 					Expect(bc.bestChain).ToNot(BeNil())
