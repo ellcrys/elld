@@ -80,7 +80,7 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 	// find the sender account. Return error if sender account
 	// does not exist. This should never happen here as the caller must
 	// have validated all transactions in the containing block.
-	senderAcct, err = b.getAccount(chain, tx.GetFrom(), opts...)
+	senderAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetFrom(), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sender's account: %s", err)
 	}
@@ -93,7 +93,7 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// find the account of the recipient. If the recipient account does not
 	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
-	recipientAcct, err = b.getAccount(chain, tx.GetTo(), opts...)
+	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
 	if err != nil {
 		if err != core.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -177,7 +177,7 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 
 	// find the account of the recipient. If the account does not exists,
 	// initialize a new account object for the recipient
-	recipientAcct, err = b.getAccount(chain, tx.GetTo(), opts...)
+	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
 	if err != nil {
 		if err != core.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -285,16 +285,16 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 // passed chain. This should only be used for the genesis block.
 //
 // NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, error) {
+func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...core.CallOp) (*Chain, error) {
 
 	var parentBlock core.Block
 	var chainTip core.Header
-	var doNewChain bool
+	var createNewChain bool
 	var err error
 
 	// find the chain that is compatible with the block.
 	if chain == nil {
-		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash())
+		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, err
@@ -315,7 +315,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		} else if block.GetHeader().GetNumber() < chainTip.GetNumber() {
 			// Since this block is of a lower height than the current
 			// block in the chain, it should result in new chain.
-			doNewChain = true
+			createNewChain = true
 			b.log.Info("Stale block found. Chain height is higher. Child chain will be created",
 				"BlockNo", block.GetNumber(),
 				"ChainHeight", chainTip.GetNumber())
@@ -323,7 +323,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		} else if block.GetNumber() == chainTip.GetNumber() {
 			// Here block height and the chain height are the same.
 			// A new chain must be created
-			doNewChain = true
+			createNewChain = true
 			b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
 				"BlockNo", block.GetNumber(),
 				"ChainHeight", chainTip.GetNumber())
@@ -339,15 +339,30 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		}
 	}
 
-	tx, _ := chain.store.NewTx()
-	txOp := common.TxOp{Tx: tx, CanFinish: false}
+	txOp := common.GetTxOp(chain.store.DB(), opts...)
+	if len(opts) == 0 {
+		txOp.CanFinish = false
+	}
+
+	var rollback = func() {
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
+	}
+
+	var commit = func() error {
+		if len(opts) == 0 {
+			return txOp.AllowFinish().Commit()
+		}
+		return nil
+	}
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
-	if chainTip != nil && doNewChain {
+	if chainTip != nil && createNewChain {
 		// create the new chain, set its root to the parent of the forked block
-		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
-			tx.Rollback()
+		if chain, err = b.newChain(txOp.Tx, block, parentBlock, chain); err != nil {
+			rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
 		b.log.Debug("New chain created",
@@ -360,15 +375,15 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	// state root should the state object be applied to the blockchain state tree.
 	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
-		tx.Rollback()
+		rollback()
 		b.log.Error("Block execution failed", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
 
-	// Compare the state root in the block header with the root obtained
-	// from the mock execution of the block.
+	// Compare the state root in the block header with
+	// the root obtained from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
-		tx.Rollback()
+		rollback()
 		b.log.Error("Compute state root and block state root do not match",
 			"BlockNo", block.GetNumber(),
 			"BlockStateRoot", block.GetHeader().GetStateRoot().HexStr(),
@@ -376,32 +391,37 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		return nil, core.ErrBlockStateRootInvalid
 	}
 
-	// Next we need to update the blockchain objects in the store
-	// as described by the state objects
+	// We need to update the world state using
+	// the latest state objects derived from executing the block
 	var batchObjs []*elldb.KVObject
 	for _, so := range stateObjs {
 		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
 	}
 	if err := txOp.Tx.Put(batchObjs); err != nil {
-		tx.Rollback()
+		rollback()
 		return nil, fmt.Errorf("failed to add state object to store: %s", err)
 	}
 
-	// At this point, the block is good to go. We add it to the chain
+	// We will also index the transactions so
+	// they can are queryable but only if the
+	// chain is not a side chain
+	if !chain.HasParent() {
+		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
+			rollback()
+			return nil, fmt.Errorf("put transaction failed: %s", err)
+		}
+	}
+
+	// At this point, the block is good to go.
+	// We add it to the chain
 	if err := chain.append(block, txOp); err != nil {
-		tx.Rollback()
+		rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
 
-	// Index the transactions so they can be queried directly
-	if err := chain.PutTransactions(block.GetTransactions(), txOp); err != nil {
-		tx.Rollback()
-		return nil, fmt.Errorf("put transaction failed: %s", err)
-	}
-
 	// Commit the transaction
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
+	if err := commit(); err != nil {
+		rollback()
 		return nil, fmt.Errorf("commit error: %s", err)
 	}
 
@@ -410,10 +430,13 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	b.addChain(chain)
 
 	// decide and set which chain is the best chain
-	// This could potentially cause a reorganization
-	if err := b.decideBestChain(); err != nil {
-		b.log.Error("Failed to decide best chain")
-		return nil, fmt.Errorf("failed to choose best chain: %s", err)
+	// This could potentially cause a reorganization.
+	// We will skip this step if a reorganization is ongoing
+	if !b.reOrgActive {
+		if err := b.decideBestChain(); err != nil {
+			b.log.Error("Failed to decide best chain", "Err", err)
+			return nil, fmt.Errorf("failed to choose best chain: %s", err)
+		}
 	}
 
 	// set the chain reader on the block

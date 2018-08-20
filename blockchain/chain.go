@@ -84,17 +84,30 @@ func (c *Chain) GetParentBlock() core.Block {
 	return c.parentBlock
 }
 
-// GetParentInfo gets the parent info
-func (c *Chain) GetParentInfo() *core.ChainInfo {
+// GetInfo gets the chain information
+func (c *Chain) GetInfo() *core.ChainInfo {
 	return c.info
 }
 
+// GetParent gets an instance of this chain's parent
+func (c *Chain) GetParent() core.Chainer {
+	if c.info != nil && c.info.ParentChainID != "" {
+		return NewChain(c.info.ParentChainID, c.store.DB(), c.cfg, c.log)
+	}
+	return nil
+}
+
+// HasParent checks whether the chain has a parent
+func (c *Chain) HasParent() bool {
+	return c.GetParent() != nil
+}
+
 // GetBlock fetches a block by its number
-func (c *Chain) GetBlock(number uint64) (core.Block, error) {
+func (c *Chain) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
-	b, err := c.store.GetBlock(number)
+	b, err := c.store.GetBlock(number, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,10 +171,10 @@ func (c *Chain) getBlockHeaderByHash(hash util.Hash) (core.Header, error) {
 }
 
 // getBlockByHash fetches a block by hash
-func (c *Chain) getBlockByHash(hash util.Hash) (core.Block, error) {
+func (c *Chain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
-	return c.store.GetBlockByHash(hash)
+	return c.store.GetBlockByHash(hash, opts...)
 }
 
 // getBlockByNumberAndHash fetches a block by number and hash
@@ -201,7 +214,7 @@ func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
-	chainTip, err := c.store.Current(common.TxOp{Tx: txOp.Tx})
+	chainTip, err := c.store.Current(&common.TxOp{Tx: txOp.Tx})
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			txOp.Rollback()
@@ -268,11 +281,85 @@ func (c *Chain) NewStateTree(noBackLink bool, opts ...core.CallOp) (core.Tree, e
 }
 
 // PutTransactions stores a collection of transactions in the chain
-func (c *Chain) PutTransactions(txs []core.Transaction, opts ...core.CallOp) error {
-	return c.store.PutTransactions(txs, opts...)
+func (c *Chain) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
+	return c.store.PutTransactions(txs, blockNumber, opts...)
 }
 
 // GetTransaction gets a transaction by hash
 func (c *Chain) GetTransaction(hash util.Hash) core.Transaction {
 	return c.store.GetTransaction(hash)
+}
+
+// removeBlock deletes a block and all objects
+// associated to it such as transactions, accounts etc.
+func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
+
+	var err error
+	txOp := common.GetTxOp(c.store.DB(), opts...)
+	txOp.CanFinish = false
+
+	// get the block.
+	// Returns ErrBlockNotFound if block does not exist
+	_, err = c.store.GetBlock(number, txOp)
+	if err != nil {
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
+		return err
+	}
+
+	// delete the block
+	blockKey := common.MakeBlockKey(c.id.Bytes(), number)
+	if err = c.store.Delete(blockKey, txOp); err != nil {
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
+		return fmt.Errorf("failed to delete block: %s", err)
+	}
+
+	// find account objects associated to this block
+	// in the chain and and delete them
+	err = nil
+	accountsKey := common.MakeAccountsKey(c.id.Bytes())
+	txOp.Tx.Iterate(accountsKey, false, func(kv *elldb.KVObject) bool {
+		var bn = common.DecodeBlockNumber(kv.Key)
+		if bn == number {
+			if err = txOp.Tx.DeleteByPrefix(kv.GetKey()); err != nil {
+				return true
+			}
+		}
+		return false
+	})
+	if err != nil {
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
+		return fmt.Errorf("failed to delete accounts: %s", err)
+	}
+
+	// find transactions objects associated to this block
+	// in the chain and delete them
+	err = nil
+	txsKey := common.MakeTxsQueryKey(c.id.Bytes())
+	txOp.Tx.Iterate(txsKey, false, func(kv *elldb.KVObject) bool {
+		var bn = common.DecodeBlockNumber(kv.Key)
+		if bn == number {
+			if err = txOp.Tx.DeleteByPrefix(kv.GetKey()); err != nil {
+				return true
+			}
+		}
+		return false
+	})
+	if err != nil {
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
+		return fmt.Errorf("failed to delete transactions: %s", err)
+	}
+
+	if len(opts) == 0 {
+		return txOp.AllowFinish().Commit()
+	}
+
+	return nil
 }

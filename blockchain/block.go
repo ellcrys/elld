@@ -90,8 +90,16 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 		return nil, fmt.Errorf("target chain not set")
 	}
 
+	// Set chain tip number. Override it
+	// if set in params.
+	// Note: Only use in tests
+	chainTipNumber := uint64(0)
+	if params.OverrideChainTip > 0 {
+		chainTipNumber = params.OverrideChainTip
+	}
+
 	// Get the latest block header
-	chainTip, err := chain.GetBlock(0)
+	chainTip, err := chain.GetBlock(chainTipNumber)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			return nil, err

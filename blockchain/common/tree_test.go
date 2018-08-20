@@ -24,7 +24,7 @@ var _ = Describe("Tree", func() {
 			tree := NewTree()
 			err := tree.Build()
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("Error: cannot construct tree with no content."))
+			Expect(err.Error()).To(Equal("error: cannot construct tree with no content"))
 		})
 	})
 

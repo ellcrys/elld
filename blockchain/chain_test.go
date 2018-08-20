@@ -212,5 +212,59 @@ var ChainTest = func() bool {
 				Expect(block).ToNot(BeNil())
 			})
 		})
+
+		Describe(".removeBlock", func() {
+
+			var block2 core.Block
+
+			BeforeEach(func() {
+				block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				_, err := bc.ProcessBlock(block2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrBlockNotFound if block does not exist", func() {
+				err := genesisChain.removeBlock(100)
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrBlockNotFound))
+			})
+
+			It("should successfully delete a block", func() {
+				blockNum := block2.GetNumber()
+				err := genesisChain.removeBlock(blockNum)
+				Expect(err).To(BeNil())
+
+				Describe("the block must be deleted", func() {
+					blockKey := common.MakeBlockKey(genesisChain.id.Bytes(), blockNum)
+					result := db.GetByPrefix(blockKey)
+					Expect(result).To(HaveLen(0))
+				})
+
+				Describe("all account must be deleted", func() {
+					acctKeys := common.MakeAccountsKey(genesisChain.id.Bytes())
+					result := db.GetByPrefix(acctKeys)
+					for _, r := range result {
+						bn := common.DecodeBlockNumber(r.Key)
+						Expect(bn).ToNot(Equal(blockNum))
+					}
+				})
+
+				Describe("all transactions must be deleted", func() {
+					txsKeys := common.MakeTxsQueryKey(genesisChain.id.Bytes())
+					result := db.GetByPrefix(txsKeys)
+					for _, r := range result {
+						bn := common.DecodeBlockNumber(r.Key)
+						Expect(bn).ToNot(Equal(blockNum))
+					}
+				})
+			})
+		})
 	})
 }

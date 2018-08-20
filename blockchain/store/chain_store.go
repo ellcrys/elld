@@ -39,11 +39,17 @@ type ChainStorer interface {
 	GetAccount(address util.String, opts ...core.CallOp) (core.Account, error)
 
 	// PutTransactions stores a collection of transactions
-	PutTransactions(txs []core.Transaction, opts ...core.CallOp) error
+	PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error
 
 	// Current gets the current block at the tip of the chain
 	Current(opts ...core.CallOp) (core.Block, error)
 
+	// Delete deletes objects
+	Delete(key []byte, opts ...core.CallOp) error
+
 	// NewTx creates and returns a transaction
 	NewTx() (elldb.Tx, error)
+
+	// DB gets the database
+	DB() elldb.DB
 }

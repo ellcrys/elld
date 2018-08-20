@@ -337,6 +337,11 @@ var ProcessTest = func() bool {
 			var block core.Block
 
 			BeforeEach(func() {
+				err = bc.saveChain(genesisChain, "", 0)
+				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
@@ -558,7 +563,7 @@ var ProcessTest = func() bool {
 
 					Describe("all transactions must be persisted", func() {
 						for _, tx := range okStateRoot.GetTransactions() {
-							txKey := common.MakeTxKey(genesisChain.GetID().Bytes(), tx.GetHash().Bytes())
+							txKey := common.MakeTxQueryKey(genesisChain.GetID().Bytes(), tx.GetHash().Bytes())
 							var result = db.GetByPrefix(txKey)
 							Expect(result).To(HaveLen(1))
 						}
