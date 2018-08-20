@@ -15,59 +15,59 @@ var BlockchainTest = func() bool {
 
 	return Describe("Blockchain", func() {
 
-		// Describe(".SetStore", func() {
-		// 	It("should set store", func() {
-		// 		bc := New(nil, cfg, log)
-		// 		bc.SetDB(db)
-		// 	})
-		// })
+		Describe(".SetStore", func() {
+			It("should set store", func() {
+				bc := New(nil, cfg, log)
+				bc.SetDB(db)
+			})
+		})
 
-		// Describe(".addChain", func() {
-		// 	It("should add chain", func() {
-		// 		chain := NewChain("chain_id", db, cfg, log)
-		// 		Expect(err).To(BeNil())
-		// 		Expect(bc.chains).To(HaveLen(1))
-		// 		err = bc.addChain(chain)
-		// 		Expect(err).To(BeNil())
-		// 		Expect(bc.chains).To(HaveLen(2))
-		// 	})
-		// })
+		Describe(".addChain", func() {
+			It("should add chain", func() {
+				chain := NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+				Expect(bc.chains).To(HaveLen(1))
+				err = bc.addChain(chain)
+				Expect(err).To(BeNil())
+				Expect(bc.chains).To(HaveLen(2))
+			})
+		})
 
-		// Describe(".removeChain", func() {
+		Describe(".removeChain", func() {
 
-		// 	var chain *Chain
+			var chain *Chain
 
-		// 	BeforeEach(func() {
-		// 		chain = NewChain("chain_id", db, cfg, log)
-		// 		Expect(err).To(BeNil())
-		// 		err = bc.addChain(chain)
-		// 		Expect(err).To(BeNil())
-		// 		Expect(bc.chains).To(HaveLen(2))
-		// 	})
+			BeforeEach(func() {
+				chain = NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+				err = bc.addChain(chain)
+				Expect(err).To(BeNil())
+				Expect(bc.chains).To(HaveLen(2))
+			})
 
-		// 	It("should remove chain", func() {
-		// 		bc.removeChain(chain)
-		// 		Expect(bc.chains).To(HaveLen(1))
-		// 		Expect(bc.chains[chain.GetID()]).To(BeNil())
-		// 	})
-		// })
+			It("should remove chain", func() {
+				bc.removeChain(chain)
+				Expect(bc.chains).To(HaveLen(1))
+				Expect(bc.chains[chain.GetID()]).To(BeNil())
+			})
+		})
 
-		// Describe(".hasChain", func() {
+		Describe(".hasChain", func() {
 
-		// 	var chain *Chain
+			var chain *Chain
 
-		// 	BeforeEach(func() {
-		// 		chain = NewChain("chain_id", db, cfg, log)
-		// 		Expect(err).To(BeNil())
-		// 	})
+			BeforeEach(func() {
+				chain = NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+			})
 
-		// 	It("should return true if chain exists", func() {
-		// 		Expect(bc.hasChain(chain)).To(BeFalse())
-		// 		err = bc.addChain(chain)
-		// 		Expect(err).To(BeNil())
-		// 		Expect(bc.hasChain(chain)).To(BeTrue())
-		// 	})
-		// })
+			It("should return true if chain exists", func() {
+				Expect(bc.hasChain(chain)).To(BeFalse())
+				err = bc.addChain(chain)
+				Expect(err).To(BeNil())
+				Expect(bc.hasChain(chain)).To(BeTrue())
+			})
+		})
 
 		Describe(".Up", func() {
 
@@ -668,82 +668,229 @@ var BlockchainTest = func() bool {
 			})
 		})
 
-		Describe(".reOrg", func() {
-			// var mainChainBlocks []core.Block
-			// var forkBlock core.Block
+		Describe(".reOrg: long chain to short chain", func() {
 
+			// save the genesis chain
 			BeforeEach(func() {
-
-				// forkBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-				// 	Transactions: []core.Transaction{
-				// 		wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
-				// 	},
-				// 	Creator:    sender,
-				// 	Nonce:      core.EncodeNonce(1),
-				// 	Difficulty: new(big.Int).SetInt64(131072),
-				// })
-
-				// forkBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-				// 	Transactions: []core.Transaction{
-				// 		wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-				// 	},
-				// 	Creator:    sender,
-				// 	Nonce:      core.EncodeNonce(1),
-				// 	Difficulty: new(big.Int).SetInt64(131072),
-				// })
-
-				// _, err = bc.ProcessBlock(forkBlock)
-				// Expect(err).To(BeNil())
-
-				// _, err = bc.ProcessBlock(forkBlock2)
-				// Expect(err).To(BeNil())
-
-				// for i := 0; i < 2; i++ {
-				// 	mainChainBlocks = append(mainChainBlocks, MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-				// 		Transactions: []core.Transaction{
-				// 			wire.NewTx(wire.TxTypeBalance, 123+int64(i), util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-				// 		},
-				// 		Creator:    sender,
-				// 		Nonce:      core.EncodeNonce(1),
-				// 		Difficulty: new(big.Int).SetInt64(131072),
-				// 	}))
-				// 	_, err = bc.ProcessBlock(mainChainBlocks[i])
-				// 	Expect(err).To(BeNil())
-				// }
+				err = bc.saveChain(genesisChain, "", 0)
+				Expect(err).To(BeNil())
 			})
 
-			BeforeEach(func() {
-				// sdBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-				// 	Transactions: []core.Transaction{
-				// 		wire.NewTx(wire.TxTypeAlloc, 127, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
-				// 	},
-				// 	OverrideChainTip:   1,
-				// 	OverrideParentHash: mainChainBlocks[0].GetHash(),
-				// 	Creator:            sender,
-				// 	Nonce:              core.EncodeNonce(1),
-				// 	Difficulty:         new(big.Int).SetInt64(131072),
-				// })
+			var forkedChain *Chain
 
-				// _, err = bc.ProcessBlock(forkBlock)
-				// Expect(err).To(BeNil())
+			// Build two chains having the following shapes:
+			// [1]-[2]-[3]-[4] 	- Genesis chain
+			//  |__[2] 			- forked chain 1
+			BeforeEach(func() {
+
+				// genesis block 2
+				genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
+				forkChainB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
+				_, err = bc.ProcessBlock(genesisB2)
+				Expect(err).To(BeNil())
+
+				// process the forked block. It must create a new chain
+				forkedChainReader, err := bc.ProcessBlock(forkChainB2)
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(2))
+				forkedChain = bc.chains[forkedChainReader.GetID()]
+
+				// genesis block 3
+				genesisB3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				_, err = bc.ProcessBlock(genesisB3)
+				Expect(err).To(BeNil())
+
+				// genesis block 4
+				genesisB4 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				_, err = bc.ProcessBlock(genesisB4)
+				Expect(err).To(BeNil())
+			})
+
+			// verify chains shape
+			BeforeEach(func() {
+				tip, _ := genesisChain.Current()
+				Expect(tip.GetNumber()).To(Equal(uint64(4)))
+				Expect(genesisChain.GetParent()).To(BeNil())
+
+				forkTip, _ := bc.chains[forkedChain.GetID()].Current()
+				Expect(forkTip.GetNumber()).To(Equal(uint64(2)))
+				Expect(genesisChain.GetParent()).To(BeNil())
+			})
+
+			It("should return error if side chain is empty", func() {
+				sidechain := NewChain("empty_chain", db, cfg, log)
+				_, err := bc.reOrg(sidechain)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("failed to get side chain tip: block not found"))
+			})
+
+			It("should return error if best chain is empty", func() {
+				sidechain := NewChain("empty_chain", db, cfg, log)
+				bc.bestChain = sidechain
+				_, err := bc.reOrg(sidechain)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("failed to get best chain tip: block not found"))
 			})
 
 			It("should return error if side chain does not have a parent block set", func() {
-				// c, _ := bc.bestChain.Current()
-				// fmt.Println(c.GetNumber())
-				// err := bc.reOrg(forkedBlockchain.bestChain)
-				// Expect(err).ToNot(BeNil())
-				// Expect(err.Error()).To(Equal("parent block not set on sidechain"))
+				forkedChain.parentBlock = nil
+				_, err := bc.reOrg(bc.chains[forkedChain.GetID()])
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("parent block not set on sidechain"))
 			})
 
-			It("should be successful", func() {
-				// forkedBlockchain.bestChain.parentBlock = genesisBlock
-				// err := bc.reOrg(forkedBlockchain.bestChain)
-				// Expect(err).To(BeNil())
+			It("should be successful; return nil", func() {
+				reOrgedChain, err := bc.reOrg(forkedChain)
+				Expect(err).To(BeNil())
 
-				// remove blocks that aren't in the forked chain
+				Describe("reorged chain should have same length as side/fork chain", func() {
+					reOrgedHeight, err := reOrgedChain.height()
+					Expect(err).To(BeNil())
+					forkedChainHeight, err := forkedChain.height()
+					Expect(err).To(BeNil())
+					Expect(reOrgedHeight).To(Equal(forkedChainHeight))
+				})
+
+				Describe("reorged chain tip must equal side/fork chain tip", func() {
+					reOrgedTip, err := reOrgedChain.Current()
+					Expect(err).To(BeNil())
+					forkedChainTip, err := reOrgedChain.Current()
+					Expect(err).To(BeNil())
+					Expect(reOrgedTip).To(Equal(forkedChainTip))
+				})
+			})
+		})
+
+		Describe(".reOrg: short chain to long chain", func() {
+
+			// save the genesis chain
+			BeforeEach(func() {
+				err = bc.saveChain(genesisChain, "", 0)
+				Expect(err).To(BeNil())
+			})
+
+			var forkedChain *Chain
+
+			// Build two chains having the following shapes:
+			// [1]-[2] 			- Genesis chain
+			//  |__[2]-[3]-[4] 	- forked chain 1
+			BeforeEach(func() {
+
+				// genesis block 2
+				genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
+				// forked chain block 2
+				forkChainB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+
+				_, err = bc.ProcessBlock(genesisB2)
+				Expect(err).To(BeNil())
+
+				// process the forked block. It must create a new chain
+				forkedChainReader, err := bc.ProcessBlock(forkChainB2)
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(2))
+				forkedChain = bc.chains[forkedChainReader.GetID()]
+
+				// forked chain block 3
+				forkChainB3 := MakeTestBlock(bc, forkedChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				_, err = bc.ProcessBlock(forkChainB3)
+				Expect(err).To(BeNil())
+
+				// forked chain block 4
+				forkedChainB4 := MakeTestBlock(bc, forkedChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				_, err = bc.ProcessBlock(forkedChainB4)
+				Expect(err).To(BeNil())
+			})
+
+			// verify chains shape
+			BeforeEach(func() {
+				tip, _ := genesisChain.Current()
+				Expect(tip.GetNumber()).To(Equal(uint64(2)))
+				Expect(genesisChain.GetParent()).To(BeNil())
+
+				forkTip, _ := forkedChain.Current()
+				Expect(forkTip.GetNumber()).To(Equal(uint64(4)))
+				Expect(genesisChain.GetParent()).To(BeNil())
+			})
+
+			It("should be successful; return nil", func() {
+				reOrgedChain, err := bc.reOrg(forkedChain)
+				Expect(err).To(BeNil())
+
+				Describe("reorged chain should have same length as side/fork chain", func() {
+					reOrgedHeight, err := reOrgedChain.height()
+					Expect(err).To(BeNil())
+					forkedChainHeight, err := forkedChain.height()
+					Expect(err).To(BeNil())
+					Expect(reOrgedHeight).To(Equal(forkedChainHeight))
+				})
+
+				Describe("reorged chain tip must equal side/fork chain tip", func() {
+					reOrgedTip, err := reOrgedChain.Current()
+					Expect(err).To(BeNil())
+					forkedChainTip, err := reOrgedChain.Current()
+					Expect(err).To(BeNil())
+					Expect(reOrgedTip).To(Equal(forkedChainTip))
+				})
 			})
 		})
 	})
-
 }

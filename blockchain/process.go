@@ -294,7 +294,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 
 	// find the chain that is compatible with the block.
 	if chain == nil {
-		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash())
+		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, err
@@ -339,15 +339,30 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		}
 	}
 
-	tx := common.GetTxOp(chain.store.DB()).Tx
-	txOp := &common.TxOp{Tx: tx, CanFinish: false}
+	txOp := common.GetTxOp(chain.store.DB(), opts...)
+	if len(opts) == 0 {
+		txOp.CanFinish = false
+	}
+
+	var rollback = func() {
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
+	}
+
+	var commit = func() error {
+		if len(opts) == 0 {
+			return txOp.AllowFinish().Commit()
+		}
+		return nil
+	}
 
 	// If the block number is the same as the chainTip, then this
 	// is a fork and as such creates a new chain.
 	if chainTip != nil && createNewChain {
 		// create the new chain, set its root to the parent of the forked block
-		if chain, err = b.newChain(tx, block, parentBlock, chain); err != nil {
-			tx.Rollback()
+		if chain, err = b.newChain(txOp.Tx, block, parentBlock, chain); err != nil {
+			rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
 		b.log.Debug("New chain created",
@@ -360,7 +375,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// state root should the state object be applied to the blockchain state tree.
 	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
-		txOp.Rollback()
+		rollback()
 		b.log.Error("Block execution failed", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
@@ -368,7 +383,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// Compare the state root in the block header with
 	// the root obtained from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
-		txOp.Rollback()
+		rollback()
 		b.log.Error("Compute state root and block state root do not match",
 			"BlockNo", block.GetNumber(),
 			"BlockStateRoot", block.GetHeader().GetStateRoot().HexStr(),
@@ -376,36 +391,37 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		return nil, core.ErrBlockStateRootInvalid
 	}
 
-	if !createNewChain {
-		// For non-side chains, we need to update the world
-		// state using the latest state objects derived
-		// from executing the block
-		var batchObjs []*elldb.KVObject
-		for _, so := range stateObjs {
-			batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
-		}
-		if err := txOp.Tx.Put(batchObjs); err != nil {
-			txOp.Rollback()
-			return nil, fmt.Errorf("failed to add state object to store: %s", err)
-		}
+	// We need to update the world state using
+	// the latest state objects derived from executing the block
+	var batchObjs []*elldb.KVObject
+	for _, so := range stateObjs {
+		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
+	}
+	if err := txOp.Tx.Put(batchObjs); err != nil {
+		rollback()
+		return nil, fmt.Errorf("failed to add state object to store: %s", err)
+	}
 
-		// We will also index the transactions so they can are queryable
+	// We will also index the transactions so
+	// they can are queryable but only if the
+	// chain is not a side chain
+	if !chain.HasParent() {
 		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
-			txOp.Rollback()
+			rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
 		}
 	}
 
-	// At this point, the block is good to go. We add it to the chain
+	// At this point, the block is good to go.
+	// We add it to the chain
 	if err := chain.append(block, txOp); err != nil {
-		txOp.Rollback()
+		rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
 
 	// Commit the transaction
-	txOp.CanFinish = true
-	if err := txOp.Commit(); err != nil {
-		txOp.Rollback()
+	if err := commit(); err != nil {
+		rollback()
 		return nil, fmt.Errorf("commit error: %s", err)
 	}
 

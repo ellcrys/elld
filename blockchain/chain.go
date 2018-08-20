@@ -97,6 +97,11 @@ func (c *Chain) GetParent() core.Chainer {
 	return nil
 }
 
+// HasParent checks whether the chain has a parent
+func (c *Chain) HasParent() bool {
+	return c.GetParent() != nil
+}
+
 // GetBlock fetches a block by its number
 func (c *Chain) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
 	c.chainLock.RLock()
@@ -166,10 +171,10 @@ func (c *Chain) getBlockHeaderByHash(hash util.Hash) (core.Header, error) {
 }
 
 // getBlockByHash fetches a block by hash
-func (c *Chain) getBlockByHash(hash util.Hash) (core.Block, error) {
+func (c *Chain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
-	return c.store.GetBlockByHash(hash)
+	return c.store.GetBlockByHash(hash, opts...)
 }
 
 // getBlockByNumberAndHash fetches a block by number and hash
@@ -291,24 +296,24 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 
 	var err error
 	txOp := common.GetTxOp(c.store.DB(), opts...)
-	if len(opts) == 0 {
-		txOp.CanFinish = false
-	}
+	txOp.CanFinish = false
 
 	// get the block.
 	// Returns ErrBlockNotFound if block does not exist
 	_, err = c.store.GetBlock(number, txOp)
 	if err != nil {
-		txOp.CanFinish = true
-		txOp.Rollback()
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
 		return err
 	}
 
 	// delete the block
 	blockKey := common.MakeBlockKey(c.id.Bytes(), number)
 	if err = c.store.Delete(blockKey, txOp); err != nil {
-		txOp.CanFinish = true
-		txOp.Rollback()
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
 		return fmt.Errorf("failed to delete block: %s", err)
 	}
 
@@ -326,8 +331,9 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 		return false
 	})
 	if err != nil {
-		txOp.CanFinish = true
-		txOp.Rollback()
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
 		return fmt.Errorf("failed to delete accounts: %s", err)
 	}
 
@@ -345,14 +351,15 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 		return false
 	})
 	if err != nil {
-		txOp.CanFinish = true
-		txOp.Rollback()
+		if len(opts) == 0 {
+			txOp.AllowFinish().Rollback()
+		}
 		return fmt.Errorf("failed to delete transactions: %s", err)
 	}
 
 	if len(opts) == 0 {
-		txOp.CanFinish = true
+		return txOp.AllowFinish().Commit()
 	}
 
-	return txOp.Commit()
+	return nil
 }

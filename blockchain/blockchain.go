@@ -262,7 +262,7 @@ func (b *Blockchain) HybridMode() (bool, error) {
 
 // findChainByBlockHash finds the chain where the block with the hash
 // provided hash exist on. It also returns the header of highest block of the chain.
-func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, chain *Chain, chainTipHeader core.Header, err error) {
+func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...core.CallOp) (block core.Block, chain *Chain, chainTipHeader core.Header, err error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -271,7 +271,7 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, cha
 		// Find the block by its hash. If we don't
 		// find the block in this chain, we continue to the
 		// next chain.
-		block, err := chain.getBlockByHash(hash)
+		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -281,7 +281,7 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash) (block core.Block, cha
 
 		// At the point, we have found chain the block belongs to.
 		// Next we get the header of the block at the tip of the chain.
-		chainTipHeader, err := chain.Current()
+		chainTipHeader, err := chain.Current(opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -415,12 +415,13 @@ func (b *Blockchain) decideBestChain() error {
 
 // reOrg overwrites the main chain with the blocks of
 // the sidechain beginning from sidechain parent block + 1.
+// Returns the re-organized chain or error.
+//
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) reOrg(sidechain *Chain) error {
+func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 
 	// indicate the commencement of a re-org
 	b.reOrgActive = true
-
 	tx, _ := b.db.NewTx()
 	txOp := &common.TxOp{Tx: tx, CanFinish: false}
 
@@ -428,29 +429,28 @@ func (b *Blockchain) reOrg(sidechain *Chain) error {
 	tip, err := b.bestChain.Current(txOp)
 	if err != nil {
 		txOp.AllowFinish().Rollback()
-		return fmt.Errorf("failed to get best chain tip: %s", err)
+		return nil, fmt.Errorf("failed to get best chain tip: %s", err)
 	}
 
 	// get the side chain tip
 	sideTip, err := sidechain.Current(txOp)
 	if err != nil {
 		txOp.AllowFinish().Rollback()
-		return fmt.Errorf("failed to get side chain tip: %s", err)
+		return nil, fmt.Errorf("failed to get side chain tip: %s", err)
 	}
 
 	// get the parent block of the side chain
 	parentBlock := sidechain.GetParentBlock()
 	if parentBlock == nil {
 		txOp.AllowFinish().Rollback()
-		return fmt.Errorf("parent block not set on sidechain")
+		return nil, fmt.Errorf("parent block not set on sidechain")
 	}
 
 	// delete blocks from the current best chain,
 	// starting from side chain parent block + 1
 	nextBlockNumber := parentBlock.GetNumber() + 1
 	for nextBlockNumber <= tip.GetNumber() {
-		txOp.AllowFinish().Rollback()
-		b.bestChain.removeBlock(parentBlock.GetNumber()+1, txOp)
+		b.bestChain.removeBlock(nextBlockNumber, txOp)
 		nextBlockNumber++
 	}
 
@@ -459,22 +459,20 @@ func (b *Blockchain) reOrg(sidechain *Chain) error {
 	// Now, we will re-process the blocks in the sidechain
 	// targetted for addition in the current best chain
 	nextBlockNumber = parentBlock.GetNumber() + 1
-	c, err := sidechain.Current(txOp)
-	fmt.Println(c, err)
 	for nextBlockNumber <= sideTip.GetNumber() {
 
 		// get the side chain block
 		proposedBlock, err := sidechain.GetBlock(nextBlockNumber, txOp)
 		if err != nil {
 			txOp.AllowFinish().Rollback()
-			return fmt.Errorf("failed to get proposed block: %s", err)
+			return nil, fmt.Errorf("failed to get proposed block: %s", err)
 		}
 
 		// attempt to process and append to
 		// the current main chain
-		if _, err := b.maybeAcceptBlock(proposedBlock, nil, txOp); err != nil {
+		if _, err := b.maybeAcceptBlock(proposedBlock, b.bestChain, txOp); err != nil {
 			txOp.AllowFinish().Rollback()
-			return fmt.Errorf("proposed block was not accepted: %s", err)
+			return nil, fmt.Errorf("proposed block was not accepted: %s", err)
 		}
 
 		nextBlockNumber++
@@ -483,12 +481,12 @@ func (b *Blockchain) reOrg(sidechain *Chain) error {
 	if err := txOp.AllowFinish().Commit(); err != nil {
 		b.reOrgActive = false
 		txOp.AllowFinish().Rollback()
-		return fmt.Errorf("failed to commit: %s", err)
+		return nil, fmt.Errorf("failed to commit: %s", err)
 	}
 
 	b.reOrgActive = false
 
-	return nil
+	return b.bestChain, nil
 }
 
 func (b *Blockchain) addRejectedBlock(block core.Block) {
