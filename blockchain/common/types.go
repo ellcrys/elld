@@ -13,7 +13,7 @@ type OrphanBlock struct {
 	Expiration time.Time
 }
 
-// TxOp defines a method option for passing external transactions
+// TxOp is used to pass transactions to nested methods
 type TxOp struct {
 	Tx        elldb.Tx
 	CanFinish bool
@@ -52,6 +52,24 @@ func (t *TxOp) Rollback() error {
 	t.Tx.Rollback()
 	t.finished = true
 	return nil
+}
+
+// AllowFinish sets CanFinish to true
+func (t *TxOp) AllowFinish() *TxOp {
+	t.CanFinish = true
+	return t
+}
+
+// QueryBlockRange defines the minimum and maximum
+// block number of objects to access.
+type QueryBlockRange struct {
+	Min uint64
+	Max uint64
+}
+
+// GetName returns the name of the op
+func (o *QueryBlockRange) GetName() string {
+	return "QueryBlockRange"
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice

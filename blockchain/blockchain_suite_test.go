@@ -122,11 +122,12 @@ var _ = Describe("Blockchain", func() {
 		ChainTest,
 		ProcessTest,
 		BlockTest,
-		AccountTest,
 		CacheTest,
 		MetadataTest,
 		TransactionValidatorTest,
 		BlockValidatorTest,
+		ChainTransverserTest,
+		WorldReaderTest,
 	}
 
 	for i, t := range tests {

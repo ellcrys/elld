@@ -19,13 +19,16 @@ type Chainer interface {
 	GetID() util.String
 
 	// GetBlock gets a block in the chain
-	GetBlock(uint64) (Block, error)
+	GetBlock(uint64, ...CallOp) (Block, error)
 
 	// GetParentBlock gets the chain's parent block if it has one
 	GetParentBlock() Block
 
-	// GetParentInfo gets the chain's parent information
-	GetParentInfo() *ChainInfo
+	// GetInfo gets the chain's parent information
+	GetInfo() *ChainInfo
+
+	// GetParent returns the parent chain
+	GetParent() Chainer
 
 	// CreateAccount creates an account on a target block
 	CreateAccount(targetBlockNum uint64, account Account, opts ...CallOp) error

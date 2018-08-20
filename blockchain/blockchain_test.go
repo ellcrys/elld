@@ -667,6 +667,83 @@ var BlockchainTest = func() bool {
 				})
 			})
 		})
+
+		Describe(".reOrg", func() {
+			// var mainChainBlocks []core.Block
+			// var forkBlock core.Block
+
+			BeforeEach(func() {
+
+				// forkBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+				// 	Transactions: []core.Transaction{
+				// 		wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+				// 	},
+				// 	Creator:    sender,
+				// 	Nonce:      core.EncodeNonce(1),
+				// 	Difficulty: new(big.Int).SetInt64(131072),
+				// })
+
+				// forkBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+				// 	Transactions: []core.Transaction{
+				// 		wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+				// 	},
+				// 	Creator:    sender,
+				// 	Nonce:      core.EncodeNonce(1),
+				// 	Difficulty: new(big.Int).SetInt64(131072),
+				// })
+
+				// _, err = bc.ProcessBlock(forkBlock)
+				// Expect(err).To(BeNil())
+
+				// _, err = bc.ProcessBlock(forkBlock2)
+				// Expect(err).To(BeNil())
+
+				// for i := 0; i < 2; i++ {
+				// 	mainChainBlocks = append(mainChainBlocks, MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+				// 		Transactions: []core.Transaction{
+				// 			wire.NewTx(wire.TxTypeBalance, 123+int64(i), util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+				// 		},
+				// 		Creator:    sender,
+				// 		Nonce:      core.EncodeNonce(1),
+				// 		Difficulty: new(big.Int).SetInt64(131072),
+				// 	}))
+				// 	_, err = bc.ProcessBlock(mainChainBlocks[i])
+				// 	Expect(err).To(BeNil())
+				// }
+			})
+
+			BeforeEach(func() {
+				// sdBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+				// 	Transactions: []core.Transaction{
+				// 		wire.NewTx(wire.TxTypeAlloc, 127, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
+				// 	},
+				// 	OverrideChainTip:   1,
+				// 	OverrideParentHash: mainChainBlocks[0].GetHash(),
+				// 	Creator:            sender,
+				// 	Nonce:              core.EncodeNonce(1),
+				// 	Difficulty:         new(big.Int).SetInt64(131072),
+				// })
+
+				// _, err = bc.ProcessBlock(forkBlock)
+				// Expect(err).To(BeNil())
+			})
+
+			It("should return error if side chain does not have a parent block set", func() {
+				// c, _ := bc.bestChain.Current()
+				// fmt.Println(c.GetNumber())
+				// err := bc.reOrg(forkedBlockchain.bestChain)
+				// Expect(err).ToNot(BeNil())
+				// Expect(err.Error()).To(Equal("parent block not set on sidechain"))
+			})
+
+			It("should be successful", func() {
+				// forkedBlockchain.bestChain.parentBlock = genesisBlock
+				// err := bc.reOrg(forkedBlockchain.bestChain)
+				// Expect(err).To(BeNil())
+
+				// remove blocks that aren't in the forked chain
+			})
+		})
 	})
 
 }

@@ -24,13 +24,11 @@ const (
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
 func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
-	if len(opts) > 0 {
-		for _, op := range opts {
-			switch _op := op.(type) {
-			case *TxOp:
-				if _op.Tx != nil {
-					return _op
-				}
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case *TxOp:
+			if _op.Tx != nil {
+				return _op
 			}
 		}
 	}
@@ -42,6 +40,18 @@ func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
 		Tx:        tx,
 		CanFinish: true,
 	}
+}
+
+// GetBlockRangeOp is a convenience method to get QueryBlockRange
+// option from a slice of CallOps
+func GetBlockRangeOp(opts ...core.CallOp) *QueryBlockRange {
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case *QueryBlockRange:
+			return _op
+		}
+	}
+	return &QueryBlockRange{}
 }
 
 // ComputeTxsRoot computes the merkle root of a set of transactions.

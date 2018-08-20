@@ -49,4 +49,7 @@ type ChainStorer interface {
 
 	// NewTx creates and returns a transaction
 	NewTx() (elldb.Tx, error)
+
+	// DB gets the database
+	DB() elldb.DB
 }

@@ -84,17 +84,25 @@ func (c *Chain) GetParentBlock() core.Block {
 	return c.parentBlock
 }
 
-// GetParentInfo gets the parent info
-func (c *Chain) GetParentInfo() *core.ChainInfo {
+// GetInfo gets the chain information
+func (c *Chain) GetInfo() *core.ChainInfo {
 	return c.info
 }
 
+// GetParent gets an instance of this chain's parent
+func (c *Chain) GetParent() core.Chainer {
+	if c.info != nil && c.info.ParentChainID != "" {
+		return NewChain(c.info.ParentChainID, c.store.DB(), c.cfg, c.log)
+	}
+	return nil
+}
+
 // GetBlock fetches a block by its number
-func (c *Chain) GetBlock(number uint64) (core.Block, error) {
+func (c *Chain) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
 	c.chainLock.RLock()
 	defer c.chainLock.RUnlock()
 
-	b, err := c.store.GetBlock(number)
+	b, err := c.store.GetBlock(number, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -279,23 +287,28 @@ func (c *Chain) GetTransaction(hash util.Hash) core.Transaction {
 
 // removeBlock deletes a block and all objects
 // associated to it such as transactions, accounts etc.
-func (c *Chain) removeBlock(number uint64) error {
+func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 
 	var err error
-	tx, _ := c.store.NewTx()
-	txOp := &common.TxOp{Tx: tx, CanFinish: false}
+	txOp := common.GetTxOp(c.store.DB(), opts...)
+	if len(opts) == 0 {
+		txOp.CanFinish = false
+	}
 
 	// get the block.
 	// Returns ErrBlockNotFound if block does not exist
 	_, err = c.store.GetBlock(number, txOp)
 	if err != nil {
+		txOp.CanFinish = true
+		txOp.Rollback()
 		return err
 	}
 
 	// delete the block
 	blockKey := common.MakeBlockKey(c.id.Bytes(), number)
 	if err = c.store.Delete(blockKey, txOp); err != nil {
-		txOp.Tx.Rollback()
+		txOp.CanFinish = true
+		txOp.Rollback()
 		return fmt.Errorf("failed to delete block: %s", err)
 	}
 
@@ -313,7 +326,8 @@ func (c *Chain) removeBlock(number uint64) error {
 		return false
 	})
 	if err != nil {
-		txOp.Tx.Rollback()
+		txOp.CanFinish = true
+		txOp.Rollback()
 		return fmt.Errorf("failed to delete accounts: %s", err)
 	}
 
@@ -331,9 +345,14 @@ func (c *Chain) removeBlock(number uint64) error {
 		return false
 	})
 	if err != nil {
-		txOp.Tx.Rollback()
+		txOp.CanFinish = true
+		txOp.Rollback()
 		return fmt.Errorf("failed to delete transactions: %s", err)
 	}
 
-	return txOp.Tx.Commit()
+	if len(opts) == 0 {
+		txOp.CanFinish = true
+	}
+
+	return txOp.Commit()
 }

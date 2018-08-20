@@ -80,7 +80,7 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 	// find the sender account. Return error if sender account
 	// does not exist. This should never happen here as the caller must
 	// have validated all transactions in the containing block.
-	senderAcct, err = b.getAccount(chain, tx.GetFrom(), opts...)
+	senderAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetFrom(), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sender's account: %s", err)
 	}
@@ -93,7 +93,7 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// find the account of the recipient. If the recipient account does not
 	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
-	recipientAcct, err = b.getAccount(chain, tx.GetTo(), opts...)
+	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
 	if err != nil {
 		if err != core.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -177,7 +177,7 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 
 	// find the account of the recipient. If the account does not exists,
 	// initialize a new account object for the recipient
-	recipientAcct, err = b.getAccount(chain, tx.GetTo(), opts...)
+	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
 	if err != nil {
 		if err != core.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
@@ -285,7 +285,7 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 // passed chain. This should only be used for the genesis block.
 //
 // NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, error) {
+func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...core.CallOp) (*Chain, error) {
 
 	var parentBlock core.Block
 	var chainTip core.Header
@@ -339,7 +339,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 		}
 	}
 
-	tx, _ := chain.store.NewTx()
+	tx := common.GetTxOp(chain.store.DB()).Tx
 	txOp := &common.TxOp{Tx: tx, CanFinish: false}
 
 	// If the block number is the same as the chainTip, then this
@@ -414,10 +414,13 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain) (*Chain, e
 	b.addChain(chain)
 
 	// decide and set which chain is the best chain
-	// This could potentially cause a reorganization
-	if err := b.decideBestChain(); err != nil {
-		b.log.Error("Failed to decide best chain", "Err", err)
-		return nil, fmt.Errorf("failed to choose best chain: %s", err)
+	// This could potentially cause a reorganization.
+	// We will skip this step if a reorganization is ongoing
+	if !b.reOrgActive {
+		if err := b.decideBestChain(); err != nil {
+			b.log.Error("Failed to decide best chain", "Err", err)
+			return nil, fmt.Errorf("failed to choose best chain: %s", err)
+		}
 	}
 
 	// set the chain reader on the block

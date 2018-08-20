@@ -30,6 +30,11 @@ func New(db elldb.DB, chainID util.String) *ChainStore {
 	}
 }
 
+// DB gets the database
+func (s *ChainStore) DB() elldb.DB {
+	return s.db
+}
+
 // hasBlock checks whether a block exists
 func (s *ChainStore) hasBlock(number uint64, opts ...core.CallOp) (bool, error) {
 	_, err := s.getBlock(number, opts...)
@@ -314,12 +319,24 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
+	var blockRangeOp = common.GetBlockRangeOp(opts...)
 	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
 		var bn = common.DecodeBlockNumber(kv.Key)
+
+		// check block range constraint.
+		// if the block number of the key is less that the minimum
+		// block number specified in the block range, skip object.
+		// Likewise, if the block number of the key is greater than
+		// the maximum block number specified in the block range, skip object.
+		if (blockRangeOp.Min > 0 && bn < blockRangeOp.Min) || blockRangeOp.Max > 0 && bn > blockRangeOp.Max {
+			return false
+		}
+
 		if bn > highestBlockNum {
 			highestBlockNum = bn
 			r = kv
 		}
+
 		return false
 	})
 

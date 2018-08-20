@@ -337,6 +337,11 @@ var ProcessTest = func() bool {
 			var block core.Block
 
 			BeforeEach(func() {
+				err = bc.saveChain(genesisChain, "", 0)
+				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
