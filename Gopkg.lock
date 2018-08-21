@@ -816,6 +816,15 @@
   revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
 
 [[projects]]
+  name = "github.com/tensorflow/tensorflow"
+  packages = [
+    "tensorflow/go",
+    "tensorflow/go/op"
+  ]
+  revision = "656e7a2b347c3c6eb76a6c130ed4b1def567b6c1"
+  version = "v1.10.0"
+
+[[projects]]
   name = "github.com/thoas/go-funk"
   packages = ["."]
   revision = "54489e5ff3900f4618607d32d680f8cf112bcb18"
@@ -1037,6 +1046,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3f3ca2ac3ec979aa489f76cd08f1bd6f908e2544cb141e6ce60fe8d29eefccb3"
+  inputs-digest = "91226a6259659d6e8be0dcac5beb96d692c02cf5b34d2670a7c96b58f7277b55"
   solver-name = "gps-cdcl"
   solver-version = 1

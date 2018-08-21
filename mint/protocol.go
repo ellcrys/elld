@@ -13,12 +13,8 @@ import (
 	"github.com/tensorflow/tensorflow/tensorflow/go/op"
 )
 
-// type currency struct {
-// 	curr []currencyDescription `json:"currencyDescription"`
-// }
-
-type currencyDescription struct {
-	CurrencyName        string `json:currencyName"`
+type BankNote struct {
+	CurrencyName        string `json:"currencyName"`
 	Country             string `json:"Country"`
 	DenominationFigures string `json:"DenominationFigures"`
 	DenominationText    string `json:"denominationText"`
@@ -27,9 +23,34 @@ type currencyDescription struct {
 	ShortName           string `json:"shortName"`
 }
 
+func (*BankNote) name()      {}
+func (*BankNote) country()   {}
+func (*BankNote) figure()    {}
+func (*BankNote) text()      {}
+func (*BankNote) ellies()    {}
+func (*BankNote) dollar()    {}
+func (*BankNote) shortname() {}
+
 func Spec() {
 	fmt.Println("This is great")
 }
+
+// prepare ell to be used
+func prepare(ellPath string) {
+	// check if ell path is supplied from argument passed
+	//check if ell is available from config directory
+	// if not available then download from source
+}
+
+// predict image
+func predictNote(imagePath string) {
+	//predict image note from .png and .jpg
+}
+
+func predictNotefromByte(imagePath byte) {
+	//predict image note from byte
+}
+
 func mintLoader() (interface{}, error) {
 
 	fmt.Println("This is awesome")
@@ -107,7 +128,7 @@ func mintLoader() (interface{}, error) {
 
 		//GET The currency details for the top level tree
 		bytex, _ := json.Marshal(treeData)
-		var p currencyDescription
+		var p BankNote
 		err = json.Unmarshal(bytex, &p)
 
 		fmt.Println(p)

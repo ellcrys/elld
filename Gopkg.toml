@@ -112,3 +112,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/ellcrys/merkletree"
+
+[[constraint]]
+  name = "github.com/tensorflow/tensorflow"
+  version = "1.10.0"
