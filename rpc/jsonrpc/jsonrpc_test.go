@@ -177,7 +177,7 @@ var _ = Describe("Jsonrpc", func() {
 					return Success(params["x"].(float64) + params["y"].(float64))
 				},
 			})
-			Expect(rpc.apiSet).To(HaveLen(1))
+			Expect(rpc.apiSet).To(HaveLen(2))
 		})
 	})
 
@@ -203,7 +203,36 @@ var _ = Describe("Jsonrpc", func() {
 				},
 			})
 			rpc.MergeAPISet(apiSet1, apiSet2)
-			Expect(rpc.apiSet).To(HaveLen(2))
+			Expect(rpc.apiSet).To(HaveLen(3))
+		})
+	})
+
+	Describe(".Methods", func() {
+		It("should return all methods name", func() {
+			apiSet1 := APISet(map[string]APIInfo{
+				"add": APIInfo{
+					Func: func(params Params) *Response {
+						return Success(params["x"].(float64) + params["y"].(float64))
+					},
+				},
+			})
+			apiSet2 := APISet(map[string]APIInfo{
+				"add": APIInfo{
+					Func: func(params Params) *Response {
+						return Success(params["x"].(float64) + params["y"].(float64))
+					},
+				},
+				"div": APIInfo{
+					Func: func(params Params) *Response {
+						return Success(params["x"].(float64) / params["y"].(float64))
+					},
+				},
+			})
+			rpc.MergeAPISet(apiSet1, apiSet2)
+			m := rpc.Methods()
+			Expect(m).To(ContainElement("add"))
+			Expect(m).To(ContainElement("div"))
+			Expect(m).To(ContainElement("methods"))
 		})
 	})
 })

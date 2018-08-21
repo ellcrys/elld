@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
@@ -93,10 +95,29 @@ func Success(result interface{}) *Response {
 
 // New creates a JSONRPC server
 func New(addr string) *JSONRPC {
-	return &JSONRPC{
+	rpc := &JSONRPC{
 		addr:   addr,
 		apiSet: APISet{},
 	}
+	rpc.MergeAPISet(rpc.APIs())
+	return rpc
+}
+
+// APIs returns system APIs
+func (s *JSONRPC) APIs() APISet {
+	return APISet{
+		"methods": APIInfo{
+			Func: func(Params) *Response {
+				return Success(s.Methods())
+			},
+		},
+	}
+}
+
+// Methods gets the names of all methods
+// in the API set.
+func (s *JSONRPC) Methods() []string {
+	return funk.Keys(s.apiSet).([]string)
 }
 
 // Serve starts the server
