@@ -72,8 +72,8 @@ type JSONRPC struct {
 }
 
 // Error creates an error response
-func Error(code int, message string, data interface{}) Response {
-	return Response{
+func Error(code int, message string, data interface{}) *Response {
+	return &Response{
 		JSONRPCVersion: "2.0",
 		Err: &Err{
 			Code:    code,
@@ -84,8 +84,8 @@ func Error(code int, message string, data interface{}) Response {
 }
 
 // Success creates a success response
-func Success(result interface{}) Response {
-	return Response{
+func Success(result interface{}) *Response {
+	return &Response{
 		JSONRPCVersion: "2.0",
 		Result:         result,
 	}
@@ -139,7 +139,7 @@ func (s *JSONRPC) AddAPI(name string, api APIInfo) {
 // handle processes incoming requests. It validates
 // the request according to JSON RPC specification,
 // find the method and passes it off.
-func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) Response {
+func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) *Response {
 
 	// attempt to decode the body
 	var newReq Request
@@ -162,6 +162,11 @@ func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) Response {
 	}
 
 	resp := f.Func(newReq.Params)
+	if resp == nil {
+		w.WriteHeader(http.StatusOK)
+		return Success(nil)
+	}
+
 	if !resp.IsError() {
 
 		resp.ID = newReq.ID

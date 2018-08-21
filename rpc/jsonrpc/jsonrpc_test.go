@@ -106,7 +106,7 @@ var _ = Describe("Jsonrpc", func() {
 			When("ID is added to the request body", func() {
 				It("should return result", func() {
 					rpc.apiSet["add"] = APIInfo{
-						Func: func(params Params) Response {
+						Func: func(params Params) *Response {
 							return Success(params["x"].(float64) + params["y"].(float64))
 						},
 					}
@@ -139,7 +139,7 @@ var _ = Describe("Jsonrpc", func() {
 			When("ID is not added to the request body", func() {
 				It("should not return result", func() {
 					rpc.apiSet["add"] = APIInfo{
-						Func: func(params Params) Response {
+						Func: func(params Params) *Response {
 							return Success(params["x"].(float64) + params["y"].(float64))
 						},
 					}
@@ -173,7 +173,7 @@ var _ = Describe("Jsonrpc", func() {
 	Describe(".AddAPI", func() {
 		It("should add API", func() {
 			rpc.AddAPI("add", APIInfo{
-				Func: func(params Params) Response {
+				Func: func(params Params) *Response {
 					return Success(params["x"].(float64) + params["y"].(float64))
 				},
 			})
@@ -185,19 +185,19 @@ var _ = Describe("Jsonrpc", func() {
 		It("should add API", func() {
 			apiSet1 := APISet(map[string]APIInfo{
 				"add": APIInfo{
-					Func: func(params Params) Response {
+					Func: func(params Params) *Response {
 						return Success(params["x"].(float64) + params["y"].(float64))
 					},
 				},
 			})
 			apiSet2 := APISet(map[string]APIInfo{
 				"add": APIInfo{
-					Func: func(params Params) Response {
+					Func: func(params Params) *Response {
 						return Success(params["x"].(float64) + params["y"].(float64))
 					},
 				},
 				"div": APIInfo{
-					Func: func(params Params) Response {
+					Func: func(params Params) *Response {
 						return Success(params["x"].(float64) / params["y"].(float64))
 					},
 				},
