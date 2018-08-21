@@ -7,10 +7,15 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 	"github.com/tensorflow/tensorflow/tensorflow/go/op"
+)
+
+const (
+	ConfigDir = "~/elld_config/"
 )
 
 type BankNote struct {
@@ -23,23 +28,57 @@ type BankNote struct {
 	ShortName           string `json:"shortName"`
 }
 
-func (*BankNote) name()      {}
-func (*BankNote) country()   {}
-func (*BankNote) figure()    {}
-func (*BankNote) text()      {}
-func (*BankNote) ellies()    {}
-func (*BankNote) dollar()    {}
-func (*BankNote) shortname() {}
+func (*BankNote) name() {
+
+}
+func (*BankNote) country() {
+
+}
+func (*BankNote) figure() {
+
+}
+func (*BankNote) text() {
+
+}
+func (*BankNote) ellies() {
+
+}
+func (*BankNote) dollar() {
+
+}
+func (*BankNote) shortname() {
+
+}
 
 func Spec() {
 	fmt.Println("This is great")
 }
 
 // prepare ell to be used
-func prepare(ellPath string) {
+func prepare(ellTrainPath string) {
 	// check if ell path is supplied from argument passed
 	//check if ell is available from config directory
 	// if not available then download from source
+
+	if _, err := os.Stat(ellTrainPath); err != nil {
+		if os.IsNotExist(err) {
+			//file does not exist
+			fmt.Errorf("File not found in elld config directory, Downloading fresh copy")
+
+			//download the ell file and save it to the config dir
+			ellUrl := "http://gooogle.com"
+
+			err := DownloadEllToPath("train_file.ell", ellUrl)
+			if err != nil {
+				panic(err)
+			}
+
+		} else {
+			// other error encountered
+			fmt.Errorf("Error reading training file from the config")
+		}
+	}
+
 }
 
 // predict image
@@ -49,6 +88,8 @@ func predictNote(imagePath string) {
 
 func predictNotefromByte(imagePath byte) {
 	//predict image note from byte
+
+	// convert the image into byte the pipi it to MintLoader as file parameter
 }
 
 func mintLoader() (interface{}, error) {
@@ -142,7 +183,7 @@ func mintLoader() (interface{}, error) {
 		// 	fmt.Println("female")
 		// }
 	} else {
-		fmt.Println("Issue with oredictions")
+		fmt.Println("Issue with Predictions")
 
 		//resultOutput = treeData
 		errOutput = fmt.Errorf("Error performing Mint operation")
@@ -209,4 +250,33 @@ func transformGraph(imageFormat string) (graph *tf.Graph, input,
 		op.Const(s.SubScope("scale"), Scale))
 	graph, err = s.Finalize()
 	return graph, input, output, err
+}
+
+func DownloadEllToPath(filePath string, urlPath string) error {
+
+	//create the file
+	out, err := os.Create(ConfigDir + filePath)
+	if err != nil {
+		return err
+	}
+
+	// close the created file when done
+	defer out.Close()
+
+	//get the .ell path from the url supplied
+	resp, err := http.Get(urlPath)
+	if err != nil {
+		return err
+	}
+
+	//close the http downloader when done
+	defer resp.Body.Close()
+
+	//write body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
