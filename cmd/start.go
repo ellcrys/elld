@@ -233,7 +233,8 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = rpc.NewServer(rpcAddress, n.APIs(), cfg, log)
+		rpcServer = rpc.NewServer(rpcAddress, cfg, log)
+		rpcServer.AddAPI(n.APIs())
 		go rpcServer.Serve()
 	}
 

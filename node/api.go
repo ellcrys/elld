@@ -1,15 +1,18 @@
 package node
 
 import (
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
 )
 
 // APIs returns all API handlers
-func (n *Node) APIs() types.APISet {
-	return map[string]types.APIFunc{
-		"TransactionAdd": func(args ...interface{}) (interface{}, error) {
-			return nil, n.addTransaction(args[0].(*wire.Transaction))
+func (n *Node) APIs() jsonrpc.APISet {
+	return map[string]jsonrpc.APIInfo{
+		"TransactionAdd": jsonrpc.APIInfo{
+			Private: true,
+			Func: func(params jsonrpc.Params) jsonrpc.Response {
+				// return jsonrpc.Success(n.addTransaction(args[0].(*wire.Transaction)))
+				return jsonrpc.Success(nil)
+			},
 		},
 	}
 }

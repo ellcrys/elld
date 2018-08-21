@@ -1,12 +1,9 @@
 package spell
 
 import (
-	"fmt"
-
 	net_rpc "net/rpc"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/rpc"
 )
 
 // Account provides account access and management functions
@@ -25,21 +22,21 @@ func NewAccount(client *net_rpc.Client, key *crypto.Key) *Account {
 
 // GetAccounts fetches all the accounts on the node
 func (es *Account) GetAccounts() []string {
+	return nil
+	// if es.client == nil {
+	// 	Panic("Accounts.GetAccounts", "client not initialized")
+	// }
 
-	if es.client == nil {
-		Panic("Accounts.GetAccounts", "client not initialized")
-	}
+	// var args = new(rpc.AccountGetAllPayload)
+	// var result rpc.Result
+	// err := es.client.Call("Service.AccountGetAll", args, &result)
+	// if err != nil {
+	// 	Panic("Accounts.GetAccounts", err.Error())
+	// }
 
-	var args = new(rpc.AccountGetAllPayload)
-	var result rpc.Result
-	err := es.client.Call("Service.AccountGetAll", args, &result)
-	if err != nil {
-		Panic("Accounts.GetAccounts", err.Error())
-	}
+	// if result.Error != "" {
+	// 	Panic("Accounts.GetAccounts", fmt.Sprintf("%s (code: %d)", result.Error, result.ErrCode))
+	// }
 
-	if result.Error != "" {
-		Panic("Accounts.GetAccounts", fmt.Sprintf("%s (code: %d)", result.Error, result.ErrCode))
-	}
-
-	return result.Data["accounts"].([]string)
+	// return result.Data["accounts"].([]string)
 }
