@@ -21,7 +21,7 @@ func RPCClientError(msg string) error {
 }
 
 // call invokes a method in the server
-func (c *RPCClient) call(method string, params jsonrpc.Params, authToken string) (*jsonrpc.Response, error) {
+func (c *RPCClient) call(method string, params interface{}, authToken string) (*jsonrpc.Response, error) {
 
 	// create the message
 	message, err := json.EncodeClientRequest(method, params)

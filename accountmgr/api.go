@@ -10,7 +10,7 @@ func (am *AccountManager) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 
 		"listAccounts": jsonrpc.APIInfo{
-			Func: func(params jsonrpc.Params) *jsonrpc.Response {
+			Func: func(interface{}) *jsonrpc.Response {
 				accounts, err := am.ListAccounts()
 				if err != nil {
 					return jsonrpc.Error(types.ErrCodeListAccountFailed, err.Error(), nil)

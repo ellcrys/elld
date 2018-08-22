@@ -261,6 +261,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 			n.APIs(),
 			miner.APIs(),
 			accountMgr.APIs(),
+			bchain.APIs(),
 		)
 
 		go rpcServer.Serve()
