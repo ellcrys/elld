@@ -62,7 +62,7 @@ func init() {
 	consoleCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
-	consoleCmd.Flags().String("rpcaddress", ":8999", "Address RPC server will listen on")
+	consoleCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
 	consoleCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
 	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
 	consoleCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
