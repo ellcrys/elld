@@ -123,7 +123,7 @@ func (c *Console) Exit() {
 // the version of the client and some
 // of its components.
 func (c *Console) about() {
-	fmt.Println("Welcome to Druid Javascript console!")
+	fmt.Println("Welcome to Elld Javascript console!")
 	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s, Go:%s", config.ClientVersion, config.ProtocolVersion, runtime.Version()))
 	fmt.Println(" type '.exit' to exit console")
 	fmt.Println("")
