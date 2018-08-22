@@ -35,6 +35,9 @@ type Executor struct {
 	// for signing blocks and transactions
 	coinbase *crypto.Key
 
+	// authToken is the token derived from the last login() invocation
+	authToken string
+
 	// log is a logger
 	log logger.Logger
 }
@@ -47,12 +50,44 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	return e
 }
 
+func (e *Executor) login(params ...interface{}) interface{} {
+
+	// parse arguments.
+	// App RPC functions can have zero or one map type (JSON object)
+	var _params = make(map[string]interface{})
+	if len(params) > 0 {
+		var ok bool
+		_params, ok = params[0].(map[string]interface{})
+		if !ok {
+			panic(color.RedString(FuncCallError("invalid argument type. Expected a JSON object.").Error()))
+		}
+	}
+
+	// Call the auth RPC method
+	rpcResp, err := e.rpc.Client.call("auth", _params, "")
+	if err != nil {
+		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
+		v, _ := otto.ToValue(nil)
+		return v
+	}
+
+	if !rpcResp.IsError() {
+		e.authToken = rpcResp.Result.(string)
+		return nil
+	}
+
+	// decode response object to a map
+	s := structs.New(rpcResp)
+	s.TagName = "json"
+	return s.Map()
+}
+
 // PrepareContext adds objects and functions into the VM's global
 // contexts allowing users to have access to pre-defined values and objects
 func (e *Executor) PrepareContext() error {
 
 	// Get all the methods
-	resp, err := e.rpc.Client.call("methods", nil)
+	resp, err := e.rpc.Client.call("methods", nil, e.authToken)
 	if err != nil {
 		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 	}
@@ -66,6 +101,7 @@ func (e *Executor) PrepareContext() error {
 
 		// set methods as a global variable for quick
 		e.vm.Set("methods", resp.Result)
+		e.vm.Set("login", e.login)
 
 		for _, methodName := range resp.Result.([]interface{}) {
 			var mName = methodName.(string)
@@ -83,7 +119,7 @@ func (e *Executor) PrepareContext() error {
 				}
 
 				// Call the RPC method passing the RPC API params
-				rpcResp, err := e.rpc.Client.call(mName, _params)
+				rpcResp, err := e.rpc.Client.call(mName, _params, e.authToken)
 				if err != nil {
 					e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 					v, _ := otto.ToValue(nil)
@@ -129,6 +165,13 @@ func (e *Executor) exitProgram(immediately bool) {
 }
 
 func (e *Executor) exec(in string) {
+
+	// RecoverFunc recovers from panics.
+	defer func() {
+		if r := recover(); r != nil {
+			color.Red("Panic: %s", r)
+		}
+	}()
 
 	v, err := e.vm.Run(in)
 	if err != nil {

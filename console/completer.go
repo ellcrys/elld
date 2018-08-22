@@ -7,12 +7,14 @@ import (
 var initialSuggestions = []prompt.Suggest{
 	{Text: ".exit", Description: "Exit the console"},
 	{Text: ".help", Description: "Print the help message"},
+	{Text: "ell.auth()", Description: "Get a session token"},
 	{Text: "ell.minerStart()", Description: "Start mining"},
 	{Text: "ell.minerStop()", Description: "Stop mining"},
 	{Text: "ell.mining()", Description: "Check if miner is active"},
 	{Text: "ell.minerHashrate()", Description: "Get current miner hashrate"},
 	{Text: "ell.listAccounts()", Description: "List all accounts"},
 	{Text: "methods", Description: "List all RPC methods"},
+	{Text: "login()", Description: "Login to begin an authenticated session"},
 }
 
 var commonFunc = [][]string{

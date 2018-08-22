@@ -2,8 +2,12 @@ package jsonrpc
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/ncodes/authtoken"
 	"github.com/thoas/go-funk"
 
 	"github.com/gorilla/mux"
@@ -71,6 +75,42 @@ type JSONRPC struct {
 	// is returned, the handler is not called and
 	// the error is returned.
 	OnRequest OnRequestFunc
+
+	// sessionKey is used to validate JWT tokens
+	sessionKey string
+
+	// disableAuth when set to true causes
+	// authorization check to be skipped (not recommended)
+	disableAuth bool
+}
+
+// MakeSessionToken creates a session token for
+// RPC requests
+func MakeSessionToken(username, secretKey string) string {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": username,
+		"exp":      time.Now().Add(1 * time.Hour),
+	})
+	tokenStr, _ := token.SignedString([]byte(secretKey))
+	return tokenStr
+}
+
+// VerifySessionToken verifies that the given token was created
+// using the given secretKey
+func VerifySessionToken(tokenStr, secretKey string) error {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secretKey), nil
+	})
+	if err != nil {
+		return err
+	}
+	if token.Valid {
+		return nil
+	}
+	return fmt.Errorf("invalid token")
 }
 
 // Error creates an error response
@@ -94,10 +134,12 @@ func Success(result interface{}) *Response {
 }
 
 // New creates a JSONRPC server
-func New(addr string) *JSONRPC {
+func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 	rpc := &JSONRPC{
-		addr:   addr,
-		apiSet: APISet{},
+		addr:        addr,
+		apiSet:      APISet{},
+		sessionKey:  sessionKey,
+		disableAuth: disableAuth,
 	}
 	rpc.MergeAPISet(rpc.APIs())
 	return rpc
@@ -180,6 +222,21 @@ func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) *Response {
 	if f == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return Error(-32601, "Method not found", nil)
+	}
+
+	// If the method request is a private
+	// method, we must authenticate the provided bearer
+	// token
+	if !s.disableAuth && f.Private {
+		authToken, err := authtoken.FromRequest(r)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return Error(-32600, fmt.Sprintf("Invalid Request: %s", err.Error()), nil)
+		}
+		if err = VerifySessionToken(authToken, s.sessionKey); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return Error(-32600, fmt.Sprintf("Authorization Error: session token is not valid"), nil)
+		}
 	}
 
 	resp := f.Func(newReq.Params)

@@ -20,8 +20,8 @@ func RPCClientError(msg string) error {
 	return fmt.Errorf("rpc client error: %s", msg)
 }
 
-// call invokes an method in the server
-func (c *RPCClient) call(method string, params jsonrpc.Params) (*jsonrpc.Response, error) {
+// call invokes a method in the server
+func (c *RPCClient) call(method string, params jsonrpc.Params, authToken string) (*jsonrpc.Response, error) {
 
 	// create the message
 	message, err := json.EncodeClientRequest(method, params)
@@ -37,6 +37,7 @@ func (c *RPCClient) call(method string, params jsonrpc.Params) (*jsonrpc.Respons
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+authToken)
 	client := new(http.Client)
 	resp, err := client.Do(req)
 	if err != nil {

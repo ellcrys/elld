@@ -15,7 +15,7 @@ var _ = Describe("Jsonrpc", func() {
 	var rpc *JSONRPC
 
 	BeforeEach(func() {
-		rpc = New("")
+		rpc = New("", "abc", false)
 	})
 
 	Describe(".handle", func() {
@@ -34,6 +34,7 @@ var _ = Describe("Jsonrpc", func() {
 				Expect(resp.Err.Code).To(Equal(-32700))
 				Expect(resp.Err.Message).To(Equal("Parse error"))
 				Expect(resp.Result).To(BeNil())
+				Expect(rr.Code).To(Equal(400))
 			})
 
 			handler.ServeHTTP(rr, req)
@@ -53,6 +54,7 @@ var _ = Describe("Jsonrpc", func() {
 				Expect(resp.Err.Code).To(Equal(-32600))
 				Expect(resp.Err.Message).To(Equal("Invalid Request"))
 				Expect(resp.Result).To(BeNil())
+				Expect(rr.Code).To(Equal(400))
 			})
 
 			handler.ServeHTTP(rr, req)
@@ -75,6 +77,7 @@ var _ = Describe("Jsonrpc", func() {
 				Expect(resp.Err.Code).To(Equal(-32601))
 				Expect(resp.Err.Message).To(Equal("Method not found"))
 				Expect(resp.Result).To(BeNil())
+				Expect(rr.Code).To(Equal(404))
 			})
 
 			handler.ServeHTTP(rr, req)
@@ -97,6 +100,7 @@ var _ = Describe("Jsonrpc", func() {
 				Expect(resp.Err.Code).To(Equal(-32601))
 				Expect(resp.Err.Message).To(Equal("Method not found"))
 				Expect(resp.Result).To(BeNil())
+				Expect(rr.Code).To(Equal(404))
 			})
 
 			handler.ServeHTTP(rr, req)
@@ -130,6 +134,7 @@ var _ = Describe("Jsonrpc", func() {
 						Expect(resp.Err).To(BeNil())
 						Expect(resp.Result).To(Equal(float64(4)))
 						Expect(resp.ID).To(Equal(uint64(1)))
+						Expect(rr.Code).To(Equal(200))
 					})
 
 					handler.ServeHTTP(rr, req)
@@ -162,10 +167,180 @@ var _ = Describe("Jsonrpc", func() {
 						Expect(resp.Err).To(BeNil())
 						Expect(resp.Result).To(BeNil())
 						Expect(resp.ID).To(BeZero())
+						Expect(rr.Code).To(Equal(200))
 					})
 
 					handler.ServeHTTP(rr, req)
 				})
+			})
+		})
+	})
+
+	Context("Call private method", func() {
+		When("authorization is not set", func() {
+			It("should return error response", func() {
+				rpc.apiSet["echo"] = APIInfo{
+					Private: true,
+					Func: func(params Params) *Response {
+						return Success(params)
+					},
+				}
+
+				data, _ := json.Marshal(Request{
+					JSONRPCVersion: "2.0",
+					Method:         "echo",
+					Params:         map[string]interface{}{},
+				})
+
+				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
+
+				rr := httptest.NewRecorder()
+				rr.Header().Set("Content-Type", "application/json")
+
+				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					resp := rpc.handle(w, r)
+					Expect(resp.Err).ToNot(BeNil())
+					Expect(resp.Err.Message).To(Equal("Invalid Request: Authorization header required"))
+					Expect(resp.Err.Code).To(Equal(-32600))
+					Expect(rr.Code).To(Equal(401))
+				})
+
+				handler.ServeHTTP(rr, req)
+			})
+		})
+
+		When("authorization format invalid", func() {
+			It("should return error response", func() {
+				rpc.apiSet["echo"] = APIInfo{
+					Private: true,
+					Func: func(params Params) *Response {
+						return Success(params)
+					},
+				}
+
+				data, _ := json.Marshal(Request{
+					JSONRPCVersion: "2.0",
+					Method:         "echo",
+					Params:         map[string]interface{}{},
+				})
+
+				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
+				req.Header.Set("Authorization", "bea")
+
+				rr := httptest.NewRecorder()
+				rr.Header().Set("Content-Type", "application/json")
+
+				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					resp := rpc.handle(w, r)
+					Expect(resp.Err).ToNot(BeNil())
+					Expect(resp.Err.Message).To(Equal("Invalid Request: Authorization requires Bearer scheme"))
+					Expect(resp.Err.Code).To(Equal(-32600))
+					Expect(rr.Code).To(Equal(401))
+				})
+
+				handler.ServeHTTP(rr, req)
+			})
+		})
+
+		When("authorization format is valid", func() {
+			It("should return error response when bearer token is invalid", func() {
+				rpc.apiSet["echo"] = APIInfo{
+					Private: true,
+					Func: func(params Params) *Response {
+						return Success(params)
+					},
+				}
+
+				data, _ := json.Marshal(Request{
+					JSONRPCVersion: "2.0",
+					Method:         "echo",
+					Params:         map[string]interface{}{},
+				})
+
+				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
+				req.Header.Set("Authorization", "Bearer abcxyz")
+
+				rr := httptest.NewRecorder()
+				rr.Header().Set("Content-Type", "application/json")
+
+				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					resp := rpc.handle(w, r)
+					Expect(resp.Err).ToNot(BeNil())
+					Expect(resp.Err.Message).To(Equal("Authorization Error: session token is not valid"))
+					Expect(resp.Err.Code).To(Equal(-32600))
+					Expect(rr.Code).To(Equal(401))
+				})
+
+				handler.ServeHTTP(rr, req)
+			})
+		})
+
+		When("authorization format is valid", func() {
+			It("should be successful when bearer token is valid", func() {
+				rpc.apiSet["echo"] = APIInfo{
+					Private: true,
+					Func: func(params Params) *Response {
+						return Success(params)
+					},
+				}
+
+				data, _ := json.Marshal(Request{
+					JSONRPCVersion: "2.0",
+					Method:         "echo",
+					ID:             1,
+					Params: map[string]interface{}{
+						"age": 100,
+					},
+				})
+
+				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
+				req.Header.Set("Authorization", "Bearer "+MakeSessionToken("user1", rpc.sessionKey))
+
+				rr := httptest.NewRecorder()
+				rr.Header().Set("Content-Type", "application/json")
+
+				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					resp := rpc.handle(w, r)
+					Expect(resp.Err).To(BeNil())
+					Expect(rr.Code).To(Equal(200))
+				})
+
+				handler.ServeHTTP(rr, req)
+			})
+		})
+
+		When("authorization format is valid and bearer token is not valid", func() {
+			It("should be successful when disableAuth is true", func() {
+				rpc.disableAuth = true
+				rpc.apiSet["echo"] = APIInfo{
+					Private: true,
+					Func: func(params Params) *Response {
+						return Success(params)
+					},
+				}
+
+				data, _ := json.Marshal(Request{
+					JSONRPCVersion: "2.0",
+					Method:         "echo",
+					ID:             1,
+					Params: map[string]interface{}{
+						"age": 100,
+					},
+				})
+
+				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
+				req.Header.Set("Authorization", "Bearer abcxyz")
+
+				rr := httptest.NewRecorder()
+				rr.Header().Set("Content-Type", "application/json")
+
+				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					resp := rpc.handle(w, r)
+					Expect(resp.Err).To(BeNil())
+					Expect(rr.Code).To(Equal(200))
+				})
+
+				handler.ServeHTTP(rr, req)
 			})
 		})
 	})

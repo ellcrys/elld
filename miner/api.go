@@ -7,6 +7,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 
 		"minerStop": jsonrpc.APIInfo{
+			Private: true,
 			Func: func(params jsonrpc.Params) *jsonrpc.Response {
 				m.Stop()
 				return jsonrpc.Success(nil)
@@ -14,6 +15,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 		},
 
 		"minerStart": jsonrpc.APIInfo{
+			Private: true,
 			Func: func(params jsonrpc.Params) *jsonrpc.Response {
 				go m.Mine()
 				return jsonrpc.Success(nil)

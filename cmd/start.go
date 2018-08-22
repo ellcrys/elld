@@ -253,7 +253,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// if enabled via the appropriate cli flag.
 	var rpcServer *rpc.Server
 	if startRPC {
-		rpcServer = rpc.NewServer(rpcAddress, cfg, log)
+		rpcServer = rpc.NewServer(n.DB(), rpcAddress, cfg, log)
 
 		// Add the RPC APIs from various
 		// components.
@@ -273,7 +273,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 		// Create the console. Configure the
 		// RPC client.
-		cs = console.New(coinbase, consoleHistoryFilePath, log)
+		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
 		cs.ConfigureRPC(rpcAddress, false)
 		if err := cs.PrepareVM(); err != nil {
 			log.Fatal("failed to prepare console VM", "Err", err)

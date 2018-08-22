@@ -39,21 +39,25 @@ type Console struct {
 	// history contains the commands
 	// collected during this console session.
 	history []string
+
+	// cfg is the client config
+	cfg *config.EngineConfig
 }
 
 // New creates a new Console instance.
 // signatory is the address
-func New(coinbase *crypto.Key, historyFilePath string, log logger.Logger) *Console {
+func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
 
 	c := new(Console)
-	c.historyFile = historyFilePath
+	c.historyFile = historyPath
 	c.executor = newExecutor(coinbase, log)
 	c.suggestMgr = newSuggestionManager(initialSuggestions)
 	c.coinbase = coinbase
+	c.cfg = cfg
 
 	// retrieve the history
 	var history []string
-	data, _ := ioutil.ReadFile(historyFilePath)
+	data, _ := ioutil.ReadFile(historyPath)
 	if len(data) > 0 {
 		msgpack.Unmarshal(data, &history)
 	}
