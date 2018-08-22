@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/binary"
+	"strconv"
 
 	"github.com/ellcrys/elld/elldb"
 )
@@ -24,6 +25,9 @@ var (
 
 	// ObjectTypeBlockchainMeta represents a meta object
 	ObjectTypeBlockchainMeta = []byte("blockchain-meta")
+
+	// ObjectTypeReOrg represents a meta object
+	ObjectTypeReOrg = []byte("re-org")
 )
 
 // EncodeBlockNumber serializes a block number to BigEndian
@@ -135,4 +139,19 @@ func MakeTxsQueryKey(chainID []byte) []byte {
 // MakeTreeKey constructs a key for recording state objects in a tree
 func MakeTreeKey(blockNumber uint64, objectType []byte) []byte {
 	return append(EncodeBlockNumber(blockNumber), objectType...)
+}
+
+// MakeReOrgKey constructs a key for storing reorganization info
+func MakeReOrgKey(timestamp int64) []byte {
+	return elldb.MakeKey(
+		[]byte(strconv.FormatInt(timestamp, 10)),
+		ObjectTypeReOrg,
+	)
+}
+
+// MakeReOrgQueryKey constructs a key for querying reorganization objects
+func MakeReOrgQueryKey() []byte {
+	return elldb.MakePrefix(
+		ObjectTypeReOrg,
+	)
 }

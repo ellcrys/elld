@@ -35,7 +35,7 @@ type Header struct {
 	Nonce            core.BlockNonce `json:"nonce" msgpack:"nonce"`
 	Timestamp        int64           `json:"timestamp" msgpack:"timestamp"`
 	CreatorPubKey    util.String     `json:"creatorPubKey" msgpack:"creatorPubKey"`
-	ParentHash       util.Hash       `json:"ParentHash" msgpack:"ParentHash"`
+	ParentHash       util.Hash       `json:"parentHash" msgpack:"parentHash"`
 	StateRoot        util.Hash       `json:"stateRoot" msgpack:"stateRoot"`
 	TransactionsRoot util.Hash       `json:"transactionsRoot" msgpack:"transactionsRoot"`
 	Difficulty       *big.Int        `json:"difficulty" msgpack:"difficulty"`

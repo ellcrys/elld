@@ -6,7 +6,6 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/merkletree"
-	"github.com/vmihailenco/msgpack"
 )
 
 // CallOp describes an interface to be used to define store method options
@@ -28,15 +27,6 @@ type ChainInfo struct {
 	ParentChainID     util.String `json:"parentChainID" msgpack:"parentChainID"`
 	ParentBlockNumber uint64      `json:"parentBlockNumber" msgpack:"parentBlockNumber"`
 	Timestamp         int64       `json:"timestamp" msgpack:"timestamp"`
-}
-
-// BlockchainMeta includes information about the blockchain
-type BlockchainMeta struct {
-}
-
-// JSON returns the JSON encoded equivalent
-func (m *BlockchainMeta) JSON() ([]byte, error) {
-	return msgpack.Marshal(m)
 }
 
 // GenerateBlockParams represents parameters

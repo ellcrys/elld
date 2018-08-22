@@ -15,7 +15,7 @@ func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
 	// perform authentication and create a session token
 	token, err := s.auth(p["username"], p["password"])
 	if err != nil {
-		return jsonrpc.Error(types.ErrInvalidAuthCredentials, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeInvalidAuthCredentials, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(token)
