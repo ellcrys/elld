@@ -129,7 +129,7 @@ var _ = Describe("Jsonrpc", func() {
 						resp := rpc.handle(w, r)
 						Expect(resp.Err).To(BeNil())
 						Expect(resp.Result).To(Equal(float64(4)))
-						Expect(resp.ID).To(Equal(1))
+						Expect(resp.ID).To(Equal(uint64(1)))
 					})
 
 					handler.ServeHTTP(rr, req)

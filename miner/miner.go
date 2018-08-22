@@ -46,6 +46,12 @@ type Miner struct {
 	// abort forces the current mining operations to stop
 	abort chan struct{}
 
+	// isMining indicates whether or not
+	// mining is ongoing
+	isMining bool
+
+	// aborted indicates whether or not mining has been
+	// aborted so we do not attempt to re-abort
 	aborted bool
 
 	// proposedBlock is the block currently being mined
@@ -134,16 +140,24 @@ func (m *Miner) ValidateHeader(chain core.ChainReader, header, parent *wire.Head
 	m.blakimoto.VerifyHeader(chain, header, parent, seal)
 }
 
+// IsMining checks whether or not the miner is actively
+// performing PoW operation.
+func (m *Miner) IsMining() bool {
+	return m.isMining
+}
+
 // Mine begins the mining process
 func (m *Miner) Mine() {
 
 	m.log.Info("Beginning mining protocol")
+	m.stop = false
 
 	for !m.stop {
 
 		var err error
 		m.aborted = false
 		m.abort = make(chan struct{})
+		m.isMining = true
 
 		// Get a proposed block compatible with the
 		// main chain and the current block.
@@ -152,7 +166,7 @@ func (m *Miner) Mine() {
 		})
 		if err != nil {
 			m.log.Error("Proposed block is not valid", "Error", err)
-			return
+			break
 		}
 
 		// Prepare the proposed block. It will calculate
@@ -165,9 +179,11 @@ func (m *Miner) Mine() {
 		block, err := m.blakimoto.Seal(m.proposedBlock, m.abort)
 		if err != nil {
 			m.log.Error(err.Error())
-			return
+			break
 		}
 
+		// abort due to new winning block being discovered
+		// or due to Stop() being called.
 		if block == nil || m.stop {
 			continue
 		}
@@ -176,7 +192,7 @@ func (m *Miner) Mine() {
 		block, err = m.blakimoto.Finalize(m.blockMaker, block)
 		if err != nil {
 			m.log.Error("Block finalization failed", "Err", err)
-			return
+			break
 		}
 
 		// Recompute hash and signature
@@ -189,7 +205,7 @@ func (m *Miner) Mine() {
 			_, err = m.blockMaker.ProcessBlock(block)
 			if err != nil {
 				m.log.Error("Failed to process block", "Err", err.Error())
-				return
+				break
 			}
 		}
 
@@ -207,4 +223,6 @@ func (m *Miner) Mine() {
 		time.Sleep(3 * time.Second)
 		// }
 	}
+
+	m.isMining = false
 }

@@ -24,7 +24,7 @@ type Request struct {
 	JSONRPCVersion string `json:"jsonrpc"`
 	Method         string `json:"method"`
 	Params         Params `json:"params"`
-	ID             int    `json:"id,omitempty"`
+	ID             uint64 `json:"id,omitempty"`
 }
 
 // IsNotification checks whether the request is a notification
@@ -45,7 +45,7 @@ type Response struct {
 	JSONRPCVersion string      `json:"jsonrpc"`
 	Result         interface{} `json:"result,omitempty"`
 	Err            *Err        `json:"error,omitempty"`
-	ID             int         `json:"id,omitempty"`
+	ID             uint64      `json:"id,omitempty"`
 }
 
 // IsError checks whether r is an error response

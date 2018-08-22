@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	hardcodedBootstrapNodes = []string{} // hardcoded bootstrap node address
+	boostrapAddresses = []string{} // hardcoded bootstrap node address
 )
 
 func devDefaultConfig(cfg *config.EngineConfig) {
@@ -143,6 +143,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	var err error
 
+	// Process flags
 	bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
 	addressToListenOn, _ := cmd.Flags().GetString("address")
 	startRPC, _ := cmd.Flags().GetBool("rpc")
@@ -152,55 +153,64 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
 
+	// Set hard coded configurations
 	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
 	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
-
 	cfg.Monetary.Decimals = 16
 
+	// set to dev mode if -dev is set
 	if devMode {
 		cfg.Node.Mode = config.ModeDev
 		devDefaultConfig(cfg)
 	}
 
+	// check that the host address to bind
+	// the engine to is valid,
 	if !util.IsValidHostPortAddress(addressToListenOn) {
 		log.Fatal("invalid bind address provided")
 	}
 
-	loadedAddress, err := loadOrCreateAccount(account, password, seed)
+	// load the coinbase account.
+	// Required for signing blocks and transactions
+	coinbase, err := loadOrCreateAccount(account, password, seed)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	log.Info("Elld has started", "Version", config.ClientVersion)
 
-	n, err := node.NewNode(cfg, addressToListenOn, loadedAddress, log)
+	// Create the local node.
+	n, err := node.NewNode(cfg, addressToListenOn, coinbase, log)
 	if err != nil {
 		log.Fatal("failed to create local node")
 	}
 
+	// In debug mode, we set log level
+	// to DEBUG.
 	if n.DevMode() {
 		log.SetToDebug()
 	}
 
-	if len(hardcodedBootstrapNodes) > 0 {
-		if err := n.AddBootstrapNodes(hardcodedBootstrapNodes, true); err != nil {
-			log.Fatal("%s", err)
-		}
+	// Add hardcoded bootstrap addresses
+	if err := n.AddBootstrapNodes(boostrapAddresses, true); err != nil {
+		log.Fatal("%s", err)
 	}
 
-	if len(cfg.Node.BootstrapNodes) > 0 {
-		if err := n.AddBootstrapNodes(cfg.Node.BootstrapNodes, false); err != nil {
-			log.Fatal("%s", err)
-		}
+	// Add bootstrap addresses supplied
+	// in the config file
+	if err := n.AddBootstrapNodes(cfg.Node.BootstrapNodes, false); err != nil {
+		log.Fatal("%s", err)
 	}
 
+	// open the database on the engine
 	if err = n.OpenDB(); err != nil {
 		log.Fatal("failed to open local database")
 	}
 
 	log.Info("Waiting patiently to interact on", "Addr", n.GetMultiAddr(), "Dev", devMode)
 
+	// Initialized gossip protocol handlers
 	protocol := node.NewGossip(n, log)
 	n.SetGossipProtocol(protocol)
 	n.SetProtocolHandler(config.HandshakeVersion, protocol.OnHandshake)
@@ -229,41 +239,49 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Set the event handler in the node
 	n.SetEventBus(event)
 
+	// Start the node
 	n.Start()
 
+	// Initialized and start the miner if
+	// enabled via the cli flag.
+	miner := miner.New(coinbase, bchain, event, cfg, log)
+	if mine {
+		go miner.Mine()
+	}
+
+	// Initialize and start the RPCServer
+	// if enabled via the appropriate cli flag.
 	var rpcServer *rpc.Server
 	if startRPC {
 		rpcServer = rpc.NewServer(rpcAddress, cfg, log)
-		rpcServer.AddAPI(n.APIs())
+
+		// Add the RPC APIs from various
+		// components.
+		rpcServer.AddAPI(
+			n.APIs(),
+			miner.APIs(),
+			accountMgr.APIs(),
+		)
+
 		go rpcServer.Serve()
 	}
 
+	// Initialize and start the console if
+	// enabled via the appropriate cli flag.
 	var cs *console.Console
 	if startConsole {
 
-		cs = console.New(loadedAddress, consoleHistoryFilePath)
-
-		if startRPC {
-
-			err = cs.DialRPCServer(rpcAddress)
-			if err != nil {
-				log.Fatal("unable to start RPC server", "Err", err)
-			}
-
-			cs.PrepareVM()
-			if err != nil {
-				log.Fatal("unable to prepare console VM", "Err", err)
-			}
+		// Create the console. Configure the
+		// RPC client.
+		cs = console.New(coinbase, consoleHistoryFilePath, log)
+		cs.ConfigureRPC(rpcAddress, false)
+		if err := cs.PrepareVM(); err != nil {
+			log.Fatal("failed to prepare console VM", "Err", err)
 		}
 
-		fmt.Println("")
+		// Run the console.
+		fmt.Println("") // Extra space in console
 		go cs.Run()
-	}
-
-	// Start the miner if enabled
-	miner := miner.New(loadedAddress, bchain, event, cfg, log)
-	if mine {
-		go miner.Mine()
 	}
 
 	return n, rpcServer, cs, miner

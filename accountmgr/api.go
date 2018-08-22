@@ -9,13 +9,19 @@ import (
 func (am *AccountManager) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 
-		"ListAccounts": jsonrpc.APIInfo{
-			Func: func(params jsonrpc.Params) jsonrpc.Response {
+		"listAccounts": jsonrpc.APIInfo{
+			Func: func(params jsonrpc.Params) *jsonrpc.Response {
 				accounts, err := am.ListAccounts()
 				if err != nil {
 					return jsonrpc.Error(types.ErrCodeListAccountFailed, err.Error(), nil)
 				}
-				return jsonrpc.Success(accounts)
+
+				var addresses []string
+				for _, acct := range accounts {
+					addresses = append(addresses, acct.Address)
+				}
+
+				return jsonrpc.Success(addresses)
 			},
 		},
 	}
