@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
 	"io"
 	"io/ioutil"
 	"log"
@@ -28,26 +30,26 @@ type BankNote struct {
 	ShortName           string `json:"shortName"`
 }
 
-func (*BankNote) name() {
-
+func (b *BankNote) name() string {
+	return b.CurrencyName
 }
-func (*BankNote) country() {
-
+func (b *BankNote) country() string {
+	return b.Country
 }
-func (*BankNote) figure() {
-
+func (b *BankNote) figure() string {
+	return b.DenominationFigures
 }
-func (*BankNote) text() {
-
+func (b *BankNote) text() string {
+	return b.DenominationText
 }
-func (*BankNote) ellies() {
-
+func (b *BankNote) ellies() string {
+	return b.ElliesConversion
 }
-func (*BankNote) dollar() {
-
+func (b *BankNote) dollar() string {
+	return b.DollarConversion
 }
-func (*BankNote) shortname() {
-
+func (b *BankNote) shortname() string {
+	return b.ShortName
 }
 
 func Spec() {
@@ -86,10 +88,25 @@ func predictNote(imagePath string) {
 	//predict image note from .png and .jpg
 }
 
-func predictNotefromByte(imagePath byte) {
+func predictNotefromByte(imageByte []byte) {
 	//predict image note from byte
 
-	// convert the image into byte the pipi it to MintLoader as file parameter
+	// convert the image into byte the pipe it to MintLoader as file parameter
+
+	//convert byte to image
+	img, _, _ := image.Decode(bytes.NewReader(imageByte))
+
+	//save the imageByte to a file
+	out, err := os.Create("./tempimages.png")
+	if err != nil {
+		fmt.Errorf("Error creating the images in temp folder")
+	}
+
+	newImage, er := png.Decode(out, img)
+	if err != nil {
+		fmt.Errorf(er)
+	}
+
 }
 
 func mintLoader() (interface{}, error) {
@@ -252,6 +269,7 @@ func transformGraph(imageFormat string) (graph *tf.Graph, input,
 	return graph, input, output, err
 }
 
+// DownloadEllToPath download the ell trainer file to the config directory
 func DownloadEllToPath(filePath string, urlPath string) error {
 
 	//create the file
