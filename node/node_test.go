@@ -127,7 +127,7 @@ func NodeTest() bool {
 				Expect(err).To(BeNil())
 				_, err = n.NodeFromAddr("/invalid", false)
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("addr is not valid"))
+				Expect(err.Error()).To(Equal("invalid address provided"))
 			})
 		})
 

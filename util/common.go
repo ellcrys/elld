@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/vmihailenco/msgpack"
 
 	"github.com/fatih/structs"
@@ -251,4 +253,22 @@ func GetPtrAddr(ptrAddr interface{}) *big.Int {
 		panic("could not convert pointer address to big.Int")
 	}
 	return ptrAddrInt
+}
+
+// MapDecode decodes a map to a struct.
+// It uses mapstructure.Decode internally but
+// with 'json' TagName.
+func MapDecode(m interface{}, rawVal interface{}) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   rawVal,
+		TagName:  "json",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(m)
 }
