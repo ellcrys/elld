@@ -42,9 +42,8 @@ func (b *Blockchain) decideBestChain() error {
 	// If the current best chain and the new best chain
 	// are not the same. Then we must reorganize
 	if b.bestChain != nil && b.bestChain.GetID() != proposedBestChain.GetID() {
-		b.log.Info("New best chain discovered. Attempting chain reorganization.",
-			"CurBestChainID", b.bestChain.GetID(), "ProposedChainID", proposedBestChain.GetID())
-
+		b.log.Info("New best chain detected. Re-organizing.",
+			"CurBestChainID", b.bestChain.GetID().SS(), "ProposedChainID", proposedBestChain.GetID().SS())
 		b.bestChain, err = b.reOrg(proposedBestChain)
 		if err != nil {
 			return fmt.Errorf("Reorganization error: %s", err)
@@ -89,7 +88,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core
 	}
 
 	reOrgInfo.SideChainLen = sideTip.GetNumber() - sidechain.parentBlock.GetNumber()
-	reOrgInfo.ReOrgLen = sidechain.parentBlock.GetNumber() - mainTip.GetNumber()
+	reOrgInfo.ReOrgLen = mainTip.GetNumber() - sidechain.parentBlock.GetNumber()
 
 	key := common.MakeReOrgKey(timestamp)
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(key, util.ObjectToBytes(reOrgInfo))})
@@ -105,11 +104,10 @@ func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core
 func (b *Blockchain) getReOrgs(opts ...core.CallOp) []*ReOrgInfo {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
-	var txOp = common.GetTxOp(b.db, opts...)
 
 	var reOrgs = []*ReOrgInfo{}
 	key := common.MakeReOrgQueryKey()
-	result := txOp.Tx.GetByPrefix(key)
+	result := b.db.GetByPrefix(key)
 	for _, r := range result {
 		var reOrg ReOrgInfo
 		r.Scan(&reOrg)
@@ -135,6 +133,10 @@ func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 
 	// indicate the commencement of a re-org
 	b.reOrgActive = true
+	defer func() {
+		b.reOrgActive = false
+	}()
+
 	tx, _ := b.db.NewTx()
 	txOp := &common.TxOp{Tx: tx, CanFinish: false}
 

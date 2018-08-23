@@ -43,8 +43,8 @@ func (r *ChainRead) GetHeader(number uint64, opts ...core.CallOp) (core.Header, 
 }
 
 // GetHeaderByHash finds and returns the header of a block matching hash
-func (r *ChainRead) GetHeaderByHash(hash util.Hash) (core.Header, error) {
-	return r.store.GetHeaderByHash(hash)
+func (r *ChainRead) GetHeaderByHash(hash util.Hash, opts ...core.CallOp) (core.Header, error) {
+	return r.store.GetHeaderByHash(hash, opts...)
 }
 
 // Current gets the current block at the tip of the chain

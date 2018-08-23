@@ -43,16 +43,7 @@ var (
 )
 
 // VerifyHeader checks whether a header conforms to the consensus rules
-func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Header, seal bool) error {
-
-	// Get the header of the block's parent.
-	parent, err := chain.GetHeaderByHash(header.GetParentHash())
-	if err != nil {
-		if err != core.ErrBlockExists {
-			return err
-		}
-		return ErrUnknownParent
-	}
+func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 
 	// Ensure that the header's extra-data section is of a reasonable size
 	if uint64(len(header.GetExtra())) > params.MaximumExtraDataSize {
@@ -69,7 +60,7 @@ func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Hea
 	}
 
 	// Verify the block's difficulty based on it's timestamp and parent's difficulty
-	expected := b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent)
+	expected := b.CalcDifficulty(uint64(header.GetTimestamp()), parent)
 	if expected.Cmp(header.GetDifficulty()) != 0 {
 		return fmt.Errorf("invalid difficulty: have %v, want %v", header.GetDifficulty(), expected)
 	}
@@ -87,7 +78,7 @@ func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Hea
 
 	// Verify the engine specific seal securing the block
 	if seal {
-		if err := b.VerifySeal(chain, header); err != nil {
+		if err := b.VerifySeal(header); err != nil {
 			return err
 		}
 	}
@@ -98,7 +89,7 @@ func (b *Blakimoto) VerifyHeader(chain core.ChainReader, header, parent core.Hea
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func (b *Blakimoto) CalcDifficulty(chain core.ChainReader, time uint64, parent core.Header) *big.Int {
+func (b *Blakimoto) CalcDifficulty(time uint64, parent core.Header) *big.Int {
 	return CalcDifficulty(time, parent)
 }
 
@@ -153,7 +144,7 @@ func calcDifficultyFrontier(time uint64, parent core.Header) *big.Int {
 
 // VerifySeal checks whether the given block satisfies
 // the PoW difficulty requirements.
-func (b *Blakimoto) VerifySeal(chain core.ChainReader, header core.Header) error {
+func (b *Blakimoto) VerifySeal(header core.Header) error {
 	// If we're running a fake PoW, accept any seal as valid
 	if b.config.PowMode == ModeTest {
 		time.Sleep(b.fakeDelay)
@@ -191,7 +182,7 @@ func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 		return ErrUnknownParent
 	}
 
-	header.SetDifficulty(b.CalcDifficulty(chain, uint64(header.GetTimestamp()), parent))
+	header.SetDifficulty(b.CalcDifficulty(uint64(header.GetTimestamp()), parent))
 	header.SetTotalDifficulty(new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty()))
 	return nil
 }
