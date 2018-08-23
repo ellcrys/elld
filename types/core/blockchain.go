@@ -127,7 +127,7 @@ type ChainReader interface {
 	GetHeader(number uint64, opts ...CallOp) (Header, error)
 
 	// GetHeaderByHash finds and returns the header of a block matching hash
-	GetHeaderByHash(hash util.Hash) (Header, error)
+	GetHeaderByHash(hash util.Hash, opts ...CallOp) (Header, error)
 
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)

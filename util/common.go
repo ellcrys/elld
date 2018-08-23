@@ -51,6 +51,15 @@ func (s String) String() string {
 	return string(s)
 }
 
+// SS returns a short version of String() with the middle
+// characters truncated when length is at least 32
+func (s String) SS() string {
+	if len(s) >= 32 {
+		return fmt.Sprintf("%s...%s", string(s)[0:10], string(s)[len(s)-10:])
+	}
+	return string(s)
+}
+
 // Decimal returns the decimal representation of the string.
 // Panics if string failed to be converted to decimal.
 func (s String) Decimal() decimal.Decimal {
