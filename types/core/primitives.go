@@ -2,9 +2,11 @@ package core
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math/big"
 
 	"github.com/ellcrys/elld/util"
+	"github.com/fatih/structs"
 )
 
 // Block defines a block
@@ -101,4 +103,46 @@ func (n BlockNonce) Uint64() uint64 {
 // MarshalText encodes n as a hex string with 0x prefix.
 func (n BlockNonce) MarshalText() string {
 	return util.ToHex(n[:])
+}
+
+// MapFieldsToHex takes a struct and converts
+// selected field types to hex string. It returns
+// a map. It will panic if obj is not a map/struct.
+func MapFieldsToHex(obj interface{}) interface{} {
+
+	if obj == nil {
+		return obj
+	}
+
+	var m map[string]interface{}
+
+	// if not struct, we assume it is a map
+	if structs.IsStruct(obj) {
+		s := structs.New(obj)
+		s.TagName = "json"
+		m = s.Map()
+	} else {
+		m = obj.(map[string]interface{})
+	}
+
+	for k, v := range m {
+		switch _v := v.(type) {
+		case BlockNonce:
+			m[k] = util.BytesToHash(_v[:]).HexStr()
+		case util.Hash:
+			m[k] = _v.HexStr()
+		case *big.Int:
+			m[k] = fmt.Sprintf("0x%x", _v)
+		case []byte:
+			m[k] = util.BytesToHash(_v).HexStr()
+		case map[string]interface{}:
+			m[k] = MapFieldsToHex(_v)
+		case []interface{}:
+			for i, item := range _v {
+				_v[i] = MapFieldsToHex(item)
+			}
+		}
+	}
+
+	return m
 }

@@ -110,8 +110,9 @@ var _ = Describe("Jsonrpc", func() {
 			When("ID is added to the request body", func() {
 				It("should return result", func() {
 					rpc.apiSet["add"] = APIInfo{
-						Func: func(params Params) *Response {
-							return Success(params["x"].(float64) + params["y"].(float64))
+						Func: func(params interface{}) *Response {
+							m := params.(map[string]interface{})
+							return Success(m["x"].(float64) + m["y"].(float64))
 						},
 					}
 
@@ -144,8 +145,9 @@ var _ = Describe("Jsonrpc", func() {
 			When("ID is not added to the request body", func() {
 				It("should not return result", func() {
 					rpc.apiSet["add"] = APIInfo{
-						Func: func(params Params) *Response {
-							return Success(params["x"].(float64) + params["y"].(float64))
+						Func: func(params interface{}) *Response {
+							m := params.(map[string]interface{})
+							return Success(m["x"].(float64) + m["y"].(float64))
 						},
 					}
 
@@ -181,7 +183,7 @@ var _ = Describe("Jsonrpc", func() {
 			It("should return error response", func() {
 				rpc.apiSet["echo"] = APIInfo{
 					Private: true,
-					Func: func(params Params) *Response {
+					Func: func(params interface{}) *Response {
 						return Success(params)
 					},
 				}
@@ -213,7 +215,7 @@ var _ = Describe("Jsonrpc", func() {
 			It("should return error response", func() {
 				rpc.apiSet["echo"] = APIInfo{
 					Private: true,
-					Func: func(params Params) *Response {
+					Func: func(params interface{}) *Response {
 						return Success(params)
 					},
 				}
@@ -246,7 +248,7 @@ var _ = Describe("Jsonrpc", func() {
 			It("should return error response when bearer token is invalid", func() {
 				rpc.apiSet["echo"] = APIInfo{
 					Private: true,
-					Func: func(params Params) *Response {
+					Func: func(params interface{}) *Response {
 						return Success(params)
 					},
 				}
@@ -279,7 +281,7 @@ var _ = Describe("Jsonrpc", func() {
 			It("should be successful when bearer token is valid", func() {
 				rpc.apiSet["echo"] = APIInfo{
 					Private: true,
-					Func: func(params Params) *Response {
+					Func: func(params interface{}) *Response {
 						return Success(params)
 					},
 				}
@@ -314,7 +316,7 @@ var _ = Describe("Jsonrpc", func() {
 				rpc.disableAuth = true
 				rpc.apiSet["echo"] = APIInfo{
 					Private: true,
-					Func: func(params Params) *Response {
+					Func: func(params interface{}) *Response {
 						return Success(params)
 					},
 				}
@@ -348,8 +350,9 @@ var _ = Describe("Jsonrpc", func() {
 	Describe(".AddAPI", func() {
 		It("should add API", func() {
 			rpc.AddAPI("add", APIInfo{
-				Func: func(params Params) *Response {
-					return Success(params["x"].(float64) + params["y"].(float64))
+				Func: func(params interface{}) *Response {
+					m := params.(map[string]interface{})
+					return Success(m["x"].(float64) + m["y"].(float64))
 				},
 			})
 			Expect(rpc.apiSet).To(HaveLen(2))
@@ -360,20 +363,23 @@ var _ = Describe("Jsonrpc", func() {
 		It("should add API", func() {
 			apiSet1 := APISet(map[string]APIInfo{
 				"add": APIInfo{
-					Func: func(params Params) *Response {
-						return Success(params["x"].(float64) + params["y"].(float64))
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
 			})
 			apiSet2 := APISet(map[string]APIInfo{
 				"add": APIInfo{
-					Func: func(params Params) *Response {
-						return Success(params["x"].(float64) + params["y"].(float64))
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
 				"div": APIInfo{
-					Func: func(params Params) *Response {
-						return Success(params["x"].(float64) / params["y"].(float64))
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) / m["y"].(float64))
 					},
 				},
 			})
@@ -386,20 +392,23 @@ var _ = Describe("Jsonrpc", func() {
 		It("should return all methods name", func() {
 			apiSet1 := APISet(map[string]APIInfo{
 				"add": APIInfo{
-					Func: func(params Params) *Response {
-						return Success(params["x"].(float64) + params["y"].(float64))
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
 			})
 			apiSet2 := APISet(map[string]APIInfo{
 				"add": APIInfo{
-					Func: func(params Params) *Response {
-						return Success(params["x"].(float64) + params["y"].(float64))
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
 				"div": APIInfo{
-					Func: func(params Params) *Response {
-						return Success(params["x"].(float64) / params["y"].(float64))
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) / m["y"].(float64))
 					},
 				},
 			})

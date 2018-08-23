@@ -8,7 +8,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 
 		"minerStop": jsonrpc.APIInfo{
 			Private: true,
-			Func: func(params jsonrpc.Params) *jsonrpc.Response {
+			Func: func(params interface{}) *jsonrpc.Response {
 				m.Stop()
 				return jsonrpc.Success(nil)
 			},
@@ -16,20 +16,20 @@ func (m *Miner) APIs() jsonrpc.APISet {
 
 		"minerStart": jsonrpc.APIInfo{
 			Private: true,
-			Func: func(params jsonrpc.Params) *jsonrpc.Response {
+			Func: func(params interface{}) *jsonrpc.Response {
 				go m.Mine()
 				return jsonrpc.Success(nil)
 			},
 		},
 
 		"mining": jsonrpc.APIInfo{
-			Func: func(params jsonrpc.Params) *jsonrpc.Response {
+			Func: func(params interface{}) *jsonrpc.Response {
 				return jsonrpc.Success(m.IsMining())
 			},
 		},
 
 		"minerHashrate": jsonrpc.APIInfo{
-			Func: func(params jsonrpc.Params) *jsonrpc.Response {
+			Func: func(params interface{}) *jsonrpc.Response {
 				return jsonrpc.Success(m.blakimoto.Hashrate())
 			},
 		},

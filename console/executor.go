@@ -50,21 +50,17 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	return e
 }
 
-func (e *Executor) login(params ...interface{}) interface{} {
+func (e *Executor) login(args ...interface{}) interface{} {
 
 	// parse arguments.
-	// App RPC functions can have zero or one map type (JSON object)
-	var _params = make(map[string]interface{})
-	if len(params) > 0 {
-		var ok bool
-		_params, ok = params[0].(map[string]interface{})
-		if !ok {
-			panic(color.RedString(FuncCallError("invalid argument type. Expected a JSON object.").Error()))
-		}
+	// App RPC functions can have zero or one argument
+	var arg interface{}
+	if len(args) > 0 {
+		arg = args[0]
 	}
 
 	// Call the auth RPC method
-	rpcResp, err := e.rpc.Client.call("auth", _params, "")
+	rpcResp, err := e.rpc.Client.call("auth", arg, "")
 	if err != nil {
 		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 		v, _ := otto.ToValue(nil)
@@ -105,21 +101,17 @@ func (e *Executor) PrepareContext() error {
 
 		for _, methodName := range resp.Result.([]interface{}) {
 			var mName = methodName.(string)
-			globalObj[mName] = func(params ...interface{}) interface{} {
+			globalObj[mName] = func(args ...interface{}) interface{} {
 
 				// parse arguments.
-				// App RPC functions can have zero or one map type (JSON object)
-				var _params = make(map[string]interface{})
-				if len(params) > 0 {
-					var ok bool
-					_params, ok = params[0].(map[string]interface{})
-					if !ok {
-						panic(color.RedString(FuncCallError("invalid argument type. Expected a JSON object.").Error()))
-					}
+				// App RPC functions can have zero or one argument
+				var arg interface{}
+				if len(args) > 0 {
+					arg = args[0]
 				}
 
 				// Call the RPC method passing the RPC API params
-				rpcResp, err := e.rpc.Client.call(mName, _params, e.authToken)
+				rpcResp, err := e.rpc.Client.call(mName, arg, e.authToken)
 				if err != nil {
 					e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 					v, _ := otto.ToValue(nil)

@@ -25,10 +25,10 @@ type OnRequestFunc func(r *http.Request) error
 
 // Request represent a JSON RPC request
 type Request struct {
-	JSONRPCVersion string `json:"jsonrpc"`
-	Method         string `json:"method"`
-	Params         Params `json:"params"`
-	ID             uint64 `json:"id,omitempty"`
+	JSONRPCVersion string      `json:"jsonrpc"`
+	Method         string      `json:"method"`
+	Params         interface{} `json:"params"`
+	ID             uint64      `json:"id,omitempty"`
 }
 
 // IsNotification checks whether the request is a notification
@@ -149,7 +149,7 @@ func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 func (s *JSONRPC) APIs() APISet {
 	return APISet{
 		"methods": APIInfo{
-			Func: func(Params) *Response {
+			Func: func(interface{}) *Response {
 				return Success(s.Methods())
 			},
 		},
