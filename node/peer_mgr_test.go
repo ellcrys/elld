@@ -282,16 +282,16 @@ func PeerManagerTest() bool {
 		Describe(".CreatePeerFromAddress", func() {
 			address := "/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"
 
-			It("peer return error.Error('failed to create peer from address. Peer address is invalid') when address is /ip4/127.0.0.1/tcp/4000", func() {
+			It("peer return err='not a valid multiaddr' when address is /ip4/127.0.0.1/tcp/4000", func() {
 				err := mgr.CreatePeerFromAddress("/ip4/127.0.0.1/tcp/4000")
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(Equal("failed to create peer from address. Peer address is invalid"))
+				Expect(err.Error()).To(Equal("not a valid multiaddr"))
 			})
 
-			It("peer return error.Error('failed to create peer from address. Peer address is invalid') when address is /ip4/127.0.0.1/tcp/4000/ipfs", func() {
+			It("peer return err='not a valid multiaddr' when address is /ip4/127.0.0.1/tcp/4000/ipfs", func() {
 				err := mgr.CreatePeerFromAddress("/ip4/127.0.0.1/tcp/4000/ipfs")
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(Equal("failed to create peer from address. Peer address is invalid"))
+				Expect(err.Error()).To(Equal("not a valid multiaddr"))
 			})
 
 			It("peer with address '/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd' must be added", func() {

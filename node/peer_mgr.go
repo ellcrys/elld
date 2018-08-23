@@ -437,15 +437,19 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 	var err error
 
-	// Ensure the address is a valid address format
-	if !util.IsValidAddr(addr) {
-		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	if err = validateAddress(m.localNode, addr); err != nil {
+		return err
 	}
 
-	// In production mode, the address must be routable
-	if m.localNode.ProdMode() && !util.IsRoutableAddr(addr) {
-		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
-	}
+	// // Ensure the address is a valid address format
+	// if !util.IsValidAddr(addr) {
+	// 	return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	// }
+
+	// // In production mode, the address must be routable
+	// if m.localNode.ProdMode() && !util.IsRoutableAddr(addr) {
+	// 	return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	// }
 
 	// The peer must not already exists be known
 	mAddr, _ := ma.NewMultiaddr(addr)

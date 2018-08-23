@@ -65,13 +65,13 @@ type Node struct {
 }
 
 // NewNode creates a node instance at the specified port
-func newNode(db elldb.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
 
-	if signatory == nil {
+	if coinbase == nil {
 		return nil, fmt.Errorf("signatory address required")
 	}
 
-	sk, _ := signatory.PrivKey().Marshal()
+	sk, _ := coinbase.PrivKey().Marshal()
 	priv, err := crypto.UnmarshalPrivateKey(sk)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, signatory
 		wg:        sync.WaitGroup{},
 		log:       log,
 		rSeed:     util.RandBytes(64),
-		signatory: signatory,
+		signatory: coinbase,
 		db:        db,
 		event:     &emitter.Emitter{},
 		mtx:       &sync.RWMutex{},
@@ -391,26 +391,35 @@ func (n *Node) GetBindAddress() string {
 	return n.address.String()
 }
 
+// validateAddress checks whether an address is
+// valid for the current engine mode.
+func validateAddress(engine types.Engine, address string) error {
+
+	// Check whether the address is valid
+	if !util.IsValidAddr(address) {
+		return fmt.Errorf("not a valid multiaddr")
+	}
+
+	// In non-production mode, only local/private addresses are allowed
+	if !engine.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(address)) {
+		return fmt.Errorf("public addresses are not allowed in development mode")
+	}
+
+	// In production mode, only routable addresses are allowed
+	if engine.ProdMode() && !util.IsRoutableAddr(address) {
+		return fmt.Errorf("local or private addresses are not allowed in production mode")
+	}
+
+	return nil
+}
+
 // AddBootstrapNodes sets the initial nodes to communicate to
 func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
 
 	for _, addr := range peerAddresses {
 
-		// Check whether the address is valid
-		if !util.IsValidAddr(addr) {
-			n.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
-			continue
-		}
-
-		// In non-production mode, only local/private addresses are allowed
-		if !n.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
-			n.log.Debug("Only local or private address are allowed in dev mode", "Addr", addr)
-			continue
-		}
-
-		// In production mode, only routable addresses are allowed
-		if n.ProdMode() && !util.IsRoutableAddr(addr) {
-			n.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
+		if err := validateAddress(n, addr); err != nil {
+			n.log.Info("Invalid Bootstrap Address: "+err.Error(), "Address", addr)
 			continue
 		}
 
@@ -556,7 +565,7 @@ func (n *Node) Stop() {
 // NodeFromAddr creates a Node from a multiaddr
 func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
 	if !util.IsValidAddr(addr) {
-		return nil, fmt.Errorf("addr is not valid")
+		return nil, fmt.Errorf("invalid address provided")
 	}
 	nAddr, _ := ma.NewMultiaddr(addr)
 	return &Node{

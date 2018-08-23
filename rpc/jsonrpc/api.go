@@ -1,15 +1,13 @@
 package jsonrpc
 
-import (
-	"github.com/mitchellh/mapstructure"
-)
+import "github.com/ellcrys/elld/util"
 
 // Params represent JSON API parameters
 type Params map[string]interface{}
 
 // Scan attempts to convert the params to a struct or map type
 func (p *Params) Scan(dest interface{}) error {
-	return mapstructure.Decode(p, &dest)
+	return util.MapDecode(p, &dest)
 }
 
 // APIInfo defines a standard API function type
