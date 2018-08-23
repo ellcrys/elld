@@ -140,22 +140,25 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 
 	// Verify the proof of work and difficulty
 	if v.verSeal && !h.GetParentHash().IsEmpty() {
-		errs = append(errs, v.checkPoW()...)
+		errs = append(errs, v.checkPoW(nil)...)
 	}
 
 	return
 }
 
-// checkPoW checks the PoW and difficulty values in the header
-func (v *BlockValidator) checkPoW() (errs []error) {
+// checkPoW checks the PoW and difficulty values in the header.
+// If chain is set, the parent chain is search within the provided
+// chain, otherwise, the best chain is searched
+func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
 
-	// get the parent header
-	parentHeader, err := v.bchain.ChainReader().GetHeaderByHash(v.block.GetHeader().GetParentHash())
+	// find the parent header
+	parentHeader, err := v.bchain.(*Blockchain).getBlockByHash(v.block.GetHeader().GetParentHash(), opts...)
 	if err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
+		return errs
 	}
 
-	if err := v.blakimoto.VerifyHeader(v.bchain.ChainReader(), v.block.GetHeader(), parentHeader, v.verSeal); err != nil {
+	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(), parentHeader.GetHeader(), v.verSeal); err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
 	}
 

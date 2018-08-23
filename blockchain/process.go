@@ -286,7 +286,6 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 //
 // NOTE: This method must be called with chain lock held by the caller.
 func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...core.CallOp) (*Chain, error) {
-
 	var parentBlock core.Block
 	var chainTip core.Header
 	var createNewChain bool
@@ -316,9 +315,9 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 			// Since this block is of a lower height than the current
 			// block in the chain, it should result in new chain.
 			createNewChain = true
-			b.log.Info("Stale block found. Chain height is higher. Child chain will be created",
+			b.log.Info("Stale block found. Child chain will be created",
 				"BlockNo", block.GetNumber(),
-				"ChainHeight", chainTip.GetNumber())
+				"BestChainHeight", chainTip.GetNumber())
 
 		} else if block.GetNumber() == chainTip.GetNumber() {
 			// Here block height and the chain height are the same.
@@ -330,11 +329,11 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		}
 	}
 
-	// verify the block's PoW for non-genesis blocks
+	// Verify that the block's PoW for non-genesis blocks is valid.
 	// Only do this in production or development mode
 	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev && block.GetNumber() > 1 {
-		if errs := b.createBlockValidator(block).checkPoW(); len(errs) > 0 {
-			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", err)
+		if errs := b.createBlockValidator(block).checkPoW(opts...); len(errs) > 0 {
+			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", errs[0])
 			return nil, errs[0]
 		}
 	}
@@ -425,9 +424,10 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		return nil, fmt.Errorf("commit error: %s", err)
 	}
 
-	// If the chain is new, add it to the chain cache
-	// if it has not been added.
-	b.addChain(chain)
+	// cache the chain if it has not been seen before
+	if _, ok := b.chains[chain.GetID()]; !ok {
+		b.chains[chain.GetID()] = chain
+	}
 
 	// decide and set which chain is the best chain
 	// This could potentially cause a reorganization.
@@ -451,7 +451,6 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	}
 
 	b.log.Info("Block has been successfully processed", "BlockNo", block.GetNumber())
-
 	return chain, nil
 }
 

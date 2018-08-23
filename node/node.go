@@ -520,8 +520,9 @@ func (n *Node) handleEvents() {
 			// We need to request the parent block from the
 			// peer who sent it to us (a.k.a broadcaster)
 			orphanBlock := evt.Args[0].(*wire.Block)
-			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo", orphanBlock.GetNumber(), "ParentBlockHash", orphanBlock.Hash.HexStr())
-			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, orphanBlock.GetHeader().GetParentHash())
+			parentHash := orphanBlock.GetHeader().GetParentHash()
+			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo", orphanBlock.GetNumber(), "ParentBlockHash", parentHash.HexStr())
+			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
 		}
 	}()
 }

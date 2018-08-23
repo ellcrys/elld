@@ -126,9 +126,9 @@ func (m *Miner) Stop() {
 // if the new block was appended to the main chain.
 // Additionally, it emits a core.EventAborted event.
 func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
-	if m.proposedBlock == nil ||
-		(m.blockMaker.IsMainChain(newBlock.ChainReader) && !m.proposedBlock.GetHash().Equal(newBlock.GetHash())) {
-		m.log.Debug("New block found. Any proposed block will be invalidated", "Number", newBlock.Header.Number)
+	if m.isMining && (m.proposedBlock == nil ||
+		(m.blockMaker.IsMainChain(newBlock.ChainReader) && !m.proposedBlock.GetHash().Equal(newBlock.GetHash()))) {
+		m.log.Debug("Aborting on-going miner session. Proposing a new block.", "Number", newBlock.Header.Number)
 		go m.event.Emit(core.EventAborted, m.proposedBlock)
 		m.abortCurrent()
 	}
@@ -137,7 +137,7 @@ func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
 // ValidateHeader validates a given header according to
 // the Ethash specification.
 func (m *Miner) ValidateHeader(chain core.ChainReader, header, parent *wire.Header, seal bool) {
-	m.blakimoto.VerifyHeader(chain, header, parent, seal)
+	m.blakimoto.VerifyHeader(header, parent, seal)
 }
 
 // IsMining checks whether or not the miner is actively
@@ -219,9 +219,9 @@ func (m *Miner) Mine() {
 		// in test or fake wait for a second before continues to next block
 		// TODO: remove when we are sure duplicate transactions do not exist in
 		// the proposed block.
-		// if m.cfg.Miner.Mode == blakimoto.ModeFake || m.cfg.Miner.Mode == blakimoto.ModeTest {
-		time.Sleep(3 * time.Second)
-		// }
+		if m.cfg.Miner.Mode == blakimoto.ModeTest || m.cfg.Node.Mode == config.ModeDev {
+			time.Sleep(3 * time.Second)
+		}
 	}
 
 	m.isMining = false

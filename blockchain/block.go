@@ -213,12 +213,12 @@ func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (core.Block, error)
 	return nil, core.ErrBlockNotFound
 }
 
-// GetBlockByHash finds a block in any chain with a matching hash.
-func (b *Blockchain) GetBlockByHash(hash util.Hash) (core.Block, error) {
+// getBlockByHash finds a block in any chain with a matching hash.
+func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	for _, chain := range b.chains {
-		block, err := chain.getBlockByHash(hash)
+		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, err
@@ -228,4 +228,9 @@ func (b *Blockchain) GetBlockByHash(hash util.Hash) (core.Block, error) {
 		return block, nil
 	}
 	return nil, core.ErrBlockNotFound
+}
+
+// GetBlockByHash finds a block in any chain with a matching hash.
+func (b *Blockchain) GetBlockByHash(hash util.Hash) (core.Block, error) {
+	return b.getBlockByHash(hash)
 }
