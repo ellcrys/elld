@@ -35,6 +35,10 @@ to quickly create a Cobra application.`,
 		fmt.Println("mint called")
 
 		mintly.Spec()
+		// image, _ := cmd.Flags().GetString("image")
+		// trainFile, _ := cmd.Flags().GetString("train_file")
+
+		// fmt.Println(image, trainFile)
 	},
 }
 
@@ -50,4 +54,5 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// mintCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }

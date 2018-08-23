@@ -1,6 +1,7 @@
 package mint
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -11,14 +12,27 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/dustin/go-humanize"
 
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 	"github.com/tensorflow/tensorflow/tensorflow/go/op"
 )
 
-const (
-	ConfigDir = "~/elld_config/"
+var (
+	homeDir             = os.Getenv("HOME")
+	goPath              = os.Getenv("GOPATH")
+	elldConfigDir       = os.Getenv("HOME") + "/elld_config"
+	mintDir             = elldConfigDir + "/trainDir"
+	kerasGoPath         = mintDir + "/forGo2"
+	ellPathConfig       = elldConfigDir + "/train_file.ell"
+	ellRemoteURL        = "http://192.168.4.103/train_file.ell"
+	downloadELLFilename = "train_file.ell"
 )
+
+var publicNote BankNote
 
 type BankNote struct {
 	CurrencyName        string `json:"currencyName"`
@@ -52,77 +66,132 @@ func (b *BankNote) shortname() string {
 	return b.ShortName
 }
 
+// WriteCounter counts the number of bytes written to it. It implements to the io.Writer
+// interface and we can pass this into io.TeeReader() which will report progress on each
+// write cycle.
+type WriteCounter struct {
+	Total uint64
+}
+
+func (wc *WriteCounter) Write(p []byte) (int, error) {
+	n := len(p)
+	wc.Total += uint64(n)
+	wc.PrintProgress()
+	return n, nil
+}
+
+func (wc WriteCounter) PrintProgress() {
+	// Clear the line by using a character return to go back to the start and remove
+	// the remaining characters by filling it with spaces
+	fmt.Printf("\r%s", strings.Repeat(" ", 35))
+
+	// Return again and print current status of download
+	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
+	fmt.Printf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
+}
+
 func Spec() {
-	fmt.Println("This is great")
+
+	arguement := "Yes"
+	ellFileArguement := "/Users/princesegzy01/Documents/sample_ell/train_file.ell"
+
+	var ellFilePath string
+
+	if arguement == "Yes" {
+
+		ellFilePath = ellFileArguement
+
+		response := checkValidELL(ellFilePath)
+		if response != nil {
+			fmt.Printf("Error  : %s ", response)
+		}
+
+		// delete existing resource
+		deleteResources()
+
+	} else {
+		ellFilePath = ellPathConfig
+	}
+
+	//Prepare the .ell to be used
+	prepare(arguement, ellFilePath)
+
+	//Image to predict, This can come from commandline or any location
+	imagePath := "mint/image128.png"
+
+	_, err := mintLoader(imagePath)
+	if err != nil {
+		fmt.Errorf("Error from Mintloader ", err)
+		os.Exit(0)
+	}
+
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.shortname())
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.country())
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.dollar())
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.ellies())
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.figure())
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.name())
+	fmt.Println("<<<<<<<<<<<<<<<<<<<", publicNote.text())
 }
 
 // prepare ell to be used
-func prepare(ellTrainPath string) {
+func prepare(argument string, ellPath string) {
 	// check if ell path is supplied from argument passed
 	//check if ell is available from config directory
 	// if not available then download from source
 
-	if _, err := os.Stat(ellTrainPath); err != nil {
-		if os.IsNotExist(err) {
-			//file does not exist
-			fmt.Errorf("File not found in elld config directory, Downloading fresh copy")
+	//argument := "No"
+	// check if training file is supplied from flag, if yes.. use it
+	// If no, use existing ell file in the config dir
+	// if none is available in the config dir, them download new one and use it
+	if argument == "Yes" {
 
-			//download the ell file and save it to the config dir
-			ellUrl := "http://gooogle.com"
+		//get the path of the ell file to be used and extract it to the config_dir
+		//ellPath := ellPathConfig
+		er := unzip(ellPath, mintDir)
+		if er != nil {
+			panic(er)
+		}
 
-			err := DownloadEllToPath("train_file.ell", ellUrl)
-			if err != nil {
-				panic(err)
+	} else {
+
+		_, err := os.Stat(ellPathConfig)
+		if err != nil {
+
+			if os.IsNotExist(err) {
+				//file does not exist
+				fmt.Println("File not found in elld config directory, Downloading fresh copy")
+
+				//download the ell file and save it to the config dir
+				err := DownloadEllToPath(ellPath, ellRemoteURL)
+				if err != nil {
+					panic(err)
+				}
+
+				fmt.Println("Download Finished")
+
+				er := unzip(ellPath, mintDir)
+				if er != nil {
+					panic(er)
+				}
+
+				fmt.Println("Extraction Done")
+
+			} else {
+				// other error encountered
+				fmt.Println("Error reading training file from the config")
 			}
-
-		} else {
-			// other error encountered
-			fmt.Errorf("Error reading training file from the config")
 		}
 	}
-
 }
 
-// predict image
-func predictNote(imagePath string) {
+func predictNote() {}
+
+// take in imagepatha and convert it to tensor
+func imageToTensor(imagePath string) (*tf.Tensor, error) {
 	//predict image note from .png and .jpg
-}
 
-func predictNotefromByte(imageByte []byte) {
-	//predict image note from byte
-
-	// convert the image into byte the pipe it to MintLoader as file parameter
-
-	//convert byte to image
-	img, _, _ := image.Decode(bytes.NewReader(imageByte))
-
-	//save the imageByte to a file
-	out, err := os.Create("./tempimages.png")
-	if err != nil {
-		fmt.Errorf("Error creating the images in temp folder")
-	}
-
-	newImage, er := png.Decode(out, img)
-	if err != nil {
-		fmt.Errorf(er)
-	}
-
-}
-
-func mintLoader() (interface{}, error) {
-
-	fmt.Println("This is awesome")
-
-	var errOutput error
-	var resultOutput interface{}
-
-	imgName := os.Args[1]
-	model, err := tf.LoadSavedModel("forGo2", []string{"tags"}, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	imageFile, err := os.Open(imgName)
+	imageFile, err := os.Open(imagePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -132,6 +201,50 @@ func mintLoader() (interface{}, error) {
 	if err != nil {
 		log.Fatal("error making tensor: ", err)
 	}
+
+	return img, nil
+}
+
+// byteToTensor take in byte and convert it to a tensor
+func byteToTensor(imgByte []byte) {
+
+	//imgByte := code.PNG()
+
+	// convert []byte to image for saving to file
+	img, _, _ := image.Decode(bytes.NewReader(imgByte))
+
+	//save the imgByte to file
+	out, err := os.Create("./QRImg.png")
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = png.Encode(out, img)
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+}
+
+func mintLoader(imagePathString string) (interface{}, error) {
+
+	// fmt.Println("This is awesome")
+
+	var errOutput error
+	var resultOutput interface{}
+
+	//imgName := os.Args[1]
+	model, err := tf.LoadSavedModel(kerasGoPath, []string{"tags"}, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// get the tensor from input image
+	img, _ := imageToTensor(imagePathString)
 
 	result, err := model.Session.Run(
 		map[tf.Output]*tf.Tensor{
@@ -151,7 +264,7 @@ func mintLoader() (interface{}, error) {
 
 	// get the one hot encoding result
 	if preds, ok := result[0].Value().([][]float32); ok {
-		fmt.Println(">>>>>>>>>>>>> : ", preds[0])
+		// fmt.Println(">>>>>>>>>>>>> : ", preds[0])
 		//fmt.Println(reflect.TypeOf(preds[0]))
 		resultData := preds[0]
 
@@ -162,10 +275,10 @@ func mintLoader() (interface{}, error) {
 			stringData = stringData + s
 		}
 
-		fmt.Println(stringData)
+		// fmt.Println(stringData)
 
 		//load the result json file
-		file, e := ioutil.ReadFile("./result.json")
+		file, e := ioutil.ReadFile(mintDir + "/result.json")
 		if e != nil {
 			fmt.Printf("File error: %v\n", e)
 			os.Exit(1)
@@ -182,14 +295,12 @@ func mintLoader() (interface{}, error) {
 
 		//treeData := dataSource["001"]
 		treeData := dataSource[stringData]
-		fmt.Println(treeData)
+		// fmt.Println(treeData)
 
 		//GET The currency details for the top level tree
 		bytex, _ := json.Marshal(treeData)
-		var p BankNote
-		err = json.Unmarshal(bytex, &p)
 
-		fmt.Println(p)
+		err = json.Unmarshal(bytex, &publicNote)
 
 		resultOutput = treeData
 		errOutput = nil
@@ -269,11 +380,115 @@ func transformGraph(imageFormat string) (graph *tf.Graph, input,
 	return graph, input, output, err
 }
 
+func deleteResources() {
+
+	err := os.Remove(ellPathConfig)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err1 := os.RemoveAll(mintDir)
+	if err1 != nil {
+		fmt.Println(err1)
+	}
+}
+
+func GetFileContentType(out *os.File) (string, error) {
+
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := make([]byte, 512)
+
+	_, err := out.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Use the net/http package's handy DectectContentType function. Always returns a valid
+	// content-type by returning "application/octet-stream" if no others seemed to match.
+	contentType := http.DetectContentType(buffer)
+
+	return contentType, nil
+}
+
+func checkValidELL(ellFile string) error {
+	//zipFile := "mint/train_file.ell"
+	ext := ellFile[len(ellFile)-4:]
+	if ext != ".ell" {
+		return fmt.Errorf("File must have an extension of .ell")
+	}
+
+	zf, err := os.Open(ellFile)
+	if err != nil {
+		return fmt.Errorf("error opeining supplied .ell file %s", err)
+	}
+	fileInfo, errorStat := zf.Stat()
+	if errorStat != nil {
+		return fmt.Errorf("Cannot get .ell info supplied %s", errorStat)
+	}
+
+	if fileInfo.Size() == 0 {
+		return fmt.Errorf("Ell file truncated during downloaded, kindly re-download")
+	}
+
+	fileType, errType := GetFileContentType(zf)
+	if errType != nil {
+		return fmt.Errorf("Error :  %s", errType)
+	}
+
+	if fileType != "application/zip" {
+		return fmt.Errorf("Invalid .ell file type, kindly redownload")
+	}
+
+	defer zf.Close()
+
+	//zf, err := zip.OpenReader(zipFile)
+	return nil
+}
+
+// DownloadFile will download a url to a local file. It's efficient because it will
+// write as it downloads and not load the whole file into memory. We pass an io.TeeReader
+// into Copy() to report progress on the download.
+func DownloadEllToPath(filepath string, url string) error {
+
+	// Create the file, but give it a tmp file extension, this means we won't overwrite a
+	// file until it's downloaded, but we'll remove the tmp extension once downloaded.
+	out, err := os.Create(filepath + ".tmp")
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Create our progress reporter and pass it to be used alongside our writer
+	counter := &WriteCounter{}
+	_, err = io.Copy(out, io.TeeReader(resp.Body, counter))
+	if err != nil {
+		return err
+	}
+
+	// The progress use the same line so print a new line once it's finished downloading
+	fmt.Print("\n")
+
+	err = os.Rename(filepath+".tmp", filepath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // DownloadEllToPath download the ell trainer file to the config directory
-func DownloadEllToPath(filePath string, urlPath string) error {
+func DownloadEllToPath2(filePath string, urlPath string) error {
 
 	//create the file
-	out, err := os.Create(ConfigDir + filePath)
+	//out, err := os.Create(elldConfigDir + "/" + filePath)
+	out, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
@@ -294,6 +509,43 @@ func DownloadEllToPath(filePath string, urlPath string) error {
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func unzip(archive, target string) error {
+	reader, err := zip.OpenReader(archive)
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(target, 0755); err != nil {
+		return err
+	}
+
+	for _, file := range reader.File {
+		path := filepath.Join(target, file.Name)
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, file.Mode())
+			continue
+		}
+
+		fileReader, err := file.Open()
+		if err != nil {
+			return err
+		}
+		defer fileReader.Close()
+
+		targetFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+		if err != nil {
+			return err
+		}
+		defer targetFile.Close()
+
+		if _, err := io.Copy(targetFile, fileReader); err != nil {
+			return err
+		}
 	}
 
 	return nil
