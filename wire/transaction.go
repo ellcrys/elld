@@ -44,9 +44,9 @@ type Transaction struct {
 	From         util.String `json:"from" msgpack:"from"`
 	SenderPubKey util.String `json:"senderPubKey" msgpack:"senderPubKey"`
 	Value        util.String `json:"value" msgpack:"value"`
-	Timestamp    int64       `json:"Timestamp" msgpack:"Timestamp"`
-	Fee          util.String `json:"Fee" msgpack:"Fee"`
-	InvokeArgs   *InvokeArgs `json:"InvokeArgs" msgpack:"InvokeArgs"`
+	Timestamp    int64       `json:"timestamp" msgpack:"timestamp"`
+	Fee          util.String `json:"fee" msgpack:"fee"`
+	InvokeArgs   *InvokeArgs `json:"invokeArgs,omitempty" msgpack:"invokeArgs"`
 	Sig          []byte      `json:"sig" msgpack:"sig"`
 	Hash         util.Hash   `json:"hash" msgpack:"hash"`
 }

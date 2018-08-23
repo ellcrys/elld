@@ -5,16 +5,17 @@ import (
 	"github.com/ellcrys/elld/types"
 )
 
-func (s *Server) rpcAuth(params jsonrpc.Params) *jsonrpc.Response {
-	var m map[string]string
-	if err := params.Scan(&m); err != nil {
-		return jsonrpc.Error(types.ErrInvalidAuthParams, err.Error(), nil)
+func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
+
+	p, ok := params.(map[string]string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, ErrMethodArgType("JSON").Error(), nil)
 	}
 
 	// perform authentication and create a session token
-	token, err := s.auth(m["username"], m["password"])
+	token, err := s.auth(p["username"], p["password"])
 	if err != nil {
-		return jsonrpc.Error(types.ErrInvalidAuthCredentials, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeInvalidAuthCredentials, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(token)

@@ -4,7 +4,14 @@ const (
 	// Account package errors from 30000
 	ErrCodeListAccountFailed = 30000
 
-	// RPC package errors
-	ErrInvalidAuthParams      = 40000
-	ErrInvalidAuthCredentials = 40001
+	// RPC package errors from 40000
+	ErrCodeInvalidAuthParams      = 40000
+	ErrCodeInvalidAuthCredentials = 40001
+
+	// Blochchain package errors from 50000
+	ErrCodeQueryFailed   = 50000
+	ErrCodeBlockNotFound = 50001
+
+	// General
+	ErrCodeUnexpectedArgType = 60000
 )
