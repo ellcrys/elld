@@ -51,7 +51,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 	var address *crypto.Key
 	var err error
 	var storedAccount *accountmgr.StoredAccount
-
+	
 	if account != "" {
 		if govalidator.IsNumeric(account) {
 			aInt, err := strconv.Atoi(account)

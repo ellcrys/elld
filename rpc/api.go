@@ -7,13 +7,16 @@ import (
 
 func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
 
-	p, ok := params.(map[string]string)
+	p, ok := params.(map[string]interface{})
 	if !ok {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, ErrMethodArgType("JSON").Error(), nil)
 	}
 
+	username, _ := p["username"].(string)
+	password, _ := p["password"].(string)
+
 	// perform authentication and create a session token
-	token, err := s.auth(p["username"], p["password"])
+	token, err := s.auth(username, password)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeInvalidAuthCredentials, err.Error(), nil)
 	}

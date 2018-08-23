@@ -14,4 +14,8 @@ const (
 
 	// General
 	ErrCodeUnexpectedArgType = 60000
+
+	// Engine package errors from 70000
+	ErrCodeAddress     = 70000
+	ErrCodeNodeConnect = 70001
 )

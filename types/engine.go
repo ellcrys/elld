@@ -43,4 +43,5 @@ type Engine interface {
 	Connected() bool                      // Returns true if engine is connected to its local node
 	GetBlockchain() core.Blockchain       // Returns the blockchain manager
 	SetBlockchain(bchain core.Blockchain) // Set the blockchain manager
+	ProdMode() bool                       // Checks whether the current mode is ModeProd
 }
