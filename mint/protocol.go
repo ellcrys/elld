@@ -64,24 +64,28 @@ type WriteCounter struct {
 	Total uint64
 }
 
-func (a *Analyzer) Write(p []byte) (int, error) {
+func (wc *WriteCounter) Write(p []byte) (int, error) {
+
 	n := len(p)
-	a.wc.Total += uint64(n)
-	a.PrintProgress()
+	wc.Total += uint64(n)
+	wc.PrintProgress()
 	return n, nil
 }
 
 // PrintProgress of the downloader
-func (a *Analyzer) PrintProgress() {
+func (wc *WriteCounter) PrintProgress() {
+
+	dlog := logger.NewLogrus()
+
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
 	data := fmt.Sprintf("\r%s", strings.Repeat(" ", 35))
-	a.log.Debug(data)
+	dlog.Debug(data)
 
 	// Return again and print current status of download
 	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
-	data2 := fmt.Sprintf("\rDownloading... %s complete", humanize.Bytes(a.wc.Total))
-	a.log.Debug(data2)
+	data2 := fmt.Sprintf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
+	dlog.Debug(data2)
 }
 
 //Analyzer contains methods that
@@ -97,7 +101,6 @@ type Analyzer struct {
 	trainDataExtension string
 	ellFilePath        string
 	ellRemoteURL       string
-	wc                 WriteCounter
 }
 
 //NewAnalyzer initialized the Analazer struct and set default
@@ -314,66 +317,6 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 	return nil, nil
 }
 
-// readImage takes a buffer as input then output a tensor
-func readImage(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error) {
-	tensor, err := tf.NewTensor(imageBuffer.String())
-	if err != nil {
-		return nil, err
-	}
-	graph, input, output, err := transformGraph(imageFormat)
-	if err != nil {
-		return nil, err
-	}
-	session, err := tf.NewSession(graph, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer session.Close()
-	normalized, err := session.Run(
-		map[tf.Output]*tf.Tensor{input: tensor},
-		[]tf.Output{output},
-		nil)
-	if err != nil {
-		return nil, err
-	}
-	return normalized[0], nil
-}
-
-//transformGraph takes in an image format then return a graph
-func transformGraph(imageFormat string) (graph *tf.Graph, input, output tf.Output, err error) {
-	const (
-		H, W  = 128, 128
-		Mean  = float32(117)
-		Scale = float32(1)
-	)
-	s := op.NewScope()
-	input = op.Placeholder(s, tf.String)
-
-	var decode tf.Output
-	switch imageFormat {
-	case "png":
-		decode = op.DecodePng(s, input, op.DecodePngChannels(3))
-	case "jpg",
-		"jpeg":
-		decode = op.DecodeJpeg(s, input, op.DecodeJpegChannels(3))
-	default:
-		return nil, tf.Output{}, tf.Output{},
-			fmt.Errorf("imageFormat not supported: %s", imageFormat)
-	}
-
-	output = op.Div(s,
-		op.Sub(s,
-			op.ResizeBilinear(s,
-				op.ExpandDims(s,
-					op.Cast(s, decode, tf.Float),
-					op.Const(s.SubScope("make_batch"), int32(0))),
-				op.Const(s.SubScope("size"), []int32{H, W})),
-			op.Const(s.SubScope("mean"), Mean)),
-		op.Const(s.SubScope("scale"), Scale))
-	graph, err = s.Finalize()
-	return graph, input, output, err
-}
-
 // DownloadFile will download a url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory. We pass an io.TeeReader
 // into Copy() to report progress on the download.
@@ -458,4 +401,64 @@ func isValidUrl(toTest string) bool {
 	} else {
 		return true
 	}
+}
+
+// readImage takes a buffer as input then output a tensor
+func readImage(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error) {
+	tensor, err := tf.NewTensor(imageBuffer.String())
+	if err != nil {
+		return nil, err
+	}
+	graph, input, output, err := transformGraph(imageFormat)
+	if err != nil {
+		return nil, err
+	}
+	session, err := tf.NewSession(graph, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer session.Close()
+	normalized, err := session.Run(
+		map[tf.Output]*tf.Tensor{input: tensor},
+		[]tf.Output{output},
+		nil)
+	if err != nil {
+		return nil, err
+	}
+	return normalized[0], nil
+}
+
+//transformGraph takes in an image format then return a graph
+func transformGraph(imageFormat string) (graph *tf.Graph, input, output tf.Output, err error) {
+	const (
+		H, W  = 128, 128
+		Mean  = float32(117)
+		Scale = float32(1)
+	)
+	s := op.NewScope()
+	input = op.Placeholder(s, tf.String)
+
+	var decode tf.Output
+	switch imageFormat {
+	case "png":
+		decode = op.DecodePng(s, input, op.DecodePngChannels(3))
+	case "jpg",
+		"jpeg":
+		decode = op.DecodeJpeg(s, input, op.DecodeJpegChannels(3))
+	default:
+		return nil, tf.Output{}, tf.Output{},
+			fmt.Errorf("imageFormat not supported: %s", imageFormat)
+	}
+
+	output = op.Div(s,
+		op.Sub(s,
+			op.ResizeBilinear(s,
+				op.ExpandDims(s,
+					op.Cast(s, decode, tf.Float),
+					op.Const(s.SubScope("make_batch"), int32(0))),
+				op.Const(s.SubScope("size"), []int32{H, W})),
+			op.Const(s.SubScope("mean"), Mean)),
+		op.Const(s.SubScope("scale"), Scale))
+	graph, err = s.Finalize()
+	return graph, input, output, err
 }
