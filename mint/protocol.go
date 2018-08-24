@@ -123,6 +123,11 @@ func NewAnalyzer(trainFilePath string) *Analyzer {
 // Prepare prepares the training ell to be used
 func (a *Analyzer) Prepare() error {
 
+	//check if elld_directy exist, if not then create it
+	if _, err := os.Stat(elldConfigDir); os.IsNotExist(err) {
+		os.Mkdir(elldConfigDir, 0777)
+	}
+
 	_, err := os.Stat(ellPathConfig)
 	if err != nil {
 
