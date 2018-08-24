@@ -63,22 +63,24 @@ type WriteCounter struct {
 	Total uint64
 }
 
-func (wc *WriteCounter) Write(p []byte) (int, error) {
+func (a *Analyzer) Write(p []byte) (int, error) {
 	n := len(p)
-	wc.Total += uint64(n)
-	wc.PrintProgress()
+	a.wc.Total += uint64(n)
+	a.PrintProgress()
 	return n, nil
 }
 
 // PrintProgress of the downloader
-func (wc *WriteCounter) PrintProgress() {
+func (a *Analyzer) PrintProgress() {
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
-	fmt.Printf("\r%s", strings.Repeat(" ", 35))
+	data := fmt.Sprintf("\r%s", strings.Repeat(" ", 35))
+	a.log.Debug(data)
 
 	// Return again and print current status of download
 	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
-	fmt.Printf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
+	data2 := fmt.Sprintf("\rDownloading... %s complete", humanize.Bytes(a.wc.Total))
+	a.log.Debug(data2)
 }
 
 //Analyzer contains methods that
@@ -94,6 +96,7 @@ type Analyzer struct {
 	trainDataExtension string
 	ellFilePath        string
 	ellRemoteURL       string
+	wc                 WriteCounter
 }
 
 //NewAnalyzer initialized the Analazer struct and set default
@@ -379,9 +382,6 @@ func (a *Analyzer) downloadEllToPath(filepath string, url string) error {
 	if err != nil {
 		return err
 	}
-
-	// The progress use the same line so print a new line once it's finished downloading
-	fmt.Print("\n")
 
 	err = os.Rename(filepath+"/"+a.trainDataName+".tmp", filepath+"/"+a.trainDataName+a.trainDataExtension)
 	if err != nil {
