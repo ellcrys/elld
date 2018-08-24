@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -153,6 +154,25 @@ func (a *Analyzer) Prepare() error {
 	if a.trainFilePath != "" {
 
 		a.log.Info("User supplied train file to be used")
+
+		// check if path is a url
+		if isValidUrl(a.trainFilePath) == true {
+
+			err := a.downloadEllToPath(a.elldConfigDir, a.trainFilePath)
+			if err != nil {
+				a.log.Error("Error Downloading TrainData from supplied link", "Error", err)
+				return (err)
+			}
+
+			// unzip immedialy after downloading from the link user supplied
+			err = unzip(a.ellFilePath, a.mintDir)
+			if err != nil {
+				a.log.Error("Cannot unzip supplied Train link", "Error", err)
+				return err
+			}
+
+			return nil
+		}
 
 		err := unzip(a.trainFilePath, a.mintDir)
 		if err != nil {
@@ -428,4 +448,14 @@ func unzip(archive, target string) error {
 	}
 
 	return nil
+}
+
+// isValidUrl tests a string to determine if it is a url or not.
+func isValidUrl(toTest string) bool {
+	_, err := url.ParseRequestURI(toTest)
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
 }
