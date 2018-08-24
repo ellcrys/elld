@@ -34,11 +34,28 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("mint called")
 
-		mintly.Spec()
-		// image, _ := cmd.Flags().GetString("image")
-		// trainFile, _ := cmd.Flags().GetString("train_file")
+		///Users/princesegzy01/Documents/sample_ell/train_file.ell
+		an := mintly.NewAnalyzer("")
+		err := an.Prepare()
+		if err != nil {
+			fmt.Println("Error preparing loader")
+			return
+		}
 
-		// fmt.Println(image, trainFile)
+		img := "mint/image128.png"
+		res, _, er := an.PredictImage(img)
+		if er != nil {
+			fmt.Println(er)
+		}
+
+		fmt.Println(res.NoteName())
+		fmt.Println(res.NoteCountry())
+		fmt.Println(res.NoteDollar())
+		fmt.Println(res.NoteEllies())
+		fmt.Println(res.NoteFigure())
+		fmt.Println(res.NoteShortname())
+		fmt.Println(res.NoteText())
+
 	},
 }
 
