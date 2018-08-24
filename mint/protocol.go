@@ -32,10 +32,10 @@ var (
 	ellRemoteURL       = "http://192.168.4.103/train_file.ell"
 )
 
-// var publicNote BankNote
-
+//log is the logger we want to use
 var log = logger.NewLogrus()
 
+//BankNote hold informations about the banknote scaNNED
 type BankNote struct {
 	CurrencyName        string `json:"currencyName"`
 	Country             string `json:"country"`
@@ -44,29 +44,39 @@ type BankNote struct {
 	ElliesConversion    string `json:"elliesConversion"`
 	DollarConversion    string `json:"dollarConversion"`
 	ShortName           string `json:"shortName"`
-
-	// log is the logger for the miner
-	log logger.Logger
 }
 
+//NoteName returns the currency name in string
 func (b *BankNote) NoteName() string {
 	return b.CurrencyName
 }
+
+//NoteCountry return the country of the currency
 func (b *BankNote) NoteCountry() string {
 	return b.Country
 }
+
+//NoteCountry retrn the integer value of the currency scanned
 func (b *BankNote) NoteFigure() string {
 	return b.DenominationFigures
 }
+
+//NoteText return the currency in word
 func (b *BankNote) NoteText() string {
 	return b.DenominationText
 }
+
+//NoteEllies returns the ellies equivalent
 func (b *BankNote) NoteEllies() string {
 	return b.ElliesConversion
 }
+
+//NoteDollar returns the Dollar equivalent
 func (b *BankNote) NoteDollar() string {
 	return b.DollarConversion
 }
+
+//NoteShortname returns the shortname of the currency
 func (b *BankNote) NoteShortname() string {
 	return b.ShortName
 }
@@ -85,7 +95,7 @@ func (wc *WriteCounter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-//PrintProgress is
+//PrintProgress of the downloader
 func (wc WriteCounter) PrintProgress() {
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
@@ -96,45 +106,35 @@ func (wc WriteCounter) PrintProgress() {
 	fmt.Printf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
 }
 
+//Analyzer contains methods that
+// predict notes from image and bytes
 type Analyzer struct {
 	trainFilePath string
-
-	// log is the logger for the miner
-	log logger.Logger
 }
 
+//NewAnalyzer initialized the Analazer struct and set default
+//train file to use
 func NewAnalyzer(trainFilePath string) *Analyzer {
 	return &Analyzer{
 		trainFilePath: trainFilePath,
 	}
 }
 
-// func (a *Analyzer) PredictImage(image string) (*BankNote, error) {
-// 	return nil, nil
-// }
-
-// func (a *Analyzer) PredictBytes(image []byte) (*BankNote, error) {
-// 	return nil, nil
-// }
-
-// prepare ell to be used
+// Prepare prepares the training ell to be used
 func (a *Analyzer) Prepare() error {
-
-	//prepare(ellPath string) error {
 
 	_, err := os.Stat(ellPathConfig)
 	if err != nil {
 
 		if os.IsNotExist(err) {
 			//file does not exist in the ellParthDonfigDir
+			log.Error("File not found in elld config Dir, Checking if user supplied one via flag")
 
 			//check if user supplied it as flag
 			if a.trainFilePath != "" {
 
-				log.Error("File not found in elld config directory, Downloading fresh copy")
+				log.Info("User supplied train file to be used")
 
-				//get the path of the ell file to be used and extract it to the config_dir
-				//ellPath := ellPathConfig
 				er := unzip(a.trainFilePath, mintDir)
 				if er != nil {
 					log.Error("Cannot unzip supplied Train file", "Error", err)
@@ -143,6 +143,7 @@ func (a *Analyzer) Prepare() error {
 
 			} else {
 
+				//If user did not supply ithe training file, then
 				//download the ell file and save it to the config dir
 				err := DownloadEllToPath(elldConfigDir, ellRemoteURL)
 				if err != nil {
@@ -169,13 +170,10 @@ func (a *Analyzer) Prepare() error {
 	return nil
 }
 
-// take in imagepatha and convert it to tensor
-// img []bytes
+// PredictImage accept imagepath as string
+// then return  BankNote, *tf.Tensor, error
 func (a *Analyzer) PredictImage(imagePath string) (*BankNote, *tf.Tensor, error) {
-	//predict image note from .png and .jpg
 
-	// var b
-	// b.Write(img)
 	imageFile, err := os.Open(imagePath)
 	if err != nil {
 		log.Error("Unable to open image from path", "Error", err)
@@ -197,7 +195,8 @@ func (a *Analyzer) PredictImage(imagePath string) (*BankNote, *tf.Tensor, error)
 	return res, img, nil
 }
 
-// img []bytes
+// PredictBytes accept byte as []byte
+// then return  BankNote, *tf.Tensor, error
 func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, *tf.Tensor, error) {
 	//predict image note from .png and .jpg
 
@@ -217,6 +216,7 @@ func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, *tf.Tensor, error) {
 	return res, img, nil
 }
 
+//mintLoader accepts a tensor and output Banknote
 func mintLoader(img *tf.Tensor) (*BankNote, error) {
 
 	model, err := tf.LoadSavedModel(kerasGoPath, []string{"tags"}, nil)
@@ -224,9 +224,6 @@ func mintLoader(img *tf.Tensor) (*BankNote, error) {
 		log.Error("Unable to load tensorflow model", "Error", err)
 		return nil, (err)
 	}
-
-	// get the tensor from input image
-	//img, _ := imageToTensor(imagePathString)
 
 	result, err := model.Session.Run(
 		map[tf.Output]*tf.Tensor{
@@ -285,6 +282,7 @@ func mintLoader(img *tf.Tensor) (*BankNote, error) {
 	return nil, nil
 }
 
+// readImage takes a buffer as input then output a tensor
 func readImage(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error) {
 	tensor, err := tf.NewTensor(imageBuffer.String())
 	if err != nil {
@@ -309,9 +307,9 @@ func readImage(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error
 	return normalized[0], nil
 }
 
+//transformGraph takes in an image format then return a graph
 func transformGraph(imageFormat string) (graph *tf.Graph, input, output tf.Output, err error) {
 	const (
-		//H, W  = 224, 224
 		H, W  = 128, 128
 		Mean  = float32(117)
 		Scale = float32(1)
@@ -342,19 +340,6 @@ func transformGraph(imageFormat string) (graph *tf.Graph, input, output tf.Outpu
 		op.Const(s.SubScope("scale"), Scale))
 	graph, err = s.Finalize()
 	return graph, input, output, err
-}
-
-func deleteResources() {
-
-	err := os.Remove(ellPathConfig)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	err1 := os.RemoveAll(mintDir)
-	if err1 != nil {
-		fmt.Println(err1)
-	}
 }
 
 func GetFileContentType(out *os.File) (string, error) {
@@ -415,6 +400,7 @@ func DownloadEllToPath(filepath string, url string) error {
 	return nil
 }
 
+//unzip extract zip file to a target location
 func unzip(archive, target string) error {
 	reader, err := zip.OpenReader(archive)
 	if err != nil {
