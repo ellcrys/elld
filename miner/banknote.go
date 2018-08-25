@@ -25,36 +25,36 @@ import (
 
 // BankNote hold informations about the banknote scaNNED
 type BankNote struct {
-	currencyName        string `json:"currencyName"`
-	country             string `json:"country"`
-	denominationFigures string `json:"denominationFigures"`
-	denominationText    string `json:"denominationText"`
-	shortName           string `json:"shortName"`
+	CurrencyName        string `json:"currencyName"`
+	CountryName         string `json:"country"`
+	DenominationFigures string `json:"denominationFigures"`
+	DenominationText    string `json:"denominationText"`
+	ShortName           string `json:"shortName"`
 }
 
 // Name returns the currency name in string
 func (b *BankNote) Name() string {
-	return b.currencyName
+	return b.CurrencyName
 }
 
 // Country return the country of the currency
 func (b *BankNote) Country() string {
-	return b.country
+	return b.CountryName
 }
 
 // Figure retrn the integer value of the currency scanned
 func (b *BankNote) Figure() string {
-	return b.denominationFigures
+	return b.DenominationText
 }
 
 // Text return the currency in word
 func (b *BankNote) Text() string {
-	return b.denominationText
+	return b.DenominationText
 }
 
-// Shortname returns the shortname of the currency
+//Shortname returns the shortname of the currency
 func (b *BankNote) Shortname() string {
-	return b.shortName
+	return b.ShortName
 }
 
 // WriteCounter counts the number of bytes written to it. It implements to the io.Writer
@@ -208,32 +208,32 @@ func (a *Analyzer) Prepare() error {
 
 // Predict accept imagepath as string
 // then return  BankNote, *tf.Tensor, error
-func (a *Analyzer) Predict(imagePath string) (*BankNote, *tf.Tensor, error) {
+func (a *Analyzer) Predict(imagePath string) (*BankNote, error) {
 
 	imageFile, err := os.Open(imagePath)
 	if err != nil {
 		a.log.Error("Unable to open image from path", "Error", err)
-		return nil, nil, err
+		return nil, err
 	}
 	var imgBuffer bytes.Buffer
 	io.Copy(&imgBuffer, imageFile)
 	img, err := readImage(&imgBuffer, "png")
 	if err != nil {
 		a.log.Error("Error making a tensor from image", "Error", err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	res, er := a.mintLoader(img)
 	if er != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return res, img, nil
+	return res, nil
 }
 
 // PredictBytes accept byte as []byte
 // then return  BankNote, *tf.Tensor, error
-func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, *tf.Tensor, error) {
+func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, error) {
 	//predict image note from .png and .jpg
 
 	var imgBuffer bytes.Buffer
@@ -241,15 +241,15 @@ func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, *tf.Tensor, error) {
 	img, err := readImage(&imgBuffer, "png")
 	if err != nil {
 		a.log.Fatal("error making tensor from bytes : ", err)
-		return nil, nil, err
+		return nil, err
 	}
 
 	res, er := a.mintLoader(img)
 	if er != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return res, img, nil
+	return res, nil
 }
 
 //mintLoader accepts a tensor and output Banknote
@@ -297,7 +297,9 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 
 		// get the top level map from json
 		var dataSource map[string]interface{}
+		// var dataSource map[string]string
 		err := json.Unmarshal(file, &dataSource)
+
 		if err != nil {
 			a.log.Error("file error", "Error", err)
 			return nil, err
@@ -308,10 +310,14 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 		//GET The currency details for the top level tree
 		bytex, _ := json.Marshal(treeData)
 
-		var note BankNote
-		err = json.Unmarshal(bytex, &note)
+		var bnote BankNote
 
-		return &note, nil
+		err = json.Unmarshal(bytex, &bnote)
+		if err != nil {
+			return nil, err
+		}
+
+		return &bnote, nil
 	}
 
 	return nil, nil
