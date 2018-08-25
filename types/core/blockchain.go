@@ -6,8 +6,12 @@ import (
 	"github.com/olebedev/emitter"
 )
 
-// Chainer defines an interface for Chain
+// Chainer (a.k.a Chains) defines an interface for accessing
+// mutating and managing a collection of blocks
 type Chainer interface {
+
+	// GetStore returns the store
+	GetStore() ChainStorer
 
 	// NewStateTree returns a new tree
 	NewStateTree(noBackLink bool, opts ...CallOp) (Tree, error)
@@ -41,6 +45,9 @@ type Chainer interface {
 
 	// GetTransaction gets a transaction by hash
 	GetTransaction(hash util.Hash) Transaction
+
+	// ChainReader gets a chain reader for this chain
+	ChainReader() ChainReader
 }
 
 // Blockchain defines an interface for a blockchain manager
@@ -135,6 +142,10 @@ type ChainReader interface {
 
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)
+
+	// GetParent returns a chain reader to the parent.
+	// Returns nil if chain has no parent.
+	GetParent() ChainReader
 }
 
 // CacheReader provides an interface for reading the orphan cache

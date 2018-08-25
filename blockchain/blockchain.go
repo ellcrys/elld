@@ -581,7 +581,7 @@ func (b *Blockchain) GetTransaction(hash util.Hash) (core.Transaction, error) {
 
 // ChainReader creates a chain reader for best/main chain
 func (b *Blockchain) ChainReader() core.ChainReader {
-	return store.NewChainReader(b.bestChain.store, b.bestChain.id)
+	return store.NewChainReader(b.bestChain)
 }
 
 // GetChainReaderByHash returns a chain reader to a chain
@@ -601,7 +601,7 @@ func (b *Blockchain) GetChainsReader() (readers []core.ChainReader) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	for _, c := range b.chains {
-		readers = append(readers, store.NewChainReader(c.store, c.id))
+		readers = append(readers, store.NewChainReader(c))
 	}
 	return
 }

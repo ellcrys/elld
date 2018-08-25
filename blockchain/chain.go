@@ -47,7 +47,7 @@ type Chain struct {
 	chainLock *sync.RWMutex
 
 	// store provides functionalities for storing objects
-	store store.ChainStorer
+	store core.ChainStorer
 
 	// log is used for logging
 	log logger.Logger
@@ -69,6 +69,11 @@ func NewChain(id util.String, db elldb.DB, cfg *config.EngineConfig, log logger.
 	return chain
 }
 
+// GetStore gets the store
+func (c *Chain) GetStore() core.ChainStorer {
+	return c.store
+}
+
 // GetID returns the id of the chain
 func (c *Chain) GetID() util.String {
 	return c.id
@@ -76,7 +81,7 @@ func (c *Chain) GetID() util.String {
 
 // ChainReader gets a chain reader for this chain
 func (c *Chain) ChainReader() core.ChainReader {
-	return store.NewChainReader(c.store, c.id)
+	return store.NewChainReader(c)
 }
 
 // GetParentBlock gets the chain's parent block if it has one
