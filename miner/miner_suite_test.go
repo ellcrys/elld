@@ -14,9 +14,9 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -29,7 +29,7 @@ var db elldb.DB
 var bc *blockchain.Blockchain
 var chainID = util.String("chain1")
 var genesisChain *blockchain.Chain
-var genesisBlock *wire.Block
+var genesisBlock *objects.Block
 var txPool *txpool.TxPool
 var sender, receiver *crypto.Key
 var event *emitter.Emitter

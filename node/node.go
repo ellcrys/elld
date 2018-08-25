@@ -15,7 +15,7 @@ import (
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/txpool"
 
@@ -47,7 +47,7 @@ type Node struct {
 	wg                      sync.WaitGroup          // wait group for preventing the main thread from exiting
 	localNode               *Node                   // local node
 	peerManager             *Manager                // node manager for managing connections to other remote peers
-	gProtoc                 types.Gossip            // gossip protocol instance
+	gProtoc                 *Gossip                 // gossip protocol instance
 	remote                  bool                    // remote indicates the node represents a remote peer
 	Timestamp               time.Time               // the last time this node was seen/active
 	isHardcodedSeed         bool                    // whether the node was hardcoded as a seed
@@ -174,7 +174,7 @@ func (n *Node) DB() elldb.DB {
 }
 
 // GossipProto returns the set protocol
-func (n *Node) GossipProto() types.Gossip {
+func (n *Node) GossipProto() *Gossip {
 	return n.gProtoc
 }
 
@@ -279,7 +279,7 @@ func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string)
 }
 
 // SetGossipProtocol sets the gossip protocol implementation
-func (n *Node) SetGossipProtocol(protoc types.Gossip) {
+func (n *Node) SetGossipProtocol(protoc *Gossip) {
 	n.gProtoc = protoc
 }
 
@@ -519,7 +519,7 @@ func (n *Node) handleEvents() {
 		for evt := range n.event.On(core.EventOrphanBlock) {
 			// We need to request the parent block from the
 			// peer who sent it to us (a.k.a broadcaster)
-			orphanBlock := evt.Args[0].(*wire.Block)
+			orphanBlock := evt.Args[0].(*objects.Block)
 			parentHash := orphanBlock.GetHeader().GetParentHash()
 			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo", orphanBlock.GetNumber(), "ParentBlockHash", parentHash.HexStr())
 			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)

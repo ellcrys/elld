@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -94,7 +94,7 @@ var WorldReaderTest = func() bool {
 						// genesis block 2
 						genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730723),
+								objects.NewTx(objects.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730723),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -106,7 +106,7 @@ var WorldReaderTest = func() bool {
 						// genesis block 3
 						genesisB3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -116,7 +116,7 @@ var WorldReaderTest = func() bool {
 						// sidechain1 block 3
 						sidechain1B3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
+								objects.NewTx(objects.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -132,7 +132,7 @@ var WorldReaderTest = func() bool {
 						// block 4
 						genesisB4 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+								objects.NewTx(objects.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -144,7 +144,7 @@ var WorldReaderTest = func() bool {
 						// sidechain1 block 4
 						sidechain1B4 := MakeTestBlock(bc, sidechain1, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
+								objects.NewTx(objects.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -154,7 +154,7 @@ var WorldReaderTest = func() bool {
 						// sidechain1 block 4
 						sidechain2B4 := MakeTestBlock(bc, sidechain1, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730728),
+								objects.NewTx(objects.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730728),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -192,8 +192,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -213,16 +213,16 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
 							err = genesisChain.CreateAccount(2, account)
 							Expect(err).To(BeNil())
 
-							account2 := &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account2 := &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "1000",
 								Address: "addr1",
 							}
@@ -242,8 +242,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -264,8 +264,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -285,16 +285,16 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
 							err = genesisChain.CreateAccount(2, account)
 							Expect(err).To(BeNil())
 
-							account2 := &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account2 := &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "1000",
 								Address: "addr1",
 							}
@@ -314,8 +314,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}

@@ -20,3 +20,9 @@ var (
 	// MinimumDifficulty is the minimum that the difficulty may ever be.
 	MinimumDifficulty = big.NewInt(100000)
 )
+
+var (
+	// MaxGetBlockHeader is the max number of block headers to request
+	// from a remote peer per request.
+	MaxGetBlockHeader = int64(500)
+)

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -77,7 +77,7 @@ var BlockchainTest = func() bool {
 				chain := NewChain("c1", db, cfg, log)
 				block2 = MakeTestBlock(bc, chain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -98,7 +98,7 @@ var BlockchainTest = func() bool {
 					chain := NewChain("c1", db, cfg, log)
 					block := MakeTestBlock(bc, chain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -120,15 +120,15 @@ var BlockchainTest = func() bool {
 					bc.chains = make(map[util.String]*Chain)
 					chain := NewChain("c1", db, cfg, log)
 
-					Expect(bc.putAccount(1, chain, &wire.Account{
-						Type:    wire.AccountTypeBalance,
+					Expect(bc.putAccount(1, chain, &objects.Account{
+						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "1000",
 					})).To(BeNil())
 
 					block := MakeTestBlock(bc, chain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -136,7 +136,7 @@ var BlockchainTest = func() bool {
 					})
 					block.GetTransactions()[0].SetFrom("unknown_account")
 					block.SetHash(block.ComputeHash())
-					blockSig, _ := wire.BlockSign(block, sender.PrivKey().Base58())
+					blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
 					block.SetSignature(blockSig)
 					GenesisBlock = block
 				})
@@ -155,7 +155,7 @@ var BlockchainTest = func() bool {
 					chain := NewChain("c1", db, cfg, log)
 					block := MakeTestBlock(bc, chain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -227,15 +227,15 @@ var BlockchainTest = func() bool {
 				err = bc.addChain(chain2)
 				Expect(err).To(BeNil())
 
-				Expect(bc.putAccount(1, chain2, &wire.Account{
-					Type:    wire.AccountTypeBalance,
+				Expect(bc.putAccount(1, chain2, &objects.Account{
+					Type:    objects.AccountTypeBalance,
 					Address: util.String(sender.Addr()),
 					Balance: "1000",
 				})).To(BeNil())
 
 				b1 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -271,7 +271,7 @@ var BlockchainTest = func() bool {
 				BeforeEach(func() {
 					b2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -309,7 +309,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -387,7 +387,7 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				parentBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -396,7 +396,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					OverrideParentHash: parentBlock.GetHash(),
 					Creator:            sender,
@@ -407,7 +407,7 @@ var BlockchainTest = func() bool {
 
 				unknownParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:            sender,
 					OverrideParentHash: util.StrToHash("unknown"),
@@ -458,7 +458,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),

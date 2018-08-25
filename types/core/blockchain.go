@@ -89,6 +89,10 @@ type Blockchain interface {
 
 	// GetBlockByHash finds a block in any chain with a matching hash.
 	GetBlockByHash(hash util.Hash) (Block, error)
+
+	// GetChainReaderByHash returns a chain reader to a chain
+	// where a block with the given hash exists
+	GetChainReaderByHash(hash util.Hash) ChainReader
 }
 
 // BlockMaker defines an interface providing the

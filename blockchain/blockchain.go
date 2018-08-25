@@ -14,9 +14,9 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 )
 
 const (
@@ -182,7 +182,7 @@ func (b *Blockchain) getChainParentBlock(ci *core.ChainInfo) (core.Block, error)
 		return nil, core.ErrBlockNotFound
 	}
 
-	var pb wire.Block
+	var pb objects.Block
 	if err := util.BytesToObject(r[0].Value, &pb); err != nil {
 		return nil, err
 	}
@@ -260,11 +260,12 @@ func (b *Blockchain) HybridMode() (bool, error) {
 	return h.GetNumber() >= b.cfg.Chain.TargetHybridModeBlock, nil
 }
 
-// findChainByBlockHash finds the chain where the block with the hash
-// provided hash exist on. It also returns the header of highest block of the chain.
+// findChainByBlockHash finds the chain where the given block
+// hash exists. It returns the block, the chain, the header of
+// highest block in the chain.
+//
+// NOTE: This method must be called with chain lock held by the caller.
 func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...core.CallOp) (block core.Block, chain *Chain, chainTipHeader core.Header, err error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 
 	for _, chain := range b.chains {
 
@@ -486,10 +487,22 @@ func (b *Blockchain) getChains() (chainsInfo []*core.ChainInfo, err error) {
 	return
 }
 
+// getChainsByParent gets chains by their parent block number
+func (b *Blockchain) getChainsByParent(blockNumber uint64) (chains []*Chain) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	for _, ch := range b.chains {
+		if ch.HasParent() && ch.info.ParentBlockNumber == blockNumber {
+			chains = append(chains, ch)
+		}
+	}
+	return
+}
+
 // hasChain checks whether a chain exists.
 func (b *Blockchain) hasChain(chain *Chain) bool {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 
 	_, ok := b.chains[chain.GetID()]
 	return ok
@@ -569,6 +582,18 @@ func (b *Blockchain) GetTransaction(hash util.Hash) (core.Transaction, error) {
 // ChainReader creates a chain reader for best/main chain
 func (b *Blockchain) ChainReader() core.ChainReader {
 	return store.NewChainReader(b.bestChain.store, b.bestChain.id)
+}
+
+// GetChainReaderByHash returns a chain reader to a chain
+// where a block with the given hash exists
+func (b *Blockchain) GetChainReaderByHash(hash util.Hash) core.ChainReader {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	_, chain, _, _ := b.findChainByBlockHash(hash)
+	if chain == nil {
+		return nil
+	}
+	return chain.ChainReader()
 }
 
 // GetChainsReader gets chain reader for all known chains

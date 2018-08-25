@@ -75,6 +75,13 @@ var _ = Describe("Engine", func() {
 		rpBc.SetDB(db2)
 	})
 
+	BeforeEach(func() {
+		err = lpBc.Up()
+		Expect(err).To(BeNil())
+		err = rpBc.Up()
+		Expect(err).To(BeNil())
+	})
+
 	// Create test account keys
 	BeforeEach(func() {
 		sender = crypto.NewKeyFromIntSeed(1)

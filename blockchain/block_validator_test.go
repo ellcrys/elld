@@ -9,8 +9,8 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -25,21 +25,21 @@ var BlockValidatorTest = func() bool {
 		Describe(".check", func() {
 			It("should check for validation errors", func() {
 				var cases = map[core.Block]interface{}{
-					nil:           fmt.Errorf("nil block"),
-					&wire.Block{}: fmt.Errorf("field:header, error:header is required"),
-					&wire.Block{}: fmt.Errorf("field:hash, error:hash is required"),
-					&wire.Block{Hash: util.StrToHash("invalid"), Header: &wire.Header{}}: fmt.Errorf("field:hash, error:hash is not correct"),
-					&wire.Block{}:                                                                                        fmt.Errorf("field:sig, error:signature is required"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.parentHash, error:parent hash is required"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.number, error:number must be greater or equal to 1"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.number, error:number must be greater or equal to 1"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.creatorPubKey, error:creator's public key is required"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.transactionsRoot, error:transaction root is required"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.stateRoot, error:state root is required"),
-					&wire.Block{Header: &wire.Header{ParentHash: util.StrToHash("abc")}}:                                 fmt.Errorf("field:header.difficulty, error:difficulty must be non-zero and non-negative"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:header.timestamp, error:timestamp must not be greater or equal to 1"),
-					&wire.Block{Header: &wire.Header{}}:                                                                  fmt.Errorf("field:transactions, error:at least one transaction is required"),
-					&wire.Block{Header: &wire.Header{}, Transactions: []*wire.Transaction{&wire.Transaction{Type: 109}}}: fmt.Errorf("tx:0, field:type, error:unsupported transaction type"),
+					nil:              fmt.Errorf("nil block"),
+					&objects.Block{}: fmt.Errorf("field:header, error:header is required"),
+					&objects.Block{}: fmt.Errorf("field:hash, error:hash is required"),
+					&objects.Block{Hash: util.StrToHash("invalid"), Header: &objects.Header{}}: fmt.Errorf("field:hash, error:hash is not correct"),
+					&objects.Block{}:                                                                                                 fmt.Errorf("field:sig, error:signature is required"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.parentHash, error:parent hash is required"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.number, error:number must be greater or equal to 1"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.number, error:number must be greater or equal to 1"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.creatorPubKey, error:creator's public key is required"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.transactionsRoot, error:transaction root is required"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.stateRoot, error:state root is required"),
+					&objects.Block{Header: &objects.Header{ParentHash: util.StrToHash("abc")}}:                                       fmt.Errorf("field:header.difficulty, error:difficulty must be non-zero and non-negative"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:header.timestamp, error:timestamp must not be greater or equal to 1"),
+					&objects.Block{Header: &objects.Header{}}:                                                                        fmt.Errorf("field:transactions, error:at least one transaction is required"),
+					&objects.Block{Header: &objects.Header{}, Transactions: []*objects.Transaction{&objects.Transaction{Type: 109}}}: fmt.Errorf("tx:0, field:type, error:unsupported transaction type"),
 				}
 				for b, err := range cases {
 					validator := NewBlockValidator(b, nil, nil, false, cfg, log)
@@ -53,9 +53,9 @@ var BlockValidatorTest = func() bool {
 			It("should check for validation errors", func() {
 				key := crypto.NewKeyFromIntSeed(1)
 				var cases = map[core.Block]interface{}{
-					&wire.Block{Header: &wire.Header{}}:                                                  fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
-					&wire.Block{Header: &wire.Header{CreatorPubKey: "invalid"}}:                          fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
-					&wire.Block{Header: &wire.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
+					&objects.Block{Header: &objects.Header{}}:                                                  fmt.Errorf("field:header.creatorPubKey, error:empty pub key"),
+					&objects.Block{Header: &objects.Header{CreatorPubKey: "invalid"}}:                          fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"),
+					&objects.Block{Header: &objects.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
 				}
 				for b, err := range cases {
 					validator := NewBlockValidator(b, nil, nil, false, cfg, log)
@@ -72,7 +72,7 @@ var BlockValidatorTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -100,7 +100,7 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),
@@ -121,7 +121,7 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),
@@ -130,7 +130,7 @@ var BlockValidatorTest = func() bool {
 					})
 					block.GetHeader().SetDifficulty(blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader()))
 					block.SetHash(block.ComputeHash())
-					blockSig, _ := wire.BlockSign(block, sender.PrivKey().Base58())
+					blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
 					block.SetSignature(blockSig)
 				})
 
@@ -146,7 +146,7 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),
@@ -158,7 +158,7 @@ var BlockValidatorTest = func() bool {
 					tDiff := new(big.Int).Add(genesisBlock.GetHeader().GetTotalDifficulty(), diff)
 					block.GetHeader().SetTotalDifficulty(tDiff)
 					block.SetHash(block.ComputeHash())
-					blockSig, _ := wire.BlockSign(block, sender.PrivKey().Base58())
+					blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
 					block.SetSignature(blockSig)
 				})
 

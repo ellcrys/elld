@@ -5,10 +5,10 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -20,7 +20,7 @@ func TransactionTest() bool {
 			// var bchain types.Blockchain
 			var err error
 			var n, rp *Node
-			var proto, rpProto types.Gossip
+			var proto, rpProto *Gossip
 			var sender, address *crypto.Key
 
 			BeforeEach(func() {
@@ -49,9 +49,9 @@ func TransactionTest() bool {
 			})
 
 			It("should return nil and history key of transaction should be in HistoryCache", func() {
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
 				tx.Hash = tx.ComputeHash()
-				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 				err = proto.RelayTx(tx, []types.Engine{rp})
@@ -62,10 +62,10 @@ func TransactionTest() bool {
 
 			It("remote node should add tx in its tx pool", func() {
 
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
 				tx.From = util.String(sender.Addr())
 				tx.Hash = tx.ComputeHash()
-				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 
@@ -81,10 +81,10 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				rp.SetGossipProtocol(proto)
 
-				tx := wire.NewTransaction(wire.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
 				tx.From = util.String(sender.Addr())
 				tx.Hash = tx.ComputeHash()
-				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 

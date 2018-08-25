@@ -1,4 +1,4 @@
-package wire
+package objects
 
 import (
 	"crypto/sha256"
@@ -11,6 +11,7 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/math"
 )
 
 // Block represents a block
@@ -145,6 +146,26 @@ func (h *Header) Copy() core.Header {
 	return &newH
 }
 
+// EncodeMsgpack implements msgpack.CustomEncoder
+func (h *Header) EncodeMsgpack(enc *msgpack.Encoder) error {
+	difficultyStr := h.Difficulty.String()
+	tdStr := h.TotalDifficulty.String()
+	return enc.Encode(h.Number, h.Nonce, h.Timestamp, h.CreatorPubKey,
+		h.ParentHash, h.StateRoot, h.TransactionsRoot, h.Extra, difficultyStr, tdStr)
+}
+
+// DecodeMsgpack implements msgpack.CustomDecoder
+func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
+	var difficultyStr, tdStr string
+	if err := dec.Decode(&h.Number, &h.Nonce, &h.Timestamp, &h.CreatorPubKey,
+		&h.ParentHash, &h.StateRoot, &h.TransactionsRoot, &h.Extra, &difficultyStr, &tdStr); err != nil {
+		return err
+	}
+	h.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
+	h.TotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
+	return nil
+}
+
 // GetChainReader gets the chain reader
 func (b *Block) GetChainReader() core.ChainReader {
 	return b.ChainReader
@@ -173,20 +194,12 @@ func (b *Block) HashToHex() string {
 
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (b *Block) EncodeMsgpack(enc *msgpack.Encoder) error {
-	difficultyStr := b.Header.Difficulty.String()
-	tdStr := b.Header.TotalDifficulty.String()
-	return enc.Encode(b.Header, b.Transactions, b.Hash, b.Sig, difficultyStr, tdStr)
+	return enc.Encode(b.Transactions, b.Hash, b.Sig, b.Header)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
-	var difficultyStr, tdStr string
-	if err := dec.Decode(&b.Header, &b.Transactions, &b.Hash, &b.Sig, &difficultyStr, &tdStr); err != nil {
-		return err
-	}
-	b.Header.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
-	b.Header.TotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
-	return nil
+	return dec.Decode(&b.Transactions, &b.Hash, &b.Sig, &b.Header)
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
@@ -197,7 +210,8 @@ func (h *Header) HashNoNonce() util.Hash {
 		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.Difficulty,
+		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
 		h.Timestamp,
 		h.Extra,
 	})
@@ -212,7 +226,8 @@ func (h *Header) Bytes() []byte {
 		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.Difficulty,
+		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
 		h.Timestamp,
 		h.Nonce,
 		h.Extra,

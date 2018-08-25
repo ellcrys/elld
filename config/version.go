@@ -32,6 +32,10 @@ var (
 	// handling incoming block
 	BlockVersion = ProtocolVersion + "/block/1"
 
+	// GetBlockHeaders is the message version for
+	// handling request for block headers
+	GetBlockHeaders = ProtocolVersion + "/getblockheaders/1"
+
 	// RequestBlockVersion is the message version for handling
 	// block requests
 	RequestBlockVersion = ProtocolVersion + "/requestblock/1"

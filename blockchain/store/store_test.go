@@ -6,8 +6,8 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -43,8 +43,8 @@ var _ = Describe("Leveldb", func() {
 	Describe(".PutTransactions", func() {
 
 		var txs = []core.Transaction{
-			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
-			&wire.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
+			&objects.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+			&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
 		It("should successfully put transactions", func() {
@@ -52,7 +52,7 @@ var _ = Describe("Leveldb", func() {
 			Expect(err).To(BeNil())
 
 			r := store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
-			var tx wire.Transaction
+			var tx objects.Transaction
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[0]))
 
@@ -65,8 +65,8 @@ var _ = Describe("Leveldb", func() {
 	Describe(".GetTransaction", func() {
 
 		var txs = []core.Transaction{
-			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
-			&wire.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
+			&objects.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+			&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
 		It("should successfully put transactions", func() {
@@ -84,7 +84,7 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".Delete", func() {
 		var txs = []core.Transaction{
-			&wire.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+			&objects.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
 		}
 
 		It("should successfully delete", func() {
@@ -101,12 +101,12 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".CreateAccount", func() {
 		It("should successfully create an account", func() {
-			var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
+			var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
 			err = store.CreateAccount(1, acct)
 			Expect(err).To(BeNil())
 
 			r := store.db.GetByPrefix(common.MakeAccountKey(1, store.chainID.Bytes(), []byte("addr")))
-			var found wire.Account
+			var found objects.Account
 			r[0].Scan(&found)
 			Expect(&found).To(Equal(acct))
 		})
@@ -115,7 +115,7 @@ var _ = Describe("Leveldb", func() {
 	Describe(".GetAccount", func() {
 		Context("no existing account in store", func() {
 			It("should return the only account", func() {
-				var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
+				var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
 				err = store.CreateAccount(1, acct)
 				Expect(err).To(BeNil())
 
@@ -127,11 +127,11 @@ var _ = Describe("Leveldb", func() {
 
 		Context("with multiple account of same address", func() {
 			It("should contain account with the highest block number", func() {
-				var acct = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr"}
+				var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
 				err = store.CreateAccount(1, acct)
 				Expect(err).To(BeNil())
 
-				var acct2 = &wire.Account{Type: wire.AccountTypeBalance, Address: "addr2"}
+				var acct2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr2"}
 				err = store.CreateAccount(2, acct2)
 				Expect(err).To(BeNil())
 
@@ -144,8 +144,8 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".PutBlock", func() {
 
-		var block = &wire.Block{
-			Header: &wire.Header{Number: 1},
+		var block = &objects.Block{
+			Header: &objects.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
 		}
 
@@ -155,7 +155,7 @@ var _ = Describe("Leveldb", func() {
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
-			var storedBlock wire.Block
+			var storedBlock objects.Block
 			err = result[0].Scan(&storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).To(Equal(block))
@@ -167,13 +167,13 @@ var _ = Describe("Leveldb", func() {
 			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
-			var storedBlock wire.Block
+			var storedBlock objects.Block
 			err = result[0].Scan(&storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).To(Equal(block))
 
-			var block2 = &wire.Block{
-				Header: &wire.Header{Number: 1},
+			var block2 = &objects.Block{
+				Header: &objects.Header{Number: 1},
 				Hash:   util.StrToHash("some_hash"),
 			}
 
@@ -190,8 +190,8 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".Current", func() {
 		When("two blocks are in the chain", func() {
-			var block = &wire.Block{Header: &wire.Header{Number: 1}, Hash: util.StrToHash("hash")}
-			var block2 = &wire.Block{Header: &wire.Header{Number: 2}, Hash: util.StrToHash("hash2")}
+			var block = &objects.Block{Header: &objects.Header{Number: 1}, Hash: util.StrToHash("hash")}
+			var block2 = &objects.Block{Header: &objects.Header{Number: 2}, Hash: util.StrToHash("hash2")}
 
 			BeforeEach(func() {
 				err = store.PutBlock(block)
@@ -218,8 +218,8 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".GetBlockByNumberAndHash", func() {
 
-		var block = &wire.Block{
-			Header: &wire.Header{Number: 100},
+		var block = &objects.Block{
+			Header: &objects.Header{Number: 100},
 			Hash:   util.StrToHash("hash"),
 		}
 
@@ -251,8 +251,8 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".GetBlock", func() {
 
-		var block = &wire.Block{
-			Header: &wire.Header{Number: 1},
+		var block = &objects.Block{
+			Header: &objects.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
 		}
 
@@ -289,8 +289,8 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		It("should return the block with the hightest number if 0 is passed", func() {
-			var block2 = &wire.Block{
-				Header: &wire.Header{Number: 2},
+			var block2 = &objects.Block{
+				Header: &objects.Header{Number: 2},
 				Hash:   util.StrToHash("hash"),
 			}
 
@@ -306,8 +306,8 @@ var _ = Describe("Leveldb", func() {
 
 	Describe("GetBlockHeader", func() {
 
-		var block = &wire.Block{
-			Header: &wire.Header{Number: 1},
+		var block = &objects.Block{
+			Header: &objects.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
 		}
 
@@ -327,8 +327,8 @@ var _ = Describe("Leveldb", func() {
 	})
 
 	Describe(".GetBlockHeaderByHash", func() {
-		var block = &wire.Block{
-			Header: &wire.Header{Number: 1},
+		var block = &objects.Block{
+			Header: &objects.Header{Number: 1},
 			Hash:   util.StrToHash("hash"),
 		}
 

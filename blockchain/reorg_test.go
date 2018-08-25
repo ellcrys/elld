@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +22,7 @@ var ReOrgTest = func() bool {
 			BeforeEach(func() {
 				genesisChainBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:                 sender,
 					Nonce:                   core.EncodeNonce(1),
@@ -44,7 +44,7 @@ var ReOrgTest = func() bool {
 
 						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:                 sender,
 							Nonce:                   core.EncodeNonce(1),
@@ -73,7 +73,7 @@ var ReOrgTest = func() bool {
 
 						chainBBlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+								objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
 							},
 							Creator:                 sender,
 							Nonce:                   core.EncodeNonce(1),
@@ -106,7 +106,7 @@ var ReOrgTest = func() bool {
 
 						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:                 sender,
 							Nonce:                   core.EncodeNonce(1),
@@ -140,7 +140,7 @@ var ReOrgTest = func() bool {
 
 						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:                 sender,
 							Nonce:                   core.EncodeNonce(1),
@@ -184,7 +184,7 @@ var ReOrgTest = func() bool {
 				// genesis block 2
 				genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -193,7 +193,7 @@ var ReOrgTest = func() bool {
 
 				forkChainB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -212,7 +212,7 @@ var ReOrgTest = func() bool {
 				// genesis block 3
 				genesisB3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -224,7 +224,7 @@ var ReOrgTest = func() bool {
 				// genesis block 4
 				genesisB4 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -307,7 +307,7 @@ var ReOrgTest = func() bool {
 				// genesis block 2
 				genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -317,7 +317,7 @@ var ReOrgTest = func() bool {
 				// forked chain block 2
 				forkChainB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 191, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -336,7 +336,7 @@ var ReOrgTest = func() bool {
 				// forked chain block 3
 				forkChainB3 := MakeTestBlock(bc, forkedChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -348,7 +348,7 @@ var ReOrgTest = func() bool {
 				// forked chain block 4
 				forkedChainB4 := MakeTestBlock(bc, forkedChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),

@@ -8,8 +8,8 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -44,6 +44,7 @@ func BlockTest() bool {
 			rpGossip = NewGossip(rp, log)
 			rp.SetGossipProtocol(rpGossip)
 			rp.SetProtocolHandler(config.BlockVersion, rpGossip.OnBlock)
+			rp.SetProtocolHandler(config.GetBlockHeaders, rpGossip.OnGetBlockHeaders)
 			rp.SetBlockchain(rpBc)
 		})
 
@@ -54,42 +55,42 @@ func BlockTest() bool {
 
 		Describe(".RelayBlock", func() {
 
-			// var block core.Block
+			var block core.Block
 
-			// Context("on success", func() {
-			// 	BeforeEach(func() {
-			// 		block, err = lpBc.Generate(&core.GenerateBlockParams{
-			// 			Transactions: []core.Transaction{
-			// 				wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
-			// 			},
-			// 			Creator:    sender,
-			// 			Nonce:      core.EncodeNonce(1),
-			// 			Difficulty: new(big.Int).SetInt64(131072),
-			// 		})
-			// 		Expect(err).To(BeNil())
-			// 	})
+			Context("on success", func() {
+				BeforeEach(func() {
+					block, err = lpBc.Generate(&core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+						},
+						Creator:    sender,
+						Nonce:      core.EncodeNonce(1),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					Expect(err).To(BeNil())
+				})
 
-			// 	It("should relay block to remote peer", func() {
-			// 		rpCurBlock, err := rpBc.ChainReader().Current()
-			// 		Expect(err).To(BeNil())
-			// 		Expect(rpCurBlock.GetNumber()).To(Equal(uint64(1)))
+				It("should relay block to remote peer", func() {
+					rpCurBlock, err := rpBc.ChainReader().Current()
+					Expect(err).To(BeNil())
+					Expect(rpCurBlock.GetNumber()).To(Equal(uint64(1)))
 
-			// 		err = lpGossip.RelayBlock(block, []types.Engine{rp})
-			// 		Expect(err).To(BeNil())
+					err = lpGossip.RelayBlock(block, []types.Engine{rp})
+					Expect(err).To(BeNil())
 
-			// 		time.Sleep(10 * time.Millisecond)
-			// 		rpCurBlock, err = rpBc.ChainReader().Current()
-			// 		Expect(err).To(BeNil())
-			// 		Expect(rpCurBlock.GetNumber()).To(Equal(block.GetNumber()))
-			// 	})
+					time.Sleep(10 * time.Millisecond)
+					rpCurBlock, err = rpBc.ChainReader().Current()
+					Expect(err).To(BeNil())
+					Expect(rpCurBlock.GetNumber()).To(Equal(block.GetNumber()))
+				})
 
-			// 	It("should emit core.EventNewBlock", func() {
-			// 		err = lpGossip.RelayBlock(block, []types.Engine{rp})
-			// 		Expect(err).To(BeNil())
-			// 		evt := <-rpBc.GetEventEmitter().Once(core.EventNewBlock)
-			// 		Expect(evt.Args[0].(core.Block).GetNumber()).To(Equal(block.GetNumber()))
-			// 	})
-			// })
+				It("should emit core.EventNewBlock", func() {
+					err = lpGossip.RelayBlock(block, []types.Engine{rp})
+					Expect(err).To(BeNil())
+					evt := <-rpBc.GetEventEmitter().Once(core.EventNewBlock)
+					Expect(evt.Args[0].(core.Block).GetNumber()).To(Equal(block.GetNumber()))
+				})
+			})
 		})
 
 		Describe(".RelayBlock 2", func() {
@@ -101,7 +102,7 @@ func BlockTest() bool {
 				BeforeEach(func() {
 					block2, err = lpBc.Generate(&core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -113,7 +114,7 @@ func BlockTest() bool {
 
 					block3, err = lpBc.Generate(&core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -129,7 +130,7 @@ func BlockTest() bool {
 					Expect(err).To(BeNil())
 
 					evt := <-rpBc.GetEventEmitter().Once(core.EventOrphanBlock)
-					orphanBlock := evt.Args[0].(*wire.Block)
+					orphanBlock := evt.Args[0].(*objects.Block)
 
 					Expect(orphanBlock.GetNumber()).To(Equal(block3.GetNumber()))
 					Expect(orphanBlock.Broadcaster.StringID()).To(Equal(lp.StringID()))
@@ -151,6 +152,42 @@ func BlockTest() bool {
 						})
 					})
 				})
+			})
+		})
+
+		Describe(".SendGetBlockHeaders", func() {
+
+			// add 2 more blocks to the remote peer's
+			// blockchain.
+			// Target shape:
+			// [1]-[2]-[3]
+			BeforeEach(func() {
+				block2, err := rpBc.Generate(&core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				Expect(err).To(BeNil())
+				rpBc.ProcessBlock(block2)
+
+				block3, err := rpBc.Generate(&core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				Expect(err).To(BeNil())
+				rpBc.ProcessBlock(block3)
+			})
+
+			It("should successfully send message", func() {
+				err := lpGossip.SendGetBlockHeaders(rp)
+				Expect(err).To(BeNil())
 			})
 		})
 	})

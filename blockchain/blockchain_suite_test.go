@@ -13,9 +13,9 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -88,8 +88,8 @@ var _ = Describe("Blockchain", func() {
 
 	// create test accounts here
 	BeforeEach(func() {
-		Expect(bc.putAccount(1, genesisChain, &wire.Account{
-			Type:    wire.AccountTypeBalance,
+		Expect(bc.putAccount(1, genesisChain, &objects.Account{
+			Type:    objects.AccountTypeBalance,
 			Address: util.String(sender.Addr()),
 			Balance: "1000",
 		})).To(BeNil())
@@ -98,7 +98,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 			Transactions: []core.Transaction{
-				wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+				objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 			},
 			Creator:           sender,
 			Nonce:             core.EncodeNonce(1),

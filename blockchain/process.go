@@ -6,10 +6,10 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
 )
 
@@ -100,14 +100,14 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 		}
 		txOps = append(txOps, &common.OpCreateAccount{
 			OpBase: &common.OpBase{Addr: tx.GetTo()},
-			Account: &wire.Account{
-				Type:    wire.AccountTypeBalance,
+			Account: &objects.Account{
+				Type:    objects.AccountTypeBalance,
 				Address: tx.GetTo(),
 				Balance: "0",
 			},
 		})
-		recipientAcct = &wire.Account{
-			Type:    wire.AccountTypeBalance,
+		recipientAcct = &objects.Account{
+			Type:    objects.AccountTypeBalance,
 			Address: tx.GetTo(),
 			Balance: "0",
 		}
@@ -182,8 +182,8 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 		if err != core.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
 		}
-		recipientAcct = &wire.Account{
-			Type:    wire.AccountTypeBalance,
+		recipientAcct = &objects.Account{
+			Type:    objects.AccountTypeBalance,
 			Address: tx.GetTo(),
 			Balance: "0",
 		}
@@ -257,9 +257,9 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 		var newOps []common.Transition
 
 		switch tx.GetType() {
-		case wire.TxTypeBalance:
+		case objects.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
-		case wire.TxTypeAlloc:
+		case objects.TxTypeAlloc:
 			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
 

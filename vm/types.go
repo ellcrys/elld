@@ -1,6 +1,6 @@
 package vm
 
-import "github.com/ellcrys/elld/wire"
+import "github.com/ellcrys/elld/types/core/objects"
 
 // BlockInfo represents information about the current block
 type BlockInfo struct {
@@ -23,8 +23,8 @@ type Args struct {
 
 // BlockcodeMsg defines the message expected from a blockcode
 type BlockcodeMsg struct {
-	Type int               `json:"type"`
-	Tx   *wire.Transaction `json:"tx"`
+	Type int                  `json:"type"`
+	Tx   *objects.Transaction `json:"tx"`
 }
 
 // Result represents the output of a function call
