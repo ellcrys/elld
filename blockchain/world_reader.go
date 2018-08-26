@@ -119,7 +119,7 @@ minerMode:
 		}
 		// At this point, the current chain does not have
 		// the address, if this chain has a parent chain,
-		// then the next iteration will pass the parent to
+		// the next iteration will pass the parent to
 		// this block. We need to determine the maxChainHeight
 		// so we know what blocks were know to the miner at
 		// the time there created their block.

@@ -404,7 +404,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// We will also index the transactions so
 	// they can are queryable but only if the
 	// chain is not a side chain
-	if !chain.HasParent() {
+	if !chain.HasParent(txOp) {
 		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
 			rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
@@ -507,6 +507,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.GetHash().HexStr())
 

@@ -3,6 +3,7 @@ package wire
 import (
 	"math/big"
 
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/util"
@@ -79,5 +80,18 @@ type GetBlockHeaders struct {
 // BlockHeaders represents a message containing
 // block headers as a response to GetBlockHeaders
 type BlockHeaders struct {
-	Headers []objects.Header
+	Headers []core.Header
+}
+
+// BlockBody represents the body of a block
+type BlockBody struct {
+	Header       *objects.Header        `json:"header" msgpack:"header"`
+	Transactions []*objects.Transaction `json:"transactions" msgpack:"transactions"`
+	Hash         util.Hash              `json:"hash" msgpack:"hash"`
+	Sig          []byte                 `json:"sig" msgpack:"sig"`
+}
+
+// BlockBodies represents a collection of blocks
+type BlockBodies struct {
+	Blocks []*BlockBodies
 }

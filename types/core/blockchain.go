@@ -31,9 +31,6 @@ type Chainer interface {
 	// GetInfo gets the chain's parent information
 	GetInfo() *ChainInfo
 
-	// GetParent returns the parent chain
-	GetParent() Chainer
-
 	// CreateAccount creates an account on a target block
 	CreateAccount(targetBlockNum uint64, account Account, opts ...CallOp) error
 
@@ -48,6 +45,11 @@ type Chainer interface {
 
 	// ChainReader gets a chain reader for this chain
 	ChainReader() ChainReader
+
+	// GetRoot fetches the root block of this chain. If the chain
+	// has more than one parents/ancestors, it will traverse
+	// the parents to return the root parent block.
+	GetRoot() Block
 }
 
 // Blockchain defines an interface for a blockchain manager
@@ -143,9 +145,17 @@ type ChainReader interface {
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)
 
-	// GetParent returns a chain reader to the parent.
+	// GetParent returns a chain reader to the parent chain.
 	// Returns nil if chain has no parent.
 	GetParent() ChainReader
+
+	// GetParentBlock returns the parent block
+	GetParentBlock() Block
+
+	// GetRoot fetches the root block of this chain. If the chain
+	// has more than one parents/ancestors, it will traverse
+	// the parents to return the root parent block.
+	GetRoot() Block
 }
 
 // CacheReader provides an interface for reading the orphan cache

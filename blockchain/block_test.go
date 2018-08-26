@@ -42,8 +42,7 @@ var BlockTest = func() bool {
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
 
-				err = bc.addChain(chain2)
-				Expect(err).To(BeNil())
+				bc.addChain(chain2)
 				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
@@ -200,8 +199,7 @@ var BlockTest = func() bool {
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
 
-				err = bc.addChain(chain2)
-				Expect(err).To(BeNil())
+				bc.addChain(chain2)
 				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 

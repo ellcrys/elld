@@ -168,12 +168,6 @@ var ReOrgTest = func() bool {
 
 		Describe(".reOrg: long chain to short chain", func() {
 
-			// save the genesis chain
-			BeforeEach(func() {
-				err = bc.saveChain(genesisChain, "", 0)
-				Expect(err).To(BeNil())
-			})
-
 			var forkedChain *Chain
 
 			// Build two chains having the following shapes:
@@ -290,12 +284,6 @@ var ReOrgTest = func() bool {
 		})
 
 		Describe(".reOrg: short chain to long chain", func() {
-
-			// save the genesis chain
-			BeforeEach(func() {
-				err = bc.saveChain(genesisChain, "", 0)
-				Expect(err).To(BeNil())
-			})
 
 			var forkedChain *Chain
 

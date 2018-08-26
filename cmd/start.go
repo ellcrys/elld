@@ -51,7 +51,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 	var address *crypto.Key
 	var err error
 	var storedAccount *accountmgr.StoredAccount
-	
+
 	if account != "" {
 		if govalidator.IsNumeric(account) {
 			aInt, err := strconv.Atoi(account)
@@ -218,7 +218,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)
 	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
-	n.SetProtocolHandler(config.BlockVersion, protocol.OnBlock)
+	n.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
 	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
 
 	// Create event the global event handler

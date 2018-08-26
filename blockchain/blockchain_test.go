@@ -4,6 +4,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/jinzhu/copier"
+
+	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -27,8 +30,7 @@ var BlockchainTest = func() bool {
 				chain := NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
 				Expect(bc.chains).To(HaveLen(1))
-				err = bc.addChain(chain)
-				Expect(err).To(BeNil())
+				bc.addChain(chain)
 				Expect(bc.chains).To(HaveLen(2))
 			})
 		})
@@ -40,8 +42,7 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				chain = NewChain("chain_id", db, cfg, log)
 				Expect(err).To(BeNil())
-				err = bc.addChain(chain)
-				Expect(err).To(BeNil())
+				bc.addChain(chain)
 				Expect(bc.chains).To(HaveLen(2))
 			})
 
@@ -63,118 +64,88 @@ var BlockchainTest = func() bool {
 
 			It("should return true if chain exists", func() {
 				Expect(bc.hasChain(chain)).To(BeFalse())
-				err = bc.addChain(chain)
-				Expect(err).To(BeNil())
+				bc.addChain(chain)
 				Expect(bc.hasChain(chain)).To(BeTrue())
 			})
 		})
 
 		Describe(".Up", func() {
 
-			var block2 core.Block
-
 			BeforeEach(func() {
-				chain := NewChain("c1", db, cfg, log)
-				block2 = MakeTestBlock(bc, chain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
-					},
-					Creator:    sender,
-					Nonce:      core.EncodeNonce(1),
-					Difficulty: new(big.Int).SetInt64(131072),
-				})
+				bc = New(nil, cfg, log)
 			})
 
-			It("should return error if store is not set", func() {
-				bc := New(nil, cfg, log)
+			It("should return error if db is not set", func() {
 				err = bc.Up()
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("db has not been initialized"))
 			})
 
-			When("genesis block is not valid: block number is > 1", func() {
-				BeforeEach(func() {
-					bc.chains = make(map[util.String]*Chain)
-					chain := NewChain("c1", db, cfg, log)
-					block := MakeTestBlock(bc, chain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
-					})
-					block.GetHeader().SetNumber(2)
-					GenesisBlock = block
-				})
-
-				It("should return error if genesis block number is not equal to 1", func() {
-					err = bc.Up()
-					Expect(err).ToNot(BeNil())
-					Expect(err.Error()).To(Equal("genesis block error: expected block number 1"))
-				})
+			It("should succeed", func() {
+				bc.SetDB(db)
+				err = bc.Up()
+				Expect(err).To(BeNil())
 			})
 
-			When("genesis block is not valid: sender account does not exist", func() {
-				BeforeEach(func() {
-					bc.chains = make(map[util.String]*Chain)
-					chain := NewChain("c1", db, cfg, log)
-
-					Expect(bc.putAccount(1, chain, &objects.Account{
-						Type:    objects.AccountTypeBalance,
-						Address: util.String(sender.Addr()),
-						Balance: "1000",
-					})).To(BeNil())
-
-					block := MakeTestBlock(bc, chain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
-					})
-					block.GetTransactions()[0].SetFrom("unknown_account")
-					block.SetHash(block.ComputeHash())
-					blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
-					block.SetSignature(blockSig)
-					GenesisBlock = block
-				})
-
-				It("should return error if a transaction's sender does not exists", func() {
-					err = bc.Up()
-					Expect(err).ToNot(BeNil())
-					Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
-				})
-			})
-
-			When("genesis block is valid", func() {
+			When("genesis block is invalid", func() {
 
 				BeforeEach(func() {
-					bc.chains = make(map[util.String]*Chain)
-					chain := NewChain("c1", db, cfg, log)
-					block := MakeTestBlock(bc, chain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
-					})
-					GenesisBlock = block
-				})
-
-				It("should assign new chain as the best chain if no chain is known", func() {
-					bc.bestChain = nil
-					err = bc.Up()
+					db = elldb.NewDB(cfg.ConfigDir())
+					err = db.Open(util.RandString(5))
 					Expect(err).To(BeNil())
-					Expect(bc.bestChain).ToNot(BeNil())
+					bc = New(nil, cfg, log)
+					bc.SetDB(db)
+					bc.SetGenesisBlock(GenesisBlock)
+				})
+
+				When("block number is > 1", func() {
+
+					var invalidBlock core.Block
+
+					BeforeEach(func() {
+						bc.bestChain = genesisChain
+						invalidBlock = makeBlock(genesisChain)
+						copier.Copy(&invalidBlock, GenesisBlock)
+						invalidBlock.GetHeader().SetNumber(2)
+					})
+
+					It("should return error if genesis block number is not equal to 1", func() {
+						bc.SetGenesisBlock(invalidBlock)
+						err = bc.Up()
+						Expect(err).ToNot(BeNil())
+						Expect(err.Error()).To(Equal("genesis block error: expected block number 1"))
+					})
+				})
+
+				When("sender account does not exist", func() {
+
+					BeforeEach(func() {
+						bc.bestChain = genesisChain
+						chain := NewChain("c1", db, cfg, log)
+						Expect(bc.putAccount(1, chain, &objects.Account{
+							Type:    objects.AccountTypeBalance,
+							Address: util.String(sender.Addr()),
+							Balance: "1000",
+						})).To(BeNil())
+
+						block := makeBlockWithBalanceTx(chain)
+						block.GetTransactions()[0].SetFrom("unknown_account")
+						block.SetHash(block.ComputeHash())
+						blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
+						block.SetSignature(blockSig)
+						bc.SetGenesisBlock(block)
+					})
+
+					It("should return error if a transaction's sender does not exists", func() {
+						err = bc.Up()
+						Expect(err).ToNot(BeNil())
+						Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
+					})
 				})
 			})
 
 			It("should load all chains", func() {
-				GenesisBlock = block2
-
+				bc.SetDB(db)
 				c1 := NewChain("c_1", db, cfg, log)
 				c2 := NewChain("c_2", db, cfg, log)
 
@@ -187,13 +158,14 @@ var BlockchainTest = func() bool {
 				err = c1.append(GenesisBlock)
 				Expect(err).To(BeNil())
 
+				bc.SetGenesisBlock(GenesisBlock)
 				err = bc.Up()
 				Expect(err).To(BeNil())
 
 				Expect(bc.chains).To(HaveLen(3))
-				Expect(bc.chains["c_1"].id).To(Equal(c1.id))
-				Expect(bc.chains["c_2"].id).To(Equal(c2.id))
-				Expect(bc.bestChain.id).To(Equal(genesisChain.id))
+				Expect(bc.chains).To(HaveKey(c1.id))
+				Expect(bc.chains).To(HaveKey(c2.id))
+				Expect(bc.chains).To(HaveKey(genesisChain.id))
 			})
 		})
 
@@ -224,8 +196,7 @@ var BlockchainTest = func() bool {
 
 			BeforeEach(func() {
 				chain2 = NewChain("chain2", db, cfg, log)
-				err = bc.addChain(chain2)
-				Expect(err).To(BeNil())
+				bc.addChain(chain2)
 
 				Expect(bc.putAccount(1, chain2, &objects.Account{
 					Type:    objects.AccountTypeBalance,
@@ -326,19 +297,25 @@ var BlockchainTest = func() bool {
 			It("should return error when only ParentBlockNumber is set but ParentChainID is unset", func() {
 				err = bc.loadChain(&core.ChainInfo{ID: "some_id", ParentBlockNumber: 1})
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("chain load failed: parent chain id and parent block id are both required"))
+				Expect(err.Error()).To(Equal("chain load failed: chain parent chain ID and block are required"))
 			})
 
 			It("should return error when only ParentChainID is set but ParentBlockNumber is unset", func() {
 				err = bc.loadChain(&core.ChainInfo{ID: chain.GetID(), ParentChainID: "some_id"})
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("chain load failed: parent chain id and parent block id are both required"))
+				Expect(err.Error()).To(Equal("chain load failed: chain parent chain ID and block are required"))
+			})
+
+			It("should return error when parent chain does not exist", func() {
+				err = bc.loadChain(&core.ChainInfo{ID: chain.GetID(), ParentChainID: "some_id", ParentBlockNumber: 100})
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("chain load failed: chain parent not found"))
 			})
 
 			It("should return error when parent block does not exist", func() {
-				err = bc.loadChain(&core.ChainInfo{ID: chain.GetID(), ParentChainID: "some_id", ParentBlockNumber: 100})
+				err = bc.loadChain(&core.ChainInfo{ID: chain.GetID(), ParentChainID: "chain_2", ParentBlockNumber: 100})
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("chain load failed: parent block {100} of chain {chain_2} not found"))
+				Expect(err.Error()).To(Equal("chain load failed: chain parent block not found"))
 			})
 
 			It("should successfully load chain with no parent into the cache", func() {
