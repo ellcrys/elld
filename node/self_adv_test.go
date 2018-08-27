@@ -34,17 +34,20 @@ func SelfAdvTest() bool {
 				pt := NewGossip(p2, log)
 				p2.SetGossipProtocol(pt)
 				p2.SetProtocolHandler(config.AddrVersion, pt.OnAddr)
+				defer closeNode(p2)
 
 				Expect(p2.PM().knownPeers).To(HaveLen(0))
 				n := lpProtoc.SelfAdvertise([]types.Engine{p2})
 				Expect(n).To(Equal(1))
 				time.Sleep(5 * time.Millisecond)
-				Expect(p2.PM().knownPeers).To(HaveLen(1))
-				Expect(p2.PM().knownPeers).To(HaveKey(lp.StringID()))
+
+				knownPeers := p2.PM().GetKnownPeers()
+				Expect(knownPeers).To(HaveLen(1))
+				Expect(knownPeers[0].StringID()).To(Equal(lp.StringID()))
 			})
 
 			AfterEach(func() {
-				lp.host.Close()
+				closeNode(lp)
 			})
 		})
 	})

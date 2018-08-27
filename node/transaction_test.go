@@ -44,8 +44,8 @@ func TransactionTest() bool {
 			})
 
 			AfterEach(func() {
-				n.Host().Close()
-				rp.Host().Close()
+				closeNode(n)
+				closeNode(rp)
 			})
 
 			It("should return nil and history key of transaction should be in HistoryCache", func() {
@@ -70,7 +70,7 @@ func TransactionTest() bool {
 				tx.Sig = sig
 
 				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
-				time.Sleep(1 * time.Millisecond)
+				time.Sleep(50 * time.Millisecond)
 				Expect(err).To(BeNil())
 				Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 			})

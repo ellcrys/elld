@@ -43,14 +43,14 @@ func BlockTest() bool {
 			Expect(err).To(BeNil())
 			rpGossip = NewGossip(rp, log)
 			rp.SetGossipProtocol(rpGossip)
-			rp.SetProtocolHandler(config.BlockVersion, rpGossip.OnBlock)
+			rp.SetProtocolHandler(config.BlockBodyVersion, rpGossip.OnBlockBody)
 			rp.SetProtocolHandler(config.GetBlockHeaders, rpGossip.OnGetBlockHeaders)
 			rp.SetBlockchain(rpBc)
 		})
 
 		AfterEach(func() {
-			lp.Host().Close()
-			rp.Host().Close()
+			closeNode(lp)
+			closeNode(rp)
 		})
 
 		Describe(".RelayBlock", func() {
@@ -139,7 +139,7 @@ func BlockTest() bool {
 					Describe("", func() {
 						err = rpGossip.RequestBlock(lp, orphanBlock.Header.ParentHash)
 						Expect(err).To(BeNil())
-						time.Sleep(10 * time.Millisecond)
+						time.Sleep(50 * time.Millisecond)
 
 						Describe("orphan block must no longer be in the orphan cache", func() {
 							Expect(rpBc.OrphanBlocks().Len()).To(Equal(0))
@@ -187,6 +187,7 @@ func BlockTest() bool {
 
 			It("should successfully send message", func() {
 				err := lpGossip.SendGetBlockHeaders(rp)
+				time.Sleep(10 * time.Millisecond)
 				Expect(err).To(BeNil())
 			})
 		})

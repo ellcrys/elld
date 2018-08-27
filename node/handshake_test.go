@@ -15,23 +15,22 @@ func HandshakeTest() bool {
 		var lpGossip, rpGossip *Gossip
 
 		BeforeEach(func() {
-			lp, err = NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
+			lp, err = NewNode(cfg, "127.0.0.1:31100", crypto.NewKeyFromIntSeed(0), log)
 			lpGossip = NewGossip(lp, log)
 			lp.SetGossipProtocol(lpGossip)
 			lp.SetBlockchain(lpBc)
 		})
 
 		BeforeEach(func() {
-			rp, err = NewNode(cfg, "127.0.0.1:40001", crypto.NewKeyFromIntSeed(1), log)
-			rpGossip = NewGossip(rp, log)
+			rp, err = NewNode(cfg, "127.0.0.1:31101", crypto.NewKeyFromIntSeed(1), log)
 			rpGossip = NewGossip(rp, log)
 			rp.SetProtocolHandler(config.HandshakeVersion, rpGossip.OnHandshake)
 			rp.SetBlockchain(rpBc)
 		})
 
 		AfterEach(func() {
-			rp.Host().Close()
-			lp.Host().Close()
+			closeNode(lp)
+			closeNode(rp)
 		})
 
 		Describe(".SendHandshake", func() {

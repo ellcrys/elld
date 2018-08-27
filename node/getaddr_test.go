@@ -38,9 +38,9 @@ func GetAddrTest() bool {
 		})
 
 		AfterEach(func() {
-			lp.Host().Close()
-			rp.Host().Close()
-			rp2.Host().Close()
+			closeNode(lp)
+			closeNode(rp)
+			closeNode(rp2)
 		})
 
 		Describe(".sendGetAddr", func() {

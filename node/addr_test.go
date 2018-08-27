@@ -58,7 +58,7 @@ func AddrTest() bool {
 			})
 
 			AfterEach(func() {
-				lp.host.Close()
+				closeNode(lp)
 			})
 		})
 
@@ -147,14 +147,14 @@ func AddrTest() bool {
 				})
 
 				AfterEach(func() {
-					p.host.Close()
-					p2.host.Close()
-					p3.host.Close()
+					closeNode(p)
+					closeNode(p2)
+					closeNode(p3)
 				})
 			})
 
 			AfterEach(func() {
-				lp.host.Close()
+				closeNode(lp)
 			})
 		})
 	})
