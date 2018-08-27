@@ -97,6 +97,7 @@ var _ = Describe("Blockchain", func() {
 
 	var tests = []func() bool{
 		MinerTest,
+		BanknoteAnalyzerTest,
 	}
 
 	for i, t := range tests {

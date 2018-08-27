@@ -23,38 +23,38 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 )
 
-// BankNote hold informations about the banknote scaNNED
+// BankNote hold informations about the banknote Scanned
 type BankNote struct {
-	CurrencyName        string `json:"currencyName"`
-	CountryName         string `json:"country"`
-	DenominationFigures string `json:"denominationFigures"`
-	DenominationText    string `json:"denominationText"`
-	ShortName           string `json:"shortName"`
+	currencyName        string `json:"currencyName"`
+	countryName         string `json:"country"`
+	denominationFigures string `json:"denominationFigures"`
+	denominationText    string `json:"denominationText"`
+	shortName           string `json:"shortName"`
 }
 
 // Name returns the currency name in string
 func (b *BankNote) Name() string {
-	return b.CurrencyName
+	return b.currencyName
 }
 
 // Country return the country of the currency
 func (b *BankNote) Country() string {
-	return b.CountryName
+	return b.countryName
 }
 
 // Figure retrn the integer value of the currency scanned
 func (b *BankNote) Figure() string {
-	return b.DenominationText
+	return b.denominationText
 }
 
 // Text return the currency in word
 func (b *BankNote) Text() string {
-	return b.DenominationText
+	return b.denominationText
 }
 
 //Shortname returns the shortname of the currency
 func (b *BankNote) Shortname() string {
-	return b.ShortName
+	return b.shortName
 }
 
 // WriteCounter counts the number of bytes written to it. It implements to the io.Writer
@@ -82,14 +82,13 @@ func (wc *WriteCounter) PrintProgress() {
 	data := fmt.Sprintf("\r%s", strings.Repeat(" ", 35))
 	dlog.Debug(data)
 
-	// Return again and print current status of download
 	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
 	data2 := fmt.Sprintf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
 	dlog.Debug(data2)
 }
 
-//Analyzer contains methods that
-// predict notes from image and bytes
+// Analyzer contains methods and properties
+// that predict notes from image and bytes
 type Analyzer struct {
 	trainFilePath      string
 	elldConfigDir      string
@@ -103,8 +102,8 @@ type Analyzer struct {
 	ellRemoteURL       string
 }
 
-//NewAnalyzer initialized the Analazer struct and set default
-//train file to use
+// NewAnalyzer initialized the Analyzer struct
+// and set default values for others fields
 func NewAnalyzer(trainFilePath string, cfg *config.EngineConfig, log logger.Logger) *Analyzer {
 
 	var (
@@ -182,11 +181,12 @@ func (a *Analyzer) Prepare() error {
 			a.log.Error("Cannot unzip supplied Train file", "Error", err)
 			return err
 		}
+
 		return nil
 	}
 
-	//If user did not supply ithe training file, then
-	//download the ell file and save it to the config dir
+	// If user did not supply ithe training file, then
+	// download the ell file and save it to the config dir
 	err = a.downloadEllToPath(a.elldConfigDir, a.ellRemoteURL)
 	if err != nil {
 		a.log.Error("Error Downloading TrainData from remote URL", "Error", err)
@@ -207,7 +207,7 @@ func (a *Analyzer) Prepare() error {
 }
 
 // Predict accept imagepath as string
-// then return  BankNote, *tf.Tensor, error
+// then return  BankNote, error
 func (a *Analyzer) Predict(imagePath string) (*BankNote, error) {
 
 	imageFile, err := os.Open(imagePath)
@@ -231,16 +231,14 @@ func (a *Analyzer) Predict(imagePath string) (*BankNote, error) {
 	return res, nil
 }
 
-// PredictBytes accept byte as []byte
-// then return  BankNote, *tf.Tensor, error
+// PredictBytes accept byte as input
+// then return  BankNote, error
 func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, error) {
-	//predict image note from .png and .jpg
 
 	var imgBuffer bytes.Buffer
 	imgBuffer.Write(imgByte)
 	img, err := readImage(&imgBuffer, "png")
 	if err != nil {
-		a.log.Fatal("error making tensor from bytes : ", err)
 		return nil, err
 	}
 
@@ -252,12 +250,11 @@ func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, error) {
 	return res, nil
 }
 
-//mintLoader accepts a tensor and output Banknote
+// mintLoader accepts a tensor and output Banknote
 func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 
 	model, err := tf.LoadSavedModel(a.kerasGoPath, []string{"tags"}, nil)
 	if err != nil {
-		a.log.Error("unable to load tensorflow model", "Error", err)
 		return nil, err
 	}
 
@@ -272,7 +269,6 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 	)
 
 	if err != nil {
-		a.log.Error("unable to predict", "Error", err)
 		return nil, err
 	}
 
@@ -295,11 +291,9 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 			return nil, e
 		}
 
-		// get the top level map from json
-		var dataSource map[string]interface{}
-		// var dataSource map[string]string
-		err := json.Unmarshal(file, &dataSource)
+		var dataSource = map[string]map[string]string{}
 
+		err := json.Unmarshal(file, &dataSource)
 		if err != nil {
 			a.log.Error("file error", "Error", err)
 			return nil, err
@@ -307,14 +301,12 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 
 		treeData := dataSource[stringData]
 
-		//GET The currency details for the top level tree
-		bytex, _ := json.Marshal(treeData)
-
-		var bnote BankNote
-
-		err = json.Unmarshal(bytex, &bnote)
-		if err != nil {
-			return nil, err
+		bnote := BankNote{
+			currencyName:        treeData["currencyName"],
+			countryName:         treeData["country"],
+			denominationFigures: treeData["denominationFigures"],
+			denominationText:    treeData["denominationText"],
+			shortName:           treeData["shortName"],
 		}
 
 		return &bnote, nil
@@ -323,7 +315,7 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 	return nil, nil
 }
 
-// DownloadFile will download a url to a local file. It's efficient because it will
+// downloadEllToPath will download a url to a local file. It's efficient because it will
 // write as it downloads and not load the whole file into memory. We pass an io.TeeReader
 // into Copy() to report progress on the download.
 func (a *Analyzer) downloadEllToPath(filepath string, url string) error {
@@ -337,7 +329,6 @@ func (a *Analyzer) downloadEllToPath(filepath string, url string) error {
 	}
 	defer out.Close()
 
-	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
 		a.log.Error("Unable to get response from the http(ellUrl)", "Error", err)
@@ -358,10 +349,17 @@ func (a *Analyzer) downloadEllToPath(filepath string, url string) error {
 		return err
 	}
 
+	//verify if ell is truely downloaded to the config dir path
+	_, err = os.Stat(a.ellFilePath)
+	if err != nil {
+		a.log.Error("File did not download successfully", "Error", err)
+		return nil
+	}
+
 	return nil
 }
 
-//unzip extract zip file to a target location
+// unzip extract zip file to a target location
 func unzip(archive, target string) error {
 	reader, err := zip.OpenReader(archive)
 	if err != nil {
@@ -399,7 +397,7 @@ func unzip(archive, target string) error {
 	return nil
 }
 
-// isValidUrl tests a string to determine if it is a url or not.
+// isValidUrl tests a string to determine if it is a valid url or not.
 func isValidUrl(toTest string) bool {
 	_, err := url.ParseRequestURI(toTest)
 	if err != nil {
@@ -434,7 +432,7 @@ func readImage(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error
 	return normalized[0], nil
 }
 
-//transformGraph takes in an image format then return a graph
+// transformGraph takes in an image format then return a graph
 func transformGraph(imageFormat string) (graph *tf.Graph, input, output tf.Output, err error) {
 	const (
 		H, W  = 128, 128
