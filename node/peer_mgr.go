@@ -44,7 +44,8 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 		cfg.Node = &config.PeerConfig{}
 	}
 
-	if !cfg.Node.Dev {
+	// Set hardcoded config in production mode
+	if localPeer.ProdMode() {
 		cfg.Node.GetAddrInterval = 30 * 60
 		cfg.Node.PingInterval = 30 * 60
 		cfg.Node.SelfAdvInterval = 24 * 60 * 60
@@ -240,52 +241,73 @@ func (m *Manager) AddOrUpdatePeer(p types.Engine) error {
 		return fmt.Errorf("nil received")
 	}
 
+	// Peer address must not be same as the local node
 	if p.IsSame(m.localNode) {
 		return fmt.Errorf("peer is the local peer")
 	}
 
+	// It must have a valid address
 	if !util.IsValidAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not valid")
 	}
 
-	if !m.localNode.DevMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
+	// In production mode, it must be a routable address
+	if m.localNode.ProdMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
 		return fmt.Errorf("peer address is not routable")
 	}
 
-	if !m.config.Node.Test { // don't do this in test environment (we will test savePeer alone)
+	// Save the known peers.
+	// don't do this in test environment (we will test savePeer alone)
+	if !m.localNode.TestMode() {
 		defer m.savePeers()
 	}
 
 	m.knownPeerMtx.Lock()
 	defer m.knownPeerMtx.Unlock()
 
-	// set timestamp only if not set by caller or elsewhere
+	// update the timestamp only if not already
+	// set by caller or elsewhere
 	if p.GetTimestamp().IsZero() {
 		p.SetTimestamp(time.Now())
 	}
 
+	// get a peer matching the ID from the list of known peers.
+	// if it does not exist, we add it immediately
 	existingPeer, exist := m.knownPeers[p.StringID()]
 	if !exist {
 		m.knownPeers[p.StringID()] = p
 		return nil
 	}
 
+	// if a peer exists, return error if the peer's
+	// full address matches the candidate peer
 	if existingPeer.GetMultiAddr() != p.GetMultiAddr() {
 		return fmt.Errorf("existing peer address do not match")
 	}
 
+	// If the candidate peer's timestamp is within
+	// the last 24 hours and the existing/matching peer we already know
+	// has a timestamp within the last hour, we set the existing peer's
+	// timestamp to an hour ago.
 	now := time.Now()
 	if now.Add(-24*time.Hour).Before(p.GetTimestamp()) && now.Add(-60*time.Minute).Before(existingPeer.GetTimestamp()) {
 		existingPeer.SetTimestamp(now.Add(-60 * time.Minute))
 		return nil
 	}
 
+	// If the candidate peer's timestamp is not within
+	// the last 24 hours and the existing/matching peer we already know
+	// has a timestamp also not within the last hour, we set the existing peer's
+	// timestamp to 24 hours ago.
 	if !now.Add(-24*time.Hour).Before(p.GetTimestamp()) && !now.Add(-24*time.Hour).Before(existingPeer.GetTimestamp()) {
 		existingPeer.SetTimestamp(now.Add(-24 * time.Hour))
 		return nil
 	}
 
+	// At this point, we simple update the existing peer's
+	// timestamp with the candidate's peer timestamp
 	existingPeer.SetTimestamp(p.GetTimestamp())
+
 	return nil
 }
 
@@ -415,14 +437,21 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 
 	var err error
 
-	if !util.IsValidAddr(addr) {
-		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	if err = validateAddress(m.localNode, addr); err != nil {
+		return err
 	}
 
-	if !m.localNode.DevMode() && !util.IsRoutableAddr(addr) {
-		return fmt.Errorf("failed to create peer from address. Peer address is invalid")
-	}
+	// // Ensure the address is a valid address format
+	// if !util.IsValidAddr(addr) {
+	// 	return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	// }
 
+	// // In production mode, the address must be routable
+	// if m.localNode.ProdMode() && !util.IsRoutableAddr(addr) {
+	// 	return fmt.Errorf("failed to create peer from address. Peer address is invalid")
+	// }
+
+	// The peer must not already exists be known
 	mAddr, _ := ma.NewMultiaddr(addr)
 	remotePeer := NewRemoteNode(mAddr, m.localNode)
 	if m.PeerExist(remotePeer.StringID()) {

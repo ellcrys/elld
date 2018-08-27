@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/binary"
+	"strconv"
 
 	"github.com/ellcrys/elld/elldb"
 )
@@ -24,6 +25,9 @@ var (
 
 	// ObjectTypeBlockchainMeta represents a meta object
 	ObjectTypeBlockchainMeta = []byte("blockchain-meta")
+
+	// ObjectTypeReOrg represents a meta object
+	ObjectTypeReOrg = []byte("re-org")
 )
 
 // EncodeBlockNumber serializes a block number to BigEndian
@@ -38,7 +42,7 @@ func DecodeBlockNumber(encNum []byte) uint64 {
 	return binary.BigEndian.Uint64(encNum)
 }
 
-// MakeAccountKey constructs a key for an account
+// MakeAccountKey constructs a key for storing/querying an account
 func MakeAccountKey(blockNum uint64, chainID, address []byte) []byte {
 	return elldb.MakeKey(
 		EncodeBlockNumber(blockNum),
@@ -46,6 +50,15 @@ func MakeAccountKey(blockNum uint64, chainID, address []byte) []byte {
 		chainID,
 		ObjectTypeAccount,
 		address,
+	)
+}
+
+// MakeAccountsKey constructs a key for querying all accounts
+func MakeAccountsKey(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeAccount,
 	)
 }
 
@@ -74,7 +87,7 @@ func MakeBlockKey(chainID []byte, blockNumber uint64) []byte {
 	)
 }
 
-// MakeBlocksQueryKey constructs a key for storing a block
+// MakeBlocksQueryKey constructs a key for querying all blocks
 func MakeBlocksQueryKey(chainID []byte) []byte {
 	return elldb.MakeKey(nil,
 		ObjectTypeChain,
@@ -94,8 +107,9 @@ func MakeChainsQueryKey() []byte {
 }
 
 // MakeTxKey constructs a key for storing a transaction
-func MakeTxKey(chainID, txHash []byte) []byte {
-	return elldb.MakeKey(nil,
+func MakeTxKey(chainID []byte, blockNumber uint64, txHash []byte) []byte {
+	return elldb.MakeKey(
+		EncodeBlockNumber(blockNumber),
 		ObjectTypeChain,
 		chainID,
 		ObjectTypeTransaction,
@@ -103,7 +117,41 @@ func MakeTxKey(chainID, txHash []byte) []byte {
 	)
 }
 
+// MakeTxQueryKey constructs a key for querying a transaction
+func MakeTxQueryKey(chainID []byte, txHash []byte) []byte {
+	return elldb.MakePrefix(
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeTransaction,
+		txHash,
+	)
+}
+
+// MakeTxsQueryKey constructs a key for querying all transactions in a chain
+func MakeTxsQueryKey(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		ObjectTypeChain,
+		chainID,
+		ObjectTypeTransaction,
+	)
+}
+
 // MakeTreeKey constructs a key for recording state objects in a tree
 func MakeTreeKey(blockNumber uint64, objectType []byte) []byte {
 	return append(EncodeBlockNumber(blockNumber), objectType...)
+}
+
+// MakeReOrgKey constructs a key for storing reorganization info
+func MakeReOrgKey(timestamp int64) []byte {
+	return elldb.MakeKey(
+		[]byte(strconv.FormatInt(timestamp, 10)),
+		ObjectTypeReOrg,
+	)
+}
+
+// MakeReOrgQueryKey constructs a key for querying reorganization objects
+func MakeReOrgQueryKey() []byte {
+	return elldb.MakePrefix(
+		ObjectTypeReOrg,
+	)
 }

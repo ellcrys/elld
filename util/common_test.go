@@ -11,7 +11,9 @@ var _ = Describe("Common", func() {
 	Describe(".StructToBytes", func() {
 		It("should return []byte{123, 34, 78, 97, 109, 101, 34, 58, 34, 98, 101, 110, 34, 125} bytes", func() {
 			s := struct{ Name string }{Name: "ben"}
-			expected := []byte{123, 34, 78, 97, 109, 101, 34, 58, 34, 98, 101, 110, 34, 125}
+			expected := []uint8{
+				0x81, 0xa4, 0x4e, 0x61, 0x6d, 0x65, 0xa3, 0x62, 0x65, 0x6e,
+			}
 			bs := ObjectToBytes(s)
 			Expect(bs).To(Equal(expected))
 		})
@@ -108,4 +110,5 @@ var _ = Describe("Common", func() {
 			})
 		})
 	})
+
 })

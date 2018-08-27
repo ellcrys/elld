@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,12 +21,41 @@ var _ = Describe("Block & Header", func() {
 				Number:           1,
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
-				Nonce:            EncodeNonce(1),
+				Nonce:            core.EncodeNonce(1),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
-			expected := []byte{154, 196, 32, 112, 97, 114, 101, 110, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 160, 196, 32, 115, 116, 97, 116, 101, 95, 114, 111, 111, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 32, 116, 120, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 32, 109, 105, 120, 72, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 206, 0, 22, 227, 96, 196, 8, 0, 0, 0, 0, 0, 0, 0, 1, 192}
+			expected := []byte{153, 196, 32, 112, 97, 114, 101, 110, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 160, 196, 32, 115, 116, 97, 116, 101, 95, 114, 111, 111, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 32, 116, 120, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 206, 0, 22, 227, 96, 196, 8, 0, 0, 0, 0, 0, 0, 0, 1, 192}
 			Expect(h.Bytes()).To(Equal(expected))
+		})
+	})
+
+	Describe("Header.Copy", func() {
+		It("should successfully copy", func() {
+			h := Header{
+				ParentHash:       util.BytesToHash([]byte("parent_hash")),
+				Number:           1,
+				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
+				StateRoot:        util.BytesToHash([]byte("tx_hash")),
+				Nonce:            core.EncodeNonce(1),
+				Difficulty:       new(big.Int).SetUint64(100),
+				Timestamp:        1500000,
+			}
+
+			h2 := h.Copy()
+			Expect(h2).ToNot(Equal(h))
+			Expect(h.ParentHash).To(Equal(h2.GetParentHash()))
+			h2.SetParentHash(util.StrToHash("xyz"))
+
+			Expect(h.ParentHash).ToNot(Equal(h2.GetParentHash()))
+			h2.SetNumber(10)
+			Expect(h.Number).ToNot(Equal(h2.GetNumber()))
+
+			h2.SetTransactionsRoot(util.StrToHash("abc"))
+			Expect(h.TransactionsRoot).ToNot(Equal(h2.GetTransactionsRoot()))
+
+			h2.SetNonce(core.EncodeNonce(10))
+			Expect(h.Nonce).ToNot(Equal(h2.GetNonce()))
 		})
 	})
 
@@ -36,12 +66,12 @@ var _ = Describe("Block & Header", func() {
 				Number:           1,
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
-				Nonce:            EncodeNonce(1),
+				Nonce:            core.EncodeNonce(1),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
 			actual := h.ComputeHash()
-			expected := util.Hash([32]byte{52, 34, 114, 46, 35, 186, 174, 214, 34, 140, 249, 199, 1, 119, 245, 12, 105, 22, 49, 61, 206, 118, 99, 38, 202, 202, 99, 28, 147, 220, 45, 159})
+			expected := util.Hash([32]byte{45, 42, 197, 108, 164, 246, 182, 74, 80, 186, 69, 139, 187, 27, 57, 25, 173, 118, 173, 85, 32, 210, 160, 50, 239, 18, 22, 187, 114, 148, 9, 253})
 			Expect(actual).To(HaveLen(32))
 			Expect(actual).To(Equal(expected))
 		})
@@ -54,7 +84,7 @@ var _ = Describe("Block & Header", func() {
 			Number:           1,
 			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 			StateRoot:        util.BytesToHash([]byte("tx_hash")),
-			Nonce:            EncodeNonce(1),
+			Nonce:            core.EncodeNonce(1),
 			Difficulty:       new(big.Int).SetUint64(100),
 			Timestamp:        1500000,
 		}
@@ -89,7 +119,7 @@ var _ = Describe("Block & Header", func() {
 			Number:           1,
 			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 			StateRoot:        util.BytesToHash([]byte("tx_hash")),
-			Nonce:            EncodeNonce(1),
+			Nonce:            core.EncodeNonce(1),
 			Difficulty:       new(big.Int).SetUint64(100),
 			Timestamp:        1500000,
 		}
@@ -194,14 +224,14 @@ var _ = Describe("Block & Header", func() {
 					Number:           1,
 					TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 					StateRoot:        util.BytesToHash([]byte("tx_hash")),
-					Nonce:            EncodeNonce(1),
+					Nonce:            core.EncodeNonce(1),
 					Difficulty:       new(big.Int).SetUint64(100),
 					Timestamp:        1500000,
 				},
 			}
 
 			actual := b.ComputeHash()
-			expected := util.BytesToHash([]byte{73, 39, 51, 218, 131, 188, 45, 182, 218, 160, 152, 45, 105, 218, 165, 105, 77, 198, 79, 73, 3, 211, 97, 119, 136, 239, 48, 75, 161, 83, 109, 100})
+			expected := util.BytesToHash([]byte{121, 56, 44, 198, 252, 32, 65, 7, 98, 226, 132, 45, 208, 211, 14, 170, 58, 159, 152, 15, 1, 208, 58, 249, 68, 34, 205, 240, 120, 76, 228, 206})
 			Expect(actual).To(Equal(expected))
 		})
 	})

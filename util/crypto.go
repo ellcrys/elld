@@ -43,6 +43,15 @@ func (h Hash) IsEmpty() bool {
 	return h == EmptyHash
 }
 
+// HexToHash creates an Hash from hex string
+func HexToHash(hex string) (Hash, error) {
+	bs, err := FromHex(hex)
+	if err != nil {
+		return EmptyHash, err
+	}
+	return BytesToHash(bs), nil
+}
+
 // BytesToHash copies b to a Hash
 func BytesToHash(b []byte) Hash {
 	var h Hash
@@ -101,4 +110,3 @@ func Blake2b256(v []byte) []byte {
 	hash.Write(v)
 	return hash.Sum(nil)
 }
-

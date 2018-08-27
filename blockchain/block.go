@@ -2,15 +2,17 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 )
 
-// HaveBlock checks whether we have a block in the
-// main chain or other chains.
+// HaveBlock checks whether we have a block matching
+// the hash in any of the known chains
 func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
@@ -53,7 +55,7 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 // Generate produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common.CallOp) (*wire.Block, error) {
+func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.CallOp) (core.Block, error) {
 
 	var chain *Chain
 	var block *wire.Block
@@ -88,10 +90,18 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 		return nil, fmt.Errorf("target chain not set")
 	}
 
+	// Set chain tip number. Override it
+	// if set in params.
+	// Note: Only use in tests
+	chainTipNumber := uint64(0)
+	if params.OverrideChainTip > 0 {
+		chainTipNumber = params.OverrideChainTip
+	}
+
 	// Get the latest block header
-	chainTip, err := chain.GetBlock(0)
+	chainTip, err := chain.GetBlock(chainTipNumber)
 	if err != nil {
-		if err != common.ErrBlockNotFound {
+		if err != core.ErrBlockNotFound {
 			return nil, err
 		}
 	}
@@ -103,38 +113,53 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 			Number:           1,
 			TransactionsRoot: common.ComputeTxsRoot(params.Transactions),
 			Nonce:            params.Nonce,
-			Difficulty:       params.Difficulty,
 			Timestamp:        time.Now().Unix(),
+			TotalDifficulty:  new(big.Int).SetInt64(0),
 		},
-		Transactions: params.Transactions,
+		ChainReader: chain.ChainReader(),
+	}
+
+	for _, tx := range params.Transactions {
+		block.Transactions = append(block.Transactions, tx.(*wire.Transaction))
+	}
+
+	// override the total difficult if a
+	// total difficulty is provided in the given params
+	if params.OverrideTotalDifficulty != nil {
+		block.Header.TotalDifficulty = params.OverrideTotalDifficulty
 	}
 
 	// override the block's timestamp if a timestamp is
 	// provided in the given param.
 	if params.OverrideTimestamp > 0 {
-		block.Header.Timestamp = params.OverrideTimestamp
+		block.Header.SetTimestamp(params.OverrideTimestamp)
 	}
 
 	// If the chain has no tip block but it has a parent,
 	// then we set the block's parent hash to the parent's hash
 	// and set the block number to BlockNumber(parent) + 1
 	if chainTip == nil && chain.GetParentBlock() != nil {
-		block.Header.ParentHash = chain.GetParentBlock().Hash
-		block.Header.Number = chain.GetParentBlock().Header.Number + 1
+		block.Header.SetParentHash(chain.GetParentBlock().GetHash())
+		block.Header.SetNumber(chain.GetParentBlock().GetNumber() + 1)
 	}
 
 	// If a the chain tip exists, we set the block's parent
 	// hash to the tip's hash and set the block number to
 	// BlockNumber(parent) + 1
 	if chainTip != nil {
-		block.Header.ParentHash = chainTip.Hash
-		block.Header.Number = chainTip.Header.Number + 1
+		block.Header.SetParentHash(chainTip.GetHash())
+		block.Header.SetNumber(chainTip.GetNumber() + 1)
 	}
 
 	// override parent hash with the parent hash provided in
 	// in the params.
 	if !params.OverrideParentHash.IsEmpty() {
-		block.Header.ParentHash = params.OverrideParentHash
+		block.Header.SetParentHash(params.OverrideParentHash)
+	}
+
+	// Override difficulty if provided in params
+	if params.Difficulty != nil {
+		block.Header.Difficulty = params.Difficulty
 	}
 
 	// mock execute the transaction and set the new state root
@@ -142,11 +167,11 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 	if err != nil {
 		return nil, fmt.Errorf("exec: %s", err)
 	}
-	block.Header.StateRoot = root
+	block.Header.SetStateRoot(root)
 
 	// override state root if params include a state root
 	if !params.OverrideStateRoot.IsEmpty() {
-		block.Header.StateRoot = params.OverrideStateRoot
+		block.Header.SetStateRoot(params.OverrideStateRoot)
 	}
 
 	// Compute hash
@@ -168,4 +193,44 @@ func (b *Blockchain) Generate(params *common.GenerateBlockParams, opts ...common
 	}
 
 	return block, nil
+}
+
+// GetBlock finds a block in any chain with a matching
+// block number and hash.
+func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (core.Block, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	for _, chain := range b.chains {
+		block, err := chain.getBlockByNumberAndHash(number, hash)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return nil, err
+			}
+			continue
+		}
+		return block, nil
+	}
+	return nil, core.ErrBlockNotFound
+}
+
+// getBlockByHash finds a block in any chain with a matching hash.
+func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	for _, chain := range b.chains {
+		block, err := chain.getBlockByHash(hash, opts...)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return nil, err
+			}
+			continue
+		}
+		return block, nil
+	}
+	return nil, core.ErrBlockNotFound
+}
+
+// GetBlockByHash finds a block in any chain with a matching hash.
+func (b *Blockchain) GetBlockByHash(hash util.Hash) (core.Block, error) {
+	return b.getBlockByHash(hash)
 }

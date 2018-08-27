@@ -102,26 +102,13 @@ func (db *LevelDB) DeleteByPrefix(prefix []byte) error {
 	if err != nil {
 		return err
 	}
-	iter := tx.NewIterator(util.BytesPrefix(prefix), nil)
-	for iter.Next() {
-		key := iter.Key()
-		if err := tx.Delete(key, nil); err != nil {
-			tx.Discard()
-			return err
-		}
-	}
-	iter.Release()
-	err = tx.Commit()
-	if err != nil {
+
+	if err := deleteByPrefix(tx, prefix); err != nil {
+		tx.Discard()
 		return err
 	}
 
-	iter.Error()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 // NewTx creates a new transaction
@@ -172,6 +159,11 @@ func (tx *Transaction) Rollback() {
 	tx.ldb.Discard()
 }
 
+// DeleteByPrefix deletes items with the matching prefix
+func (tx *Transaction) DeleteByPrefix(prefix []byte) error {
+	return deleteByPrefix(tx.ldb, prefix)
+}
+
 func getByPrefix(iter iterator.Iterator) []*KVObject {
 	var result []*KVObject
 	var key, val []byte
@@ -204,4 +196,16 @@ func iterate(iter iterator.Iterator, prefix []byte, first bool, iterFunc func(kv
 	}
 
 	iter.Release()
+}
+
+func deleteByPrefix(tx *leveldb.Transaction, prefix []byte) error {
+	iter := tx.NewIterator(util.BytesPrefix(prefix), nil)
+	for iter.Next() {
+		key := iter.Key()
+		if err := tx.Delete(key, nil); err != nil {
+			return err
+		}
+	}
+	iter.Release()
+	return iter.Error()
 }

@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
@@ -22,12 +23,12 @@ import (
 var log logger.Logger
 var cfg *config.EngineConfig
 var err error
-var testStore common.ChainStorer
+var testStore store.ChainStorer
 var db elldb.DB
 var bc *Blockchain
 var chainID = util.String("chain1")
 var genesisChain *Chain
-var genesisBlock *wire.Block
+var genesisBlock core.Block
 var txPool *txpool.TxPool
 var sender, receiver *crypto.Key
 
@@ -37,7 +38,7 @@ func TestBlockchain(t *testing.T) {
 	RunSpecs(t, "Blockchain Suite")
 }
 
-func MakeTestBlock(bc common.Blockchain, chain *Chain, gp *common.GenerateBlockParams) *wire.Block {
+func MakeTestBlock(bc core.Blockchain, chain *Chain, gp *core.GenerateBlockParams) core.Block {
 	blk, err := bc.Generate(gp, ChainOp{Chain: chain})
 	if err != nil {
 		panic(err)
@@ -95,12 +96,12 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	BeforeEach(func() {
-		genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-			Transactions: []*wire.Transaction{
+		genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+			Transactions: []core.Transaction{
 				wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 			},
 			Creator:           sender,
-			Nonce:             wire.EncodeNonce(1),
+			Nonce:             core.EncodeNonce(1),
 			Difficulty:        new(big.Int).SetInt64(131072),
 			OverrideTimestamp: time.Now().Add(-2 * time.Second).Unix(),
 		})
@@ -117,20 +118,21 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	var tests = []func() bool{
+		WorldReaderTest,
 		BlockchainTest,
+		ReOrgTest,
 		ChainTest,
 		ProcessTest,
 		BlockTest,
-		AccountTest,
 		CacheTest,
-		MetadataTest,
 		TransactionValidatorTest,
 		BlockValidatorTest,
+		ChainTransverserTest,
 	}
 
-	for i, t := range tests {
-		Describe(fmt.Sprintf("Test %d", i), func() {
+	Describe(fmt.Sprintf("Tests"), func() {
+		for _, t := range tests {
 			t()
-		})
-	}
+		}
+	})
 })

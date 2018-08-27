@@ -1,7 +1,9 @@
 package types
 
 import (
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/wire/messages"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
@@ -14,8 +16,10 @@ type Gossip interface {
 	SendGetAddr([]Engine) error
 	OnGetAddr(net.Stream)
 	OnAddr(net.Stream)
-	RelayAddr([]*wire.Address) []error
+	RelayAddr([]*messages.Address) []error
 	SelfAdvertise([]Engine) int
 	OnTx(net.Stream)
-	RelayTx(*wire.Transaction, []Engine) error
+	RelayTx(core.Transaction, []Engine) error
+	RelayBlock(core.Block, []Engine) error
+	RequestBlock(remotePeer Engine, blockHash util.Hash) error
 }

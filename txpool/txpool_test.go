@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -56,21 +57,20 @@ var _ = Describe("TxPool", func() {
 			Expect(tp.queue.Size()).To(Equal(int64(1)))
 		})
 
-		It("should return nil and call onQueueCB function ", func() {
-			onQueueFuncCalled := false
+		It("should emit core.EventNewTransaction", func() {
 			tp := NewTxPool(1)
-			tp.BeforeAppend(func(tx *wire.Transaction) error {
-				onQueueFuncCalled = true
-				return nil
-			})
 			a, _ := crypto.NewKey(nil)
 			tx := wire.NewTransaction(wire.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
-			sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = sig
-			err := tp.Put(tx)
-			Expect(err).To(BeNil())
-			Expect(tp.queue.Size()).To(Equal(int64(1)))
-			Expect(onQueueFuncCalled).To(BeTrue())
+			go func() {
+				GinkgoRecover()
+				sig, _ := wire.TxSign(tx, a.PrivKey().Base58())
+				tx.Sig = sig
+				err := tp.Put(tx)
+				Expect(err).To(BeNil())
+				Expect(tp.queue.Size()).To(Equal(int64(1)))
+			}()
+			event := <-tp.event.Once(core.EventNewTransaction)
+			Expect(event.Args[0]).To(Equal(tx))
 		})
 	})
 

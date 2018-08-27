@@ -1,12 +1,28 @@
 package accountmgr
 
-import "github.com/ellcrys/elld/types"
+import (
+	"github.com/ellcrys/elld/rpc/jsonrpc"
+	"github.com/ellcrys/elld/types"
+)
 
 // APIs returns all API handlers
-func (am *AccountManager) APIs() types.APISet {
-	return map[string]types.APIFunc{
-		"ListAccounts": func(args ...interface{}) (interface{}, error) {
-			return am.ListAccounts()
+func (am *AccountManager) APIs() jsonrpc.APISet {
+	return map[string]jsonrpc.APIInfo{
+
+		"listAccounts": jsonrpc.APIInfo{
+			Func: func(interface{}) *jsonrpc.Response {
+				accounts, err := am.ListAccounts()
+				if err != nil {
+					return jsonrpc.Error(types.ErrCodeListAccountFailed, err.Error(), nil)
+				}
+
+				var addresses []string
+				for _, acct := range accounts {
+					addresses = append(addresses, acct.Address)
+				}
+
+				return jsonrpc.Success(addresses)
+			},
 		},
 	}
 }

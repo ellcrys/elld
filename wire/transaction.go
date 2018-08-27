@@ -26,8 +26,8 @@ var (
 	// TxTypeBalance represents a transaction from an account to another account
 	TxTypeBalance int64 = 0x1
 
-	// TxTypeAllocCoin represents a transaction to alloc coins to an account
-	TxTypeAllocCoin int64 = 0x2
+	// TxTypeAlloc represents a transaction to alloc coins to an account
+	TxTypeAlloc int64 = 0x2
 )
 
 // InvokeArgs describes a function to be executed by a blockcode
@@ -44,9 +44,9 @@ type Transaction struct {
 	From         util.String `json:"from" msgpack:"from"`
 	SenderPubKey util.String `json:"senderPubKey" msgpack:"senderPubKey"`
 	Value        util.String `json:"value" msgpack:"value"`
-	Timestamp    int64       `json:"Timestamp" msgpack:"Timestamp"`
-	Fee          util.String `json:"Fee" msgpack:"Fee"`
-	InvokeArgs   *InvokeArgs `json:"InvokeArgs" msgpack:"InvokeArgs"`
+	Timestamp    int64       `json:"timestamp" msgpack:"timestamp"`
+	Fee          util.String `json:"fee" msgpack:"fee"`
+	InvokeArgs   *InvokeArgs `json:"invokeArgs,omitempty" msgpack:"invokeArgs"`
 	Sig          []byte      `json:"sig" msgpack:"sig"`
 	Hash         util.Hash   `json:"hash" msgpack:"hash"`
 }
@@ -85,9 +85,59 @@ func NewTx(txType int64, nonce int64, to util.String, senderKey *crypto.Key, val
 	return
 }
 
+// SetFrom sets the sender
+func (tx *Transaction) SetFrom(from util.String) {
+	tx.From = from
+}
+
+// GetSignature gets the signature
+func (tx *Transaction) GetSignature() []byte {
+	return tx.Sig
+}
+
+// GetSenderPubKey gets the sender public key
+func (tx *Transaction) GetSenderPubKey() util.String {
+	return tx.SenderPubKey
+}
+
+// GetTimestamp gets the timestamp
+func (tx *Transaction) GetTimestamp() int64 {
+	return tx.Timestamp
+}
+
+// GetNonce gets the nonce
+func (tx *Transaction) GetNonce() int64 {
+	return tx.Nonce
+}
+
+// GetFee gets the value
+func (tx *Transaction) GetFee() util.String {
+	return tx.Fee
+}
+
+// GetValue gets the value
+func (tx *Transaction) GetValue() util.String {
+	return tx.Value
+}
+
+// GetTo gets the address of receiver
+func (tx *Transaction) GetTo() util.String {
+	return tx.To
+}
+
+// GetFrom gets the address of sender
+func (tx *Transaction) GetFrom() util.String {
+	return tx.From
+}
+
 // GetHash returns the hash of tx
 func (tx *Transaction) GetHash() util.Hash {
 	return tx.Hash
+}
+
+// GetType gets the transaction type
+func (tx *Transaction) GetType() int64 {
+	return tx.Type
 }
 
 // Bytes return the ASN.1 marshalled representation of the transaction.

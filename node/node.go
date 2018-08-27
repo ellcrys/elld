@@ -10,11 +10,11 @@ import (
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/blockchain/common"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/wire"
 
 	"github.com/ellcrys/elld/txpool"
@@ -61,17 +61,17 @@ type Node struct {
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
-	bchain                  common.Blockchain       // The blockchain manager
+	bchain                  core.Blockchain         // The blockchain manager
 }
 
 // NewNode creates a node instance at the specified port
-func newNode(db elldb.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
 
-	if signatory == nil {
+	if coinbase == nil {
 		return nil, fmt.Errorf("signatory address required")
 	}
 
-	sk, _ := signatory.PrivKey().Marshal()
+	sk, _ := coinbase.PrivKey().Marshal()
 	priv, err := crypto.UnmarshalPrivateKey(sk)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, signatory
 		wg:        sync.WaitGroup{},
 		log:       log,
 		rSeed:     util.RandBytes(64),
-		signatory: signatory,
+		signatory: coinbase,
 		db:        db,
 		event:     &emitter.Emitter{},
 		mtx:       &sync.RWMutex{},
@@ -199,12 +199,12 @@ func (n *Node) IsSame(node types.Engine) bool {
 }
 
 // GetBlockchain returns the blockchain manager
-func (n *Node) GetBlockchain() common.Blockchain {
+func (n *Node) GetBlockchain() core.Blockchain {
 	return n.bchain
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain common.Blockchain) {
+func (n *Node) SetBlockchain(bchain core.Blockchain) {
 	n.bchain = bchain
 }
 
@@ -220,7 +220,17 @@ func (n *Node) SetTimestamp(newTime time.Time) {
 
 // DevMode checks whether the node is in dev mode
 func (n *Node) DevMode() bool {
-	return n.cfg.Node.Dev
+	return n.cfg.Node.Mode == config.ModeDev
+}
+
+// TestMode checks whether the node is in test mode
+func (n *Node) TestMode() bool {
+	return n.cfg.Node.Mode == config.ModeTest
+}
+
+// ProdMode checks whether the node is in production mode
+func (n *Node) ProdMode() bool {
+	return n.cfg.Node.Mode == config.ModeProd
 }
 
 // IsSameID is like IsSame except it accepts string
@@ -243,14 +253,14 @@ func (n *Node) SetLocalNode(node *Node) {
 // has been blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, string) {
 
-	// In dev mode, we cannot interact with a remote peer with a public IP
-	if n.isDevMode() && !util.IsDevAddr(remotePeer.IP) {
+	// In non-production mode, we cannot interact with a remote peer with a public IP
+	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
 		return false, "in development mode, we cannot interact with peers with public IP"
 	}
 
 	// If the local peer does not know the remotePeer, it cannot interact with it.
-	// This does not apply in dev mode.
-	if !remotePeer.IsKnown() && !n.isDevMode() {
+	// This only applies in production mode.
+	if n.ProdMode() && !remotePeer.IsKnown() {
 		return false, "remote peer is unknown"
 	}
 
@@ -330,10 +340,6 @@ func (n *Node) Connected() bool {
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
 }
 
-func (n *Node) isDevMode() bool {
-	return n.cfg.Node.Dev
-}
-
 // IsKnown checks whether a peer is known to the local node
 func (n *Node) IsKnown() bool {
 	if n.localNode == nil {
@@ -385,23 +391,35 @@ func (n *Node) GetBindAddress() string {
 	return n.address.String()
 }
 
+// validateAddress checks whether an address is
+// valid for the current engine mode.
+func validateAddress(engine types.Engine, address string) error {
+
+	// Check whether the address is valid
+	if !util.IsValidAddr(address) {
+		return fmt.Errorf("not a valid multiaddr")
+	}
+
+	// In non-production mode, only local/private addresses are allowed
+	if !engine.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(address)) {
+		return fmt.Errorf("public addresses are not allowed in development mode")
+	}
+
+	// In production mode, only routable addresses are allowed
+	if engine.ProdMode() && !util.IsRoutableAddr(address) {
+		return fmt.Errorf("local or private addresses are not allowed in production mode")
+	}
+
+	return nil
+}
+
 // AddBootstrapNodes sets the initial nodes to communicate to
 func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
 
 	for _, addr := range peerAddresses {
 
-		if !util.IsValidAddr(addr) {
-			n.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
-			continue
-		}
-
-		if n.isDevMode() && !util.IsDevAddr(util.GetIPFromAddr(addr)) {
-			n.log.Debug("Only local or private address are allowed in dev mode", "Addr", addr)
-			continue
-		}
-
-		if !n.DevMode() && !util.IsRoutableAddr(addr) {
-			n.log.Debug("Invalid bootstrap peer address", "PeerAddr", addr)
+		if err := validateAddress(n, addr); err != nil {
+			n.log.Info("Invalid Bootstrap Address: "+err.Error(), "Address", addr)
 			continue
 		}
 
@@ -467,16 +485,46 @@ func (n *Node) Start() {
 		go n.connectToNode(node)
 	}
 
-	// before a transaction is added to the tx pool, it must be successfully
-	// added to the tx relay queue.
-	n.GetTxPool().BeforeAppend(func(tx *wire.Transaction) error {
-		if !n.GetTxRelayQueue().Append(tx) {
-			return txpool.ErrQueueFull
-		}
-		return nil
-	})
-
 	go n.relayTx()
+	go n.handleEvents()
+}
+
+// relayBlock attempts to relay non-genesis a block to active peers.
+func (n *Node) relayBlock(block core.Block) {
+	if block.GetNumber() > 1 {
+		n.gProtoc.RelayBlock(block, n.peerManager.GetActivePeers(0))
+	}
+}
+
+func (n *Node) handleEvents() {
+
+	go func() {
+		// handle core.EventNewBlock event
+		for evt := range n.event.On(core.EventNewBlock) {
+			n.relayBlock(evt.Args[0].(core.Block))
+		}
+	}()
+
+	go func() {
+		// handle core.EventNewTransaction event
+		for evt := range n.event.On(core.EventNewTransaction) {
+			if !n.GetTxRelayQueue().Append(evt.Args[0].(core.Transaction)) {
+				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+			}
+		}
+	}()
+
+	go func() {
+		// handle core.EventOrphanBlock event
+		for evt := range n.event.On(core.EventOrphanBlock) {
+			// We need to request the parent block from the
+			// peer who sent it to us (a.k.a broadcaster)
+			orphanBlock := evt.Args[0].(*wire.Block)
+			parentHash := orphanBlock.GetHeader().GetParentHash()
+			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo", orphanBlock.GetNumber(), "ParentBlockHash", parentHash.HexStr())
+			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
+		}
+	}()
 }
 
 // Wait forces the current thread to wait for the node
@@ -518,7 +566,7 @@ func (n *Node) Stop() {
 // NodeFromAddr creates a Node from a multiaddr
 func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
 	if !util.IsValidAddr(addr) {
-		return nil, fmt.Errorf("addr is not valid")
+		return nil, fmt.Errorf("invalid address provided")
 	}
 	nAddr, _ := ma.NewMultiaddr(addr)
 	return &Node{
@@ -572,6 +620,6 @@ func (n *Node) GetTxRelayQueue() *txpool.TxQueue {
 }
 
 // GetTxPool returns the unsigned transaction pool
-func (n *Node) GetTxPool() *txpool.TxPool {
+func (n *Node) GetTxPool() types.TxPool {
 	return n.transactionsPool
 }

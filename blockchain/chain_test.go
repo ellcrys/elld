@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
@@ -75,7 +76,7 @@ var ChainTest = func() bool {
 						Describe("tree must be seeded with the state root of the tip block", func() {
 							curItems := tree.GetItems()
 							Expect(curItems).To(HaveLen(1))
-							Expect(curItems[0]).To(Equal(common.TreeItem(genesisBlock.Header.StateRoot.Bytes())))
+							Expect(curItems[0]).To(Equal(common.TreeItem(genesisBlock.GetHeader().GetStateRoot().Bytes())))
 						})
 
 						Describe("must derive new state root after adding items to tree", func() {
@@ -110,18 +111,18 @@ var ChainTest = func() bool {
 
 		Describe(".append", func() {
 			BeforeEach(func() {
-				genesisBlock = MakeTestBlock(bc, genesisChain, &common.GenerateBlockParams{
-					Transactions: []*wire.Transaction{
+				genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
 						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
-					Nonce:      wire.EncodeNonce(1),
+					Nonce:      core.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
 
 			It("should return err when the block number does not serially match the current tip number", func() {
-				genesisBlock.Header.Number = 3
+				genesisBlock.GetHeader().SetNumber(3)
 				err = genesisChain.append(genesisBlock)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("unable to append: candidate block number {3} is not the expected block number {expected=2}"))
@@ -131,8 +132,8 @@ var ChainTest = func() bool {
 				err = genesisChain.append(genesisBlock)
 				Expect(err).To(BeNil())
 
-				genesisBlock.Header.Number = 3
-				genesisBlock.Header.ParentHash = util.StrToHash("incorrect")
+				genesisBlock.GetHeader().SetNumber(3)
+				genesisBlock.GetHeader().SetParentHash(util.StrToHash("incorrect"))
 				err = genesisChain.append(genesisBlock)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("unable to append block: parent hash does not match the hash of the current block"))
@@ -187,7 +188,7 @@ var ChainTest = func() bool {
 
 			It("should return err if block was not found", func() {
 				header, err := genesisChain.getBlockHeaderByHash(util.Hash{1, 2, 3})
-				Expect(err).To(Equal(common.ErrBlockNotFound))
+				Expect(err).To(Equal(core.ErrBlockNotFound))
 				Expect(header).To(BeNil())
 			})
 
@@ -201,7 +202,7 @@ var ChainTest = func() bool {
 		Describe(".getBlockByHash", func() {
 			It("should return error if block is not found", func() {
 				block, err := genesisChain.getBlockByHash(util.Hash{1, 2, 3})
-				Expect(err).To(Equal(common.ErrBlockNotFound))
+				Expect(err).To(Equal(core.ErrBlockNotFound))
 				Expect(block).To(BeNil())
 			})
 
@@ -209,6 +210,60 @@ var ChainTest = func() bool {
 				block, err := genesisChain.getBlockByHash(genesisBlock.GetHash())
 				Expect(err).To(BeNil())
 				Expect(block).ToNot(BeNil())
+			})
+		})
+
+		Describe(".removeBlock", func() {
+
+			var block2 core.Block
+
+			BeforeEach(func() {
+				block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
+				})
+				_, err := bc.ProcessBlock(block2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrBlockNotFound if block does not exist", func() {
+				err := genesisChain.removeBlock(100)
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrBlockNotFound))
+			})
+
+			It("should successfully delete a block", func() {
+				blockNum := block2.GetNumber()
+				err := genesisChain.removeBlock(blockNum)
+				Expect(err).To(BeNil())
+
+				Describe("the block must be deleted", func() {
+					blockKey := common.MakeBlockKey(genesisChain.id.Bytes(), blockNum)
+					result := db.GetByPrefix(blockKey)
+					Expect(result).To(HaveLen(0))
+				})
+
+				Describe("all account must be deleted", func() {
+					acctKeys := common.MakeAccountsKey(genesisChain.id.Bytes())
+					result := db.GetByPrefix(acctKeys)
+					for _, r := range result {
+						bn := common.DecodeBlockNumber(r.Key)
+						Expect(bn).ToNot(Equal(blockNum))
+					}
+				})
+
+				Describe("all transactions must be deleted", func() {
+					txsKeys := common.MakeTxsQueryKey(genesisChain.id.Bytes())
+					result := db.GetByPrefix(txsKeys)
+					for _, r := range result {
+						bn := common.DecodeBlockNumber(r.Key)
+						Expect(bn).ToNot(Equal(blockNum))
+					}
+				})
 			})
 		})
 	})

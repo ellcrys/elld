@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
-	"github.com/ellcrys/elld/txpool"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
@@ -37,14 +37,14 @@ func fieldErrorWithIndex(index int, field, err string) error {
 type BlockValidator struct {
 
 	// block is the block to be validated
-	block *wire.Block
+	block core.Block
 
 	// txpool refers to the transaction pool
-	txpool *txpool.TxPool
+	txpool types.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
-	bchain common.Blockchain
+	bchain core.Blockchain
 
 	// allowDuplicateCheck enables duplication checks on other
 	// collections. If set to true, a transaction existing in
@@ -61,8 +61,8 @@ type BlockValidator struct {
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
-func NewBlockValidator(block *wire.Block, txPool *txpool.TxPool,
-	bchain common.Blockchain, allowDupCheck bool, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
+func NewBlockValidator(block core.Block, txPool types.TxPool,
+	bchain core.Blockchain, allowDupCheck bool, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:               block,
 		txpool:              txPool,
@@ -89,65 +89,77 @@ func (v *BlockValidator) Validate() (errs []error) {
 
 // validateHeader checks that an header fields and
 // value format or type is valid.
-func (v *BlockValidator) validateHeader(h *wire.Header) (errs []error) {
+func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 
 	// For non-genesis block, parent hash must be set
-	if h.Number != 1 && h.ParentHash.IsEmpty() {
+	if h.GetNumber() != 1 && h.GetParentHash().IsEmpty() {
 		errs = append(errs, fieldError("parentHash", "parent hash is required"))
-	} else if h.Number == 1 && !h.ParentHash.IsEmpty() {
+	} else if h.GetNumber() == 1 && !h.GetParentHash().IsEmpty() {
 		// For genesis block, parent hash is not required
 		errs = append(errs, fieldError("parentHash", "parent hash is not expected in a genesis block"))
 	}
 
 	// Number cannot be 0 or less
-	if h.Number < 1 {
+	if h.GetNumber() < 1 {
 		errs = append(errs, fieldError("number", "number must be greater or equal to 1"))
 	}
 
 	// Creator's public key must be provided
 	// and must be decodeable
-	if len(h.CreatorPubKey) == 0 {
+	if len(h.GetCreatorPubKey()) == 0 {
 		errs = append(errs, fieldError("creatorPubKey", "creator's public key is required"))
-	} else if _, err := crypto.PubKeyFromBase58(h.CreatorPubKey.String()); err != nil {
+	} else if _, err := crypto.PubKeyFromBase58(h.GetCreatorPubKey().String()); err != nil {
 		errs = append(errs, fieldError("creatorPubKey", err.Error()))
 	}
 
 	// Transactions root must be provided
-	if h.TransactionsRoot == util.EmptyHash {
+	if h.GetTransactionsRoot() == util.EmptyHash {
 		errs = append(errs, fieldError("transactionsRoot", "transaction root is required"))
 	}
 
 	// State root must be provided
-	if h.StateRoot == util.EmptyHash {
+	if h.GetStateRoot() == util.EmptyHash {
 		errs = append(errs, fieldError("stateRoot", "state root is required"))
 	}
 
 	// Difficulty must be a numeric value
 	// and greater than zero
-	if h.Difficulty == nil || h.Difficulty.Cmp(util.Big0) == 0 {
-		errs = append(errs, fieldError("difficulty", "difficulty must be non-zero and non-negative"))
+	if !h.GetParentHash().IsEmpty() {
+		if h.GetDifficulty() == nil || h.GetDifficulty().Cmp(util.Big0) == 0 {
+			errs = append(errs, fieldError("difficulty", "difficulty must be non-zero and non-negative"))
+		}
 	}
 
 	// Timestamp must not be zero or greater than
 	// 2 hours in the future
-	if h.Timestamp <= 0 {
+	if h.GetTimestamp() <= 0 {
 		errs = append(errs, fieldError("timestamp", "timestamp must not be greater or equal to 1"))
-	} else if time.Unix(h.Timestamp, 0).After(time.Now().Add(2 * time.Hour).UTC()) {
+	} else if time.Unix(h.GetTimestamp(), 0).After(time.Now().Add(2 * time.Hour).UTC()) {
 		errs = append(errs, fieldError("timestamp", "timestamp is over 2 hours in the future"))
 	}
 
 	// Verify the proof of work and difficulty
-	if v.verSeal && !h.ParentHash.IsEmpty() {
+	if v.verSeal && !h.GetParentHash().IsEmpty() {
+		errs = append(errs, v.checkPoW(nil)...)
+	}
 
-		// get the parent header
-		parentHeader, err := v.bchain.ChainReader().GetHeaderByHash(h.ParentHash)
-		if err != nil {
-			errs = append(errs, fieldError("parentHash", err.Error()))
-		}
+	return
+}
 
-		if err := v.blakimoto.VerifyHeader(v.bchain.ChainReader(), h, parentHeader, v.verSeal); err != nil {
-			errs = append(errs, fieldError("parentHash", err.Error()))
-		}
+// checkPoW checks the PoW and difficulty values in the header.
+// If chain is set, the parent chain is search within the provided
+// chain, otherwise, the best chain is searched
+func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
+
+	// find the parent header
+	parentHeader, err := v.bchain.(*Blockchain).getBlockByHash(v.block.GetHeader().GetParentHash(), opts...)
+	if err != nil {
+		errs = append(errs, fieldError("parentHash", err.Error()))
+		return errs
+	}
+
+	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(), parentHeader.GetHeader(), v.verSeal); err != nil {
+		errs = append(errs, fieldError("parentHash", err.Error()))
 	}
 
 	return
@@ -164,34 +176,34 @@ func (v *BlockValidator) check() (errs []error) {
 	}
 
 	// Transaction type must be known and acceptable
-	if v.block.Header == nil {
+	if v.block.GetHeader().(*wire.Header) == nil {
 		errs = append(errs, fieldError("header", "header is required"))
 	} else {
-		for _, err := range v.validateHeader(v.block.Header) {
+		for _, err := range v.validateHeader(v.block.GetHeader()) {
 			errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "field:", "field:header.", -1)))
 		}
 	}
 
 	// Must have at least one transaction, otherwise,
 	// the transactions must be valid
-	if len(v.block.Transactions) == 0 {
+	if len(v.block.GetTransactions()) == 0 {
 		errs = append(errs, fieldError("transactions", "at least one transaction is required"))
 	} else {
-		txValidator := NewTxsValidator(v.block.Transactions, v.txpool, v.bchain, v.allowDuplicateCheck)
+		txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain, v.allowDuplicateCheck)
 		for _, err := range txValidator.Validate() {
 			errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))
 		}
 	}
 
 	// Hash must be provided
-	if v.block.Hash == util.EmptyHash {
+	if v.block.GetHash() == util.EmptyHash {
 		errs = append(errs, fieldError("hash", "hash is required"))
-	} else if v.block.Header != nil && !v.block.Hash.Equal(v.block.ComputeHash()) {
+	} else if v.block.GetHeader() != nil && !v.block.GetHash().Equal(v.block.ComputeHash()) {
 		errs = append(errs, fieldError("hash", "hash is not correct"))
 	}
 
 	// Signature must be provided
-	if len(v.block.Sig) == 0 {
+	if len(v.block.GetSignature()) == 0 {
 		errs = append(errs, fieldError("sig", "signature is required"))
 	}
 
@@ -203,13 +215,13 @@ func (v *BlockValidator) check() (errs []error) {
 // signature to be set.
 func (v *BlockValidator) checkSignature() (errs []error) {
 
-	pubKey, err := crypto.PubKeyFromBase58(v.block.Header.CreatorPubKey.String())
+	pubKey, err := crypto.PubKeyFromBase58(v.block.GetHeader().GetCreatorPubKey().String())
 	if err != nil {
 		errs = append(errs, fieldError("header.creatorPubKey", err.Error()))
 		return
 	}
 
-	valid, err := pubKey.Verify(v.block.Bytes(), v.block.Sig)
+	valid, err := pubKey.Verify(v.block.Bytes(), v.block.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldError("sig", err.Error()))
 	} else if !valid {
@@ -222,11 +234,12 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 // duplicateCheck checks whether the block exists in some
 // other components that do not accept duplicates. E.g main, side chains,
 // orphan index.
-func (v *BlockValidator) duplicateCheck(b *wire.Block) (errs []error) {
+func (v *BlockValidator) duplicateCheck(b core.Block) (errs []error) {
 
 	if v.bchain != nil {
-		known, reason, err := v.bchain.IsKnownBlock(b.Hash)
+		known, reason, err := v.bchain.IsKnownBlock(b.GetHash())
 		if err != nil {
+
 			errs = append(errs, fmt.Errorf("duplicate check error: %s", err))
 		} else if known {
 			errs = append(errs, fieldError("", fmt.Sprintf("block found in %s", reason)))

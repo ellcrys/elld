@@ -188,6 +188,43 @@ var _ = Describe("Database", func() {
 				Expect(objs).To(BeEmpty())
 			})
 		})
+
+		Describe(".DeleteByPrefix", func() {
+			It("should successfully delete objects", func() {
+				err := dbTx.Put([]*KVObject{
+					&KVObject{Key: []byte("object_1"), Value: []byte("value1")},
+					&KVObject{Key: []byte("object_2"), Value: []byte("value2")},
+					&KVObject{Key: []byte("another_object_3"), Value: []byte("value3")},
+				})
+				Expect(err).To(BeNil())
+
+				err = dbTx.DeleteByPrefix(MakeKey([]byte("object")))
+				Expect(err).To(BeNil())
+
+				objs := dbTx.GetByPrefix(MakeKey([]byte("obj")))
+				Expect(objs).To(HaveLen(0))
+
+				objs = dbTx.GetByPrefix(MakeKey([]byte("an")))
+				Expect(objs).To(HaveLen(1))
+			})
+
+			It("should not successfully delete if rollback is called", func() {
+				err := dbTx.Put([]*KVObject{
+					&KVObject{Key: []byte("object_1"), Value: []byte("value1")},
+					&KVObject{Key: []byte("object_2"), Value: []byte("value2")},
+				})
+				Expect(err).To(BeNil())
+				dbTx.Commit()
+
+				dbTx, _ = db.NewTx()
+				err = dbTx.DeleteByPrefix(MakeKey([]byte("object")))
+				Expect(err).To(BeNil())
+				dbTx.Rollback()
+
+				objs := db.GetByPrefix(MakeKey([]byte("obj")))
+				Expect(objs).To(HaveLen(2))
+			})
+		})
 	})
 
 	Describe(".Iterate", func() {

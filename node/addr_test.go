@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/wire/messages"
 )
 
 func AddrTest() bool {
@@ -30,7 +30,7 @@ func AddrTest() bool {
 
 				It("should return a slice of length equal 2 and each index containing *Peer objects", func() {
 
-					candidateAddrs := []*wire.Address{
+					candidateAddrs := []*messages.Address{
 						{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
 						{Address: "/ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh"},
 						{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
@@ -46,7 +46,7 @@ func AddrTest() bool {
 
 				It("should return a slice of length equal 2; index 0 index containing a *Peer object and 1 contains nil", func() {
 
-					candidateAddrs := []*wire.Address{
+					candidateAddrs := []*messages.Address{
 						{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
 					}
 
@@ -76,7 +76,7 @@ func AddrTest() bool {
 			})
 
 			It("should return err.Error(too many items in addr message) when address is more than 10", func() {
-				addrs := []*wire.Address{
+				addrs := []*messages.Address{
 					{Address: ""},
 					{Address: ""},
 					{Address: ""},
@@ -95,7 +95,7 @@ func AddrTest() bool {
 			})
 
 			It("should return err.Error(no addr to relay) if non of the addresses where relayable", func() {
-				addrs := []*wire.Address{
+				addrs := []*messages.Address{
 					{Address: ""},
 					{Address: ""},
 				}
@@ -105,7 +105,7 @@ func AddrTest() bool {
 			})
 
 			It("should return err.Error(no addr to relay) if address timestamp over 60 minutes", func() {
-				addrs := []*wire.Address{
+				addrs := []*messages.Address{
 					{Address: "/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu", Timestamp: time.Now().Add(61 * time.Minute).Unix()},
 				}
 				errs := gossip.RelayAddr(addrs)
@@ -137,7 +137,7 @@ func AddrTest() bool {
 				})
 
 				It("should successfully choose relay peers", func() {
-					addrs := []*wire.Address{
+					addrs := []*messages.Address{
 						{Address: p2.GetMultiAddr(), Timestamp: time.Now().Unix()},
 						{Address: p3.GetMultiAddr(), Timestamp: time.Now().Unix()},
 					}

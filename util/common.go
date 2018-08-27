@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/vmihailenco/msgpack"
 
 	"github.com/fatih/structs"
@@ -46,6 +48,15 @@ func (s String) Equal(o String) bool {
 }
 
 func (s String) String() string {
+	return string(s)
+}
+
+// SS returns a short version of String() with the middle
+// characters truncated when length is at least 32
+func (s String) SS() string {
+	if len(s) >= 32 {
+		return fmt.Sprintf("%s...%s", string(s)[0:10], string(s)[len(s)-10:])
+	}
 	return string(s)
 }
 
@@ -242,4 +253,31 @@ func StrToDecimal(v string) (decimal.Decimal, error) {
 		v = "0"
 	}
 	return decimal.NewFromString(v)
+}
+
+// GetPtrAddr takes a pointer and returns the address
+func GetPtrAddr(ptrAddr interface{}) *big.Int {
+	ptrAddrInt, ok := new(big.Int).SetString(fmt.Sprintf("%d", &ptrAddr), 10)
+	if !ok {
+		panic("could not convert pointer address to big.Int")
+	}
+	return ptrAddrInt
+}
+
+// MapDecode decodes a map to a struct.
+// It uses mapstructure.Decode internally but
+// with 'json' TagName.
+func MapDecode(m interface{}, rawVal interface{}) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   rawVal,
+		TagName:  "json",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(m)
 }

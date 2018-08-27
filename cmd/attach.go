@@ -15,8 +15,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/elld/console"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
@@ -40,26 +38,22 @@ account does not exist, the command will fail.`,
 		password, _ := cmd.Flags().GetString("pwd")
 
 		var err error
-		var loadedAddress *crypto.Key
+		var coinbase *crypto.Key
+
+		// load the coinbase coinbase account.
 		if account != "" {
-			loadedAddress, err = loadOrCreateAccount(account, password, 0)
+			coinbase, err = loadOrCreateAccount(account, password, 0)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
 		}
 
-		cs := console.New(loadedAddress, consoleHistoryFilePath)
-		err = cs.DialRPCServer(rpcAddress)
-		if err != nil {
-			log.Fatal("unable to start RPC server", "Err", err)
+		cs := console.New(coinbase, consoleHistoryFilePath, cfg, log)
+		cs.ConfigureRPC(rpcAddress, false)
+		if err := cs.PrepareVM(); err != nil {
+			log.Fatal("failed to prepare console VM", "Err", err)
 		}
 
-		cs.PrepareVM()
-		if err != nil {
-			log.Fatal("unable to prepare console VM", "Err", err)
-		}
-
-		fmt.Println("")
 		cs.Run()
 	},
 }

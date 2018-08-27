@@ -1,6 +1,15 @@
 package config
 
-import "github.com/ellcrys/elld/miner/blakimoto"
+import (
+	"github.com/ellcrys/elld/miner/blakimoto"
+	"github.com/ellcrys/elld/util"
+)
+
+const (
+	ModeProd = iota
+	ModeDev
+	ModeTest
+)
 
 // PeerConfig represents peer configuration
 type PeerConfig struct {
@@ -8,13 +17,8 @@ type PeerConfig struct {
 	// BootstrapNodes are the list of nodes to join in other to gain access to the network
 	BootstrapNodes []string `json:"boostrapNodes"`
 
-	// Dev, when set to true starts the node on a development. In
-	// dev mode, the node cannot communicate with nodes on the public, routable
-	// internet. It will also not use the production config directory.
-	Dev bool `json:"dev"`
-
-	// Test enables or disables features when running the node in a test environment
-	Test bool `json:"-"`
+	// Mode determines the current environment type
+	Mode int `json:"dev"`
 
 	// GetAddrInterval is the time interval when the node sends a GetAddr message to peers
 	GetAddrInterval int64 `json:"getAddrInt"`
@@ -36,6 +40,25 @@ type PeerConfig struct {
 
 	// ConnEstInterval is the time interval when the node
 	ConnEstInterval int64 `json:"conEstInt"`
+}
+
+// RPCConfig defines configuration for the RPC component
+type RPCConfig struct {
+
+	// DisableAuth determines whether to
+	// perform authentication for requests
+	// attempting to invoke private methods.
+	DisableAuth bool `json:"disableAuth"`
+
+	// Username is the RPC username
+	Username string `json:"username"`
+
+	// Password is the RPC password
+	Password string `json:"password"`
+
+	// SessionSecretKey is the key used to sign the
+	// session tokens. Must be kept secret.
+	SessionSecretKey string `json:"sessionSecretKet"`
 }
 
 // TxPoolConfig defines configuration for the transaction pool
@@ -90,8 +113,11 @@ type EngineConfig struct {
 	// Monetary holds monetary configurations
 	Monetary *MonetaryConfig `json:"monetary"`
 
-	// Miner holds mining configuration
+	// Miner holds mining configurations
 	Miner *MinerConfig `json:"mining"`
+
+	// RPC holds rpc configurations
+	RPC *RPCConfig `json:"rpc"`
 
 	// configDir is where the node's config and data is stored
 	configDir string
@@ -139,6 +165,7 @@ func init() {
 		MaxAddrsExpected: 1000,
 		MaxConnections:   100,
 		ConnEstInterval:  600,
+		Mode:             ModeProd,
 	}
 
 	defaultConfig.Consensus = &ConsensusConfig{
@@ -161,5 +188,11 @@ func init() {
 
 	defaultConfig.Miner = &MinerConfig{
 		Mode: blakimoto.ModeNormal,
+	}
+
+	defaultConfig.RPC = &RPCConfig{
+		Username:         "admin",
+		Password:         "admin",
+		SessionSecretKey: util.RandString(32),
 	}
 }
