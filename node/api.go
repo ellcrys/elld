@@ -64,6 +64,16 @@ func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(peers)
 }
 
+// apiIsSyncing fetches the sync status
+func (n *Node) apiIsSyncing(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.isSyncing())
+}
+
+// apiGetSyncState fetches the sync status
+func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.getSyncStateInfo())
+}
+
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -80,6 +90,12 @@ func (n *Node) APIs() jsonrpc.APISet {
 		},
 		"getActivePeers": jsonrpc.APIInfo{
 			Func: n.apiGetActivePeers,
+		},
+		"isSyncing": jsonrpc.APIInfo{
+			Func: n.apiIsSyncing,
+		},
+		"getSyncState": jsonrpc.APIInfo{
+			Func: n.apiGetSyncState,
 		},
 	}
 }

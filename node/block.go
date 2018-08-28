@@ -270,9 +270,12 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine, hash util.Hash) err
 	}
 	defer s.Close()
 
+	// set sync status to true
+	g.engine.setSyncing(true)
+
 	if hash.IsEmpty() {
-		bestBlock, _ := g.GetBlockchain().ChainReader().Current()
-		hash = bestBlock.GetHash()
+		bestLocalBlock, _ := g.GetBlockchain().ChainReader().Current()
+		hash = bestLocalBlock.GetHash()
 	}
 
 	msg := wire.GetBlockHashes{
@@ -420,6 +423,20 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine, hashes []util.Hash)
 				"BlockNumber", block.GetNumber(), "BlockHash", block.GetHash().SS())
 		}
 	}
+
+	// get sync status
+	syncStatus := g.engine.getSyncStateInfo()
+	if syncStatus != nil {
+		g.log.Info("Current synchronization status",
+			"TargetTD", syncStatus.TargetTD,
+			"CurTD", syncStatus.CurrentTD,
+			"TargetChainHeight", syncStatus.TargetChainHeight,
+			"CurChainHeight", syncStatus.CurrentChainHeight,
+			"Progress(%)", syncStatus.ProgressPercent)
+	}
+
+	// Update the sync status
+	g.engine.updateSyncInfo(nil)
 
 	return nil
 }

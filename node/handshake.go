@@ -11,6 +11,7 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
+	"github.com/jinzhu/copier"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
@@ -91,12 +92,20 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
 	if bestBlock.GetHeader().GetTotalDifficulty().Cmp(resp.BestBlockTotalDifficulty) == -1 {
 		g.log.Info("Local blockchain is behind peer",
+			"ChainHeight", bestBlock.GetNumber(),
+			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
 			"PeerID", remotePeerIDShort,
-			"Height", resp.BestBlockNumber,
-			"TotalDifficulty", resp.BestBlockTotalDifficulty)
+			"PeerChainHeight", resp.BestBlockNumber,
+			"PeerChainTotalDifficulty", resp.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
 		go g.SendGetBlockHashes(remotePeer, util.Hash{})
 	}
+
+	// Update the current known best
+	// remote block information
+	var bestBlockInfo BestBlockInfo
+	copier.Copy(&bestBlockInfo, resp)
+	g.engine.updateSyncInfo(&bestBlockInfo)
 
 	return nil
 }
@@ -115,16 +124,17 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	}
 
 	// read the message from the stream
-	remotePeerMsg := &wire.Handshake{}
-	if err := readStream(s, remotePeerMsg); err != nil {
+	msg := &wire.Handshake{}
+	if err := readStream(s, msg); err != nil {
 		g.log.Error("failed to read handshake message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
-	g.log.Info("Received handshake", "PeerID",
-		remotePeerIDShort, "SubVersion",
-		remotePeerMsg.SubVersion, "TotalDifficulty",
-		remotePeerMsg.BestBlockTotalDifficulty)
+	g.log.Info("Received handshake",
+		"PeerID", remotePeerIDShort,
+		"SubVersion", msg.SubVersion,
+		"Height", msg.BestBlockNumber,
+		"TotalDifficulty", msg.BestBlockTotalDifficulty)
 
 	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().ChainReader(), g.log)
 	if err != nil {
@@ -141,7 +151,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	remotePeer.SetTimestamp(time.Now())
 	g.PM().AddOrUpdatePeer(remotePeer)
 
-	g.log.Info("Returned handshake with current main chain state", "PeerID",
+	g.log.Info("Responded to handshake with current chain state", "PeerID",
 		remotePeerIDShort, "SubVersion",
 		engineHandshakeMsg.SubVersion, "TotalDifficulty",
 		engineHandshakeMsg.BestBlockTotalDifficulty)
@@ -150,7 +160,20 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	// If the blockchain best block has a less
 	// total difficulty, then need to start the block sync process
 	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().Cmp(remotePeerMsg.BestBlockTotalDifficulty) == -1 {
+	if bestBlock.GetHeader().GetTotalDifficulty().Cmp(msg.BestBlockTotalDifficulty) == -1 {
+		g.log.Info("Local blockchain is behind peer",
+			"ChainHeight", bestBlock.GetNumber(),
+			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
+			"PeerID", remotePeerIDShort,
+			"PeerChainHeight", msg.BestBlockNumber,
+			"PeerChainTotalDifficulty", msg.BestBlockTotalDifficulty)
 		go g.SendGetBlockHashes(remotePeer, util.Hash{})
 	}
+
+	// Update the current known best
+	// remote block information
+	var bestBlockInfo BestBlockInfo
+	copier.Copy(&bestBlockInfo, msg)
+
+	g.engine.updateSyncInfo(&bestBlockInfo)
 }

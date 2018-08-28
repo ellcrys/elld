@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"gopkg.in/oleiade/lane.v1"
 
 	"github.com/olebedev/emitter"
@@ -44,9 +46,19 @@ import (
 // BestBlockInfo represent best block
 // heard by the engine from other peers
 type BestBlockInfo struct {
-	BlockHash            util.Hash
-	BlockTotalDifficulty *big.Int
-	BlockNumber          uint64
+	BestBlockHash            util.Hash
+	BestBlockTotalDifficulty *big.Int
+	BestBlockNumber          uint64
+}
+
+// SyncStateInfo describes the current state
+// and progress of ongoing blockchain synchronization
+type SyncStateInfo struct {
+	TargetTD           *big.Int `json:"targetTotalDifficulty"`
+	TargetChainHeight  uint64   `json:"targetChainHeight" msgpack:"targetChainHeight"`
+	CurrentTD          *big.Int `json:"currentTotalDifficulty" msgpack:"currentTotalDifficulty"`
+	CurrentChainHeight uint64   `json:"currentChainHeight" msgpack:"currentChainHeight"`
+	ProgressPercent    float64  `json:"progressPercent" msgpack:"progressPercent"`
 }
 
 // Node represents a network node
@@ -75,7 +87,7 @@ type Node struct {
 	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
 	bchain                  core.Blockchain         // The blockchain manager
 	blockHashQueue          *lane.Deque             // Contains headers collected during block syncing
-	bestBlockInfo           *BestBlockInfo          // Holds information about the best known block heard from peers
+	bestRemoteBlockInfo     *BestBlockInfo          // Holds information about the best known block heard from peers
 	syncing                 bool                    // Indicates the process of syncing the blockchain with peers
 }
 
@@ -188,6 +200,92 @@ func (n *Node) OpenDB() error {
 // DB returns the database instance
 func (n *Node) DB() elldb.DB {
 	return n.db
+}
+
+// setSyncing sets the sync status
+func (n *Node) setSyncing(syncing bool) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	n.syncing = syncing
+}
+
+// updateSyncInfo sets a given remote best
+// block info as the best known remote block
+// only when it is better than the local best block.
+// Using this information, it can tell when syncing
+// has stopped and as such, updates the syncing status.
+func (n *Node) updateSyncInfo(bi *BestBlockInfo) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+
+	if bi == nil {
+		goto compare
+	}
+
+	// If we have not seen block info of any
+	// remote peer, we can set to the bi.
+	// But if the current best remote block
+	// has a lower total difficulty than the
+	// latest, we update to the latests
+	if n.bestRemoteBlockInfo == nil {
+		n.bestRemoteBlockInfo = bi
+	} else if n.bestRemoteBlockInfo.BestBlockTotalDifficulty.Cmp(bi.BestBlockTotalDifficulty) == -1 {
+		n.bestRemoteBlockInfo = bi
+	}
+
+compare:
+
+	// Do nothing if we still don't know the best remote
+	// block info. This means the local blockchain is still
+	// considered the better chain
+
+	if n.bestRemoteBlockInfo == nil {
+		return
+	}
+
+	// We need to compare the local best block
+	// with the best remote block. If the local
+	// block is equal or better, we set syncing status
+	// to false
+	localBestBlock, _ := n.GetBlockchain().ChainReader().Current()
+	if localBestBlock.GetHeader().GetTotalDifficulty().Cmp(n.bestRemoteBlockInfo.BestBlockTotalDifficulty) > -1 {
+		n.syncing = false
+	}
+}
+
+// getSyncStateInfo generates status and progress
+// information about the current blockchain sync operation
+func (n *Node) getSyncStateInfo() *SyncStateInfo {
+
+	// No need to compute when we are
+	// not currently syncing
+	if !n.isSyncing() {
+		return nil
+	}
+
+	var syncState = &SyncStateInfo{}
+
+	// Get the current local best chain
+	localBestBlock, _ := n.GetBlockchain().ChainReader().Current()
+	syncState.TargetTD = n.bestRemoteBlockInfo.BestBlockTotalDifficulty
+	syncState.TargetChainHeight = n.bestRemoteBlockInfo.BestBlockNumber
+	syncState.CurrentTD = localBestBlock.GetHeader().GetTotalDifficulty()
+	syncState.CurrentChainHeight = localBestBlock.GetNumber()
+
+	// compute progress percentage based
+	// on block height differences
+	pct := float64(100) * (float64(syncState.CurrentChainHeight) / float64(syncState.TargetChainHeight))
+	syncState.ProgressPercent, _ = decimal.NewFromFloat(pct).Round(1).Float64()
+
+	return syncState
+}
+
+// isSyncing checks whether block
+// synchronization is ongoing
+func (n *Node) isSyncing() bool {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	return n.syncing
 }
 
 // GossipProto returns the set protocol

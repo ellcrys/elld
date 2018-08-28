@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jinzhu/copier"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/wire"
@@ -79,6 +81,12 @@ func (g *Gossip) sendPing(remotePeer types.Engine) error {
 		go g.SendGetBlockHashes(remotePeer, util.Hash{})
 	}
 
+	// Update the current known best
+	// remote block information
+	var bestBlockInfo BestBlockInfo
+	copier.Copy(&bestBlockInfo, pongMsg)
+	g.engine.updateSyncInfo(&bestBlockInfo)
+
 	return nil
 }
 
@@ -151,4 +159,10 @@ func (g *Gossip) OnPing(s net.Stream) {
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
 		go g.SendGetBlockHashes(remotePeer, util.Hash{})
 	}
+
+	// Update the current known best
+	// remote block information
+	var bestBlockInfo BestBlockInfo
+	copier.Copy(&bestBlockInfo, msg)
+	g.engine.updateSyncInfo(&bestBlockInfo)
 }

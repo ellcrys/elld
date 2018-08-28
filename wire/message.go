@@ -20,13 +20,13 @@ type Handshake struct {
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (h *Handshake) EncodeMsgpack(enc *msgpack.Encoder) error {
 	tdStr := h.BestBlockTotalDifficulty.String()
-	return enc.Encode(h.SubVersion, h.BestBlockHash, tdStr)
+	return enc.Encode(h.SubVersion, h.BestBlockHash, h.BestBlockNumber, tdStr)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (h *Handshake) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var tdStr string
-	if err := dec.Decode(&h.SubVersion, &h.BestBlockHash, &tdStr); err != nil {
+	if err := dec.Decode(&h.SubVersion, &h.BestBlockHash, &h.BestBlockNumber, &tdStr); err != nil {
 		return err
 	}
 	h.BestBlockTotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
