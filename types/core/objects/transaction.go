@@ -1,4 +1,4 @@
-package wire
+package objects
 
 import (
 	"crypto/sha256"
@@ -148,7 +148,7 @@ func (tx *Transaction) Bytes() []byte {
 		invokeArgsBs = tx.InvokeArgs.Bytes()
 	}
 
-	asn1Data := []interface{}{
+	data := []interface{}{
 		tx.Type,
 		tx.Nonce,
 		tx.To,
@@ -160,7 +160,7 @@ func (tx *Transaction) Bytes() []byte {
 		invokeArgsBs,
 	}
 
-	return getBytes(asn1Data)
+	return getBytes(data)
 }
 
 // ComputeHash returns the SHA256 hash of the transaction.

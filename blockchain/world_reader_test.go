@@ -1,11 +1,9 @@
 package blockchain
 
 import (
-	"math/big"
-
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -17,12 +15,6 @@ var WorldReaderTest = func() bool {
 
 		BeforeEach(func() {
 			wr = bc.NewWorldReader()
-		})
-
-		// save the genesis chain
-		BeforeEach(func() {
-			err = bc.saveChain(genesisChain, "", 0)
-			Expect(err).To(BeNil())
 		})
 
 		Describe(".GetAccount", func() {
@@ -78,93 +70,43 @@ var WorldReaderTest = func() bool {
 					BeforeEach(func() {
 						Expect(bc.chains).To(HaveLen(1))
 
-						sidechain1 = NewChain("c1", db, cfg, log)
-						err = bc.saveChain(sidechain1, genesisChain.id, 2)
-						Expect(err).To(BeNil())
-
-						sidechain2 = NewChain("c2", db, cfg, log)
-						err = bc.saveChain(sidechain2, sidechain1.id, 3)
-						Expect(err).To(BeNil())
-						Expect(bc.chains).To(HaveLen(3))
-					})
-
-					// extend the genesis chain by 4 blocks
-					BeforeEach(func() {
-
 						// genesis block 2
-						genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730723),
-							},
-							Creator:    sender,
-							Nonce:      core.EncodeNonce(1),
-							Difficulty: new(big.Int).SetInt64(131072),
-						})
-						err = genesisChain.append(genesisB2)
+						genesisB2 := makeBlock(genesisChain)
+						_, err = bc.ProcessBlock(genesisB2)
 						Expect(err).To(BeNil())
-
-						// genesis block 3
-						genesisB3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
-							},
-							Creator:    sender,
-							Nonce:      core.EncodeNonce(1),
-							Difficulty: new(big.Int).SetInt64(131072),
-						})
 
 						// sidechain1 block 3
-						sidechain1B3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730725),
-							},
-							Creator:    sender,
-							Nonce:      core.EncodeNonce(1),
-							Difficulty: new(big.Int).SetInt64(131072),
-						})
+						sidechain1B3 := makeBlock(genesisChain)
 
-						err = genesisChain.append(genesisB3)
+						// genesis block 3
+						genesisB3 := makeBlock(genesisChain)
+						_, err = bc.ProcessBlock(genesisB3)
 						Expect(err).To(BeNil())
 
-						err = sidechain1.append(sidechain1B3)
+						// process sidechain1B3 creates a fork chain
+						reader, err := bc.ProcessBlock(sidechain1B3)
 						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(2))
+						sidechain1 = bc.chains[reader.GetID()]
 
 						// block 4
-						genesisB4 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730726),
-							},
-							Creator:    sender,
-							Nonce:      core.EncodeNonce(1),
-							Difficulty: new(big.Int).SetInt64(131072),
-						})
-						err = genesisChain.append(genesisB4)
+						genesisB4 := makeBlock(genesisChain)
+						_, err = bc.ProcessBlock(genesisB4)
 						Expect(err).To(BeNil())
+
+						// sidechain2 block 4
+						sidechain2B4 := makeBlock(sidechain1)
 
 						// sidechain1 block 4
-						sidechain1B4 := MakeTestBlock(bc, sidechain1, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730727),
-							},
-							Creator:    sender,
-							Nonce:      core.EncodeNonce(1),
-							Difficulty: new(big.Int).SetInt64(131072),
-						})
-
-						// sidechain1 block 4
-						sidechain2B4 := MakeTestBlock(bc, sidechain1, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								wire.NewTx(wire.TxTypeAlloc, 191, util.String(sender.Addr()), sender, "1", "0.1", 1532730728),
-							},
-							Creator:    sender,
-							Nonce:      core.EncodeNonce(1),
-							Difficulty: new(big.Int).SetInt64(131072),
-						})
-						err = sidechain2.append(sidechain2B4)
+						sidechain1B4 := makeBlock(sidechain1)
+						_, err = bc.ProcessBlock(sidechain1B4)
 						Expect(err).To(BeNil())
 
-						err = sidechain1.append(sidechain1B4)
+						// process sidechain2B4 create a fork chain
+						reader, err = bc.ProcessBlock(sidechain2B4)
 						Expect(err).To(BeNil())
+						Expect(bc.chains).To(HaveLen(3))
+						sidechain2 = bc.chains[reader.GetID()]
 					})
 
 					// Ensure the target blockchain shape
@@ -175,25 +117,29 @@ var WorldReaderTest = func() bool {
 					//       |___[B3]-[B4] - Side chain 1
 					//             |__[B4] - Side chain 2
 					BeforeEach(func() {
-						tip, _ := genesisChain.Current()
+						tip, _ := sidechain1.Current()
 						Expect(tip.GetNumber()).To(Equal(uint64(4)))
 						Expect(genesisChain.GetParent()).To(BeNil())
 
 						sidechain1Tip, _ := sidechain1.Current()
 						Expect(sidechain1Tip.GetNumber()).To(Equal(uint64(4)))
-						Expect(sidechain1.GetParent().GetID()).To(Equal(genesisChain.GetID()))
+						parent := sidechain1.GetParent()
+						Expect(parent).ToNot(BeNil())
+						Expect(parent.GetID()).To(Equal(genesisChain.GetID()))
 
 						sidechain2Tip, _ := sidechain2.Current()
 						Expect(sidechain2Tip.GetNumber()).To(Equal(uint64(4)))
-						Expect(sidechain2.GetParent().GetID()).To(Equal(sidechain1.GetID()))
+						parent = sidechain2.GetParent()
+						Expect(parent).ToNot(BeNil())
+						Expect(parent.GetID()).To(Equal(sidechain1.GetID()))
 					})
 
 					Describe("account is created in block 2 of parent chain", func() {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -213,16 +159,16 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
 							err = genesisChain.CreateAccount(2, account)
 							Expect(err).To(BeNil())
 
-							account2 := &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account2 := &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "1000",
 								Address: "addr1",
 							}
@@ -242,8 +188,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -264,8 +210,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -285,16 +231,16 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
 							err = genesisChain.CreateAccount(2, account)
 							Expect(err).To(BeNil())
 
-							account2 := &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account2 := &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "1000",
 								Address: "addr1",
 							}
@@ -314,8 +260,8 @@ var WorldReaderTest = func() bool {
 						var account core.Account
 
 						BeforeEach(func() {
-							account = &wire.Account{
-								Type:    wire.AccountTypeBalance,
+							account = &objects.Account{
+								Type:    objects.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}

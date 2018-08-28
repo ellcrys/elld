@@ -10,8 +10,8 @@ import (
 
 	"github.com/ellcrys/elld/blockcode"
 	"github.com/ellcrys/elld/constants"
+	"github.com/ellcrys/elld/types/core/objects"
 	logger "github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 	docker "github.com/fsouza/go-dockerclient"
 )
 
@@ -27,9 +27,9 @@ type ContainerManager struct {
 
 // ContainerTransaction defines the structure of the blockcode transaction
 type ContainerTransaction struct {
-	Tx       *wire.Transaction `json:"tx"`
-	Function string            `json:"function"`
-	Data     []byte            `json:"data"`
+	Tx       *objects.Transaction `json:"tx"`
+	Function string               `json:"function"`
+	Data     []byte               `json:"data"`
 }
 
 // NewContainerManager creates an instance of ContainerManager
@@ -59,7 +59,7 @@ func (cm *ContainerManager) newContainer() (*Container, error) {
 // - Create connection with the blockcode stub.
 // - Attach an handler to process incoming messages from the blockcode.
 // - Construct and pass argument to blockcode for execution
-func (cm *ContainerManager) execTx(tx *wire.Transaction, output chan []byte, done chan error) {
+func (cm *ContainerManager) execTx(tx *objects.Transaction, output chan []byte, done chan error) {
 
 	bcode, err := cm.blockchain.GetBlockCode(tx.To.String())
 	if err != nil {

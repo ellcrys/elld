@@ -7,8 +7,8 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 )
 
 // HaveBlock checks whether we have a block matching
@@ -58,7 +58,7 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.CallOp) (core.Block, error) {
 
 	var chain *Chain
-	var block *wire.Block
+	var block *objects.Block
 
 	if params == nil {
 		return nil, fmt.Errorf("params is required")
@@ -106,8 +106,8 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 		}
 	}
 
-	block = &wire.Block{
-		Header: &wire.Header{
+	block = &objects.Block{
+		Header: &objects.Header{
 			ParentHash:       util.EmptyHash,
 			CreatorPubKey:    util.String(params.Creator.PubKey().Base58()),
 			Number:           1,
@@ -120,7 +120,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	}
 
 	for _, tx := range params.Transactions {
-		block.Transactions = append(block.Transactions, tx.(*wire.Transaction))
+		block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
 	}
 
 	// override the total difficult if a
@@ -178,7 +178,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	block.Hash = block.ComputeHash()
 
 	// Sign the block using the creators private key
-	sig, err := wire.BlockSign(block, params.Creator.PrivKey().Base58())
+	sig, err := objects.BlockSign(block, params.Creator.PrivKey().Base58())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign block: %s", err)
 	}

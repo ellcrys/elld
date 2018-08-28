@@ -5,8 +5,8 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -113,7 +113,7 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -220,7 +220,7 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -264,6 +264,196 @@ var ChainTest = func() bool {
 						Expect(bn).ToNot(Equal(blockNum))
 					}
 				})
+			})
+		})
+
+		Describe(".save", func() {
+
+			It("should be successful and return nil", func() {
+				chain1 := NewChain("c1", db, cfg, log)
+				err := chain1.save()
+				Expect(err).To(BeNil())
+
+				Describe("should exist in database", func() {
+					result := chain1.store.DB().GetByPrefix(common.MakeChainKey(chain1.id.Bytes()))
+					Expect(result).To(HaveLen(1))
+				})
+			})
+		})
+
+		Describe(".findParent", func() {
+
+			var parentChain1, parentChain2 *Chain
+
+			BeforeEach(func() {
+				parentChain1 = NewChain("p1", db, cfg, log)
+				err := parentChain1.save()
+				Expect(err).To(BeNil())
+
+				parentChain2 = NewChain("p2", db, cfg, log)
+				err = parentChain2.save()
+				Expect(err).To(BeNil())
+			})
+
+			It("should return nil chain and nil error", func() {
+				chain1 := NewChain("c1", db, cfg, log)
+				ch, err := chain1.loadParent()
+				Expect(ch).To(BeNil())
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrChainParentNotFound when chain parent was not found", func() {
+				chain1 := NewChain("c1", db, cfg, log)
+				chain1.info.ParentChainID = "xyz"
+				ch, err := chain1.loadParent()
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrChainParentNotFound))
+				Expect(ch).To(BeNil())
+			})
+
+			It("should return ErrChainParentNotFound when chain parent block was not found", func() {
+				chain1 := NewChain("c1", db, cfg, log)
+				chain1.info.ParentChainID = parentChain1.GetID()
+				chain1.info.ParentBlockNumber = 100
+
+				_, err = chain1.loadParent()
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrChainParentBlockNotFound))
+			})
+
+			It("should return parent chain and parent block", func() {
+				parentChain1Block := makeBlock(parentChain1)
+				err = parentChain1.store.PutBlock(parentChain1Block)
+				Expect(err).To(BeNil())
+
+				chain1 := NewChain("c1", db, cfg, log)
+				chain1.info.ParentChainID = parentChain1.GetID()
+				chain1.info.ParentBlockNumber = parentChain1Block.GetNumber()
+
+				result, err := chain1.loadParent()
+				Expect(err).To(BeNil())
+				Expect(result.GetID()).To(Equal(parentChain1.GetID()))
+				Expect(result.info).To(Equal(parentChain1.info))
+			})
+
+			It("should get parents of chains", func() {
+
+				// parent chain 2, child of parent chain 1
+				parentChain1Block := makeBlock(parentChain1)
+				err = parentChain1.store.PutBlock(parentChain1Block)
+				Expect(err).To(BeNil())
+				parentChain2.info.ParentChainID = parentChain1.GetID()
+				parentChain2.info.ParentBlockNumber = parentChain1Block.GetNumber()
+				err = parentChain2.save()
+				Expect(err).To(BeNil())
+
+				// parent chain 3, child of parent 2
+				p2Block := makeBlock(parentChain2)
+				err = parentChain2.store.PutBlock(p2Block)
+				Expect(err).To(BeNil())
+				p3 := NewChain("p3", db, cfg, log)
+				p3.info.ParentChainID = parentChain2.GetID()
+				p3.info.ParentBlockNumber = p2Block.GetNumber()
+				err = p3.save()
+				Expect(err).To(BeNil())
+
+				p3Parent, err := p3.loadParent()
+				Expect(err).To(BeNil())
+				Expect(p3Parent.info).To(Equal(parentChain2.info))
+
+				p2Parent, err := parentChain2.loadParent()
+				Expect(err).To(BeNil())
+				Expect(p2Parent.info).To(Equal(parentChain1.info))
+			})
+		})
+
+		Describe(".GetRoot", func() {
+
+			var chainB, chainC *Chain
+			var block2Main core.Block
+
+			BeforeEach(func() {
+				tip, _ := genesisChain.Current()
+				Expect(tip.GetNumber()).To(Equal(uint64(1)))
+			})
+
+			// Target shape
+			// [1]-[2]-[3]-[4]-[5]  Main
+			//      |__[3]-[4]		Chain B
+			//          |__[4]		Chain C
+			BeforeEach(func() {
+
+				// main chain blocks
+				block2Main = makeBlock(genesisChain)
+				_, err = bc.ProcessBlock(block2Main)
+				Expect(err).To(BeNil())
+
+				block3Main := makeBlock(genesisChain)
+				block3ChainB := makeBlock(genesisChain)
+
+				_, err = bc.ProcessBlock(block3Main)
+				Expect(err).To(BeNil())
+
+				_, err = bc.ProcessBlock(makeBlock(genesisChain))
+				Expect(err).To(BeNil())
+
+				_, err = bc.ProcessBlock(makeBlock(genesisChain))
+				Expect(err).To(BeNil())
+
+				// start a fork (Chain B)
+				chainBReader, err := bc.ProcessBlock(block3ChainB)
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(2))
+				chainB = bc.chains[chainBReader.GetID()]
+
+				block4ChainC := makeBlock(chainB)
+				block4ChainB := makeBlock(chainB)
+
+				_, err = bc.ProcessBlock(block4ChainB)
+				Expect(err).To(BeNil())
+
+				// start a fork (Chain C)
+				chainCReader, err := bc.ProcessBlock(block4ChainC)
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(3))
+				chainC = bc.chains[chainCReader.GetID()]
+
+			})
+
+			BeforeEach(func() {
+				tip, _ := genesisChain.Current()
+				Expect(tip.GetNumber()).To(Equal(uint64(5)))
+				parent := genesisChain.GetParent()
+				Expect(parent).To(BeNil())
+
+				chainBTip, _ := chainB.Current()
+				Expect(chainBTip.GetNumber()).To(Equal(uint64(4)))
+				parent = chainB.GetParent()
+				Expect(parent).ToNot(BeNil())
+				Expect(parent.GetID()).To(Equal(genesisChain.GetID()))
+
+				chainCTip, _ := chainC.Current()
+				Expect(chainCTip.GetNumber()).To(Equal(uint64(4)))
+				parent = chainC.GetParent()
+				Expect(parent).ToNot(BeNil())
+				Expect(parent.GetID()).To(Equal(chainB.GetID()))
+			})
+
+			It("should return nil if chains has no parent", func() {
+				root := genesisChain.GetRoot()
+				Expect(root).To(BeNil())
+			})
+
+			It("successfully get the root of chain C as block 2 of genesis", func() {
+				root := chainC.GetRoot()
+				Expect(root).ToNot(BeNil())
+				Expect(root.GetHeader()).To(Equal(block2Main.GetHeader()))
+			})
+
+			It("successfully get the root of chain B as block 2 of genesis", func() {
+				root := chainB.GetRoot()
+				Expect(root).ToNot(BeNil())
+				Expect(root.GetHeader()).To(Equal(block2Main.GetHeader()))
 			})
 		})
 	})

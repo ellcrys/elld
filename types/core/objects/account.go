@@ -1,4 +1,4 @@
-package wire
+package objects
 
 import (
 	"github.com/ellcrys/elld/crypto"

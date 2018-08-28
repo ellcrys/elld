@@ -4,8 +4,8 @@ import (
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 )
 
 // apiSendTx sends adds a transaction to transaction pool
@@ -16,7 +16,7 @@ func (n *Node) apiSendTx(params interface{}) *jsonrpc.Response {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("JSON").Error(), nil)
 	}
 
-	var tx wire.Transaction
+	var tx objects.Transaction
 	util.MapDecode(p, &tx)
 
 	return jsonrpc.Success(n.addTransaction(&tx))
@@ -64,6 +64,16 @@ func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(peers)
 }
 
+// apiIsSyncing fetches the sync status
+func (n *Node) apiIsSyncing(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.isSyncing())
+}
+
+// apiGetSyncState fetches the sync status
+func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.getSyncStateInfo())
+}
+
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -80,6 +90,12 @@ func (n *Node) APIs() jsonrpc.APISet {
 		},
 		"getActivePeers": jsonrpc.APIInfo{
 			Func: n.apiGetActivePeers,
+		},
+		"isSyncing": jsonrpc.APIInfo{
+			Func: n.apiIsSyncing,
+		},
+		"getSyncState": jsonrpc.APIInfo{
+			Func: n.apiGetSyncState,
 		},
 	}
 }

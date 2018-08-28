@@ -52,4 +52,10 @@ var (
 		}
 		return fmt.Errorf("decode attempt failed%s", msg)
 	}
+
+	// ErrChainParentNotFound means a chain's parent was not found
+	ErrChainParentNotFound = fmt.Errorf("chain parent not found")
+
+	// ErrChainParentBlockNotFound means a chain's parent block was not found
+	ErrChainParentBlockNotFound = fmt.Errorf("chain parent block not found")
 )

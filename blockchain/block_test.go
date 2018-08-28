@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -22,7 +22,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -42,8 +42,7 @@ var BlockTest = func() bool {
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
 
-				err = bc.addChain(chain2)
-				Expect(err).To(BeNil())
+				bc.addChain(chain2)
 				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
@@ -59,7 +58,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -94,7 +93,7 @@ var BlockTest = func() bool {
 
 					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(2),
@@ -119,7 +118,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -154,7 +153,7 @@ var BlockTest = func() bool {
 
 					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							wire.NewTx(wire.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(2),
@@ -179,7 +178,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -200,8 +199,7 @@ var BlockTest = func() bool {
 				err = chain2.append(block)
 				Expect(err).To(BeNil())
 
-				err = bc.addChain(chain2)
-				Expect(err).To(BeNil())
+				bc.addChain(chain2)
 				err = chain2.store.PutBlock(block)
 				Expect(err).To(BeNil())
 
@@ -225,7 +223,7 @@ var BlockTest = func() bool {
 
 			BeforeEach(func() {
 				bc.bestChain = genesisChain
-				txs = []core.Transaction{wire.NewTx(wire.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "0.1", "0.1", time.Now().Unix())}
+				txs = []core.Transaction{objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "0.1", "0.1", time.Now().Unix())}
 			})
 
 			It("should validate params", func() {
@@ -323,8 +321,8 @@ var BlockTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					err = bc.putAccount(1, targetChain, &wire.Account{
-						Type:    wire.AccountTypeBalance,
+					err = bc.putAccount(1, targetChain, &objects.Account{
+						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",
 					})
@@ -355,8 +353,8 @@ var BlockTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					err = bc.putAccount(1, targetChain, &wire.Account{
-						Type:    wire.AccountTypeBalance,
+					err = bc.putAccount(1, targetChain, &objects.Account{
+						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",
 					})
