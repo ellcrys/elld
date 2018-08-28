@@ -7,7 +7,6 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -24,7 +23,7 @@ import (
 var log logger.Logger
 var cfg *config.EngineConfig
 var err error
-var testStore store.ChainStorer
+var testStore core.ChainStorer
 var db elldb.DB
 var bc *blockchain.Blockchain
 var chainID = util.String("chain1")

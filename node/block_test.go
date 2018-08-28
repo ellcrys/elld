@@ -43,8 +43,8 @@ func BlockTest() bool {
 			rpGossip = NewGossip(rp, log)
 			rp.SetGossipProtocol(rpGossip)
 			rp.SetProtocolHandler(config.BlockBodyVersion, rpGossip.OnBlockBody)
-			rp.SetProtocolHandler(config.GetBlockHashes, rpGossip.OnGetBlockHashes)
-			rp.SetProtocolHandler(config.GetBlockBodies, rpGossip.OnGetBlockBodies)
+			rp.SetProtocolHandler(config.GetBlockHashesVersion, rpGossip.OnGetBlockHashes)
+			rp.SetProtocolHandler(config.GetBlockBodiesVersion, rpGossip.OnGetBlockBodies)
 			rp.SetBlockchain(rpBc)
 		})
 

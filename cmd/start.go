@@ -220,8 +220,8 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 	n.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
 	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
-	n.SetProtocolHandler(config.GetBlockHashes, protocol.OnGetBlockHashes)
-	n.SetProtocolHandler(config.GetBlockBodies, protocol.OnGetBlockBodies)
+	n.SetProtocolHandler(config.GetBlockHashesVersion, protocol.OnGetBlockHashes)
+	n.SetProtocolHandler(config.GetBlockBodiesVersion, protocol.OnGetBlockBodies)
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}
