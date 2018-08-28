@@ -137,7 +137,7 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("genesis block error: %s", err)
 		}
 
-		b.log.Debug("Genesis block successfully created", "Hash", gBlock.GetHash().HexStr())
+		b.log.Debug("Genesis block successfully created", "Hash", gBlock.GetHash().SS())
 		return nil
 	}
 

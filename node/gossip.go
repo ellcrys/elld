@@ -11,6 +11,7 @@ import (
 
 	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
@@ -20,7 +21,6 @@ import (
 // Gossip represents the peer protocol
 type Gossip struct {
 	mtx                         *sync.Mutex   // main mutex
-	version                     string        // the protocol version
 	engine                      *Node         // the local peer
 	log                         logger.Logger // the logger
 	lastRelayPeersSelectionTime time.Time     // the time the last peers responsible for relaying "addr" wire where selected
@@ -34,6 +34,11 @@ func NewGossip(p *Node, log logger.Logger) *Gossip {
 		log:    log,
 		mtx:    &sync.Mutex{},
 	}
+}
+
+// GetBlockchain returns the blockchain manager
+func (g *Gossip) GetBlockchain() core.Blockchain {
+	return g.engine.bchain
 }
 
 func (g *Gossip) newStream(ctx context.Context, remotePeer types.Engine, msgVersion string) (net.Stream, error) {

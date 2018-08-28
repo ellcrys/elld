@@ -25,4 +25,12 @@ var (
 	// MaxGetBlockHeader is the max number of block headers to request
 	// from a remote peer per request.
 	MaxGetBlockHeader = int64(500)
+
+	// MaxGetBlockBodiesHashes is the max number of block bodies
+	// to requests
+	MaxGetBlockBodiesHashes = int64(2)
+
+	// NumBlockBodiesRequesters is the number of workers that will
+	// fetch block bodies
+	NumBlockBodiesRequesters = 3
 )

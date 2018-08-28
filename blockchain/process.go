@@ -461,7 +461,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
-	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().HexStr())
+	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().SS())
 
 	// If ever we forgot to set the transaction pool,
 	// the client should be forced to exit.
@@ -471,7 +471,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 
 	// validate the block
 	if err := b.validateBlock(block); err != nil {
-		b.log.Error("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
+		b.log.Debug("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
 

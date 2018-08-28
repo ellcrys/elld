@@ -18,8 +18,8 @@ import (
 )
 
 // Manager manages known peers connected to the local peer.
-// It is responsible for initiating the peer discovery process
-// according to the current protocol
+// It is responsible for initiating and managing peers
+// according to the current protocol and engine rules.
 type Manager struct {
 	knownPeerMtx   *sync.Mutex             // known peer mutex
 	generalMtx     *sync.Mutex             // general mutex
@@ -376,7 +376,6 @@ func (m *Manager) CleanKnownPeers() int {
 
 // GetKnownPeers gets all the known peers (active or inactive)
 func (m *Manager) GetKnownPeers() (peers []types.Engine) {
-
 	m.knownPeerMtx.Lock()
 	defer m.knownPeerMtx.Unlock()
 
@@ -384,7 +383,7 @@ func (m *Manager) GetKnownPeers() (peers []types.Engine) {
 		peers = append(peers, p)
 	}
 
-	return peers
+	return
 }
 
 // GetActivePeers returns active peers. Passing a zero or negative value
@@ -440,16 +439,6 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	if err = validateAddress(m.localNode, addr); err != nil {
 		return err
 	}
-
-	// // Ensure the address is a valid address format
-	// if !util.IsValidAddr(addr) {
-	// 	return fmt.Errorf("failed to create peer from address. Peer address is invalid")
-	// }
-
-	// // In production mode, the address must be routable
-	// if m.localNode.ProdMode() && !util.IsRoutableAddr(addr) {
-	// 	return fmt.Errorf("failed to create peer from address. Peer address is invalid")
-	// }
 
 	// The peer must not already exists be known
 	mAddr, _ := ma.NewMultiaddr(addr)

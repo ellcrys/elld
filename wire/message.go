@@ -3,7 +3,6 @@ package wire
 import (
 	"math/big"
 
-	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/util"
@@ -15,6 +14,7 @@ type Handshake struct {
 	SubVersion               string    `json:"subversion" msgpack:"subversion"`
 	BestBlockHash            util.Hash `json:"bestBlockHash" msgpack:"bestBlockHash"`
 	BestBlockTotalDifficulty *big.Int  `json:"bestBlockTD" msgpack:"bestBlockTD"`
+	BestBlockNumber          uint64    `json:"bestBlockNumber" msgpack:"bestBlockNumber"`
 }
 
 // EncodeMsgpack implements msgpack.CustomEncoder
@@ -50,10 +50,48 @@ type Address struct {
 
 // Ping represents a ping message
 type Ping struct {
+	BestBlockHash            util.Hash `json:"bestBlockHash" msgpack:"bestBlockHash"`
+	BestBlockTotalDifficulty *big.Int  `json:"bestBlockTD" msgpack:"bestBlockTD"`
+	BestBlockNumber          uint64    `json:"bestBlockNumber" msgpack:"bestBlockNumber"`
+}
+
+// EncodeMsgpack implements msgpack.CustomEncoder
+func (p *Ping) EncodeMsgpack(enc *msgpack.Encoder) error {
+	tdStr := p.BestBlockTotalDifficulty.String()
+	return enc.Encode(p.BestBlockHash, p.BestBlockNumber, tdStr)
+}
+
+// DecodeMsgpack implements msgpack.CustomDecoder
+func (p *Ping) DecodeMsgpack(dec *msgpack.Decoder) error {
+	var tdStr string
+	if err := dec.Decode(&p.BestBlockHash, &p.BestBlockNumber, &tdStr); err != nil {
+		return err
+	}
+	p.BestBlockTotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
+	return nil
 }
 
 // Pong represents a pong message
 type Pong struct {
+	BestBlockHash            util.Hash `json:"bestBlockHash" msgpack:"bestBlockHash"`
+	BestBlockTotalDifficulty *big.Int  `json:"bestBlockTD" msgpack:"bestBlockTD"`
+	BestBlockNumber          uint64    `json:"bestBlockNumber" msgpack:"bestBlockNumber"`
+}
+
+// EncodeMsgpack implements msgpack.CustomEncoder
+func (p *Pong) EncodeMsgpack(enc *msgpack.Encoder) error {
+	tdStr := p.BestBlockTotalDifficulty.String()
+	return enc.Encode(p.BestBlockHash, p.BestBlockNumber, tdStr)
+}
+
+// DecodeMsgpack implements msgpack.CustomDecoder
+func (p *Pong) DecodeMsgpack(dec *msgpack.Decoder) error {
+	var tdStr string
+	if err := dec.Decode(&p.BestBlockHash, &p.BestBlockNumber, &tdStr); err != nil {
+		return err
+	}
+	p.BestBlockTotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
+	return nil
 }
 
 // Reject defines information about a rejected action
@@ -70,17 +108,17 @@ type RequestBlock struct {
 	Number uint64 `json:"number" msgpack:"number"`
 }
 
-// GetBlockHeaders represents a message requesting
+// GetBlockHashes represents a message requesting
 // for headers of blocks after the provided hash
-type GetBlockHeaders struct {
+type GetBlockHashes struct {
 	Hash      util.Hash `json:"hash" msgpack:"hash"`
 	MaxBlocks int64     `json:"maxBlocks" msgpack:"maxBlocks"`
 }
 
-// BlockHeaders represents a message containing
-// block headers as a response to GetBlockHeaders
-type BlockHeaders struct {
-	Headers []core.Header
+// BlockHashes represents a message containing
+// block hashes as a response to GetBlockHeaders
+type BlockHashes struct {
+	Hashes []util.Hash
 }
 
 // BlockBody represents the body of a block
@@ -91,7 +129,13 @@ type BlockBody struct {
 	Sig          []byte                 `json:"sig" msgpack:"sig"`
 }
 
-// BlockBodies represents a collection of blocks
+// BlockBodies represents a collection of block bodies
 type BlockBodies struct {
-	Blocks []*BlockBodies
+	Blocks []*BlockBody
+}
+
+// GetBlockBodies represents a message to fetch block bodies
+// belonging to the given hashes
+type GetBlockBodies struct {
+	Hashes []util.Hash
 }

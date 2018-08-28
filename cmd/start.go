@@ -220,6 +220,8 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 	n.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
 	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
+	n.SetProtocolHandler(config.GetBlockHashes, protocol.OnGetBlockHashes)
+	n.SetProtocolHandler(config.GetBlockBodies, protocol.OnGetBlockBodies)
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}
@@ -229,6 +231,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	bchain := blockchain.New(n.GetTxPool(), cfg, log)
 	bchain.SetDB(n.DB())
 	bchain.SetEventEmitter(event)
+	bchain.SetGenesisBlock(blockchain.GenesisBlock)
 	n.SetBlockchain(bchain)
 
 	// power up the blockchain manager

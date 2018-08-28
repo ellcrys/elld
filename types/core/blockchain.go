@@ -102,6 +102,9 @@ type Blockchain interface {
 	// GetChainReaderByHash returns a chain reader to a chain
 	// where a block with the given hash exists
 	GetChainReaderByHash(hash util.Hash) ChainReader
+
+	// SetGenesisBlock sets the genesis block
+	SetGenesisBlock(block Block)
 }
 
 // BlockMaker defines an interface providing the

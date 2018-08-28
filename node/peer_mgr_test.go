@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/imdario/mergo"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/testutil"
@@ -17,6 +19,14 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+func emptyNode(n *Node) *Node {
+	n2 := &Node{mtx: &sync.RWMutex{}}
+	if n != nil {
+		mergo.MergeWithOverwrite(n2, n)
+	}
+	return n2
+}
 
 func NewMgr(cfg *config.EngineConfig) *Manager {
 	var mgr = new(Manager)
@@ -305,28 +315,28 @@ func PeerManagerTest() bool {
 		Describe(".isActive", func() {
 
 			It("should return false when Timestamp is zero", func() {
-				peer := &Node{}
+				peer := emptyNode(nil)
 				Expect(mgr.isActive(peer)).To(BeFalse())
 			})
 
 			It("should return false when Timestamp is 3 hours 10 seconds ago", func() {
-				peer := &Node{
+				peer := emptyNode(&Node{
 					Timestamp: time.Now().Add((-3 * (60 * 60) * time.Second) + 10),
-				}
+				})
 				Expect(mgr.isActive(peer)).To(BeFalse())
 			})
 
 			It("should return false when Timestamp is 3 hours ago", func() {
-				peer := &Node{
+				peer := emptyNode(&Node{
 					Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second),
-				}
+				})
 				Expect(mgr.isActive(peer)).To(BeFalse())
 			})
 
 			It("should return true when Timestamp is 2 hours, 59 minute ago", func() {
-				peer := &Node{
+				peer := emptyNode(&Node{
 					Timestamp: time.Now().Add((-2 * (60 * 60) * time.Second) + 59*time.Minute),
-				}
+				})
 				Expect(mgr.isActive(peer)).To(BeTrue())
 			})
 
@@ -340,9 +350,9 @@ func PeerManagerTest() bool {
 			BeforeEach(func() {
 				mgr = lp.PM()
 				mgr.localNode = lp
-				peer1 = &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-				peer2 = &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-				peer3 = &Node{Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second)}
+				peer1 = emptyNode(&Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)})
+				peer2 = emptyNode(&Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)})
+				peer3 = emptyNode(&Node{Timestamp: time.Now().Add(-3 * (60 * 60) * time.Second)})
 				mgr.knownPeers = map[string]types.Engine{
 					"peer1": peer1,
 					"peer2": peer2,
@@ -375,7 +385,7 @@ func PeerManagerTest() bool {
 		Describe(".CopyActivePeers", func() {
 			var mgr = NewMgr(cfg)
 			mgr.knownPeers = make(map[string]types.Engine)
-			peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+			peer1 := emptyNode(&Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)})
 			mgr.knownPeers = map[string]types.Engine{
 				"peer1": peer1,
 			}
@@ -391,9 +401,9 @@ func PeerManagerTest() bool {
 
 			It("should shuffle the slice of peers if the number of known/active peers is equal to the limit requested", func() {
 				mgr.knownPeers = make(map[string]types.Engine)
-				peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-				peer2 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-				peer3 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+				peer1 := emptyNode(&Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)})
+				peer2 := emptyNode(&Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)})
+				peer3 := emptyNode(&Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)})
 				mgr.knownPeers = map[string]types.Engine{
 					"peer1": peer1,
 					"peer2": peer2,
@@ -417,9 +427,9 @@ func PeerManagerTest() bool {
 
 			It("Should return the limit requested if known active peers are more than limit", func() {
 				mgr.knownPeers = make(map[string]types.Engine)
-				peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
-				peer2 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
-				peer3 := &Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)}
+				peer1 := emptyNode(&Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)})
+				peer2 := emptyNode(&Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)})
+				peer3 := emptyNode(&Node{Timestamp: time.Now().Add(-2 * (60 * 60) * time.Second)})
 				mgr.knownPeers = map[string]types.Engine{
 					"peer1": peer1,
 					"peer2": peer2,
@@ -448,7 +458,7 @@ func PeerManagerTest() bool {
 			It("should return true when peer manager does not have upto 1000 peers and has not reached max connection", func() {
 				cfg.Node.MaxConnections = 120
 				mgr.knownPeers = make(map[string]types.Engine)
-				peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+				peer1 := emptyNode(&Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)})
 				mgr.knownPeers = map[string]types.Engine{
 					"peer1": peer1,
 				}
@@ -459,7 +469,7 @@ func PeerManagerTest() bool {
 				cfg.Node.MaxConnections = 10
 				mgr.connMgr.activeConn = 10
 				mgr.knownPeers = make(map[string]types.Engine)
-				peer1 := &Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)}
+				peer1 := emptyNode(&Node{Timestamp: time.Now().Add(-1 * (60 * 60) * time.Second)})
 				mgr.knownPeers = map[string]types.Engine{
 					"peer1": peer1,
 				}
@@ -477,7 +487,7 @@ func PeerManagerTest() bool {
 
 			It("reduce timestamp by an 3600 seconds", func() {
 				mgr.knownPeers = make(map[string]types.Engine)
-				peer1 := &Node{Timestamp: time.Now()}
+				peer1 := emptyNode(&Node{Timestamp: time.Now()})
 				mgr.knownPeers = map[string]types.Engine{
 					"peer1": peer1,
 				}
@@ -499,7 +509,7 @@ func PeerManagerTest() bool {
 
 			It("should return false if local peer is nil", func() {
 				mgr.localNode = nil
-				peer1 := &Node{Timestamp: time.Now()}
+				peer1 := emptyNode(&Node{Timestamp: time.Now()})
 				Expect(mgr.IsLocalNode(peer1)).To(BeFalse())
 			})
 

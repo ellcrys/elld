@@ -2,7 +2,9 @@ package node
 
 import (
 	"context"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
@@ -11,6 +13,7 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"
@@ -26,6 +29,22 @@ var err error
 func closeNode(n *Node) {
 	n.Host().ConnManager().TrimOpenConns(context.Background())
 }
+
+var makeBlock = func(bchain core.Blockchain) core.Block {
+	block, err := bchain.Generate(&core.GenerateBlockParams{
+		Transactions: []core.Transaction{
+			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+		},
+		Creator:    sender,
+		Nonce:      core.EncodeNonce(1),
+		Difficulty: new(big.Int).SetInt64(131072),
+	})
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
 func TestPeer(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Peer Suite")

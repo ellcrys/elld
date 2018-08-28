@@ -132,19 +132,19 @@ func NodeTest() bool {
 
 		Describe(".IsBadTimestamp", func() {
 			It("should return false when time is zero", func() {
-				n.Timestamp = time.Time{}
+				n.SetTimestamp(time.Time{})
 				Expect(err).To(BeNil())
 				Expect(n.IsBadTimestamp()).To(BeTrue())
 			})
 
 			It("should return false when time 10 minutes, 1 second in the future", func() {
-				n.Timestamp = time.Now().Add(10*time.Minute + 1*time.Second)
+				n.SetTimestamp(time.Now().Add(10*time.Minute + 1*time.Second))
 				Expect(err).To(BeNil())
 				Expect(n.IsBadTimestamp()).To(BeTrue())
 			})
 
 			It("should return false when time 3 hours, 1 second in the past", func() {
-				n.Timestamp = time.Now().Add(-3 * time.Hour)
+				n.SetTimestamp(time.Now().Add(-3 * time.Hour))
 				Expect(err).To(BeNil())
 				Expect(n.IsBadTimestamp()).To(BeTrue())
 			})

@@ -81,7 +81,8 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	// check whether we can interact with this remote peer
 	if yes, reason := g.engine.canAcceptPeer(remotePeer); !yes {
 		s.Reset()
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", reason), "Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
+		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", reason), 
+			"Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
 		return
 	}
 
