@@ -6,8 +6,8 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 )
 
 // MetadataKey is the key used to store the metadata
@@ -65,7 +65,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, e
 		return nil, core.ErrBlockNotFound
 	}
 
-	var block wire.Block
+	var block objects.Block
 	if err := r[0].Scan(&block); err != nil {
 		txOp.Rollback()
 		return nil, err
@@ -129,7 +129,7 @@ func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64,
 func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 
 	var err error
-	var block wire.Block
+	var block objects.Block
 	var highestBlockNum uint64
 	var r *elldb.KVObject
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -166,7 +166,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 
 	// iterate over the blocks in the chain and locate the block
 	// matching the specified hash
-	var block wire.Block
+	var block objects.Block
 	var found = false
 	txOp.Tx.Iterate(common.MakeBlocksQueryKey(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
 		if err = kv.Scan(&block); err != nil {
@@ -290,7 +290,7 @@ func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.Cal
 // GetTransaction gets a transaction (by hash) belonging to a chain
 func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) core.Transaction {
 	var result []*elldb.KVObject
-	var tx wire.Transaction
+	var tx objects.Transaction
 	var txOp = common.GetTxOp(s.db, opts...)
 
 	s.get(common.MakeTxQueryKey(s.chainID.Bytes(), hash.Bytes()), &result, txOp)
@@ -345,7 +345,7 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 		return nil, core.ErrAccountNotFound
 	}
 
-	var account wire.Account
+	var account objects.Account
 	if err := r.Scan(&account); err != nil {
 		txOp.Rollback()
 		return nil, err

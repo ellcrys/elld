@@ -1,17 +1,19 @@
 package node
 
 import (
-	"fmt"
+	"context"
+	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"
@@ -24,12 +26,31 @@ var log = logger.NewLogrusNoOp()
 var cfg *config.EngineConfig
 var err error
 
+func closeNode(n *Node) {
+	n.Host().ConnManager().TrimOpenConns(context.Background())
+}
+
+var makeBlock = func(bchain core.Blockchain) core.Block {
+	block, err := bchain.Generate(&core.GenerateBlockParams{
+		Transactions: []core.Transaction{
+			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+		},
+		Creator:    sender,
+		Nonce:      core.EncodeNonce(1),
+		Difficulty: new(big.Int).SetInt64(131072),
+	})
+	if err != nil {
+		panic(err)
+	}
+	return block
+}
+
 func TestPeer(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Peer Suite")
 }
 
-var testStore store.ChainStorer
+var testStore core.ChainStorer
 var db, db2 elldb.DB
 var lpBc, rpBc core.Blockchain
 var chainID = util.String("chain1")
@@ -70,9 +91,18 @@ var _ = Describe("Engine", func() {
 		txPool = txpool.NewTxPool(100)
 		txPool2 = txpool.NewTxPool(100)
 		lpBc = blockchain.New(txPool, cfg, log)
-		rpBc = blockchain.New(txPool2, cfg, log)
 		lpBc.SetDB(db)
+		lpBc.SetGenesisBlock(blockchain.GenesisBlock)
+		rpBc = blockchain.New(txPool2, cfg, log)
 		rpBc.SetDB(db2)
+		rpBc.SetGenesisBlock(blockchain.GenesisBlock)
+	})
+
+	BeforeEach(func() {
+		err = lpBc.Up()
+		Expect(err).To(BeNil())
+		err = rpBc.Up()
+		Expect(err).To(BeNil())
 	})
 
 	// Create test account keys
@@ -82,6 +112,7 @@ var _ = Describe("Engine", func() {
 	})
 
 	var tests = []func() bool{
+		HandshakeTest,
 		TransactionTest,
 		AddrTest,
 		GetAddrTest,
@@ -90,13 +121,12 @@ var _ = Describe("Engine", func() {
 		PingTest,
 		PeerManagerTest,
 		NodeTest,
-		HandshakeTest,
 		BlockTest,
 	}
 
-	for i, t := range tests {
-		Describe(fmt.Sprintf("Test %d", i), func() {
-			t()
-		})
+	for _, t := range tests {
+		// Describe(fmt.Sprintf("Test %d", i), func() {
+		t()
+		// })
 	}
 })

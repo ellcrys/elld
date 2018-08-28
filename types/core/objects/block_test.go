@@ -1,7 +1,9 @@
-package wire
+package objects
 
 import (
 	"math/big"
+
+	"github.com/vmihailenco/msgpack"
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/types/core"
@@ -25,7 +27,7 @@ var _ = Describe("Block & Header", func() {
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
-			expected := []byte{153, 196, 32, 112, 97, 114, 101, 110, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 160, 196, 32, 115, 116, 97, 116, 101, 95, 114, 111, 111, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 32, 116, 120, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 206, 0, 22, 227, 96, 196, 8, 0, 0, 0, 0, 0, 0, 0, 1, 192}
+			expected := []uint8{154, 196, 32, 112, 97, 114, 101, 110, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 160, 196, 32, 115, 116, 97, 116, 101, 95, 114, 111, 111, 116, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 32, 116, 120, 95, 104, 97, 115, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 196, 1, 100, 196, 0, 206, 0, 22, 227, 96, 196, 8, 0, 0, 0, 0, 0, 0, 0, 1, 192}
 			Expect(h.Bytes()).To(Equal(expected))
 		})
 	})
@@ -71,7 +73,7 @@ var _ = Describe("Block & Header", func() {
 				Timestamp:        1500000,
 			}
 			actual := h.ComputeHash()
-			expected := util.Hash([32]byte{45, 42, 197, 108, 164, 246, 182, 74, 80, 186, 69, 139, 187, 27, 57, 25, 173, 118, 173, 85, 32, 210, 160, 50, 239, 18, 22, 187, 114, 148, 9, 253})
+			expected := util.Hash([32]byte{207, 192, 165, 248, 237, 83, 165, 106, 166, 54, 3, 115, 19, 178, 25, 184, 128, 80, 228, 253, 152, 55, 132, 74, 228, 163, 198, 218, 47, 218, 75, 94})
 			Expect(actual).To(HaveLen(32))
 			Expect(actual).To(Equal(expected))
 		})
@@ -231,8 +233,79 @@ var _ = Describe("Block & Header", func() {
 			}
 
 			actual := b.ComputeHash()
-			expected := util.BytesToHash([]byte{121, 56, 44, 198, 252, 32, 65, 7, 98, 226, 132, 45, 208, 211, 14, 170, 58, 159, 152, 15, 1, 208, 58, 249, 68, 34, 205, 240, 120, 76, 228, 206})
+			expected := util.BytesToHash([]byte{185, 232, 240, 32, 13, 134, 64, 117, 206, 5, 182, 159, 1, 83, 55, 65, 228, 21, 93, 46, 5, 34, 93, 204, 138, 2, 22, 59, 46, 233, 185, 237})
 			Expect(actual).To(Equal(expected))
+		})
+	})
+
+	Describe("Header serialization", func() {
+		It("should serialize and deserialize as expected", func() {
+			h := &Header{
+				Number:           10,
+				Nonce:            core.EncodeNonce(10),
+				Timestamp:        100,
+				CreatorPubKey:    "abc",
+				ParentHash:       util.StrToHash("xyz"),
+				StateRoot:        util.StrToHash("abc"),
+				TransactionsRoot: util.StrToHash("abc"),
+				Extra:            []byte("abc"),
+				Difficulty:       new(big.Int).SetInt64(30000),
+				TotalDifficulty:  new(big.Int).SetInt64(40000),
+			}
+			bs, err := msgpack.Marshal(h)
+			Expect(err).To(BeNil())
+			Expect(bs).ToNot(BeEmpty())
+
+			var h2 Header
+			err = msgpack.Unmarshal(bs, &h2)
+			Expect(err).To(BeNil())
+			Expect(&h2).To(Equal(h))
+		})
+	})
+
+	Describe("Block serialization", func() {
+		It("should serialize and deserialize as expected", func() {
+			b := &Block{
+				Header: &Header{
+					Number:           10,
+					Nonce:            core.EncodeNonce(10),
+					Timestamp:        100,
+					CreatorPubKey:    "abc",
+					ParentHash:       util.StrToHash("xyz"),
+					StateRoot:        util.StrToHash("abc"),
+					TransactionsRoot: util.StrToHash("abc"),
+					Extra:            []byte("abc"),
+					Difficulty:       new(big.Int).SetInt64(30000),
+					TotalDifficulty:  new(big.Int).SetInt64(40000),
+				},
+				Transactions: []*Transaction{
+					&Transaction{
+						Type:         1,
+						Nonce:        1,
+						To:           "some_address",
+						SenderPubKey: "abc",
+						Value:        "120",
+						Timestamp:    12345,
+						Fee:          "0.22",
+						InvokeArgs: &InvokeArgs{
+							Func: "doStuff",
+							Params: map[string][]byte{
+								"age": []byte("1000"),
+							},
+						},
+						Sig:  []byte("xyz"),
+						Hash: util.StrToHash("abcdef"),
+					},
+				},
+			}
+			bs, err := msgpack.Marshal(b)
+			Expect(err).To(BeNil())
+			Expect(bs).ToNot(BeEmpty())
+
+			var b2 Block
+			err = msgpack.Unmarshal(bs, &b2)
+			Expect(err).To(BeNil())
+			Expect(&b2).To(Equal(b))
 		})
 	})
 })

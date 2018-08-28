@@ -8,8 +8,8 @@ import (
 	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
@@ -27,7 +27,7 @@ func (n *Node) addTransaction(tx core.Transaction) error {
 	}
 
 	switch tx.GetType() {
-	case wire.TxTypeBalance:
+	case objects.TxTypeBalance:
 
 		// Add the transaction to the transaction pool where
 		// it will be broadcast to other peers and included in a block
@@ -38,7 +38,7 @@ func (n *Node) addTransaction(tx core.Transaction) error {
 		return nil
 
 	default:
-		return wire.ErrTxTypeUnknown
+		return objects.ErrTxTypeUnknown
 	}
 }
 
@@ -53,7 +53,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	g.log.Info("Received new transaction", "PeerID", remotePeerIDShort)
 
 	// read the message
-	msg := &wire.Transaction{}
+	msg := &objects.Transaction{}
 	if err := readStream(s, msg); err != nil {
 		s.Reset()
 		g.log.Error("failed to read tx message", "Err", err, "PeerID", remotePeerIDShort)
@@ -62,7 +62,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	// AllocCoin transactions are meant to be added by a miner
 	// to a block and not relayed like regular transactions.
-	if msg.Type == wire.TxTypeAlloc {
+	if msg.Type == objects.TxTypeAlloc {
 		s.Reset()
 		g.log.Error("cannot add <AllocCoin> transaction to pool")
 		return

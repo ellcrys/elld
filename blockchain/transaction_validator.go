@@ -7,6 +7,7 @@ import (
 
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/shopspring/decimal"
 
@@ -15,13 +16,12 @@ import (
 	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 )
 
 // KnownTransactionTypes are the supported transaction types
 var KnownTransactionTypes = []int64{
-	wire.TxTypeBalance,
-	wire.TxTypeAlloc,
+	objects.TxTypeBalance,
+	objects.TxTypeAlloc,
 }
 
 // TxsValidator implements a validator for checking
@@ -233,7 +233,7 @@ func (v *TxsValidator) check(tx core.Transaction) (errs []error) {
 		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "sig", "signature is required").Error()),
 	))
 
-	if tx.GetType() == wire.TxTypeBalance {
+	if tx.GetType() == objects.TxTypeBalance {
 		errs = appendErr(errs, validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "could not convert to decimal"))),
@@ -241,7 +241,7 @@ func (v *TxsValidator) check(tx core.Transaction) (errs []error) {
 		))
 	}
 
-	if tx.GetType() == wire.TxTypeAlloc {
+	if tx.GetType() == objects.TxTypeAlloc {
 		// Transaction sender must be the same as the recipient
 		errs = appendErr(errs, validation.Validate(tx.GetFrom(),
 			validation.By(isSameStrRule(tx.GetTo().String(), fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),

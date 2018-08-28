@@ -6,7 +6,7 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/wire/messages"
+	"github.com/ellcrys/elld/wire"
 )
 
 // SelfAdvertise sends an Addr message containing the address of the local peer
@@ -15,7 +15,7 @@ import (
 // Returns the number of peers advertised to.
 func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
-	msg := &messages.Addr{Addresses: []*messages.Address{{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()}}}
+	msg := &wire.Addr{Addresses: []*wire.Address{{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()}}}
 	successfullySent := 0
 
 	for _, peer := range connectedPeers {

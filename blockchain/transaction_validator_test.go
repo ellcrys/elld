@@ -7,8 +7,8 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -27,24 +27,24 @@ var TransactionValidatorTest = func() bool {
 
 			It("should test all validation rules", func() {
 				var cases = map[core.Transaction]interface{}{
-					&wire.Transaction{Type: 0}:                                                                                                                 fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
-					&wire.Transaction{Type: wire.TxTypeBalance, Nonce: -1}:                                                                                     fmt.Errorf("index:0, field:nonce, error:nonce must be non-negative"),
-					&wire.Transaction{Type: wire.TxTypeBalance, Nonce: 0}:                                                                                      fmt.Errorf("index:0, field:to, error:recipient address is required"),
-					&wire.Transaction{To: "invalid", Type: wire.TxTypeBalance, Nonce: 0}:                                                                       fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
-					&wire.Transaction{From: "invalid", Type: wire.TxTypeBalance, Nonce: 0}:                                                                     fmt.Errorf("index:0, field:from, error:sender address is not valid"),
-					&wire.Transaction{To: util.String(sender.Addr()), Type: wire.TxTypeBalance, Nonce: 0}:                                                      fmt.Errorf("index:0, field:senderPubKey, error:sender public key is required"),
-					&wire.Transaction{SenderPubKey: "invalid", To: util.String(sender.Addr()), Type: wire.TxTypeBalance, Nonce: 0}:                             fmt.Errorf("index:0, field:senderPubKey, error:sender public key is not valid"),
-					&wire.Transaction{SenderPubKey: util.String(sender.PubKey().Base58()), To: util.String(sender.Addr()), Type: wire.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:value, error:value is required"),
-					&wire.Transaction{Type: wire.TxTypeBalance, Value: "1oo"}:                                                                                  fmt.Errorf("index:0, field:value, error:could not convert to decimal"),
-					&wire.Transaction{Type: wire.TxTypeBalance, Value: "-10"}:                                                                                  fmt.Errorf("index:0, field:value, error:value must be greater than zero"),
-					&wire.Transaction{}:                                                                                                                        fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
-					&wire.Transaction{Type: wire.TxTypeBalance}:                                                                                                fmt.Errorf("index:0, field:fee, error:fee is required"),
-					&wire.Transaction{Type: wire.TxTypeBalance, Fee: "1oo"}:                                                                                    fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
-					&wire.Transaction{Type: wire.TxTypeBalance, Fee: "0.0001"}:                                                                                 fmt.Errorf("index:0, field:fee, error:fee cannot be below the minimum balance transaction fee {0.0100000000000000}"),
-					&wire.Transaction{}:                                                                                                                        fmt.Errorf("index:0, field:hash, error:hash is required"),
-					&wire.Transaction{Hash: util.StrToHash("incorrect")}:                                                                                       fmt.Errorf("index:0, field:hash, error:hash is not correct"),
-					&wire.Transaction{}:                                                                                                                        fmt.Errorf("index:0, field:sig, error:signature is required"),
-					&wire.Transaction{Type: wire.TxTypeAlloc, From: util.String(sender.Addr()), To: util.String(receiver.Addr())}: fmt.Errorf("index:0, field:from, error:sender and recipient must be same address"),
+					&objects.Transaction{Type: 0}:                                                                                                                    fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Nonce: -1}:                                                                                     fmt.Errorf("index:0, field:nonce, error:nonce must be non-negative"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Nonce: 0}:                                                                                      fmt.Errorf("index:0, field:to, error:recipient address is required"),
+					&objects.Transaction{To: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:                                                                       fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
+					&objects.Transaction{From: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:                                                                     fmt.Errorf("index:0, field:from, error:sender address is not valid"),
+					&objects.Transaction{To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}:                                                      fmt.Errorf("index:0, field:senderPubKey, error:sender public key is required"),
+					&objects.Transaction{SenderPubKey: "invalid", To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}:                             fmt.Errorf("index:0, field:senderPubKey, error:sender public key is not valid"),
+					&objects.Transaction{SenderPubKey: util.String(sender.PubKey().Base58()), To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:value, error:value is required"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Value: "1oo"}:                                                                                  fmt.Errorf("index:0, field:value, error:could not convert to decimal"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Value: "-10"}:                                                                                  fmt.Errorf("index:0, field:value, error:value must be greater than zero"),
+					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
+					&objects.Transaction{Type: objects.TxTypeBalance}:                                                                                                fmt.Errorf("index:0, field:fee, error:fee is required"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "1oo"}:                                                                                    fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.0001"}:                                                                                 fmt.Errorf("index:0, field:fee, error:fee cannot be below the minimum balance transaction fee {0.0100000000000000}"),
+					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:hash, error:hash is required"),
+					&objects.Transaction{Hash: util.StrToHash("incorrect")}:                                                                                          fmt.Errorf("index:0, field:hash, error:hash is not correct"),
+					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:sig, error:signature is required"),
+					&objects.Transaction{Type: objects.TxTypeAlloc, From: util.String(sender.Addr()), To: util.String(receiver.Addr())}: fmt.Errorf("index:0, field:from, error:sender and recipient must be same address"),
 				}
 				for tx, err := range cases {
 					validator = NewTxsValidator([]core.Transaction{tx}, nil, bc, false)
@@ -56,8 +56,8 @@ var TransactionValidatorTest = func() bool {
 			It("should check if transaction exists in the txpool supplied", func() {
 				sender := crypto.NewKeyFromIntSeed(1)
 				receiver := crypto.NewKeyFromIntSeed(1)
-				tx := &wire.Transaction{
-					Type:         wire.TxTypeBalance,
+				tx := &objects.Transaction{
+					Type:         objects.TxTypeBalance,
 					Nonce:        1,
 					To:           util.String(sender.Addr()),
 					From:         util.String(receiver.Addr()),
@@ -69,7 +69,7 @@ var TransactionValidatorTest = func() bool {
 					Sig:          []byte("invalid"),
 				}
 				tx.Hash = tx.ComputeHash()
-				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 
@@ -111,7 +111,7 @@ var TransactionValidatorTest = func() bool {
 			})
 
 			It("should return err if sender pub key is invalid", func() {
-				tx := &wire.Transaction{SenderPubKey: "incorrect"}
+				tx := &objects.Transaction{SenderPubKey: "incorrect"}
 				validator := NewTxsValidator(nil, nil, bc, false)
 				errs := validator.checkSignature(tx)
 				Expect(errs).To(HaveLen(1))
@@ -119,8 +119,8 @@ var TransactionValidatorTest = func() bool {
 			})
 
 			It("should return err if signature is not correct", func() {
-				tx := &wire.Transaction{
-					Type:         wire.TxTypeBalance,
+				tx := &objects.Transaction{
+					Type:         objects.TxTypeBalance,
 					Nonce:        1,
 					To:           util.String(receiver.Addr()),
 					From:         util.String(sender.Addr()),
@@ -138,8 +138,8 @@ var TransactionValidatorTest = func() bool {
 			})
 
 			It("should return no error if signature is correct", func() {
-				tx := &wire.Transaction{
-					Type:         wire.TxTypeBalance,
+				tx := &objects.Transaction{
+					Type:         objects.TxTypeBalance,
 					Nonce:        1,
 					To:           util.String(receiver.Addr()),
 					From:         util.String(sender.Addr()),
@@ -149,7 +149,7 @@ var TransactionValidatorTest = func() bool {
 					Fee:          "0.1",
 				}
 				tx.Hash = tx.ComputeHash()
-				sig, err := wire.TxSign(tx, sender.PrivKey().Base58())
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 

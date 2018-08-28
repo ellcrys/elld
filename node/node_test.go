@@ -15,6 +15,18 @@ import (
 
 func NodeTest() bool {
 	return Describe("Node", func() {
+
+		var n *Node
+
+		BeforeEach(func() {
+			n, err = NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			closeNode(n)
+		})
+
 		Describe(".NewNode", func() {
 			Context("address", func() {
 				It("return err.Error('failed to parse address. Expects 'ip:port' format') when only port is provided", func() {
@@ -54,10 +66,9 @@ func NodeTest() bool {
 			})
 
 			It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				Expect(n.ID().Pretty()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
@@ -68,10 +79,8 @@ func NodeTest() bool {
 			})
 
 			It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				Expect(n.StringID()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
@@ -82,19 +91,15 @@ func NodeTest() bool {
 			})
 
 			It("should return '12D3KooWL3XJ..JiXkSj7333Jw'", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				Expect(n.ShortID()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
 		Describe(".PrivKey", func() {
 			It("should return private key", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				Expect(n.PrivKey()).NotTo(BeNil())
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
@@ -105,26 +110,20 @@ func NodeTest() bool {
 			})
 
 			It("should return '/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				Expect(n.GetMultiAddr()).To(Equal("/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
 		Describe(".GetAddr", func() {
 			It("should return '127.0.0.1:40000'", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				Expect(n.GetAddr()).To(Equal("127.0.0.1:40000"))
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
 		Describe(".NodeFromAddr", func() {
 			It("should return error if address is not valid", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				_, err = n.NodeFromAddr("/invalid", false)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("invalid address provided"))
@@ -133,22 +132,19 @@ func NodeTest() bool {
 
 		Describe(".IsBadTimestamp", func() {
 			It("should return false when time is zero", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				n.Timestamp = time.Time{}
+				n.SetTimestamp(time.Time{})
 				Expect(err).To(BeNil())
 				Expect(n.IsBadTimestamp()).To(BeTrue())
 			})
 
 			It("should return false when time 10 minutes, 1 second in the future", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				n.Timestamp = time.Now().Add(10*time.Minute + 1*time.Second)
+				n.SetTimestamp(time.Now().Add(10*time.Minute + 1*time.Second))
 				Expect(err).To(BeNil())
 				Expect(n.IsBadTimestamp()).To(BeTrue())
 			})
 
 			It("should return false when time 3 hours, 1 second in the past", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				n.Timestamp = time.Now().Add(-3 * time.Hour)
+				n.SetTimestamp(time.Now().Add(-3 * time.Hour))
 				Expect(err).To(BeNil())
 				Expect(n.IsBadTimestamp()).To(BeTrue())
 			})
@@ -156,43 +152,35 @@ func NodeTest() bool {
 
 		Describe(".GetIP4TCPAddr", func() {
 			It("should return '/ip4/127.0.0.1/tcp/40000'", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
 				Expect(n.GetIP4TCPAddr().String()).To(Equal("/ip4/127.0.0.1/tcp/40000"))
-				n.Host().Close()
+				closeNode(n)
 			})
 		})
 
 		Describe(".AddBootstrapNodes", func() {
 			Context("with empty address", func() {
 				It("peer manager's bootstrap list should be empty", func() {
-					n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-					Expect(err).To(BeNil())
 					n.AddBootstrapNodes(nil, false)
 					Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
-					n.Host().Close()
+					closeNode(n)
 				})
 			})
 
 			Context("with invalid address", func() {
 				It("peer manager's bootstrap list should not contain invalid address", func() {
-					n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-					Expect(err).To(BeNil())
 					n.AddBootstrapNodes([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
 					Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
-					n.Host().Close()
+					closeNode(n)
 				})
 
 				It("peer manager's bootstrap list contain only one valid address", func() {
-					n, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-					Expect(err).To(BeNil())
 					n.AddBootstrapNodes([]string{
 						"/ip4/127.0.0.1/tcp/40000",
 						"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
 					}, false)
 					Expect(n.PM().GetBootstrapNodes()).To(HaveLen(1))
 					Expect(n.PM().GetBootstrapPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).To(BeAssignableToTypeOf(&Node{}))
-					n.Host().Close()
+					closeNode(n)
 				})
 			})
 		})
@@ -242,10 +230,6 @@ func NodeTest() bool {
 				host2.Close()
 				host3.Close()
 			})
-
-			Context("without ignore list", func() {
-
-			})
 		})
 
 		Describe(".Connected", func() {
@@ -273,15 +257,13 @@ func NodeTest() bool {
 			})
 
 			AfterEach(func() {
-				n.host.Close()
-				n2.host.Close()
+				closeNode(n)
+				closeNode(n2)
 			})
 		})
 
 		Describe(".ip", func() {
 			It("should return ip as 127.0.0.1", func() {
-				n, err := NewNode(cfg, "127.0.0.1:40106", crypto.NewKeyFromIntSeed(6), log)
-				Expect(err).To(BeNil())
 				ip := n.ip()
 				Expect(ip).ToNot(BeNil())
 				Expect(ip.String()).To(Equal("127.0.0.1"))

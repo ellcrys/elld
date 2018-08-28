@@ -6,10 +6,10 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/miner/blakimoto"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -32,7 +32,7 @@ var MinerTest = func() bool {
 		Describe(".getProposedBlock", func() {
 			It("should get a block", func() {
 				b, err := miner.getProposedBlock([]core.Transaction{
-					wire.NewTx(wire.TxTypeBalance, int64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
+					objects.NewTx(objects.TxTypeBalance, int64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
 				})
 				Expect(err).To(BeNil())
 				Expect(b).ToNot(BeNil())
