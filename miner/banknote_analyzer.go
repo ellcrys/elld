@@ -1,264 +1,248 @@
 package miner
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/k0kubun/pp"
+
+	"gopkg.in/asaskevich/govalidator.v4"
+
+	"github.com/ellcrys/elld/util"
+
+	"github.com/shopspring/decimal"
+
+	"github.com/franela/goreq"
 
 	"github.com/ellcrys/elld/config"
 
-	"github.com/dustin/go-humanize"
-
-	tf "github.com/tensorflow/tensorflow/tensorflow/go"
-	"github.com/tensorflow/tensorflow/tensorflow/go/op"
+	"image"
+	_ "image/jpeg"
+	_ "image/png"
 
 	"github.com/ellcrys/elld/util/logger"
+	tf "github.com/tensorflow/tensorflow/tensorflow/go"
+	"github.com/tensorflow/tensorflow/tensorflow/go/op"
+)
+
+const (
+	// TrainDataDirName refers to the name of the directory
+	// where training models and other data are stored
+	TrainDataDirName = "traindata"
+
+	// TrainModelDirName is the actual directory
+	// within the training data directory containing the
+	// tensorflow model
+	TrainModelDirName = "models"
+)
+
+var (
+	// DefaultTrainModelFetchURI is the remote location
+	// to download the banknote training model
+	DefaultTrainModelFetchURI = "https://storage.googleapis.com/krogan/sample_train_file.model"
 )
 
 // BankNote hold informations about the banknote Scanned
 type BankNote struct {
-	currencyName        string `json:"currencyName"`
-	countryName         string `json:"country"`
-	denominationFigures string `json:"denominationFigures"`
-	denominationText    string `json:"denominationText"`
-	shortName           string `json:"shortName"`
+	currencyCode string
+	denomination string
 }
 
-// Name returns the currency name in string
-func (b *BankNote) Name() string {
-	return b.currencyName
+// Denomination gets the denomination
+func (b *BankNote) Denomination() string {
+	return b.denomination
 }
 
-// Country return the country of the currency
-func (b *BankNote) Country() string {
-	return b.countryName
+// Code gets the currency code
+func (b *BankNote) Code() string {
+	return b.currencyCode
 }
 
-// Figure retrn the integer value of the currency scanned
-func (b *BankNote) Figure() string {
-	return b.denominationText
+// ProgressLogger calculates download
+// progress and logs it
+type ProgressLogger struct {
+	log             logger.Logger
+	ContentSize     int64
+	TotalDownloaded int64
+	reads           int64
 }
 
-// Text return the currency in word
-func (b *BankNote) Text() string {
-	return b.denominationText
+// newProgressLogger creates an instance of ProgressLogger
+func newProgressLogger(log logger.Logger, contentSize int64) *ProgressLogger {
+	return &ProgressLogger{log: log, ContentSize: contentSize}
 }
 
-//Shortname returns the shortname of the currency
-func (b *BankNote) Shortname() string {
-	return b.shortName
-}
-
-// WriteCounter counts the number of bytes written to it. It implements to the io.Writer
-// interface and we can pass this into io.TeeReader() which will report progress on each
-// write cycle.
-type WriteCounter struct {
-	Total uint64
-}
-
-func (wc *WriteCounter) Write(p []byte) (int, error) {
-
+// Write is where the calculation is done and logged
+func (pc *ProgressLogger) Write(p []byte) (int, error) {
 	n := len(p)
-	wc.Total += uint64(n)
-	wc.PrintProgress()
+	pc.TotalDownloaded += int64(n)
+	pc.reads++
+
+	// We shouldn't do this all the time. Print long every 2^X reads
+	if (pc.reads % (1 << 10)) == 0 {
+		pct := decimal.NewFromFloat(float64(100) * (float64(pc.TotalDownloaded) / float64(pc.ContentSize)))
+		pc.log.Info("Training model download progress", "Percent", pct.Round(1))
+		fmt.Println(pct)
+	} else {
+		if pc.TotalDownloaded == pc.ContentSize {
+			pc.log.Info("Training model download progress", "Percent", 100)
+		}
+	}
+
 	return n, nil
 }
 
-// PrintProgress of the downloader
-func (wc *WriteCounter) PrintProgress() {
+// BanknoteAnalyzer defines functionalities for
+// performing operations to detect and determine
+// features of national currencies.
+type BanknoteAnalyzer struct {
 
-	dlog := logger.NewLogrus()
+	// log is the default logger
+	log logger.Logger
 
-	// Clear the line by using a character return to go back to the start and remove
-	// the remaining characters by filling it with spaces
-	data := fmt.Sprintf("\r%s", strings.Repeat(" ", 35))
-	dlog.Debug(data)
+	// cfg is engine configuration
+	cfg *config.EngineConfig
 
-	// We use the humanize package to print the bytes in a meaningful way (e.g. 10 MB)
-	data2 := fmt.Sprintf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
-	dlog.Debug(data2)
+	// trainingModelURI is the user-defined file path or
+	// url of the training model to fetch.
+	trainingModelURI string
+
+	// forceFetch when set to true forces
+	// the analyzer to fetch the training model.
+	forceFetch bool
+
+	// fetched indicates the model was successfully
+	// fetched.
+	fetched bool
 }
 
-// Analyzer contains methods and properties
-// that predict notes from image and bytes
-type Analyzer struct {
-	trainFilePath      string
-	elldConfigDir      string
-	log                logger.Logger
-	trainDataDirName   string
-	mintDir            string
-	kerasGoPath        string
-	trainDataName      string
-	trainDataExtension string
-	ellFilePath        string
-	ellRemoteURL       string
-}
-
-// NewAnalyzer initialized the Analyzer struct
-// and set default values for others fields
-func NewAnalyzer(trainFilePath string, cfg *config.EngineConfig, log logger.Logger) *Analyzer {
-
-	var (
-		trainDataDirName   = "train_data"
-		elldConfigDir      = cfg.ConfigDir()
-		mintDir            = elldConfigDir + "/trainDir"
-		kerasGoPath        = mintDir + "/forGo2"
-		trainDataName      = "trainfile"
-		trainDataExtension = ".ell"
-		ellFilePath        = elldConfigDir + "/" + trainDataName + trainDataExtension
-		ellRemoteURL       = "http://192.168.4.103/train_file.ell"
-	)
-
-	return &Analyzer{
-		trainFilePath:      trainFilePath,
-		elldConfigDir:      elldConfigDir,
-		log:                log,
-		trainDataDirName:   trainDataDirName,
-		mintDir:            mintDir,
-		kerasGoPath:        kerasGoPath,
-		trainDataName:      trainDataName,
-		trainDataExtension: trainDataExtension,
-		ellFilePath:        ellFilePath,
-		ellRemoteURL:       ellRemoteURL,
+// NewBanknoteAnalyzer creates an instance of BanknoteAnalyzer
+func NewBanknoteAnalyzer(cfg *config.EngineConfig, log logger.Logger) *BanknoteAnalyzer {
+	return &BanknoteAnalyzer{
+		log: log,
+		cfg: cfg,
 	}
 }
 
-// Prepare prepares the training ell to be used
-func (a *Analyzer) Prepare() error {
+// ForceFetch sets forces the training
+// model to be re-fetched
+func (a *BanknoteAnalyzer) ForceFetch() {
+	a.forceFetch = true
+}
 
-	//check if elld_directy exist, if not then create it
-	if _, err := os.Stat(a.elldConfigDir); os.IsNotExist(err) {
-		if err = os.Mkdir(a.elldConfigDir, 0777); err != nil {
-			return fmt.Errorf("failed ")
+// SetTrainingModelURI sets the URI to fetch the training model from.
+func (a *BanknoteAnalyzer) SetTrainingModelURI(uri string) error {
+	isFilePath, _ := govalidator.IsFilePath(uri)
+	if !isFilePath && !govalidator.IsURL(uri) {
+		return fmt.Errorf("invalid uri: expected a path or a URL")
+	}
+	if isFilePath {
+		if _, err := os.Stat(uri); os.IsNotExist(err) {
+			return fmt.Errorf("invalid uri: file path does not exist")
 		}
 	}
+	a.trainingModelURI = uri
+	return nil
+}
 
-	_, err := os.Stat(a.ellFilePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			a.log.Error("File not found in elld config Dir, Checking if user supplied one via flag")
-		} else {
-			return fmt.Errorf("failed to read train dataset: %s", err)
-		}
-	} else {
+// Prepare prepares the training model for use.
+// If the training model does not exists on the
+// local machine, it will fetch it.
+func (a *BanknoteAnalyzer) Prepare() error {
+
+	var notFound = false
+	var fetchURI = DefaultTrainModelFetchURI
+	a.fetched = false
+
+	// If the user specified a training model fetch
+	// URI, then we set fetchURI to it.
+	if len(a.trainingModelURI) != 0 {
+		fetchURI = a.trainingModelURI
+	}
+
+	// Check whether the training data directory exists
+	// at the expected path. If it doesn't, we must fetch it.
+	trainingDataPath := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName)
+	if _, err := os.Stat(trainingDataPath); os.IsNotExist(err) {
+		notFound = true
+	}
+
+	// If the training model exists and
+	// force fetch is not enabled, we return
+	if !notFound && !a.forceFetch {
 		return nil
 	}
 
-	//check if user supplied it during initialization
-	if a.trainFilePath != "" {
-
-		a.log.Info("User supplied train file to be used")
-
-		// check if path is a url
-		if isValidUrl(a.trainFilePath) == true {
-
-			err := a.downloadEllToPath(a.elldConfigDir, a.trainFilePath)
-			if err != nil {
-				a.log.Error("Error Downloading TrainData from supplied link", "Error", err)
-				return (err)
-			}
-
-			// unzip immedialy after downloading from the link user supplied
-			err = unzip(a.ellFilePath, a.mintDir)
-			if err != nil {
-				a.log.Error("Cannot unzip supplied Train link", "Error", err)
-				return err
-			}
-
-			return nil
-		}
-
-		err := unzip(a.trainFilePath, a.mintDir)
-		if err != nil {
-			a.log.Error("Cannot unzip supplied Train file", "Error", err)
-			return err
-		}
-
-		return nil
+	// If URI is a file path, fetch from file
+	if ok, _ := govalidator.IsFilePath(fetchURI); ok {
+		return a.fetchLocalModel(fetchURI)
 	}
 
-	// If user did not supply ithe training file, then
-	// download the ell file and save it to the config dir
-	err = a.downloadEllToPath(a.elldConfigDir, a.ellRemoteURL)
-	if err != nil {
-		a.log.Error("Error Downloading TrainData from remote URL", "Error", err)
-		return (err)
+	// if URI is a remote URL, fetch from URL
+	if err := a.fetchRemoteModel(fetchURI); err != nil {
+		return err
 	}
 
-	a.log.Info("Download Finished")
-
-	err = unzip(a.ellFilePath, a.mintDir)
-	if err != nil {
-		a.log.Error("Error unzipping TrainData to configDir", "Error", err)
-		return (err)
-	}
-
-	a.log.Info("Extraction Done")
+	a.fetched = true
 
 	return nil
 }
 
-// Predict accept imagepath as string
-// then return  BankNote, error
-func (a *Analyzer) Predict(imagePath string) (*BankNote, error) {
+// Predict is like PredictBytes except it accepts an image path
+func (a *BanknoteAnalyzer) Predict(imagePath string) (*BankNote, error) {
 
-	imageFile, err := os.Open(imagePath)
+	img, err := os.Open(imagePath)
 	if err != nil {
-		a.log.Error("Unable to open image from path", "Error", err)
+		return nil, fmt.Errorf("failed to open image: %s", err)
+	}
+	defer img.Close()
+
+	var buf bytes.Buffer
+	io.Copy(&buf, img)
+
+	return a.PredictBytes(&buf)
+}
+
+// PredictBytes accept a given buffer representing
+// an image and attempts to perform banknote predictions
+func (a *BanknoteAnalyzer) PredictBytes(img *bytes.Buffer) (*BankNote, error) {
+
+	_, format, err := image.DecodeConfig(bytes.NewReader(img.Bytes()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode image: %s", err)
+	}
+
+	tfImg, err := imageToTensor(img, format)
+	if err != nil {
 		return nil, err
 	}
-	var imgBuffer bytes.Buffer
-	io.Copy(&imgBuffer, imageFile)
-	img, err := readImage(&imgBuffer, "png")
-	if err != nil {
-		a.log.Error("Error making a tensor from image", "Error", err)
-		return nil, err
-	}
 
-	res, er := a.mintLoader(img)
-	if er != nil {
+	res, err := a.predict(tfImg)
+	if err != nil {
 		return nil, err
 	}
 
 	return res, nil
 }
 
-// PredictBytes accept byte as input
-// then return  BankNote, error
-func (a *Analyzer) PredictBytes(imgByte []byte) (*BankNote, error) {
+// predict accepts a tensor, predicts and outputs
+// a Banknote object.
+func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 
-	var imgBuffer bytes.Buffer
-	imgBuffer.Write(imgByte)
-	img, err := readImage(&imgBuffer, "png")
+	// Load the model
+	modelRootDir := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName, TrainModelDirName)
+	model, err := tf.LoadSavedModel(modelRootDir, []string{"tags"}, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	res, er := a.mintLoader(img)
-	if er != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-// mintLoader accepts a tensor and output Banknote
-func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
-
-	model, err := tf.LoadSavedModel(a.kerasGoPath, []string{"tags"}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	result, err := model.Session.Run(
+	// Run the graph with the associated session
+	tensors, err := model.Session.Run(
 		map[tf.Output]*tf.Tensor{
 			model.Graph.Operation("inputNode_input").Output(0): img,
 		},
@@ -267,148 +251,137 @@ func (a *Analyzer) mintLoader(img *tf.Tensor) (*BankNote, error) {
 		},
 		nil,
 	)
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to run graph: %s", err)
 	}
 
-	// get the one hot encoding result
-	if preds, ok := result[0].Value().([][]float32); ok {
+	if tensors == nil || len(tensors) == 0 {
+		return nil, nil
+	}
+	predictions := tensors[0].Value().([][]float32)
+	resultData := predictions[0]
 
-		resultData := preds[0]
+	// Merge one hot encoder to construct
+	// a key that we can use to extract the result object
+	// from the manifest.
+	var resultKey string
+	for _, element := range resultData {
+		s := fmt.Sprintf("%d", int(element))
+		resultKey = resultKey + s
+	}
 
-		//merge one hot encoder result to string
-		stringData := ""
-		for _, element := range resultData {
-			s := fmt.Sprintf("%v", element)
-			stringData = stringData + s
-		}
+	// load the result json file
+	manifestPath := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName, "manifest.json")
+	file, err := ioutil.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load manifest file: %s", err)
+	}
 
-		//load the result json file
-		file, e := ioutil.ReadFile(a.mintDir + "/result.json")
-		if e != nil {
-			a.log.Error("file error", "Error", e)
-			return nil, e
-		}
+	// Decode the manifest content
+	var manifest map[string]interface{}
+	err = json.Unmarshal(file, &manifest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode manifest file: %s", err)
+	}
 
-		var dataSource = map[string]map[string]string{}
-
-		err := json.Unmarshal(file, &dataSource)
-		if err != nil {
-			a.log.Error("file error", "Error", err)
-			return nil, err
-		}
-
-		treeData := dataSource[stringData]
-
-		bnote := BankNote{
-			currencyName:        treeData["currencyName"],
-			countryName:         treeData["country"],
-			denominationFigures: treeData["denominationFigures"],
-			denominationText:    treeData["denominationText"],
-			shortName:           treeData["shortName"],
-		}
-
-		return &bnote, nil
+	var cMap = manifest["currencies"].(map[string]interface{})
+	if result, ok := cMap[resultKey]; ok {
+		return &BankNote{
+			currencyCode: result.(map[string]interface{})["currencyCode"].(string),
+			denomination: result.(map[string]interface{})["denomination"].(string),
+		}, nil
 	}
 
 	return nil, nil
 }
 
-// downloadEllToPath will download a url to a local file. It's efficient because it will
-// write as it downloads and not load the whole file into memory. We pass an io.TeeReader
-// into Copy() to report progress on the download.
-func (a *Analyzer) downloadEllToPath(filepath string, url string) error {
+// fetchLocalModel fetches the training model from a
+// local path and saves it to a target directory.
+// It will overwrite existing train model.
+//
+// Expects the caller to have validated the path.
+func (a *BanknoteAnalyzer) fetchLocalModel(path string) error {
 
-	// Create the file, but give it a tmp file extension, this means we won't overwrite a
-	// file until it's downloaded, but we'll remove the tmp extension once downloaded.
-	out, err := os.Create(filepath + "/" + a.trainDataName + ".tmp")
+	// decompress the model
+	mr, _ := os.Open(path)
+	defer mr.Close()
+	root, err := util.Untar(a.cfg.ConfigDir(), mr)
 	if err != nil {
-		a.log.Error("Unable to create a temporary file for downloader", "Error", err)
-		return err
-	}
-	defer out.Close()
-
-	resp, err := http.Get(url)
-	if err != nil {
-		a.log.Error("Unable to get response from the http(ellUrl)", "Error", err)
-		return err
-	}
-	defer resp.Body.Close()
-
-	// Create our progress reporter and pass it to be used alongside our writer
-	counter := &WriteCounter{}
-	_, err = io.Copy(out, io.TeeReader(resp.Body, counter))
-	if err != nil {
-		return err
+		return fmt.Errorf("failed to decompress model: %s", err)
 	}
 
-	err = os.Rename(filepath+"/"+a.trainDataName+".tmp", filepath+"/"+a.trainDataName+a.trainDataExtension)
-	if err != nil {
-		a.log.Error("Unable to rename downloaded file to actual name", "Error", err)
-		return err
+	// Rename the root directory after decompression to
+	// something we will recognize. Remove any previous
+	// directory with matching name.
+	newRootPath := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName)
+	if _, err := os.Stat(newRootPath); err == nil {
+		if err := os.RemoveAll(newRootPath); err != nil {
+			return fmt.Errorf("failed to remove train data directory: %s", err)
+		}
 	}
-
-	//verify if ell is truely downloaded to the config dir path
-	_, err = os.Stat(a.ellFilePath)
-	if err != nil {
-		a.log.Error("File did not download successfully", "Error", err)
-		return nil
+	if err = os.Rename(root, newRootPath); err != nil {
+		return fmt.Errorf("failed to rename decompress root dir: %s", err)
 	}
 
 	return nil
 }
 
-// unzip extract zip file to a target location
-func unzip(archive, target string) error {
-	reader, err := zip.OpenReader(archive)
+// fetchRemoteModel fetches the training model from a
+// remote URL and saves it to a target directory.
+// It will overwrite existing train model.
+func (a *BanknoteAnalyzer) fetchRemoteModel(url string) error {
+
+	resp, err := goreq.Request{Uri: url}.Do()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch training model: %s", err)
 	}
 
-	if err := os.MkdirAll(target, 0755); err != nil {
-		return err
+	if sc := resp.StatusCode; sc != 200 {
+		return fmt.Errorf("failed to fetch training model. HttpStatus: %d", sc)
 	}
 
-	for _, file := range reader.File {
-		path := filepath.Join(target, file.Name)
-		if file.FileInfo().IsDir() {
-			os.MkdirAll(path, file.Mode())
-			continue
-		}
+	tmpFile, err := ioutil.TempFile("", util.RandString(10))
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %s", err)
+	}
+	defer tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
 
-		fileReader, err := file.Open()
-		if err != nil {
-			return err
-		}
-		defer fileReader.Close()
+	// Read the response content into the tmp file.
+	// Create our progress reporter and pass it to
+	// be used alongside our writer
+	progressChecker := newProgressLogger(a.log, resp.ContentLength)
+	_, err = io.Copy(tmpFile, io.TeeReader(resp.Body, progressChecker))
+	if err != nil {
+		return fmt.Errorf("failed to read response to tmp file: %s", err)
+	}
 
-		targetFile, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
-		if err != nil {
-			return err
-		}
-		defer targetFile.Close()
+	// Uncompress the archive and return the root
+	tmpFile.Seek(0, 0)
+	root, err := util.Untar(a.cfg.ConfigDir(), tmpFile)
+	if err != nil {
+		return fmt.Errorf("failed to decompress model: %s", err)
+	}
 
-		if _, err := io.Copy(targetFile, fileReader); err != nil {
-			return err
+	// Rename the root directory after decompression to
+	// something we will recognize. Remove any previous
+	// directory with matching name.
+	newRootPath := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName)
+	if _, err := os.Stat(newRootPath); err == nil {
+		if err := os.RemoveAll(newRootPath); err != nil {
+			return fmt.Errorf("failed to remove train data directory: %s", err)
 		}
+	}
+	if err = os.Rename(root, newRootPath); err != nil {
+		return fmt.Errorf("failed to rename decompress root dir: %s", err)
 	}
 
 	return nil
 }
 
-// isValidUrl tests a string to determine if it is a valid url or not.
-func isValidUrl(toTest string) bool {
-	_, err := url.ParseRequestURI(toTest)
-	if err != nil {
-		return false
-	} else {
-		return true
-	}
-}
-
-// readImage takes a buffer as input then output a tensor
-func readImage(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error) {
+// imageToTensor takes an image and converts to a tensor.
+// Expect imageBuffer to include a valid image.
+func imageToTensor(imageBuffer *bytes.Buffer, imageFormat string) (*tf.Tensor, error) {
 	tensor, err := tf.NewTensor(imageBuffer.String())
 	if err != nil {
 		return nil, err

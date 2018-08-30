@@ -15,7 +15,7 @@ var _ = Describe("Database", func() {
 	var err error
 
 	BeforeEach(func() {
-		err = os.Mkdir(testCfgDir, 0700)
+		err = os.Mkdir(testCfgDir, 0755)
 		Expect(err).To(BeNil())
 	})
 

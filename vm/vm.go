@@ -53,7 +53,7 @@ func (vm *VM) Init() error {
 	}
 
 	if !util.IsPathOk(vm.containerMountDir) {
-		if err := os.MkdirAll(vm.containerMountDir, 0700); err != nil {
+		if err := os.MkdirAll(vm.containerMountDir, 0755); err != nil {
 			return fmt.Errorf("failed to create container mount directory. %s", err)
 		}
 	}

@@ -2,6 +2,8 @@ package util
 
 import (
 	"math/big"
+	"os"
+	"path/filepath"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -111,4 +113,42 @@ var _ = Describe("Common", func() {
 		})
 	})
 
+	Describe(".Untar", func() {
+
+		var dest string
+
+		BeforeEach(func() {
+			dest = filepath.Join("./testdata", "untar")
+			err := os.MkdirAll(dest, 0755)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			err := os.RemoveAll(dest)
+			Expect(err).To(BeNil())
+		})
+
+		Context("tar file with no root directory", func() {
+			It("should successfully untar and return destination as root", func() {
+				f, err := os.Open("./testdata/sample.tar")
+				Expect(err).To(BeNil())
+				defer f.Close()
+				root, err := Untar(dest, f)
+				Expect(err).To(BeNil())
+				Expect(dest).To(Equal(root))
+				_, err = os.Stat(filepath.Join(root, "sample.txt"))
+				Expect(err).To(BeNil())
+			})
+		})
+
+		It("should return root", func() {
+			f, err := os.Open("./testdata/sampledir.tar")
+			Expect(err).To(BeNil())
+			defer f.Close()
+			root, err := Untar(dest, f)
+			Expect(err).To(BeNil())
+			Expect(dest).ToNot(Equal(root))
+			Expect(root).ToNot(Equal(filepath.Join(dest, "sampledata")))
+		})
+	})
 })

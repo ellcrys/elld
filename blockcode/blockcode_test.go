@@ -116,7 +116,7 @@ var _ = Describe("Blockcode", func() {
 		It("should successfully un-tar to destination", func() {
 
 			destination := "/tmp/blockcode_example_untar"
-			err := os.Mkdir(destination, 0700)
+			err := os.Mkdir(destination, 0755)
 			Expect(err).To(BeNil())
 			defer os.RemoveAll(destination)
 

@@ -2,7 +2,12 @@ package miner
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"sync"
 	"testing"
+
+	"github.com/phayes/freeport"
 
 	"github.com/olebedev/emitter"
 
@@ -33,12 +38,15 @@ var genesisBlock *wire.Block
 var txPool *txpool.TxPool
 var sender, receiver *crypto.Key
 var event *emitter.Emitter
+var server *testServer
 
 func TestBlockchain(t *testing.T) {
-	log = logger.NewLogrus()
-	log.SetToDebug()
+	log = logger.NewLogrusNoOp()
+	server = &testServer{}
+	go server.startFileServer()
+	os.Setenv("TF_CPP_MIN_LOG_LEVEL", "3")
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Blockchain Suite")
+	RunSpecs(t, "Miner Suite")
 }
 
 func MakeTestBlock(bc core.BlockMaker, chain *blockchain.Chain, gp *core.GenerateBlockParams) core.Block {
@@ -49,7 +57,27 @@ func MakeTestBlock(bc core.BlockMaker, chain *blockchain.Chain, gp *core.Generat
 	return blk
 }
 
-var _ = Describe("Blockchain", func() {
+type testServer struct {
+	sync.RWMutex
+	Address string
+}
+
+func (s *testServer) startFileServer() {
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir("./testdata")))
+	s.Lock()
+	s.Address = fmt.Sprintf("127.0.0.1:%d", freeport.GetPort())
+	s.Unlock()
+	http.ListenAndServe(s.Address, mux)
+}
+
+func (s *testServer) address() string {
+	s.RLock()
+	s.RUnlock()
+	return s.Address
+}
+
+var _ = Describe("Miner", func() {
 
 	BeforeEach(func() {
 		var err error
@@ -62,6 +90,10 @@ var _ = Describe("Blockchain", func() {
 		db = elldb.NewDB(cfg.ConfigDir())
 		err = db.Open("")
 		Expect(err).To(BeNil())
+	})
+
+	BeforeEach(func() {
+
 	})
 
 	// Initialize the default test transaction pool
@@ -96,7 +128,7 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	var tests = []func() bool{
-		MinerTest,
+		// MinerTest,
 		BanknoteAnalyzerTest,
 	}
 
