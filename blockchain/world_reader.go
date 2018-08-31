@@ -108,7 +108,7 @@ minerMode:
 		// Add a QueryBlockRange containing the max chain height
 		// to the call options slice.
 		if maxChainHeight > 0 {
-			optsCopy = append(optsCopy, &common.QueryBlockRange{Max: maxChainHeight})
+			optsCopy = append(optsCopy, &common.BlockQueryRange{Max: maxChainHeight})
 		}
 
 		result, err = ch.GetAccount(address, optsCopy...)

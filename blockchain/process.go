@@ -243,15 +243,12 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops
 	return stateObjs, nil
 }
 
-// processTransactions computes the operations that must be applied to the
-// hash tree and world state.
-func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+// ProcessTransactions computes the state transition operations
+// for each transactions that must be applied to the state tree
+// and world state
+func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
 
-	var ops []common.Transition
-
-	// here we will process each transaction and attempt
-	// to decide what should happen to the chain state by
-	// producing transition objects.
+	var ops = common.GetTransitions(opts...)
 	for i, tx := range txs {
 		var err error
 		var newOps []common.Transition
@@ -259,6 +256,7 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 		switch tx.GetType() {
 		case objects.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
+
 		case objects.TxTypeAlloc:
 			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
@@ -520,7 +518,7 @@ func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...cor
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
-	ops, err := b.processTransactions(block.GetTransactions(), chain, opts...)
+	ops, err := b.ProcessTransactions(block.GetTransactions(), chain, opts...)
 	if err != nil {
 		return util.EmptyHash, nil, fmt.Errorf("transaction error: %s", err)
 	}

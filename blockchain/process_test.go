@@ -73,7 +73,7 @@ var ProcessTest = func() bool {
 					},
 				}
 
-				_, err := bc.processTransactions(txs, genesisChain)
+				_, err := bc.ProcessTransactions(txs, genesisChain)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("index{0}: failed to get sender's account: account not found"))
 			})
@@ -87,7 +87,7 @@ var ProcessTest = func() bool {
 					},
 				}
 
-				_, err := bc.processTransactions(txs, genesisChain)
+				_, err := bc.ProcessTransactions(txs, genesisChain)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("index{0}: insufficient sender account balance"))
 			})
@@ -101,7 +101,7 @@ var ProcessTest = func() bool {
 					},
 				}
 				Expect(func() {
-					bc.processTransactions(txs, genesisChain)
+					bc.ProcessTransactions(txs, genesisChain)
 				}).To(Panic())
 			})
 
@@ -117,7 +117,7 @@ var ProcessTest = func() bool {
 						},
 					}
 
-					ops, err := bc.processTransactions(txs, genesisChain)
+					ops, err := bc.ProcessTransactions(txs, genesisChain)
 					Expect(err).To(BeNil())
 					Expect(ops).To(HaveLen(3))
 
@@ -154,7 +154,7 @@ var ProcessTest = func() bool {
 						},
 					}
 
-					ops, err := bc.processTransactions(txs, genesisChain)
+					ops, err := bc.ProcessTransactions(txs, genesisChain)
 					Expect(err).To(BeNil())
 					Expect(ops).To(HaveLen(2))
 
@@ -194,7 +194,7 @@ var ProcessTest = func() bool {
 							},
 						}
 
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(2))
 
@@ -224,7 +224,7 @@ var ProcessTest = func() bool {
 							},
 						}
 
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(3))
 
@@ -255,7 +255,7 @@ var ProcessTest = func() bool {
 							},
 						}
 
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(1))
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
@@ -280,7 +280,7 @@ var ProcessTest = func() bool {
 								Hash: util.Hash{},
 							},
 						}
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(1))
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
