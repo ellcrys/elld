@@ -8,6 +8,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -17,6 +18,7 @@ type TxPool interface {
 	SetEventEmitter(ee *emitter.Emitter)
 	Put(tx core.Transaction) error
 	Has(tx core.Transaction) bool
+	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
 }
 
 // Engine represents node functionalities not provided by the

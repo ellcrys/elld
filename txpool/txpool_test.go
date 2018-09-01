@@ -15,16 +15,16 @@ var _ = Describe("TxPool", func() {
 
 	Describe(".Put", func() {
 		It("should return err = 'capacity reached' when txpool capacity is reached", func() {
-			tp := NewTxPool(0)
+			tp := New(0)
 			a, _ := crypto.NewKey(nil)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("capacity reached"))
+			Expect(err).To(Equal(ErrQueueFull))
 		})
 
-		It("should return err = 'exact transaction already in pool' when transaction has already been added", func() {
-			tp := NewTxPool(10)
+		It("should return err = 'exact transaction already in the pool' when transaction has already been added", func() {
+			tp := New(10)
 			a, _ := crypto.NewKey(nil)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := objects.TxSign(tx, a.PrivKey().Base58())
@@ -32,11 +32,11 @@ var _ = Describe("TxPool", func() {
 			err := tp.Put(tx)
 			Expect(err).To(BeNil())
 			err = tp.Put(tx)
-			Expect(err.Error()).To(Equal("exact transaction already in pool"))
+			Expect(err).To(Equal(ErrTxAlreadyAdded))
 		})
 
 		It("should return err = 'unknown transaction type' when tx type is unknown", func() {
-			tp := NewTxPool(1)
+			tp := New(1)
 			a, _ := crypto.NewKey(nil)
 			tx := objects.NewTransaction(10200, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := objects.TxSign(tx, a.PrivKey().Base58())
@@ -47,7 +47,7 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should return nil and added to queue", func() {
-			tp := NewTxPool(1)
+			tp := New(1)
 			a, _ := crypto.NewKey(nil)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := objects.TxSign(tx, a.PrivKey().Base58())
@@ -58,7 +58,7 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should emit core.EventNewTransaction", func() {
-			tp := NewTxPool(1)
+			tp := New(1)
 			a, _ := crypto.NewKey(nil)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			go func() {
@@ -74,33 +74,22 @@ var _ = Describe("TxPool", func() {
 		})
 	})
 
-	Describe(".Has", func() {
-		It("should return true when transaction is not in the queue", func() {
-			tp := NewTxPool(1)
-			a, _ := crypto.NewKey(nil)
-			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
-			sig, _ := objects.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = sig
-			err := tp.Put(tx)
-			Expect(err).To(BeNil())
-			Expect(tp.queue.Size()).To(Equal(int64(1)))
+	Describe(".HasTxWithSameNonce", func() {
 
-			has := tp.Has(tx)
-			Expect(has).To(BeTrue())
+		It("should return true when a transaction with the given address and nonce exist in the pool", func() {
+			tp := New(1)
+			tx := objects.NewTransaction(objects.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tp.Put(tx)
+			result := tp.SenderHasTxWithSameNonce(tx.GetFrom(), 100)
+			Expect(result).To(BeTrue())
 		})
 
-		It("should return false when transaction is not in the queue", func() {
-			tp := NewTxPool(1)
-			a, _ := crypto.NewKey(nil)
-			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
-			sig, _ := objects.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = sig
-			err := tp.Put(tx)
-			Expect(err).To(BeNil())
-			Expect(tp.queue.Size()).To(Equal(int64(1)))
-
-			has := tp.Has(tx)
-			Expect(has).To(BeTrue())
+		It("should return false when a transaction with the given address and nonce does not exist in the pool", func() {
+			tp := New(1)
+			tx := objects.NewTransaction(objects.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tp.Put(tx)
+			result := tp.SenderHasTxWithSameNonce(tx.GetFrom(), 10)
+			Expect(result).To(BeFalse())
 		})
 	})
 })

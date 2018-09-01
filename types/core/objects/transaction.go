@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -39,7 +40,7 @@ type InvokeArgs struct {
 // Transaction represents a transaction
 type Transaction struct {
 	Type         int64       `json:"type" msgpack:"type"`
-	Nonce        int64       `json:"nonce" msgpack:"nonce"`
+	Nonce        uint64      `json:"nonce" msgpack:"nonce"`
 	To           util.String `json:"to" msgpack:"to"`
 	From         util.String `json:"from" msgpack:"from"`
 	SenderPubKey util.String `json:"senderPubKey" msgpack:"senderPubKey"`
@@ -52,7 +53,7 @@ type Transaction struct {
 }
 
 // NewTransaction creates a new transaction
-func NewTransaction(txType int64, nonce int64, to util.String, senderPubKey util.String, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
+func NewTransaction(txType int64, nonce uint64, to util.String, senderPubKey util.String, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
@@ -65,7 +66,7 @@ func NewTransaction(txType int64, nonce int64, to util.String, senderPubKey util
 }
 
 // NewTx creates a new, signed transaction
-func NewTx(txType int64, nonce int64, to util.String, senderKey *crypto.Key, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
+func NewTx(txType int64, nonce uint64, to util.String, senderKey *crypto.Key, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
@@ -95,9 +96,19 @@ func (tx *Transaction) GetSignature() []byte {
 	return tx.Sig
 }
 
+// SetSignature sets the signature
+func (tx *Transaction) SetSignature(s []byte) {
+	tx.Sig = s
+}
+
 // GetSenderPubKey gets the sender public key
 func (tx *Transaction) GetSenderPubKey() util.String {
 	return tx.SenderPubKey
+}
+
+// SetSenderPubKey sets the sender public key
+func (tx *Transaction) SetSenderPubKey(pk util.String) {
+	tx.SenderPubKey = pk
 }
 
 // GetTimestamp gets the timestamp
@@ -106,7 +117,7 @@ func (tx *Transaction) GetTimestamp() int64 {
 }
 
 // GetNonce gets the nonce
-func (tx *Transaction) GetNonce() int64 {
+func (tx *Transaction) GetNonce() uint64 {
 	return tx.Nonce
 }
 
@@ -133,6 +144,11 @@ func (tx *Transaction) GetFrom() util.String {
 // GetHash returns the hash of tx
 func (tx *Transaction) GetHash() util.Hash {
 	return tx.Hash
+}
+
+// SetHash sets the hash
+func (tx *Transaction) SetHash(h util.Hash) {
+	tx.Hash = h
 }
 
 // GetType gets the transaction type
@@ -215,7 +231,7 @@ func TxVerify(tx *Transaction) error {
 
 // TxSign signs a transaction.
 // Expects private key in base58Check encoding
-func TxSign(tx *Transaction, privKey string) ([]byte, error) {
+func TxSign(tx core.Transaction, privKey string) ([]byte, error) {
 
 	if tx == nil {
 		return nil, fmt.Errorf("nil tx")

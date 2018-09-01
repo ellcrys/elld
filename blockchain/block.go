@@ -57,7 +57,7 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 // as a CallOp.
 func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.CallOp) (core.Block, error) {
 
-	var chain *Chain
+	var chain core.Chainer
 	var block *objects.Block
 
 	if params == nil {
@@ -72,15 +72,12 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// Determine if an explicit chain is to be used as
 	// opposed to the main chain.
-	for _, opt := range opts {
-		if _opt, ok := opt.(ChainOp); ok {
-			chain = _opt.Chain
-			break
-		}
-	}
+	chainerOp := common.GetChainerOp(opts...)
+	chain = chainerOp.Chain
+
 	// If an explicit chain has not been set, we use
 	// the main chain
-	if chain == nil {
+	if chain == nil && b.bestChain != nil {
 		chain = b.bestChain
 	}
 
@@ -187,8 +184,10 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// Finally, validate the block to ensure it meets every
 	// requirement for a valid block.
-	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
-	if errs := bv.Validate(); len(errs) > 0 {
+	bv := b.createBlockValidator(block)
+	errs := bv.checkFields()
+	errs = append(errs, bv.checkTransactions(&common.ChainerOp{Chain: chain})...)
+	if len(errs) > 0 {
 		return nil, fmt.Errorf("failed final validation: %s", errs[0])
 	}
 

@@ -34,7 +34,6 @@ type Block struct {
 
 // Header represents the header of a block
 type Header struct {
-	sync.RWMutex     `json:"-" msgpack:"-"`
 	Number           uint64          `json:"number" msgpack:"number"`
 	Nonce            core.BlockNonce `json:"nonce" msgpack:"nonce"`
 	Timestamp        int64           `json:"timestamp" msgpack:"timestamp"`
@@ -45,10 +44,6 @@ type Header struct {
 	Difficulty       *big.Int        `json:"difficulty" msgpack:"difficulty"`
 	TotalDifficulty  *big.Int        `json:"totalDifficulty" msgpack:"totalDifficulty"`
 	Extra            []byte          `json:"extra" msgpack:"extra"`
-
-	// Broadcaster is the peer responsible
-	// for sending this header.
-	Broadcaster types.Engine `json:"-" msgpack:"-"`
 }
 
 // GetTransactionsRoot gets the transaction root
@@ -141,23 +136,9 @@ func (h *Header) GetNumber() uint64 {
 	return h.Number
 }
 
-// SetBroadcaster sets the originator
-func (h *Header) SetBroadcaster(o types.Engine) {
-	h.Lock()
-	defer h.Unlock()
-	h.Broadcaster = o
-}
-
-// GetBroadcaster gets the originator
-func (h *Header) GetBroadcaster() types.Engine {
-	h.RLock()
-	defer h.RUnlock()
-	return h.Broadcaster
-}
-
 // Copy creates a copy of the header
 func (h *Header) Copy() core.Header {
-	newH := *h
+	var newH = *h
 	if newH.Difficulty = new(big.Int); h.Difficulty != nil {
 		newH.Difficulty.Set(h.Difficulty)
 	}

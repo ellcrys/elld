@@ -10,6 +10,10 @@ import (
 var (
 	// ErrQueueFull is an error about a full queue
 	ErrQueueFull = fmt.Errorf("queue is full")
+
+	// ErrTxAlreadyAdded is an error about a transaction
+	// that is in the pool.
+	ErrTxAlreadyAdded = fmt.Errorf("exact transaction already in the pool")
 )
 
 // TxQueue represents the internal queue used by TxPool.
@@ -23,14 +27,16 @@ type TxQueue struct {
 	gmx              *sync.RWMutex
 	len              int64
 	disabledAutoSort bool
+	index            map[string]interface{}
 }
 
-// NewQueue creates a new queue
-func NewQueue(cap int64) *TxQueue {
+// newQueue creates a new queue
+func newQueue(cap int64) *TxQueue {
 	q := new(TxQueue)
 	q.container = []core.Transaction{}
 	q.cap = cap
 	q.gmx = &sync.RWMutex{}
+	q.index = map[string]interface{}{}
 	return q
 }
 
@@ -41,6 +47,7 @@ func NewQueueNoSort(cap int64) *TxQueue {
 	q.container = []core.Transaction{}
 	q.cap = cap
 	q.gmx = &sync.RWMutex{}
+	q.index = map[string]interface{}{}
 	q.disabledAutoSort = true
 	return q
 }
@@ -69,6 +76,7 @@ func (q *TxQueue) Append(tx core.Transaction) bool {
 
 	q.gmx.Lock()
 	q.container = append(q.container, tx)
+	q.index[tx.GetHash().HexStr()] = struct{}{}
 	q.len++
 	q.gmx.Unlock()
 
@@ -89,6 +97,7 @@ func (q *TxQueue) Prepend(tx core.Transaction) bool {
 
 	q.gmx.Lock()
 	q.container = append([]core.Transaction{tx}, q.container...)
+	q.index[tx.GetHash().HexStr()] = struct{}{}
 	q.len++
 	q.gmx.Unlock()
 
@@ -97,6 +106,13 @@ func (q *TxQueue) Prepend(tx core.Transaction) bool {
 	}
 
 	return true
+}
+
+// Has checks whether a transaction is in the queue
+func (q *TxQueue) Has(tx core.Transaction) bool {
+	q.gmx.RLock()
+	defer q.gmx.RUnlock()
+	return q.index[tx.GetHash().HexStr()] != nil
 }
 
 // First returns a single transaction at head.
@@ -112,6 +128,7 @@ func (q *TxQueue) First() core.Transaction {
 
 	tx := q.container[0]
 	q.container = q.container[1:]
+	delete(q.index, tx.GetHash().HexStr())
 	q.len--
 	return tx
 }
@@ -130,6 +147,7 @@ func (q *TxQueue) Last() core.Transaction {
 	lastIndex := len(q.container) - 1
 	tx := q.container[lastIndex]
 	q.container = q.container[0:lastIndex]
+	delete(q.index, tx.GetHash().HexStr())
 	q.len--
 	return tx
 }
@@ -140,4 +158,23 @@ func (q *TxQueue) Sort(sf func([]core.Transaction)) {
 	q.gmx.Lock()
 	defer q.gmx.Unlock()
 	sf(q.container)
+}
+
+// IFind iterates over the transactions
+// and passes each to the predicate function.
+// When the predicate returns true, it stops
+// and returns the last transaction that was
+// passed to the predicate.
+//
+// Do not modify the transaction in the predicate
+// as it is a pointer to the transaction in queue.
+func (q *TxQueue) IFind(predicate func(core.Transaction) bool) core.Transaction {
+	q.gmx.Lock()
+	defer q.gmx.Unlock()
+	for _, tx := range q.container {
+		if predicate(tx) == true {
+			return tx
+		}
+	}
+	return nil
 }

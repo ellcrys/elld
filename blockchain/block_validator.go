@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
@@ -13,6 +14,19 @@ import (
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
+)
+
+// ValidationContext is used to represent a validation behaviour
+type ValidationContext int
+
+const (
+	// ContextTxPool represents validation of
+	// transactions destined for a transaction pool
+	ContextTxPool ValidationContext = iota
+
+	// ContextBlock represents validation of
+	// transactions destined for a block
+	ContextBlock
 )
 
 func fieldError(field, err string) error {
@@ -46,29 +60,25 @@ type BlockValidator struct {
 	// to query transactions and blocks
 	bchain core.Blockchain
 
-	// allowDuplicateCheck enables duplication checks on other
-	// collections. If set to true, a transaction existing in
-	// a collection such as the transaction pool, chains etc
-	// will be considered invalid.
-	allowDuplicateCheck bool
-
 	// blakimoto is an instance of PoW implementation
 	blakimoto *blakimoto.Blakimoto
 
 	// verSeal seal instructs the validator whether or not
 	// to verify the difficult and PoW fields of a given block
 	verSeal bool
+
+	// ctx is the current validation context
+	ctx ValidationContext
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block core.Block, txPool types.TxPool,
-	bchain core.Blockchain, allowDupCheck bool, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
+	bchain core.Blockchain, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
 	return &BlockValidator{
-		block:               block,
-		txpool:              txPool,
-		bchain:              bchain,
-		allowDuplicateCheck: allowDupCheck,
-		blakimoto:           blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
+		block:     block,
+		txpool:    txPool,
+		bchain:    bchain,
+		blakimoto: blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
 	}
 }
 
@@ -76,14 +86,16 @@ func (v *BlockValidator) verifySeal() {
 	v.verSeal = true
 }
 
-// Validate runs a series of checks against the loaded block
-// returning all errors found.
-func (v *BlockValidator) Validate() (errs []error) {
-	errs = v.check()
-	errs = append(errs, v.checkSignature()...)
-	if v.allowDuplicateCheck {
-		errs = append(errs, v.duplicateCheck(v.block)...)
-	}
+// setContext sets the validation context
+func (v *BlockValidator) setContext(ctx ValidationContext) {
+	v.ctx = ctx
+}
+
+// checkAll runs a series of checks against the
+// loaded block, returning all errors found.
+func (v *BlockValidator) checkAll() (errs []error) {
+	errs = v.checkFields()
+	errs = append(errs, v.checkPoW()...)
 	return errs
 }
 
@@ -117,6 +129,11 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 		errs = append(errs, fieldError("transactionsRoot", "transaction root is required"))
 	}
 
+	// Transactions root must be valid
+	if !h.GetTransactionsRoot().Equal(common.ComputeTxsRoot(v.block.GetTransactions())) {
+		errs = append(errs, fieldError("transactionsRoot", "transactions root is not valid"))
+	}
+
 	// State root must be provided
 	if h.GetStateRoot() == util.EmptyHash {
 		errs = append(errs, fieldError("stateRoot", "state root is required"))
@@ -136,11 +153,6 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 		errs = append(errs, fieldError("timestamp", "timestamp must not be greater or equal to 1"))
 	} else if time.Unix(h.GetTimestamp(), 0).After(time.Now().Add(2 * time.Hour).UTC()) {
 		errs = append(errs, fieldError("timestamp", "timestamp is over 2 hours in the future"))
-	}
-
-	// Verify the proof of work and difficulty
-	if v.verSeal && !h.GetParentHash().IsEmpty() {
-		errs = append(errs, v.checkPoW(nil)...)
 	}
 
 	return
@@ -165,17 +177,16 @@ func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
 	return
 }
 
-// check checks the field and their values and
-// does no integration checks with other components.
-func (v *BlockValidator) check() (errs []error) {
+// checkFields checks the field and their values.
+func (v *BlockValidator) checkFields() (errs []error) {
 
-	// Transaction must not be nil
+	// Block must not be nil
 	if v.block == nil {
 		errs = append(errs, fmt.Errorf("nil block"))
 		return
 	}
 
-	// Transaction type must be known and acceptable
+	// Header is required
 	if v.block.GetHeader().(*objects.Header) == nil {
 		errs = append(errs, fieldError("header", "header is required"))
 	} else {
@@ -184,15 +195,9 @@ func (v *BlockValidator) check() (errs []error) {
 		}
 	}
 
-	// Must have at least one transaction, otherwise,
-	// the transactions must be valid
+	// Must have at least one transaction
 	if len(v.block.GetTransactions()) == 0 {
 		errs = append(errs, fieldError("transactions", "at least one transaction is required"))
-	} else {
-		txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain, v.allowDuplicateCheck)
-		for _, err := range txValidator.Validate() {
-			errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))
-		}
 	}
 
 	// Hash must be provided
@@ -205,6 +210,11 @@ func (v *BlockValidator) check() (errs []error) {
 	// Signature must be provided
 	if len(v.block.GetSignature()) == 0 {
 		errs = append(errs, fieldError("sig", "signature is required"))
+	}
+
+	// Check that the signature is valid
+	if sigErrs := v.checkSignature(); len(sigErrs) > 0 {
+		errs = append(errs, sigErrs...)
 	}
 
 	return
@@ -231,20 +241,13 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 	return
 }
 
-// duplicateCheck checks whether the block exists in some
-// other components that do not accept duplicates. E.g main, side chains,
-// orphan index.
-func (v *BlockValidator) duplicateCheck(b core.Block) (errs []error) {
-
-	if v.bchain != nil {
-		known, reason, err := v.bchain.IsKnownBlock(b.GetHash())
-		if err != nil {
-
-			errs = append(errs, fmt.Errorf("duplicate check error: %s", err))
-		} else if known {
-			errs = append(errs, fieldError("", fmt.Sprintf("block found in %s", reason)))
-		}
+// checkTransactions validates all transactions in the
+// block in relation to the block's destined chain.
+func (v *BlockValidator) checkTransactions(opts ...core.CallOp) (errs []error) {
+	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain, true)
+	txValidator.SetContext(v.ctx)
+	for _, err := range txValidator.Validate(opts...) {
+		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))
 	}
-
 	return
 }

@@ -137,7 +137,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 		db:        db,
 		event:     &emitter.Emitter{},
 		openTransactionsSession: make(map[string]struct{}),
-		transactionsPool:        txpool.NewTxPool(config.TxPool.Capacity),
+		transactionsPool:        txpool.New(config.TxPool.Capacity),
 		txsRelayQueue:           txpool.NewQueueNoSort(config.TxPool.Capacity),
 		blockHashQueue:          lane.NewDeque(),
 	}

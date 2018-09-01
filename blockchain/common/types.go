@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ellcrys/elld/elldb"
@@ -79,6 +80,18 @@ type TransitionsOp []Transition
 // GetName implements core.CallOp. Allows transitions
 func (t *TransitionsOp) GetName() string {
 	return "TransitionsOp"
+}
+
+// ChainerOp defines a CallOp for
+// passing a chain
+type ChainerOp struct {
+	Chain core.Chainer
+	name  string
+}
+
+// GetName implements core.CallOp. Allows transitions
+func (t *ChainerOp) GetName() string {
+	return fmt.Sprintf("ChainerOp{%s}", t.name)
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice

@@ -66,7 +66,7 @@ var ProcessTest = func() bool {
 
 			It("should return error if sender does not exist in the best chain", func() {
 				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "1", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
@@ -80,7 +80,7 @@ var ProcessTest = func() bool {
 
 			It("should return error if sender account has insufficient value", func() {
 				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "10000000", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
@@ -94,7 +94,7 @@ var ProcessTest = func() bool {
 
 			It("should panic if sender value is could not be converted to decimal", func() {
 				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "100_333", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
@@ -110,7 +110,7 @@ var ProcessTest = func() bool {
 				It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient) and 2 OpNewAccountBalance (sender and recipient);
 					1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
 					var txs = []core.Transaction{
-						&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "1", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
@@ -147,7 +147,7 @@ var ProcessTest = func() bool {
 					1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
 
 					var txs = []core.Transaction{
-						&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "1", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
@@ -182,12 +182,12 @@ var ProcessTest = func() bool {
 					It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
 													1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 2`, func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -212,12 +212,12 @@ var ProcessTest = func() bool {
 					It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient), 2 OpNewAccountBalance (sender and recipient);
 														1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 2`, func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -248,7 +248,7 @@ var ProcessTest = func() bool {
 				When("recipient account does not exist", func() {
 					It("should successfully return one state object = OpNewAccountBalance", func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "10", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -274,7 +274,7 @@ var ProcessTest = func() bool {
 
 					It("should successfully return one state object = OpNewAccountBalance and Balance = 110.0000000000000000", func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "10", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -314,7 +314,7 @@ var ProcessTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -339,7 +339,7 @@ var ProcessTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -359,14 +359,14 @@ var ProcessTest = func() bool {
 				Expect(err).To(BeNil())
 				_, err = bc.ProcessBlock(block)
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(fmt.Errorf("error:block found in chain")))
+				Expect(err).To(Equal(fmt.Errorf("block already exists")))
 			})
 
 			It("should return error if block has been added to the orphaned cache", func() {
 				bc.orphanBlocks.Add(block.HashToHex(), block)
 				_, err = bc.ProcessBlock(block)
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(fmt.Errorf("error:block found in orphan cache")))
+				Expect(err).To(Equal(fmt.Errorf("orphan block")))
 			})
 
 			When("a block's parent does not exist in any chain", func() {
@@ -395,7 +395,7 @@ var ProcessTest = func() bool {
 					BeforeEach(func() {
 						block2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:           sender,
 							Nonce:             core.EncodeNonce(1),
@@ -407,7 +407,7 @@ var ProcessTest = func() bool {
 
 						block3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 							},
 							Creator:           sender,
 							Nonce:             core.EncodeNonce(2),
@@ -437,7 +437,7 @@ var ProcessTest = func() bool {
 					BeforeEach(func() {
 						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -446,7 +446,7 @@ var ProcessTest = func() bool {
 
 						block2_2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(4),
@@ -476,7 +476,7 @@ var ProcessTest = func() bool {
 
 						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -508,7 +508,7 @@ var ProcessTest = func() bool {
 				BeforeEach(func() {
 					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -522,7 +522,7 @@ var ProcessTest = func() bool {
 
 					okStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -577,7 +577,7 @@ var ProcessTest = func() bool {
 			BeforeEach(func() {
 				parent1 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -588,7 +588,7 @@ var ProcessTest = func() bool {
 
 				orphanParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730730),
+						objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "0.1", 1532730730),
 					},
 					Creator:           sender,
 					Nonce:             core.EncodeNonce(1),
@@ -600,7 +600,7 @@ var ProcessTest = func() bool {
 
 				orphan = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
+						objects.NewTx(objects.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
 					},
 					Creator:           sender,
 					Nonce:             core.EncodeNonce(1),

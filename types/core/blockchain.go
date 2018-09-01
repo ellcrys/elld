@@ -41,7 +41,7 @@ type Chainer interface {
 	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
 	// GetTransaction gets a transaction by hash
-	GetTransaction(hash util.Hash) Transaction
+	GetTransaction(hash util.Hash, opts ...CallOp) Transaction
 
 	// ChainReader gets a chain reader for this chain
 	ChainReader() ChainReader
@@ -68,7 +68,7 @@ type Blockchain interface {
 	HaveBlock(hash util.Hash) (bool, error)
 
 	// GetTransaction finds and returns a transaction on the main chain
-	GetTransaction(hash util.Hash) (Transaction, error)
+	GetTransaction(util.Hash, ...CallOp) (Transaction, error)
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
 	ProcessBlock(Block) (ChainReader, error)
@@ -105,6 +105,9 @@ type Blockchain interface {
 
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
+
+	// GetAccountNonce gets the nonce of an account
+	GetAccountNonce(address util.String, opts ...CallOp) (uint64, error)
 }
 
 // BlockMaker defines an interface providing the

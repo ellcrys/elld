@@ -3,6 +3,7 @@ package txpool
 import (
 	"time"
 
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,13 +14,13 @@ var _ = Describe("Txqueue", func() {
 	Describe(".Append", func() {
 		It("should return false when capacity is reached", func() {
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-			q := NewQueue(0)
+			q := newQueue(0)
 			Expect(q.Append(tx)).To(BeFalse())
 		})
 
 		It("should return nil and add item", func() {
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-			q := NewQueue(1)
+			q := newQueue(1)
 			Expect(q.Append(tx)).To(BeTrue())
 			Expect(q.container).To(HaveLen(1))
 		})
@@ -41,13 +42,13 @@ var _ = Describe("Txqueue", func() {
 	Describe(".Prepend", func() {
 		It("should return false when capacity is reached", func() {
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-			q := NewQueue(0)
+			q := newQueue(0)
 			Expect(q.Prepend(tx)).To(BeFalse())
 		})
 
 		It("should return nil and add item at the head", func() {
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-			q := NewQueue(2)
+			q := newQueue(2)
 			Expect(q.Prepend(tx)).To(BeTrue())
 			Expect(q.container).To(HaveLen(1))
 
@@ -74,7 +75,7 @@ var _ = Describe("Txqueue", func() {
 	Describe(".Size", func() {
 		It("should return size = 1", func() {
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-			q := NewQueue(2)
+			q := newQueue(2)
 			Expect(q.Prepend(tx)).To(BeTrue())
 			Expect(q.Size()).To(Equal(int64(1)))
 		})
@@ -82,12 +83,12 @@ var _ = Describe("Txqueue", func() {
 
 	Describe(".First", func() {
 		It("should return nil when queue is empty", func() {
-			q := NewQueue(2)
+			q := newQueue(2)
 			Expect(q.First()).To(BeNil())
 		})
 
 		It("should return first transaction in the queue and reduce queue size to 1", func() {
-			q := NewQueue(2)
+			q := newQueue(2)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
 			tx2 := objects.NewTransaction(objects.TxTypeBalance, 2, "something", "pub_key", "0", "0", time.Now().Unix())
 			q.Append(tx)
@@ -99,7 +100,7 @@ var _ = Describe("Txqueue", func() {
 
 		Context("with varying transaction fee", func() {
 			It("should return first transaction in the queue and reduce queue size to 1", func() {
-				q := NewQueue(2)
+				q := newQueue(2)
 				tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 				tx2 := objects.NewTransaction(objects.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
 				q.Append(tx)
@@ -113,12 +114,12 @@ var _ = Describe("Txqueue", func() {
 
 	Describe(".Last", func() {
 		It("should return nil when queue is empty", func() {
-			q := NewQueue(2)
+			q := newQueue(2)
 			Expect(q.Last()).To(BeNil())
 		})
 
 		It("should return last transaction in the queue and reduce queue size to 1", func() {
-			q := NewQueue(2)
+			q := newQueue(2)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
 			tx2 := objects.NewTransaction(objects.TxTypeBalance, 2, "something", "pub_key", "0", "0", time.Now().Unix())
 			q.Append(tx)
@@ -130,7 +131,7 @@ var _ = Describe("Txqueue", func() {
 
 		Context("with varying transaction fee", func() {
 			It("should return last transaction in the queue and reduce queue size to 1", func() {
-				q := NewQueue(2)
+				q := newQueue(2)
 				tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 				tx2 := objects.NewTransaction(objects.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
 				q.Append(tx)
@@ -144,7 +145,7 @@ var _ = Describe("Txqueue", func() {
 
 	Describe(".Sort", func() {
 		It("should sort in ascending order", func() {
-			q := NewQueue(3)
+			q := newQueue(3)
 			q.Append(objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix()))
 			q.Append(objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.5", time.Now().Unix()))
 			q.Append(objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix()))
@@ -155,7 +156,7 @@ var _ = Describe("Txqueue", func() {
 		})
 
 		It("should sort in descending order", func() {
-			q := NewQueue(3)
+			q := newQueue(3)
 			q.Append(objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix()))
 			q.Append(objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.5", time.Now().Unix()))
 			q.Append(objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix()))
@@ -163,6 +164,70 @@ var _ = Describe("Txqueue", func() {
 			Expect(q.container[0].GetFee().String()).To(Equal("1"))
 			Expect(q.container[1].GetFee().String()).To(Equal("0.5"))
 			Expect(q.container[2].GetFee().String()).To(Equal("0.2"))
+		})
+	})
+
+	Describe(".Has", func() {
+		It("should return true when tx exist in queue", func() {
+			q := newQueue(1)
+			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			added := q.Append(tx)
+			Expect(added).To(BeTrue())
+			has := q.Has(tx)
+			Expect(has).To(BeTrue())
+		})
+
+		It("should return false when tx does not exist in queue", func() {
+			q := newQueue(1)
+			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			has := q.Has(tx)
+			Expect(has).To(BeFalse())
+		})
+	})
+
+	Describe(".IFind", func() {
+
+		var q *TxQueue
+		var tx1, tx2, tx3 core.Transaction
+
+		BeforeEach(func() {
+			q = newQueue(3)
+			tx1 = objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx2 = objects.NewTransaction(objects.TxTypeBalance, 2, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx3 = objects.NewTransaction(objects.TxTypeBalance, 3, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			q.Append(tx1)
+			q.Append(tx2)
+			q.Append(tx3)
+		})
+
+		It("should stop iterating when predicate returns true", func() {
+			var iterated []core.Transaction
+			result := q.IFind(func(tx core.Transaction) bool {
+				iterated = append(iterated, tx)
+				return tx.GetNonce() == 2
+			})
+
+			Describe("it should return the last item sent to the predicate", func() {
+				Expect(result).To(Equal(tx2))
+			})
+
+			Describe("it should contain the first and second transaction and not the 3rd transaction", func() {
+				Expect(iterated).To(HaveLen(2))
+				Expect(iterated).ToNot(ContainElement(tx3))
+			})
+		})
+
+		It("should return nil when predicate did not return true", func() {
+			var iterated []core.Transaction
+			result := q.IFind(func(tx core.Transaction) bool {
+				iterated = append(iterated, tx)
+				return false
+			})
+			Expect(result).To(BeNil())
+
+			Describe("it should contain all transactions", func() {
+				Expect(iterated).To(HaveLen(3))
+			})
 		})
 	})
 })

@@ -38,8 +38,8 @@ type Blockchain struct {
 	// chainLock is a general purpose chainLock for store, bestChain, chains etc
 	chainLock *sync.RWMutex
 
-	// mLock is used to lock methods that should be called completely atomically
-	mLock *sync.Mutex
+	// processLock is used to lock the main block processing method
+	processLock *sync.Mutex
 
 	// cfg is the client configuration
 	cfg *config.EngineConfig
@@ -82,7 +82,7 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.log = log
 	bc.cfg = cfg
 	bc.chainLock = &sync.RWMutex{}
-	bc.mLock = &sync.Mutex{}
+	bc.processLock = &sync.Mutex{}
 	bc.chains = make(map[util.String]*Chain)
 	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
@@ -168,7 +168,9 @@ func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 }
 
 func (b *Blockchain) createBlockValidator(block core.Block) *BlockValidator {
-	return NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
+	v := NewBlockValidator(block, b.txPool, b, b.cfg, b.log)
+	v.setContext(ContextBlock)
+	return v
 }
 
 // OrphanBlocks returns a cache reader for orphan blocks
@@ -575,7 +577,7 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock 
 }
 
 // GetTransaction finds a transaction in the main chain and returns it
-func (b *Blockchain) GetTransaction(hash util.Hash) (core.Transaction, error) {
+func (b *Blockchain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -583,7 +585,7 @@ func (b *Blockchain) GetTransaction(hash util.Hash) (core.Transaction, error) {
 		return nil, core.ErrBestChainUnknown
 	}
 
-	tx := b.bestChain.GetTransaction(hash)
+	tx := b.bestChain.GetTransaction(hash, opts...)
 	if tx == nil {
 		return nil, core.ErrTxNotFound
 	}

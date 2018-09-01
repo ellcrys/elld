@@ -39,47 +39,12 @@ type TxsValidator struct {
 	// to query transactions
 	bchain core.Blockchain
 
-	// allowDuplicateCheck enables duplication checks on other
-	// collections. If set to true, a transaction existing in
-	// a collection such as the transaction pool, chains etc
-	// will be considered invalid.
-	allowDuplicateCheck bool
-
-	// currentTxIndexInLoop is the current index of the the current
+	// curIndex is the current index of the the current
 	// transaction being validated.
-	currentTxIndexInLoop int
-}
+	curIndex int
 
-// NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
-	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
-	return &TxsValidator{
-		txs:                 txs,
-		txpool:              txPool,
-		bchain:              bchain,
-		allowDuplicateCheck: allowDupCheck,
-	}
-}
-
-// NewTxValidator is like NewTxsValidator except it accepts a single transaction
-func NewTxValidator(tx core.Transaction, txPool types.TxPool,
-	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
-	return &TxsValidator{
-		txs:                 []core.Transaction{tx},
-		txpool:              txPool,
-		bchain:              bchain,
-		allowDuplicateCheck: allowDupCheck,
-	}
-}
-
-// Validate execute validation checks on the
-// transactions, returning all the errors encountered. This
-func (v *TxsValidator) Validate() (errs []error) {
-	for i, tx := range v.txs {
-		v.currentTxIndexInLoop = i
-		errs = append(errs, v.ValidateTx(tx)...)
-	}
-	return
+	// ctx is the current validation context
+	ctx ValidationContext
 }
 
 func appendErr(dest []error, err error) []error {
@@ -89,9 +54,44 @@ func appendErr(dest []error, err error) []error {
 	return dest
 }
 
-// check check the field and their values and
-// does no integration check with other components.
-func (v *TxsValidator) check(tx core.Transaction) (errs []error) {
+// NewTxsValidator creates an instance of TxsValidator
+func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
+	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
+	return &TxsValidator{
+		txs:    txs,
+		txpool: txPool,
+		bchain: bchain,
+	}
+}
+
+// NewTxValidator is like NewTxsValidator except it accepts a single transaction
+func NewTxValidator(tx core.Transaction, txPool types.TxPool,
+	bchain core.Blockchain) *TxsValidator {
+	return &TxsValidator{
+		txs:    []core.Transaction{tx},
+		txpool: txPool,
+		bchain: bchain,
+	}
+}
+
+// SetContext sets the validation context
+func (v *TxsValidator) SetContext(ctx ValidationContext) {
+	v.ctx = ctx
+}
+
+// Validate execute validation checks on the
+// transactions, returning all the errors encountered. This
+func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
+	for i, tx := range v.txs {
+		v.curIndex = i
+		errs = append(errs, v.ValidateTx(tx, opts...)...)
+	}
+	return
+}
+
+// fieldsCheck checks validates the transaction
+// fields and values.
+func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -184,68 +184,68 @@ func (v *TxsValidator) check(tx core.Transaction) (errs []error) {
 
 	// Transaction type is required and must match the known types
 	errs = appendErr(errs, validation.Validate(tx.GetType(),
-		validation.By(validTypeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "type", "unsupported transaction type"))),
-	))
-
-	// Nonce must be a non-negative integer
-	errs = appendErr(errs, validation.Validate(tx.GetNonce(),
-		validation.Min(0).Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "nonce", "nonce must be non-negative").Error()),
+		validation.By(validTypeRule(fieldErrorWithIndex(v.curIndex, "type", "unsupported transaction type"))),
 	))
 
 	// Recipient's address must be set and it must be valid
 	errs = appendErr(errs, validation.Validate(tx.GetTo(),
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "to", "recipient address is required").Error()),
-		validation.By(validAddrRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "to", "recipient address is not valid"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "to", "recipient address is required").Error()),
+		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to", "recipient address is not valid"))),
 	))
 
 	// Sender's address must be set and it must be valid non-zero decimal
 	errs = appendErr(errs, validation.Validate(tx.GetValue(),
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "value is required").Error()),
-		validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "could not convert to decimal"))),
-		validation.By(isZeroLessRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "value", "value must be greater than zero"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "value", "value is required").Error()),
+		validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "value", "could not convert to decimal"))),
+		validation.By(isZeroLessRule(fieldErrorWithIndex(v.curIndex, "value", "value must be greater than zero"))),
 	))
 
 	// Timestamp is required.
 	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "timestamp", "timestamp is required").Error()),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "timestamp", "timestamp is required").Error()),
 	))
 
 	// Sender's address must be set and must also be valid
 	errs = appendErr(errs, validation.Validate(tx.GetFrom(),
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender address is required").Error()),
-		validation.By(validAddrRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender address is not valid"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "from", "sender address is required").Error()),
+		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "from", "sender address is not valid"))),
 	))
 
 	// Sender's public key is required and must be a valid base58 encoded key
 	errs = appendErr(errs, validation.Validate(tx.GetSenderPubKey(),
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", "sender public key is required").Error()),
-		validation.By(validPubKeyRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "senderPubKey", "sender public key is not valid"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "senderPubKey", "sender public key is required").Error()),
+		validation.By(validPubKeyRule(fieldErrorWithIndex(v.curIndex, "senderPubKey", "sender public key is not valid"))),
 	))
 
 	// Hash is required. It must also be correct
 	errs = appendErr(errs, validation.Validate(tx.GetHash(),
-		validation.By(requireHashRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is required"))),
-		validation.By(isSameHashRule(tx.ComputeHash(), fieldErrorWithIndex(v.currentTxIndexInLoop, "hash", "hash is not correct"))),
+		validation.By(requireHashRule(fieldErrorWithIndex(v.curIndex, "hash", "hash is required"))),
+		validation.By(isSameHashRule(tx.ComputeHash(), fieldErrorWithIndex(v.curIndex, "hash", "hash is not correct"))),
 	))
 
 	// Signature must be set
 	errs = appendErr(errs, validation.Validate(tx.GetSignature(),
-		validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "sig", "signature is required").Error()),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "sig", "signature is required").Error()),
 	))
 
 	if tx.GetType() == objects.TxTypeBalance {
 		errs = appendErr(errs, validation.Validate(tx.GetFee(),
-			validation.Required.Error(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "fee is required").Error()),
-			validation.By(validValueRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", "could not convert to decimal"))),
-			validation.By(isValidFeeRule(fieldErrorWithIndex(v.currentTxIndexInLoop, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(16))))),
+			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
+			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),
+			validation.By(isValidFeeRule(fieldErrorWithIndex(v.curIndex, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(16))))),
 		))
 	}
 
+	// For TxTypeAlloc, sender must be the same as the recipient
 	if tx.GetType() == objects.TxTypeAlloc {
-		// Transaction sender must be the same as the recipient
 		errs = appendErr(errs, validation.Validate(tx.GetFrom(),
-			validation.By(isSameStrRule(tx.GetTo().String(), fieldErrorWithIndex(v.currentTxIndexInLoop, "from", "sender and recipient must be same address"))),
+			validation.By(isSameStrRule(tx.GetTo().String(), fieldErrorWithIndex(v.curIndex, "from", "sender and recipient must be same address"))),
 		))
+	}
+
+	// Check signature validity
+	if sigErr := v.checkSignature(tx); len(sigErr) > 0 {
+		errs = append(errs, sigErr...)
 	}
 
 	return
@@ -257,44 +257,89 @@ func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
 
 	pubKey, err := crypto.PubKeyFromBase58(tx.GetSenderPubKey().String())
 	if err != nil {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"senderPubKey", err.Error()))
 		return
 	}
 
 	valid, err := pubKey.Verify(tx.Bytes(), tx.GetSignature())
 	if err != nil {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"sig", err.Error()))
 	} else if !valid {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"sig", "signature is not valid"))
 	}
 
 	return
 }
 
-// duplicateCheck checks whether the transaction exists in some
-// other components that do not accept duplicates. E.g transaction
-// pool, chains etc
-func (v *TxsValidator) duplicateCheck(tx core.Transaction) (errs []error) {
+// consistencyCheck checks whether the transaction
+// exist as a duplicate in the main chain or in the
+// transaction pool. It also performs nonce checks.
+func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp) (errs []error) {
 
-	if v.txpool != nil && v.txpool.Has(tx) {
-		errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-			"", "transaction already exist in tx pool"))
+	if v.txpool.Has(tx) {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
+			"", "transaction already exist in the transactions pool"))
 		return
 	}
 
-	if v.bchain != nil {
-		_, err := v.bchain.GetTransaction(tx.GetHash())
-		if err != nil {
-			if err != core.ErrTxNotFound {
-				errs = append(errs, fmt.Errorf("get transaction error: %s", err))
-			}
-		} else {
-			errs = append(errs, fieldErrorWithIndex(v.currentTxIndexInLoop,
-				"", "transaction already exist in main chain"))
+	// Ensure the transaction does not exist
+	// on the main chain
+	_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
+	if err != nil {
+		if err != core.ErrTxNotFound {
+			errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
+			return
 		}
+	} else {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
+			"", "transaction already exist in main chain"))
+	}
+
+	// Validate nonce for non-TxTypeAlloc transactions
+	if tx.GetType() == objects.TxTypeAlloc {
+		return
+	}
+
+	// Get the nonce of the originator account
+	accountNonce, err := v.bchain.GetAccountNonce(tx.GetFrom(), opts...)
+	if err != nil {
+		if err == core.ErrAccountNotFound {
+			errs = append(errs, fieldErrorWithIndex(v.curIndex,
+				"from", "sender account not found"))
+			return
+		}
+		errs = append(errs, fmt.Errorf("failed to get account: %s", err))
+		return
+	}
+
+	// Let us check if there is a transaction created
+	// by the originator that is already in the
+	// transaction pool and has the same nonce.
+	if v.txpool.SenderHasTxWithSameNonce(tx.GetFrom(), tx.GetNonce()) {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
+			"from", "originator has a transaction with same nonce in the transaction pool"))
+		return
+	}
+
+	// For transactions intended to the added into
+	// the transaction pool, their nonce must be greater than
+	// the account's current nonce value by at least 1
+	if v.ctx != ContextBlock && tx.GetNonce()-accountNonce < 1 {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
+			fmt.Sprintf("invalid nonce: has %d, wants from %d", tx.GetNonce(), accountNonce+1)))
+		return
+	}
+
+	// For transactions in blocks that will be appended to a
+	// a chain, their nonce must be greater than the account's
+	// current nonce value by a maximum of 1
+	if v.ctx == ContextBlock && tx.GetNonce()-accountNonce != 1 {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
+			fmt.Sprintf("invalid nonce: has %d, wants %d", tx.GetNonce(), accountNonce+1)))
+		return
 	}
 
 	return
@@ -302,11 +347,8 @@ func (v *TxsValidator) duplicateCheck(tx core.Transaction) (errs []error) {
 
 // ValidateTx validates a single transaction coming received
 // by the gossip handler..
-func (v *TxsValidator) ValidateTx(tx core.Transaction) []error {
-	errs := v.check(tx)
-	errs = append(errs, v.checkSignature(tx)...)
-	if v.allowDuplicateCheck {
-		errs = append(errs, v.duplicateCheck(tx)...)
-	}
+func (v *TxsValidator) ValidateTx(tx core.Transaction, opts ...core.CallOp) []error {
+	errs := v.fieldsCheck(tx)
+	errs = append(errs, v.consistencyCheck(tx, opts...)...)
 	return errs
 }

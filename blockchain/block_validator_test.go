@@ -42,8 +42,8 @@ var BlockValidatorTest = func() bool {
 					&objects.Block{Header: &objects.Header{}, Transactions: []*objects.Transaction{&objects.Transaction{Type: 109}}}: fmt.Errorf("tx:0, field:type, error:unsupported transaction type"),
 				}
 				for b, err := range cases {
-					validator := NewBlockValidator(b, nil, nil, false, cfg, log)
-					errs := validator.check()
+					validator := NewBlockValidator(b, nil, nil, cfg, log)
+					errs := validator.checkFields()
 					Expect(errs).To(ContainElement(err))
 				}
 			})
@@ -58,7 +58,7 @@ var BlockValidatorTest = func() bool {
 					&objects.Block{Header: &objects.Header{CreatorPubKey: util.String(key.PubKey().Base58())}}: fmt.Errorf("field:sig, error:signature is not valid"),
 				}
 				for b, err := range cases {
-					validator := NewBlockValidator(b, nil, nil, false, cfg, log)
+					validator := NewBlockValidator(b, nil, nil, cfg, log)
 					errs := validator.checkSignature()
 					Expect(errs).To(ContainElement(err))
 				}
@@ -86,8 +86,8 @@ var BlockValidatorTest = func() bool {
 			})
 
 			It("should return if block and a transaction in the block exist", func() {
-				validator := NewBlockValidator(block, bc.txPool, bc, true, cfg, log)
-				errs := validator.Validate()
+				validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
+				errs := validator.checkAll()
 				Expect(errs).To(ContainElement(fmt.Errorf("error:block found in chain")))
 				Expect(errs).To(ContainElement(fmt.Errorf("tx:0, error:transaction already exist in main chain")))
 			})
@@ -110,7 +110,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error if difficulty is not valid", func() {
-					validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+					validator := NewBlockValidator(block, nil, bc, cfg, log)
 					errs := validator.checkPoW()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid difficulty: have 131072, want 131136")))
@@ -135,7 +135,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error if total difficulty is invalid", func() {
-					validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+					validator := NewBlockValidator(block, nil, bc, cfg, log)
 					errs := validator.checkPoW()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs[0].Error()).To(ContainSubstring("field:parentHash, error:invalid total difficulty"))
@@ -163,7 +163,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return nil; No error", func() {
-					validator := NewBlockValidator(block, nil, bc, true, cfg, log)
+					validator := NewBlockValidator(block, nil, bc, cfg, log)
 					errs := validator.checkPoW()
 					Expect(errs).To(BeNil())
 				})

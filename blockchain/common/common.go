@@ -68,6 +68,18 @@ func GetTransitions(opts ...core.CallOp) (transitions []Transition) {
 	return []Transition{}
 }
 
+// GetChainerOp is a convenience method to get ChainerOp
+// option from a slice of CallOps
+func GetChainerOp(opts ...core.CallOp) *ChainerOp {
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case *ChainerOp:
+			return _op
+		}
+	}
+	return &ChainerOp{}
+}
+
 // ComputeTxsRoot computes the merkle root of a set of transactions.
 func ComputeTxsRoot(txs []core.Transaction) util.Hash {
 

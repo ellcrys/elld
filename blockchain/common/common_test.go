@@ -93,6 +93,19 @@ var _ = Describe("Common", func() {
 		})
 	})
 
+	Describe(".GetChainerOp", func() {
+		It("should get the chainer passed to it", func() {
+			var chain = ChainerOp{name: "chain1"}
+			result := GetChainerOp(&chain)
+			Expect(result).To(Equal(&chain))
+		})
+
+		It("should return empty ChainOp if no chain option was found", func() {
+			result := GetChainerOp()
+			Expect(result).To(Equal(&ChainerOp{}))
+		})
+	})
+
 	Describe(".ComputeTxsRoot", func() {
 		It("should return expected root", func() {
 			txs := []core.Transaction{

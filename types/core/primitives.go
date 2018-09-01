@@ -59,11 +59,14 @@ type Account interface {
 	GetAddress() util.String
 	GetBalance() util.String
 	SetBalance(util.String)
+	GetNonce() uint64
+	IncrNonce()
 }
 
 // Transaction represents a transaction
 type Transaction interface {
 	GetHash() util.Hash
+	SetHash(util.Hash)
 	Bytes() []byte
 	ComputeHash() util.Hash
 	ID() string
@@ -74,10 +77,12 @@ type Transaction interface {
 	GetTo() util.String
 	GetValue() util.String
 	GetFee() util.String
-	GetNonce() int64
+	GetNonce() uint64
 	GetTimestamp() int64
 	GetSenderPubKey() util.String
+	SetSenderPubKey(util.String)
 	GetSignature() []byte
+	SetSignature(sig []byte)
 }
 
 // A BlockNonce is a 64-bit hash which proves (combined with the

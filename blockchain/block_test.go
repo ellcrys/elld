@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -22,7 +23,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -58,7 +59,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -93,7 +94,7 @@ var BlockTest = func() bool {
 
 					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(2),
@@ -118,7 +119,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -153,7 +154,7 @@ var BlockTest = func() bool {
 
 					block3 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0.1", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(2),
@@ -178,7 +179,7 @@ var BlockTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -223,7 +224,7 @@ var BlockTest = func() bool {
 
 			BeforeEach(func() {
 				bc.bestChain = genesisChain
-				txs = []core.Transaction{objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "0.1", "0.1", time.Now().Unix())}
+				txs = []core.Transaction{objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "0.1", time.Now().Unix())}
 			})
 
 			It("should validate params", func() {
@@ -260,7 +261,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        core.EncodeNonce(1),
 						Difficulty:   new(big.Int).SetInt64(131072),
-					}, ChainOp{Chain: genesisChain})
+					}, &common.ChainerOp{Chain: genesisChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
@@ -303,7 +304,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        core.EncodeNonce(1),
 						Difficulty:   new(big.Int).SetInt64(131072),
-					}, ChainOp{Chain: targetChain})
+					}, &common.ChainerOp{Chain: targetChain})
 					Expect(err).ToNot(BeNil())
 					Expect(blk).To(BeNil())
 					Expect(err.Error()).To(Equal("exec: transaction error: index{0}: failed to get sender's account: account not found"))
@@ -335,7 +336,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        core.EncodeNonce(1),
 						Difficulty:   new(big.Int).SetInt64(131072),
-					}, ChainOp{Chain: targetChain})
+					}, &common.ChainerOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
@@ -367,7 +368,7 @@ var BlockTest = func() bool {
 						Creator:      sender,
 						Nonce:        core.EncodeNonce(1),
 						Difficulty:   new(big.Int).SetInt64(131072),
-					}, ChainOp{Chain: targetChain})
+					}, &common.ChainerOp{Chain: targetChain})
 					Expect(err).To(BeNil())
 					Expect(blk).ToNot(BeNil())
 					Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
