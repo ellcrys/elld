@@ -63,10 +63,6 @@ type BlockValidator struct {
 	// blakimoto is an instance of PoW implementation
 	blakimoto *blakimoto.Blakimoto
 
-	// verSeal seal instructs the validator whether or not
-	// to verify the difficult and PoW fields of a given block
-	verSeal bool
-
 	// ctx is the current validation context
 	ctx ValidationContext
 }
@@ -80,10 +76,6 @@ func NewBlockValidator(block core.Block, txPool types.TxPool,
 		bchain:    bchain,
 		blakimoto: blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
 	}
-}
-
-func (v *BlockValidator) verifySeal() {
-	v.verSeal = true
 }
 
 // setContext sets the validation context
@@ -170,7 +162,7 @@ func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
 		return errs
 	}
 
-	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(), parentHeader.GetHeader(), v.verSeal); err != nil {
+	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(), parentHeader.GetHeader(), true); err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
 	}
 
