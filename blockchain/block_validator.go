@@ -83,14 +83,6 @@ func (v *BlockValidator) setContext(ctx ValidationContext) {
 	v.ctx = ctx
 }
 
-// checkAll runs a series of checks against the
-// loaded block, returning all errors found.
-func (v *BlockValidator) checkAll() (errs []error) {
-	errs = v.checkFields()
-	errs = append(errs, v.checkPoW()...)
-	return errs
-}
-
 // validateHeader checks that an header fields and
 // value format or type is valid.
 func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
@@ -135,16 +127,16 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 	// and greater than zero
 	if !h.GetParentHash().IsEmpty() {
 		if h.GetDifficulty() == nil || h.GetDifficulty().Cmp(util.Big0) == 0 {
-			errs = append(errs, fieldError("difficulty", "difficulty must be non-zero and non-negative"))
+			errs = append(errs, fieldError("difficulty", "difficulty must be greater than zero"))
 		}
 	}
 
-	// Timestamp must not be zero or greater than
-	// 2 hours in the future
-	if h.GetTimestamp() <= 0 {
-		errs = append(errs, fieldError("timestamp", "timestamp must not be greater or equal to 1"))
-	} else if time.Unix(h.GetTimestamp(), 0).After(time.Now().Add(2 * time.Hour).UTC()) {
-		errs = append(errs, fieldError("timestamp", "timestamp is over 2 hours in the future"))
+	// Timestamp is required and must not be more than
+	// 15 seconds in the future
+	if h.GetTimestamp() == 0 {
+		errs = append(errs, fieldError("timestamp", "timestamp is required"))
+	} else if time.Unix(h.GetTimestamp(), 0).After(time.Now().Add(15 * time.Second).UTC()) {
+		errs = append(errs, fieldError("timestamp", "timestamp is too far in the future"))
 	}
 
 	return
@@ -178,18 +170,22 @@ func (v *BlockValidator) checkFields() (errs []error) {
 		return
 	}
 
-	// Header is required
-	if v.block.GetHeader().(*objects.Header) == nil {
-		errs = append(errs, fieldError("header", "header is required"))
-	} else {
-		for _, err := range v.validateHeader(v.block.GetHeader()) {
-			errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "field:", "field:header.", -1)))
-		}
-	}
-
 	// Must have at least one transaction
 	if len(v.block.GetTransactions()) == 0 {
 		errs = append(errs, fieldError("transactions", "at least one transaction is required"))
+	}
+
+	// Header is required
+	header := v.block.GetHeader().(*objects.Header)
+	if header == nil {
+		errs = append(errs, fieldError("header", "header is required"))
+		return
+	}
+	for _, err := range v.validateHeader(v.block.GetHeader()) {
+		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "field:", "field:header.", -1)))
+	}
+	if len(errs) > 0 {
+		return
 	}
 
 	// Hash must be provided

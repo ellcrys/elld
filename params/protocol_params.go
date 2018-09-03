@@ -1,6 +1,9 @@
 package params
 
-import "math/big"
+import (
+	"math/big"
+	"time"
+)
 
 var (
 	// MaximumExtraDataSize is the size of extra data a block can contain.
@@ -33,4 +36,15 @@ var (
 	// NumBlockBodiesRequesters is the number of workers that will
 	// fetch block bodies
 	NumBlockBodiesRequesters = 1
+)
+
+var (
+	// Decimals is the number of coin decimal places
+	Decimals = int32(16)
+)
+
+var (
+	// AllowedFutureBlockTime is the number of seconds
+	// a block's timestamp can have beyond the current timestamp
+	AllowedFutureBlockTime = 15 * time.Second
 )

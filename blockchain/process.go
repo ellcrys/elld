@@ -5,6 +5,7 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 
@@ -116,7 +117,7 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// add an operation to set a new account
 	// balance for the sender
-	newSenderBal := util.String(senderAcctBalance.Sub(sendingAmount).StringFixed(b.cfg.Monetary.Decimals))
+	newSenderBal := util.String(senderAcctBalance.Sub(sendingAmount).StringFixed(params.Decimals))
 	senderAcct.SetBalance(newSenderBal)
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetFrom()},
@@ -125,7 +126,7 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// add an operation to set a new balance
 	// of the recipient
-	newRecipientBal := util.String(recipientAcctBalance.Add(sendingAmount).StringFixed(b.cfg.Monetary.Decimals))
+	newRecipientBal := util.String(recipientAcctBalance.Add(sendingAmount).StringFixed(params.Decimals))
 	recipientAcct.SetBalance(newRecipientBal)
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetTo()},
@@ -189,7 +190,7 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 	// sum of current balance and the new allocation
 	recipientBal := util.String(recipientAcctBalance.
 		Add(tx.GetValue().Decimal()).
-		StringFixed(b.cfg.Monetary.Decimals))
+		StringFixed(params.Decimals))
 	recipientAcct.SetBalance(recipientBal)
 
 	// construct an OpNewAccountBalance transition object

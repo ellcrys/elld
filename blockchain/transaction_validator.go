@@ -13,8 +13,8 @@ import (
 
 	"github.com/thoas/go-funk"
 
-	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -157,7 +157,7 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 	var isValidFeeRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
 			dec, _ := decimal.NewFromString(val.(util.String).String())
-			if dec.LessThan(constants.BalanceTxMinimumFee) {
+			if dec.LessThan(params.FeePerByte) {
 				return err
 			}
 			return nil
@@ -232,7 +232,7 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		errs = appendErr(errs, validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),
-			validation.By(isValidFeeRule(fieldErrorWithIndex(v.curIndex, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", constants.BalanceTxMinimumFee.StringFixed(16))))),
+			validation.By(isValidFeeRule(fieldErrorWithIndex(v.curIndex, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", params.FeePerByte.StringFixed(16))))),
 		))
 	}
 

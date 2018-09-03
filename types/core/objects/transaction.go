@@ -179,6 +179,33 @@ func (tx *Transaction) Bytes() []byte {
 	return getBytes(data)
 }
 
+// Size returns the size of the
+// transactions. Size is typically
+// the total size of each field.
+func (tx *Transaction) Size() int64 {
+
+	var invokeArgsBs []byte
+	if tx.InvokeArgs != nil {
+		invokeArgsBs = tx.InvokeArgs.Bytes()
+	}
+
+	data := []interface{}{
+		tx.Type,
+		tx.Nonce,
+		tx.To,
+		tx.SenderPubKey,
+		tx.From,
+		tx.Value,
+		tx.Fee,
+		tx.Timestamp,
+		invokeArgsBs,
+		tx.Hash,
+		tx.Sig,
+	}
+
+	return int64(len(getBytes(data)))
+}
+
 // ComputeHash returns the SHA256 hash of the transaction.
 func (tx *Transaction) ComputeHash() util.Hash {
 	bs := tx.Bytes()

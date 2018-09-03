@@ -84,7 +84,7 @@ type Node struct {
 	event                   *emitter.Emitter        // Provides access event emitting service
 	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
 	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
-	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
+	txsRelayQueue           *txpool.TxContainer     // stores transactions waiting to be relayed
 	bchain                  core.Blockchain         // The blockchain manager
 	blockHashQueue          *lane.Deque             // Contains headers collected during block syncing
 	bestRemoteBlockInfo     *BestBlockInfo          // Holds information about the best known block heard from peers
@@ -636,7 +636,7 @@ func (n *Node) handleEvents() {
 	go func() {
 		// handle core.EventNewTransaction event
 		for evt := range n.event.On(core.EventNewTransaction) {
-			if !n.GetTxRelayQueue().Append(evt.Args[0].(core.Transaction)) {
+			if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
 				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
 			}
 		}
@@ -783,7 +783,7 @@ func (n *Node) IsBadTimestamp() bool {
 }
 
 // GetTxRelayQueue returns the transaction relay queue
-func (n *Node) GetTxRelayQueue() *txpool.TxQueue {
+func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
 	return n.txsRelayQueue
 }
 

@@ -20,7 +20,7 @@ var _ = Describe("TxPool", func() {
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
-			Expect(err).To(Equal(ErrQueueFull))
+			Expect(err).To(Equal(ErrContainerFull))
 		})
 
 		It("should return err = 'exact transaction already in the pool' when transaction has already been added", func() {

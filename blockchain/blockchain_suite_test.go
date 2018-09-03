@@ -71,7 +71,6 @@ var makeBlockWithBalanceTx = func(ch *Chain) core.Block {
 var _ = Describe("Blockchain", func() {
 
 	BeforeEach(func() {
-		var err error
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 	})
@@ -130,7 +129,6 @@ var _ = Describe("Blockchain", func() {
 			Difficulty:        new(big.Int).SetInt64(131072),
 			OverrideTimestamp: time.Now().Add(-2 * time.Second).Unix(),
 		})
-		// _, err = bc.ProcessBlock(genesisBlock)
 		err = genesisChain.append(genesisBlock)
 		Expect(err).To(BeNil())
 	})
@@ -154,9 +152,9 @@ var _ = Describe("Blockchain", func() {
 		BlockTest,
 		CacheTest,
 		TransactionValidatorTest,
-		// BlockValidatorTest,
-		// ChainTransverserTest,
-		// AccountTest,
+		BlockValidatorTest,
+		ChainTransverserTest,
+		AccountTest,
 	}
 
 	Describe(fmt.Sprintf("Tests"), func() {

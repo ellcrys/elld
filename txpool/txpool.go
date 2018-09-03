@@ -15,7 +15,7 @@ import (
 // transactions for block inclusion and propagation.
 type TxPool struct {
 	sync.RWMutex                  // general mutex
-	queue        *TxQueue         // transaction queue
+	queue        *TxContainer     // transaction queue
 	event        *emitter.Emitter // event emitter
 }
 
@@ -60,8 +60,8 @@ func (tp *TxPool) addTx(tx core.Transaction) error {
 	// Append the the transaction to the
 	// the queue. This will cause the pool
 	// to be re-sorted
-	if !tp.queue.Append(tx) {
-		return ErrQueueFull
+	if !tp.queue.Add(tx) {
+		return ErrContainerFull
 	}
 
 	// Emit an event about the accepted
