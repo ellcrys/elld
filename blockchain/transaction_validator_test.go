@@ -226,36 +226,6 @@ var TransactionValidatorTest = func() bool {
 				})
 			})
 
-			When("when a transaction originator has another transaction with same nonce in the transaction pool", func() {
-
-				var tx2 core.Transaction
-
-				BeforeEach(func() {
-					tx2 = &objects.Transaction{
-						Type:         objects.TxTypeBalance,
-						Nonce:        1,
-						To:           util.String(receiver.Addr()),
-						From:         util.String(sender.Addr()),
-						SenderPubKey: util.String(sender.PubKey().Base58()),
-						Value:        "1",
-						Timestamp:    1234567,
-						Fee:          "0.1",
-					}
-					tx2.SetHash(tx2.ComputeHash())
-				})
-
-				It("should return err='index:0, field:from, error:originator has a transaction with same nonce in the transaction pool'", func() {
-					txp := txpool.New(1)
-					err = txp.Put(tx)
-					Expect(err).To(BeNil())
-
-					validator := NewTxValidator(nil, txp, bc)
-					errs := validator.consistencyCheck(tx2)
-					Expect(errs).ToNot(BeEmpty())
-					Expect(errs).To(ContainElement(fmt.Errorf("index:0, field:from, error:originator has a transaction with same nonce in the transaction pool")))
-				})
-			})
-
 			When("In ContextTxPool validation context and a transaction's nonce is lower than expected", func() {
 
 				var tx2 core.Transaction

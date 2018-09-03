@@ -315,15 +315,6 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	// Let us check if there is a transaction created
-	// by the originator that is already in the
-	// transaction pool and has the same nonce.
-	if v.txpool.SenderHasTxWithSameNonce(tx.GetFrom(), tx.GetNonce()) {
-		errs = append(errs, fieldErrorWithIndex(v.curIndex,
-			"from", "originator has a transaction with same nonce in the transaction pool"))
-		return
-	}
-
 	// For transactions intended to the added into
 	// the transaction pool, their nonce must be greater than
 	// the account's current nonce value by at least 1
