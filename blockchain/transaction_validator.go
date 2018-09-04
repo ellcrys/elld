@@ -173,15 +173,6 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		}
 	}
 
-	var isSameStrRule = func(val2 string, err error) func(interface{}) error {
-		return func(val interface{}) error {
-			if val.(util.String).String() != val2 {
-				return err
-			}
-			return nil
-		}
-	}
-
 	// Transaction type is required and must match the known types
 	errs = appendErr(errs, validation.Validate(tx.GetType(),
 		validation.By(validTypeRule(fieldErrorWithIndex(v.curIndex, "type", "unsupported transaction type"))),
@@ -241,13 +232,6 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),
 			validation.By(isValidFeeRule(fieldErrorWithIndex(v.curIndex, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", params.FeePerByte.StringFixed(16))))),
-		))
-	}
-
-	// For TxTypeAlloc, sender must be the same as the recipient
-	if tx.GetType() == objects.TxTypeAlloc {
-		errs = appendErr(errs, validation.Validate(tx.GetFrom(),
-			validation.By(isSameStrRule(tx.GetTo().String(), fieldErrorWithIndex(v.curIndex, "from", "sender and recipient must be same address"))),
 		))
 	}
 

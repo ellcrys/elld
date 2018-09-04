@@ -44,7 +44,6 @@ var TransactionValidatorTest = func() bool {
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:hash, error:hash is required"),
 					&objects.Transaction{Hash: util.StrToHash("incorrect")}:                                                                                          fmt.Errorf("index:0, field:hash, error:hash is not correct"),
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:sig, error:signature is required"),
-					&objects.Transaction{Type: objects.TxTypeAlloc, From: util.String(sender.Addr()), To: util.String(receiver.Addr())}: fmt.Errorf("index:0, field:from, error:sender and recipient must be same address"),
 				}
 				for tx, err := range cases {
 					validator = NewTxsValidator([]core.Transaction{tx}, nil, bc, false)
