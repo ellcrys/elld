@@ -352,5 +352,79 @@ var BlockValidatorTest = func() bool {
 				})
 			})
 		})
+
+		Describe(".checkAllocs", func() {
+
+			When("block has not fee allocation", func() {
+				var block core.Block
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131136),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+				})
+
+				It("should return error when block does not include the fee allocation", func() {
+					errs := NewBlockValidator(block, nil, bc, cfg, log).checkAllocs()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs[0].Error()).To(Equal("field:transactions, error:block allocations and expected allocations do not match"))
+				})
+			})
+
+			When("block has invalid/unexpected fee allocation", func() {
+				var block core.Block
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131136),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+				})
+
+				It("should return error when block does include a fee allocation with expected values", func() {
+					errs := NewBlockValidator(block, nil, bc, cfg, log).checkAllocs()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs[0].Error()).To(Equal("field:transactions, error:block allocations and expected allocations do not match"))
+				})
+			})
+
+			When("block has valid fee allocation", func() {
+				var block core.Block
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.3000000000000000", "0", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131136),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+				})
+
+				It("should return no error", func() {
+					errs := NewBlockValidator(block, nil, bc, cfg, log).checkAllocs()
+					Expect(errs).To(HaveLen(0))
+				})
+			})
+		})
 	})
+
 }

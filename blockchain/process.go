@@ -11,7 +11,6 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
-	"github.com/shopspring/decimal"
 )
 
 // addOp adds a transition operation object to the list of
@@ -42,92 +41,73 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 	var err error
 	var txOps []common.Transition
 	var senderAcct, recipientAcct core.Account
-	var senderAcctBalance = decimal.Zero
-	var recipientAcctBalance = decimal.Zero
 
-	// First, we check if we can determine the balances
-	// of the sender and recipient accounts from
-	// OpNewAccountBalance operations by previous
-	// transactions. If an account was updated by a
-	// previous transaction, the new balance will
-	// be found in the ops list.
+	// Find the current account object in previous operations
+	// passed via ops. If an account has been updated by
+	// the processing of other transactions, the new account
+	// state must be taken as the truth current state of the account
 	for _, prevOp := range ops {
-		// check for balance change for the sender
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetFrom() {
-			senderAcctBalance = opNewBalance.Account.GetBalance().Decimal()
+			senderAcct = opNewBalance.Account
 		}
-		// check for balance change for the recipient
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetTo() {
-			recipientAcctBalance = opNewBalance.Account.GetBalance().Decimal()
+			recipientAcct = opNewBalance.Account
 		}
 	}
 
-	// Find the sender account. Return error if sender
-	// account does not exist. This should never happen
-	// here as the caller must have validated all
-	// transactions in the containing block.
-	senderAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetFrom(), opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sender's account: %s", err)
-	}
-
-	// If we were unable to learn about the sender's latest
-	// balance from the ops list as a result of previous
-	// transactions in same block, then we use the current
-	// account balance.
-	if senderAcctBalance.Equals(decimal.Zero) {
-		senderAcctBalance = senderAcct.GetBalance().Decimal()
-	}
-
-	// Find the account of the recipient. If the recipient
-	// account does not exists, then we must create a
-	// OpCreateAccount transition to instruct the
-	// creation of a new account.
-	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
-	if err != nil {
-		if err != core.ErrAccountNotFound {
-			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+	// If we did not get the latest account status
+	// of the sender from previous operations, we must
+	// fetch it from the database.
+	if senderAcct == nil {
+		senderAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetFrom(), opts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get sender's account: %s", err)
 		}
-		recipientAcct = &objects.Account{
-			Type:    objects.AccountTypeBalance,
-			Address: tx.GetTo(),
-			Balance: "0",
+	}
+
+	// If we did not get the latest account status
+	// of the recipient from previous operations, we must
+	// fetch it from the database or create it
+	if recipientAcct == nil {
+		recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
+		if err != nil {
+			if err != core.ErrAccountNotFound {
+				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+			}
+			recipientAcct = &objects.Account{
+				Type:    objects.AccountTypeBalance,
+				Address: tx.GetTo(),
+				Balance: "0",
+			}
+			txOps = append(txOps, &common.OpCreateAccount{
+				OpBase:  &common.OpBase{Addr: tx.GetTo()},
+				Account: recipientAcct,
+			})
 		}
-		txOps = append(txOps, &common.OpCreateAccount{
-			OpBase:  &common.OpBase{Addr: tx.GetTo()},
-			Account: recipientAcct,
-		})
 	}
 
-	// if we are unable to learn about the recipient's
-	// latest balance from the ops list, then we can
-	// use the balance of the recipient account
-	if recipientAcctBalance.Equals(decimal.Zero) {
-		recipientAcctBalance = recipientAcct.GetBalance().Decimal()
-	}
-
-	// convert the amount to be sent to decimal
+	// Convert the amount to be sent to decimal
 	sendingAmount := tx.GetValue().Decimal()
 
-	// ensure the sender's account balance is
+	// Ensure the sender's account balance is
 	// sufficient for this transaction
-	if senderAcctBalance.LessThan(sendingAmount) {
+	if senderAcct.GetBalance().Decimal().LessThan(sendingAmount) {
 		return nil, fmt.Errorf("insufficient sender account balance")
 	}
 
-	// add an operation to set a new account
+	// Add an operation to set a new account
 	// balance for the sender
-	newSenderBal := util.String(senderAcctBalance.Sub(sendingAmount).StringFixed(params.Decimals))
-	senderAcct.SetBalance(newSenderBal)
+	newSenderBal := senderAcct.GetBalance().Decimal().Sub(sendingAmount).StringFixed(params.Decimals)
+	senderAcct.SetBalance(util.String(newSenderBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetFrom()},
 		Account: senderAcct,
 	})
 
-	// add an operation to set a new balance
+	// Add an operation to set a new balance
 	// of the recipient
-	newRecipientBal := util.String(recipientAcctBalance.Add(sendingAmount).StringFixed(params.Decimals))
-	recipientAcct.SetBalance(newRecipientBal)
+	newRecipientBal := recipientAcct.GetBalance().Decimal().Add(sendingAmount).StringFixed(params.Decimals)
+	recipientAcct.SetBalance(util.String(newRecipientBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetTo()},
 		Account: recipientAcct,
@@ -139,59 +119,55 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 	return txOps, nil
 }
 
-// processAllocCoinTx process a TxTypeAllocCoin which request the creation of a new
-// account as well as allocation of some value to that account.
-// @tx: 	The transaction
-// @ops: 	The list of recent operations generated from other transactions of same block as tx.
-//			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
-// @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
+// processAllocCoinTx process a TxTypeAllocCoin. It
+// allocates value set in a transaction to specific
+// account.
+//
+// The recipient account is searched in the
+// given ops which contains other transition objects
+// effected by other transactions in same block.
+//
+// It will create a OpCreateAccount transition
+// object if the account does not exist.
 func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transition, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var recipientAcct core.Account
-	var recipientAcctBalance = decimal.Zero
 
-	// First, we check if we can determine the balance
-	// of the recipient account from OpNewAccountBalance
-	// operations by previous transactions. If an account was
-	// updated by a previous transaction, the new balance will
-	// be found in the ops list.
+	// Find the current account object in previous operations
+	// passed via ops. If an account has been updated by
+	// the processing of other transactions, the new account
+	// state must be taken as the truth current state of the account
 	for _, prevOp := range ops {
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetTo() {
-			recipientAcctBalance = opNewBalance.Account.GetBalance().Decimal()
+			recipientAcct = opNewBalance.Account
 		}
 	}
 
-	// Find the account of the recipient.
-	// If the account does not exists,
-	// initialize a new account object for
-	// the recipient
-	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
-	if err != nil {
-		if err != core.ErrAccountNotFound {
-			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+	// If we did not get the latest account status
+	// from previous operations, we must fetch it
+	// from the database. If the account does not exists,
+	// initialize a new account object for the recipient
+	if recipientAcct == nil {
+		recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
+		if err != nil {
+			if err != core.ErrAccountNotFound {
+				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+			}
+			recipientAcct = &objects.Account{
+				Type:    objects.AccountTypeBalance,
+				Address: tx.GetTo(),
+				Balance: "0",
+			}
 		}
-		recipientAcct = &objects.Account{
-			Type:    objects.AccountTypeBalance,
-			Address: tx.GetTo(),
-			Balance: "0",
-		}
-	}
-
-	// If the recipients account balance is zero
-	// and unchanged in previous ops execution, we
-	// set it to the value of the current, committed
-	// account balance
-	if recipientAcctBalance.Equals(decimal.Zero) {
-		recipientAcctBalance = recipientAcct.GetBalance().Decimal()
 	}
 
 	// Update the recipients account balance to be the
 	// sum of current balance and the new allocation
-	recipientBal := util.String(recipientAcctBalance.
+	newBal := recipientAcct.GetBalance().Decimal().
 		Add(tx.GetValue().Decimal()).
-		StringFixed(params.Decimals))
-	recipientAcct.SetBalance(recipientBal)
+		StringFixed(params.Decimals)
+	recipientAcct.SetBalance(util.String(newBal))
 
 	// construct an OpNewAccountBalance transition object
 	// and set the account to the updated recipient.
@@ -248,7 +224,6 @@ func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chai
 		switch tx.GetType() {
 		case objects.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
-
 		case objects.TxTypeAlloc:
 			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
@@ -472,9 +447,10 @@ process:
 	return chain, nil
 }
 
-// ProcessBlock takes a block and attempts to add it to the
-// tip of one of the known chains (main chain or forked chain). It returns
-// a chain reader associated with the chain in which the block belongs to.
+// ProcessBlock takes a block, performs initial validations
+// and attempts to add it to the tip of one of the known
+// chains (main chain or forked chain). It returns a chain reader
+// pointing to the chain in which the block was added to.
 func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	b.processLock.Lock()
 	defer b.processLock.Unlock()
@@ -487,17 +463,17 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 		panic("initialization error: transaction pool not set")
 	}
 
-	// validate the block fields.
+	// Validate the block fields.
 	bValidator := b.createBlockValidator(block)
 	if errs := bValidator.checkFields(); len(errs) > 0 {
 		return nil, errs[0]
 	}
 
-	// validate the block
-	// if err := b.validateBlock(block); err != nil {
-	// 	b.log.Debug("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
-	// 	return nil, err
-	// }
+	// Validate allocations. We need to know whether
+	// the allocations in this block are as expected.
+	if errs := bValidator.checkAllocs(); len(errs) > 0 {
+		return nil, errs[0]
+	}
 
 	// Check whether the block has been previously rejected
 	if b.isRejected(block) {

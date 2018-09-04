@@ -40,7 +40,7 @@ var (
 
 var (
 	// Decimals is the number of coin decimal places
-	Decimals = int32(16)
+	Decimals = int32(18)
 )
 
 var (

@@ -49,7 +49,7 @@ func MakeTestBlock(bc core.Blockchain, chain *Chain, gp *core.GenerateBlockParam
 var makeBlock = func(ch *Chain) core.Block {
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "0.1", time.Now().UnixNano()),
 		},
 		Creator:    sender,
 		Nonce:      core.EncodeNonce(1),
@@ -141,8 +141,6 @@ var _ = Describe("Blockchain", func() {
 		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
 	})
 
-	It("", func() {
-	})
 	var tests = []func() bool{
 		WorldReaderTest,
 		BlockchainTest,

@@ -86,7 +86,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{22, 124, 29, 33, 27, 108, 64, 77, 125, 164, 117, 80, 175, 47, 240, 181, 220, 143, 141, 125, 236, 148, 151, 207, 216, 231, 243, 153, 254, 221, 195, 152}
+							expected := util.Hash{204, 17, 136, 206, 230, 79, 69, 0, 230, 216, 213, 176, 44, 155, 46, 186, 231, 143, 121, 75, 247, 229, 31, 206, 150, 78, 43, 26, 240, 243, 196, 91}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 
@@ -221,6 +221,7 @@ var ChainTest = func() bool {
 				block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
 						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),

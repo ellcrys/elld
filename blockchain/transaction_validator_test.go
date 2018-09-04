@@ -197,6 +197,7 @@ var TransactionValidatorTest = func() bool {
 					block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
 							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),

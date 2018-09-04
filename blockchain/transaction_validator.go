@@ -193,12 +193,18 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to", "recipient address is not valid"))),
 	))
 
-	// Sender's address must be set and it must be valid non-zero decimal
+	// Value must be set and it must be valid number
 	errs = appendErr(errs, validation.Validate(tx.GetValue(),
 		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "value", "value is required").Error()),
 		validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "value", "could not convert to decimal"))),
-		validation.By(isZeroLessRule(fieldErrorWithIndex(v.curIndex, "value", "value must be greater than zero"))),
 	))
+
+	// For non-allocations, the value must be greater than 0
+	if tx.GetType() != objects.TxTypeAlloc {
+		errs = appendErr(errs, validation.Validate(tx.GetValue(),
+			validation.By(isZeroLessRule(fieldErrorWithIndex(v.curIndex, "value", "value must be greater than zero"))),
+		))
+	}
 
 	// Timestamp is required.
 	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
@@ -228,7 +234,9 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "sig", "signature is required").Error()),
 	))
 
-	if tx.GetType() == objects.TxTypeBalance {
+	// For non allocations, fee is required and
+	// it must be a valid number.
+	if tx.GetType() != objects.TxTypeAlloc {
 		errs = appendErr(errs, validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),

@@ -2,8 +2,13 @@ package blockchain
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
+
+	"github.com/ellcrys/elld/params"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
@@ -203,6 +208,57 @@ func (v *BlockValidator) checkFields() (errs []error) {
 	// Check that the signature is valid
 	if sigErrs := v.checkSignature(); len(sigErrs) > 0 {
 		errs = append(errs, sigErrs...)
+	}
+
+	return
+}
+
+// checkAllocs verifies allocation transactions
+// such as transaction fees, mining rewards etc.
+func (v *BlockValidator) checkAllocs() (errs []error) {
+
+	// No need performing allocation checks
+	// for the genesis block
+	if v.block.GetNumber() == 1 {
+		return
+	}
+
+	var blockAllocs = [][]interface{}{}
+	var expectedAllocs = [][]interface{}{}
+	var totalFees = decimal.New(0, 0)
+
+	// collect all the allocations transactions
+	// and in doing so, calculate the total fees
+	// for non-allocation transactions
+	for _, tx := range v.block.GetTransactions() {
+		if tx.GetType() == objects.TxTypeAlloc {
+			blockAllocs = append(blockAllocs, []interface{}{
+				tx.GetFrom(),
+				tx.GetTo(),
+				tx.GetValue().Decimal().StringFixed(params.Decimals),
+			})
+			continue
+		}
+		totalFees = totalFees.Add(tx.GetFee().Decimal())
+	}
+
+	// Compute the expected allocations we
+	// expect the block to include.
+	// 1. Accumulated fee addressed to the block creator.
+
+	minerPubKey, _ := crypto.PubKeyFromBase58(v.block.GetHeader().GetCreatorPubKey().String())
+	expectedAllocs = append(expectedAllocs, []interface{}{
+		util.String(minerPubKey.Addr()),
+		util.String(minerPubKey.Addr()),
+		totalFees.StringFixed(params.Decimals),
+	})
+
+	// Compare the allocations in the block
+	// with the computed expected allocations.
+	// If they don't match, then add an error
+	if !reflect.DeepEqual(blockAllocs, expectedAllocs) {
+		errs = append(errs, fieldError("transactions", "block allocations and expected allocations do not match"))
+		return
 	}
 
 	return
