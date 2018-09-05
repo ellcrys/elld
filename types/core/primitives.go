@@ -77,6 +77,7 @@ type Transaction interface {
 	SetFrom(util.String)
 	GetTo() util.String
 	GetValue() util.String
+	SetValue(util.String)
 	GetFee() util.String
 	GetNonce() uint64
 	GetTimestamp() int64

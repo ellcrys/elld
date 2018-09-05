@@ -131,6 +131,11 @@ func (tx *Transaction) GetValue() util.String {
 	return tx.Value
 }
 
+// SetValue gets the value
+func (tx *Transaction) SetValue(v util.String) {
+	tx.Value = v
+}
+
 // GetTo gets the address of receiver
 func (tx *Transaction) GetTo() util.String {
 	return tx.To

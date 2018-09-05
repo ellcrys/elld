@@ -300,8 +300,8 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	// Get the nonce of the originator account
-	accountNonce, err := v.bchain.GetAccountNonce(tx.GetFrom(), opts...)
+	// Get the sender account
+	account, err := v.bchain.GetAccount(tx.GetFrom(), opts...)
 	if err != nil {
 		if err == core.ErrAccountNotFound {
 			errs = append(errs, fieldErrorWithIndex(v.curIndex,
@@ -311,6 +311,18 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		errs = append(errs, fmt.Errorf("failed to get account: %s", err))
 		return
 	}
+
+	// Check whether the sender has sufficient
+	// balance to cover the value + fee
+	deductable := tx.GetValue().Decimal().Add(tx.GetFee().Decimal())
+	if account.GetBalance().Decimal().LessThan(deductable) {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
+			fmt.Sprintf("insufficient account balance")))
+		return
+	}
+
+	// Get the nonce of the originator account
+	accountNonce := account.GetNonce()
 
 	// For transactions intended to the added into
 	// the transaction pool, their nonce must be greater than

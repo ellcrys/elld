@@ -163,8 +163,10 @@ var TransactionValidatorTest = func() bool {
 
 			var tx core.Transaction
 			var sender, receiver *crypto.Key
+			var txp *txpool.TxPool
 
 			BeforeEach(func() {
+				txp = txpool.New(1)
 				sender, receiver = crypto.NewKeyFromIntSeed(1), crypto.NewKeyFromIntSeed(2)
 				tx = &objects.Transaction{
 					Type:         objects.TxTypeBalance,
@@ -207,7 +209,6 @@ var TransactionValidatorTest = func() bool {
 				})
 
 				It("should return err='index:0, error:transaction already exist in main chain' when exact transaction exist in the main chain", func() {
-					txp := txpool.New(1)
 					validator := NewTxValidator(nil, txp, bc)
 					errs := validator.consistencyCheck(block2.GetTransactions()[0])
 					Expect(errs).ToNot(BeEmpty())
@@ -218,11 +219,20 @@ var TransactionValidatorTest = func() bool {
 			When("transaction originator's account is not found", func() {
 				It("should return err='index:0, field:from, error:sender account not found'", func() {
 					tx.SetFrom("unknown_address")
-					txp := txpool.New(1)
 					validator := NewTxValidator(nil, txp, bc)
 					errs := validator.consistencyCheck(tx)
 					Expect(errs).ToNot(BeEmpty())
 					Expect(errs).To(ContainElement(fmt.Errorf("index:0, field:from, error:sender account not found")))
+				})
+			})
+
+			When("sender has insufficient balance", func() {
+				It("should return err='index:0, error:insufficient account balance'", func() {
+					tx.SetValue("10000000")
+					validator := NewTxValidator(nil, txp, bc)
+					errs := validator.consistencyCheck(tx)
+					Expect(errs).ToNot(BeEmpty())
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:insufficient account balance")))
 				})
 			})
 

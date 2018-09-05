@@ -106,6 +106,9 @@ type Blockchain interface {
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
 
+	// GetAccount gets an account
+	GetAccount(address util.String, opts ...CallOp) (Account, error)
+
 	// GetAccountNonce gets the nonce of an account
 	GetAccountNonce(address util.String, opts ...CallOp) (uint64, error)
 }
