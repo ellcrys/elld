@@ -314,7 +314,7 @@ var ProcessTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -339,8 +339,8 @@ var ProcessTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -396,8 +396,8 @@ var ProcessTest = func() bool {
 					BeforeEach(func() {
 						block2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730724),
 							},
 							Creator:           sender,
 							Nonce:             core.EncodeNonce(1),
@@ -409,8 +409,8 @@ var ProcessTest = func() bool {
 
 						block3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730725),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:           sender,
 							Nonce:             core.EncodeNonce(2),
@@ -440,8 +440,8 @@ var ProcessTest = func() bool {
 					BeforeEach(func() {
 						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -450,8 +450,8 @@ var ProcessTest = func() bool {
 
 						block2_2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730725),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(4),
@@ -481,8 +481,8 @@ var ProcessTest = func() bool {
 
 						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -514,8 +514,8 @@ var ProcessTest = func() bool {
 				BeforeEach(func() {
 					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -529,8 +529,8 @@ var ProcessTest = func() bool {
 
 					okStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -585,8 +585,8 @@ var ProcessTest = func() bool {
 			BeforeEach(func() {
 				parent1 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730725),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -597,8 +597,8 @@ var ProcessTest = func() bool {
 
 				orphanParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "0.1", 1532730730),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730731),
+						objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.36", 1532730730),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730731),
 					},
 					Creator:           sender,
 					Nonce:             core.EncodeNonce(1),
@@ -610,8 +610,8 @@ var ProcessTest = func() bool {
 
 				orphan = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.1", "0", 1532730727),
+						objects.NewTx(objects.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.36", 1532730726),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730727),
 					},
 					Creator:           sender,
 					Nonce:             core.EncodeNonce(1),

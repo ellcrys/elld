@@ -222,7 +222,7 @@ var BlockchainTest = func() bool {
 
 				b1 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -258,7 +258,7 @@ var BlockchainTest = func() bool {
 				BeforeEach(func() {
 					b2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -296,7 +296,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -380,7 +380,7 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				parentBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -389,7 +389,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					OverrideParentHash: parentBlock.GetHash(),
 					Creator:            sender,
@@ -400,7 +400,7 @@ var BlockchainTest = func() bool {
 
 				unknownParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:            sender,
 					OverrideParentHash: util.StrToHash("unknown"),
@@ -451,7 +451,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),

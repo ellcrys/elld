@@ -10,6 +10,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
@@ -18,6 +19,7 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/shopspring/decimal"
 )
 
 var log logger.Logger
@@ -60,13 +62,17 @@ var makeBlock = func(ch *Chain) core.Block {
 var makeBlockWithBalanceTx = func(ch *Chain) core.Block {
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", time.Now().UnixNano()),
 		},
 		Creator:    sender,
 		Nonce:      core.EncodeNonce(1),
 		Difficulty: new(big.Int).SetInt64(131072),
 	})
 }
+
+var _ = BeforeSuite(func() {
+	params.FeePerByte = decimal.NewFromFloat(0.01)
+})
 
 var _ = Describe("Blockchain", func() {
 
@@ -122,7 +128,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 			Transactions: []core.Transaction{
-				objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+				objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
 			},
 			Creator:           sender,
 			Nonce:             core.EncodeNonce(1),

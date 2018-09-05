@@ -179,10 +179,14 @@ func (tx *Transaction) Bytes() []byte {
 	return getBytes(data)
 }
 
-// Size returns the size of the
-// transactions. Size is typically
-// the total size of each field.
-func (tx *Transaction) Size() int64 {
+// SizeNoFee returns the virtual size of the
+// transaction by summing up the size of
+// field contents except the `fee` field.
+// The value does not represent the true size
+// of the transaction
+// on disk. It is main required for computing
+// minimum fees etc.
+func (tx *Transaction) SizeNoFee() int64 {
 
 	var invokeArgsBs []byte
 	if tx.InvokeArgs != nil {
@@ -196,7 +200,6 @@ func (tx *Transaction) Size() int64 {
 		tx.SenderPubKey,
 		tx.From,
 		tx.Value,
-		tx.Fee,
 		tx.Timestamp,
 		invokeArgsBs,
 		tx.Hash,

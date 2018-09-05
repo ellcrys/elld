@@ -316,7 +316,7 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),
@@ -336,7 +336,7 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),
@@ -360,9 +360,9 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),
@@ -383,9 +383,9 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0", 1532730722),
 						},
 						Creator:           sender,
@@ -407,10 +407,10 @@ var BlockValidatorTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0.3000000000000000", "0", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "7.080000000000000000", "0", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             core.EncodeNonce(1),

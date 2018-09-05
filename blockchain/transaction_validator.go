@@ -154,16 +154,6 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		}
 	}
 
-	var isValidFeeRule = func(err error) func(interface{}) error {
-		return func(val interface{}) error {
-			dec, _ := decimal.NewFromString(val.(util.String).String())
-			if dec.LessThan(params.FeePerByte) {
-				return err
-			}
-			return nil
-		}
-	}
-
 	var isSameHashRule = func(val2 util.Hash, err error) func(interface{}) error {
 		return func(val interface{}) error {
 			if !val.(util.Hash).Equal(val2) {
@@ -225,14 +215,29 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "sig", "signature is required").Error()),
 	))
 
-	// For non allocations, fee is required and
-	// it must be a valid number.
+	// For non allocations, fee is required.
+	// It must be a number. It must be equal to the
+	// minimum required fee for the size of the
+	// transaction.
 	if tx.GetType() != objects.TxTypeAlloc {
-		errs = appendErr(errs, validation.Validate(tx.GetFee(),
+		err := validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
 			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),
-			validation.By(isValidFeeRule(fieldErrorWithIndex(v.curIndex, "fee", fmt.Sprintf("fee cannot be below the minimum balance transaction fee {%s}", params.FeePerByte.StringFixed(16))))),
-		))
+		)
+		errs = appendErr(errs, err)
+
+		// Calculate and check fee only if
+		// the fee passed format validation
+		if err == nil {
+			fee := tx.GetFee().Decimal()
+			txSize := decimal.NewFromFloat(float64(tx.SizeNoFee()))
+			expectedMinimumFee := params.FeePerByte.Mul(txSize).Round(2)
+			if expectedMinimumFee.GreaterThan(fee) {
+				errs = appendErr(errs, fieldErrorWithIndex(v.curIndex, "fee",
+					fmt.Sprintf("fee is too low. Minimum fee expected: %s (for %s bytes)",
+						expectedMinimumFee.Round(3), txSize.String())))
+			}
+		}
 	}
 
 	// Check signature validity

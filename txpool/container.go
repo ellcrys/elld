@@ -98,7 +98,7 @@ func (q *TxContainer) Add(tx core.Transaction) bool {
 
 	// Calculate the transaction's fee rate
 	// formula: tx fee / size
-	txSizeDec := decimal.NewFromBigInt(new(big.Int).SetInt64(tx.Size()), 0)
+	txSizeDec := decimal.NewFromBigInt(new(big.Int).SetInt64(tx.SizeNoFee()), 0)
 	item.FeeRate = util.String(tx.GetFee().Decimal().Div(txSizeDec).StringFixed(params.Decimals))
 
 	q.gmx.Lock()

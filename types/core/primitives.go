@@ -68,7 +68,7 @@ type Transaction interface {
 	GetHash() util.Hash
 	SetHash(util.Hash)
 	Bytes() []byte
-	Size() int64
+	SizeNoFee() int64
 	ComputeHash() util.Hash
 	ID() string
 	Sign(privKey string) ([]byte, error)
