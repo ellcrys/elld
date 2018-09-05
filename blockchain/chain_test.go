@@ -86,7 +86,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{204, 17, 136, 206, 230, 79, 69, 0, 230, 216, 213, 176, 44, 155, 46, 186, 231, 143, 121, 75, 247, 229, 31, 206, 150, 78, 43, 26, 240, 243, 196, 91}
+							expected := util.Hash{230, 193, 29, 74, 160, 72, 254, 101, 99, 63, 204, 221, 100, 45, 187, 247, 98, 236, 107, 173, 166, 245, 218, 120, 185, 226, 199, 129, 170, 237, 102, 236}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 

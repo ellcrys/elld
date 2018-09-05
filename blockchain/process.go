@@ -29,14 +29,17 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 	return append(newOps, op)
 }
 
-// processBalanceTx processes a TxTypeBalance transaction. It returns series of transition
-// operations that must be applied to effect changes the world state and transaction accounts.
-// It accepts the following args:
+// processBalanceTx process a TxTypeBalance transaction.
+// It takes value from a sender's account and adds to
+// a recipient's account. The nonce of the sender
+// account is incremented.
 //
-// @tx: 	The transaction
-// @ops: 	The list of recent operations generated from other transactions of same block as tx.
-//			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
-// @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
+// The recipient account is searched in the
+// given ops which contains other transition objects
+// effected by other transactions in same block.
+//
+// It will create a OpCreateAccount transition
+// object if the recipient account does not exist.
 func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transition, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
@@ -88,16 +91,18 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// Convert the amount to be sent to decimal
 	sendingAmount := tx.GetValue().Decimal()
+	fee := tx.GetFee().Decimal()
+	deductable := sendingAmount.Add(fee)
 
 	// Ensure the sender's account balance is
-	// sufficient for this transaction
-	if senderAcct.GetBalance().Decimal().LessThan(sendingAmount) {
+	// sufficient for this transaction value + fee
+	if senderAcct.GetBalance().Decimal().LessThan(deductable) {
 		return nil, fmt.Errorf("insufficient sender account balance")
 	}
 
 	// Add an operation to set a new account
 	// balance for the sender
-	newSenderBal := senderAcct.GetBalance().Decimal().Sub(sendingAmount).StringFixed(params.Decimals)
+	newSenderBal := senderAcct.GetBalance().Decimal().Sub(deductable).StringFixed(params.Decimals)
 	senderAcct.SetBalance(util.String(newSenderBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetFrom()},

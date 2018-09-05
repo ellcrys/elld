@@ -126,7 +126,7 @@ var ProcessTest = func() bool {
 
 					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[1].Address()).To(Equal(txs[0].GetFrom()))
-					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("9.000000000000000000")))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.900000000000000000")))
 
 					Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[2].Address()).To(Equal(txs[0].GetTo()))
@@ -160,7 +160,7 @@ var ProcessTest = func() bool {
 
 					Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[0].Address()).To(Equal(txs[0].GetFrom()))
-					Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("9.000000000000000000")))
+					Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.900000000000000000")))
 
 					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[1].Address()).To(Equal(txs[0].GetTo()))
@@ -200,7 +200,7 @@ var ProcessTest = func() bool {
 
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[0].Address()).To(Equal(txs[0].GetFrom()))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.000000000000000000")))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("7.800000000000000000")))
 
 						Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[1].Address()).To(Equal(txs[0].GetTo()))
@@ -233,7 +233,7 @@ var ProcessTest = func() bool {
 
 						Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[1].Address()).To(Equal(txs[0].GetFrom()))
-						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.000000000000000000")))
+						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("7.800000000000000000")))
 
 						Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[2].Address()).To(Equal(txs[0].GetTo()))
