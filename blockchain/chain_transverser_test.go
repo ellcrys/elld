@@ -14,10 +14,10 @@ var ChainTransverserTest = func() bool {
 
 		Describe(".Query", func() {
 
-			var trv *ChainTransverser
+			var trv *ChainTraverser
 
 			BeforeEach(func() {
-				trv = bc.NewChainTransverser()
+				trv = bc.NewChainTraverser()
 			})
 
 			It("should return error if query function returned an error", func() {

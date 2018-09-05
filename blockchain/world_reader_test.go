@@ -19,11 +19,7 @@ var WorldReaderTest = func() bool {
 
 		Describe(".GetAccount", func() {
 
-			Describe("as user", func() {
-				It("should set reader to ReaderUser if chain is not provided", func() {
-					wr.GetAccount(nil, util.String(sender.Addr()))
-					Expect(wr.reader).To(Equal(ReaderUser))
-				})
+			Describe("with no chain provided", func() {
 
 				It("should return error if best chain is not set", func() {
 					bc.bestChain = nil
@@ -45,7 +41,7 @@ var WorldReaderTest = func() bool {
 				})
 			})
 
-			Describe("as miner", func() {
+			Describe("with a chain", func() {
 
 				Context("chain has no parent", func() {
 					It("should successfully get account", func() {

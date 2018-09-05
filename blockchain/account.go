@@ -17,9 +17,7 @@ func (b *Blockchain) putAccount(blockNo uint64, chain *Chain, account core.Accou
 func (b *Blockchain) GetAccountNonce(address util.String, opts ...core.CallOp) (uint64, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
-
 	opt := common.GetChainerOp(opts...)
-
 	account, err := b.NewWorldReader().GetAccount(opt.Chain, address, opts...)
 	if err != nil {
 		return 0, err
