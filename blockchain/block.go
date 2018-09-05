@@ -182,15 +182,6 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	block.Sig = sig
 
-	// Finally, validate the block to ensure it meets every
-	// requirement for a valid block.
-	bv := b.createBlockValidator(block)
-	errs := bv.checkFields()
-	errs = append(errs, bv.checkTransactions(&common.ChainerOp{Chain: chain})...)
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("failed final validation: %s", errs[0])
-	}
-
 	return block, nil
 }
 
