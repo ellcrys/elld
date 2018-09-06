@@ -46,6 +46,7 @@ type TxContainer struct {
 	len       int64
 	noSorting bool
 	index     map[string]interface{}
+	byteSize  int64
 }
 
 // newQueue creates a new container
@@ -77,6 +78,12 @@ func (q *TxContainer) Size() int64 {
 	return q.len
 }
 
+// ByteSize gets the total byte size of
+// all transactions in the container
+func (q *TxContainer) ByteSize() int64 {
+	return q.byteSize
+}
+
 // Full checks if the container's capacity has been reached
 func (q *TxContainer) Full() bool {
 	q.gmx.RLock()
@@ -105,6 +112,7 @@ func (q *TxContainer) Add(tx core.Transaction) bool {
 	q.container = append(q.container, item)
 	q.index[tx.GetHash().HexStr()] = struct{}{}
 	q.len++
+	q.byteSize += tx.SizeNoFee()
 	q.gmx.Unlock()
 
 	if !q.noSorting {
@@ -135,6 +143,7 @@ func (q *TxContainer) First() core.Transaction {
 	item := q.container[0]
 	q.container = q.container[1:]
 	delete(q.index, item.Tx.GetHash().HexStr())
+	q.byteSize -= item.Tx.SizeNoFee()
 	q.len--
 	return item.Tx
 }
@@ -154,6 +163,7 @@ func (q *TxContainer) Last() core.Transaction {
 	item := q.container[lastIndex]
 	q.container = q.container[0:lastIndex]
 	delete(q.index, item.Tx.GetHash().HexStr())
+	q.byteSize -= item.Tx.SizeNoFee()
 	q.len--
 	return item.Tx
 }
