@@ -66,42 +66,42 @@ var ProcessTest = func() bool {
 
 			It("should return error if sender does not exist in the best chain", func() {
 				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "1", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
 					},
 				}
 
-				_, err := bc.processTransactions(txs, genesisChain)
+				_, err := bc.ProcessTransactions(txs, genesisChain)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("index{0}: failed to get sender's account: account not found"))
 			})
 
 			It("should return error if sender account has insufficient value", func() {
 				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "10000000", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
 					},
 				}
 
-				_, err := bc.processTransactions(txs, genesisChain)
+				_, err := bc.ProcessTransactions(txs, genesisChain)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("index{0}: insufficient sender account balance"))
 			})
 
 			It("should panic if sender value is could not be converted to decimal", func() {
 				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "100_333", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
 					},
 				}
 				Expect(func() {
-					bc.processTransactions(txs, genesisChain)
+					bc.ProcessTransactions(txs, genesisChain)
 				}).To(Panic())
 			})
 
@@ -110,14 +110,14 @@ var ProcessTest = func() bool {
 				It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient) and 2 OpNewAccountBalance (sender and recipient);
 					1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
 					var txs = []core.Transaction{
-						&objects.Transaction{Type: 1, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "1", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
 						},
 					}
 
-					ops, err := bc.processTransactions(txs, genesisChain)
+					ops, err := bc.ProcessTransactions(txs, genesisChain)
 					Expect(err).To(BeNil())
 					Expect(ops).To(HaveLen(3))
 
@@ -126,11 +126,11 @@ var ProcessTest = func() bool {
 
 					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[1].Address()).To(Equal(txs[0].GetFrom()))
-					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("9.0000000000000000")))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.900000000000000000")))
 
 					Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[2].Address()).To(Equal(txs[0].GetTo()))
-					Expect(ops[2].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("1.0000000000000000")))
+					Expect(ops[2].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("1.000000000000000000")))
 				})
 			})
 
@@ -147,24 +147,24 @@ var ProcessTest = func() bool {
 					1st OpNewAccountBalance.Amount = 9; 2nd OpNewAccountBalance.Amount = 1`, func() {
 
 					var txs = []core.Transaction{
-						&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "1", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
 						},
 					}
 
-					ops, err := bc.processTransactions(txs, genesisChain)
+					ops, err := bc.ProcessTransactions(txs, genesisChain)
 					Expect(err).To(BeNil())
 					Expect(ops).To(HaveLen(2))
 
 					Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[0].Address()).To(Equal(txs[0].GetFrom()))
-					Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("9.0000000000000000")))
+					Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.900000000000000000")))
 
 					Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 					Expect(ops[1].Address()).To(Equal(txs[0].GetTo()))
-					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("1.0000000000000000")))
+					Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("1.000000000000000000")))
 				})
 			})
 
@@ -182,29 +182,29 @@ var ProcessTest = func() bool {
 					It(`should return operations and no error; expects 2 ops; 2 OpNewAccountBalance (sender and recipient);
 													1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 2`, func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
 						}
 
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(2))
 
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[0].Address()).To(Equal(txs[0].GetFrom()))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.0000000000000000")))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("7.800000000000000000")))
 
 						Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[1].Address()).To(Equal(txs[0].GetTo()))
-						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("2.0000000000000000")))
+						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("2.000000000000000000")))
 					})
 				})
 
@@ -212,19 +212,19 @@ var ProcessTest = func() bool {
 					It(`should return operations and no error; expects 3 ops; 1 OpCreateAccount (for recipient), 2 OpNewAccountBalance (sender and recipient);
 														1st OpNewAccountBalance.Amount = 8; 2nd OpNewAccountBalance.Amount = 2`, func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&objects.Transaction{Type: 1, Nonce: 123, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
 						}
 
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(3))
 
@@ -233,11 +233,11 @@ var ProcessTest = func() bool {
 
 						Expect(ops[1]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[1].Address()).To(Equal(txs[0].GetFrom()))
-						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("8.0000000000000000")))
+						Expect(ops[1].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("7.800000000000000000")))
 
 						Expect(ops[2]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
 						Expect(ops[2].Address()).To(Equal(txs[0].GetTo()))
-						Expect(ops[2].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("2.0000000000000000")))
+						Expect(ops[2].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("2.000000000000000000")))
 					})
 				})
 			})
@@ -248,18 +248,18 @@ var ProcessTest = func() bool {
 				When("recipient account does not exist", func() {
 					It("should successfully return one state object = OpNewAccountBalance", func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "10", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
 						}
 
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(1))
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("10.0000000000000000")))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("10.000000000000000000")))
 					})
 				})
 
@@ -272,19 +272,19 @@ var ProcessTest = func() bool {
 						})).To(BeNil())
 					})
 
-					It("should successfully return one state object = OpNewAccountBalance and Balance = 110.0000000000000000", func() {
+					It("should successfully return one state object = OpNewAccountBalance and Balance = 110.000000000000000000", func() {
 						var txs = []core.Transaction{
-							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 123, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "10", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
 						}
-						ops, err := bc.processTransactions(txs, genesisChain)
+						ops, err := bc.ProcessTransactions(txs, genesisChain)
 						Expect(err).To(BeNil())
 						Expect(ops).To(HaveLen(1))
 						Expect(ops[0]).To(BeAssignableToTypeOf(&common.OpNewAccountBalance{}))
-						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("110.0000000000000000")))
+						Expect(ops[0].(*common.OpNewAccountBalance).Account.GetBalance()).To(Equal(util.String("110.000000000000000000")))
 					})
 				})
 			})
@@ -314,7 +314,7 @@ var ProcessTest = func() bool {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -339,7 +339,8 @@ var ProcessTest = func() bool {
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -359,14 +360,14 @@ var ProcessTest = func() bool {
 				Expect(err).To(BeNil())
 				_, err = bc.ProcessBlock(block)
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(fmt.Errorf("error:block found in chain")))
+				Expect(err).To(Equal(fmt.Errorf("block already exists")))
 			})
 
 			It("should return error if block has been added to the orphaned cache", func() {
 				bc.orphanBlocks.Add(block.HashToHex(), block)
 				_, err = bc.ProcessBlock(block)
 				Expect(err).ToNot(BeNil())
-				Expect(err).To(Equal(fmt.Errorf("error:block found in orphan cache")))
+				Expect(err).To(Equal(fmt.Errorf("orphan block")))
 			})
 
 			When("a block's parent does not exist in any chain", func() {
@@ -395,7 +396,8 @@ var ProcessTest = func() bool {
 					BeforeEach(func() {
 						block2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730724),
 							},
 							Creator:           sender,
 							Nonce:             core.EncodeNonce(1),
@@ -407,7 +409,8 @@ var ProcessTest = func() bool {
 
 						block3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730725),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:           sender,
 							Nonce:             core.EncodeNonce(2),
@@ -437,7 +440,8 @@ var ProcessTest = func() bool {
 					BeforeEach(func() {
 						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -446,7 +450,8 @@ var ProcessTest = func() bool {
 
 						block2_2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730725),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730725),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(4),
@@ -476,7 +481,8 @@ var ProcessTest = func() bool {
 
 						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      core.EncodeNonce(1),
@@ -508,7 +514,8 @@ var ProcessTest = func() bool {
 				BeforeEach(func() {
 					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -522,7 +529,8 @@ var ProcessTest = func() bool {
 
 					okStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -577,7 +585,8 @@ var ProcessTest = func() bool {
 			BeforeEach(func() {
 				parent1 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -588,7 +597,8 @@ var ProcessTest = func() bool {
 
 				orphanParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730730),
+						objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.36", 1532730730),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730731),
 					},
 					Creator:           sender,
 					Nonce:             core.EncodeNonce(1),
@@ -600,7 +610,8 @@ var ProcessTest = func() bool {
 
 				orphan = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730726),
+						objects.NewTx(objects.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.36", 1532730726),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730727),
 					},
 					Creator:           sender,
 					Nonce:             core.EncodeNonce(1),

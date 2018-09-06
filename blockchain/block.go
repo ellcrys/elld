@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	p "github.com/ellcrys/elld/params"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
@@ -57,13 +59,11 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 // as a CallOp.
 func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.CallOp) (core.Block, error) {
 
-	var chain *Chain
+	var chain core.Chainer
 	var block *objects.Block
 
 	if params == nil {
 		return nil, fmt.Errorf("params is required")
-	} else if len(params.Transactions) == 0 {
-		return nil, fmt.Errorf("at least one transaction is required")
 	} else if params.Creator == nil {
 		return nil, fmt.Errorf("creator's key is required")
 	} else if params.Difficulty == nil || params.Difficulty.Cmp(util.Big0) == 0 {
@@ -72,15 +72,12 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// Determine if an explicit chain is to be used as
 	// opposed to the main chain.
-	for _, opt := range opts {
-		if _opt, ok := opt.(ChainOp); ok {
-			chain = _opt.Chain
-			break
-		}
-	}
+	chainerOp := common.GetChainerOp(opts...)
+	chain = chainerOp.Chain
+
 	// If an explicit chain has not been set, we use
 	// the main chain
-	if chain == nil {
+	if chain == nil && b.bestChain != nil {
 		chain = b.bestChain
 	}
 
@@ -174,6 +171,13 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 		block.Header.SetStateRoot(params.OverrideStateRoot)
 	}
 
+	// select transactions
+	if len(params.Transactions) == 0 {
+		for _, tx := range b.txPool.Select(p.MaxBlockTransactionsSize) {
+			block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
+		}
+	}
+
 	// Compute hash
 	block.Hash = block.ComputeHash()
 
@@ -184,13 +188,6 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	}
 
 	block.Sig = sig
-
-	// Finally, validate the block to ensure it meets every
-	// requirement for a valid block.
-	bv := NewBlockValidator(block, b.txPool, b, true, b.cfg, b.log)
-	if errs := bv.Validate(); len(errs) > 0 {
-		return nil, fmt.Errorf("failed final validation: %s", errs[0])
-	}
 
 	return block, nil
 }

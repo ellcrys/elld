@@ -7,6 +7,7 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -41,7 +42,7 @@ func TestBlockchain(t *testing.T) {
 }
 
 func MakeTestBlock(bc core.BlockMaker, chain *blockchain.Chain, gp *core.GenerateBlockParams) core.Block {
-	blk, err := bc.Generate(gp, blockchain.ChainOp{Chain: chain})
+	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
 	if err != nil {
 		panic(err)
 	}
@@ -67,7 +68,7 @@ var _ = Describe("Blockchain", func() {
 	// and create the blockchain. Also set the store
 	// on the blockchain.
 	BeforeEach(func() {
-		txPool = txpool.NewTxPool(100)
+		txPool = txpool.New(100)
 		event = &emitter.Emitter{}
 		bc = blockchain.New(txPool, cfg, log)
 		bc.SetDB(db)

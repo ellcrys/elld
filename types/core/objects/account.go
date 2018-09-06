@@ -1,7 +1,6 @@
 package objects
 
 import (
-	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -22,22 +21,8 @@ type Account struct {
 	Type        int32        `json:"type" msgpack:"type"`
 	Address     util.String  `json:"address" msgpack:"address"`
 	Balance     util.String  `json:"balance" msgpack:"balance"`
+	Nonce       uint64       `json:"nonce" msgpack:"nonce"`
 	AccountInfo *AccountInfo `json:"accountInfo" msgpack:"accountInfo"`
-}
-
-// ValidateAccount checks the fields of an Account object
-// ensuring the value are valid and expected.
-func ValidateAccount(account *Account) error {
-
-	if len(account.Address) == 0 {
-		return fieldError("address", "address is required")
-	}
-
-	if err := crypto.IsValidAddr(account.Address.String()); err != nil {
-		return fieldError("address", err.Error())
-	}
-
-	return nil
 }
 
 // GetAddress gets the address
@@ -53,4 +38,14 @@ func (a *Account) GetBalance() util.String {
 // SetBalance sets the balance
 func (a *Account) SetBalance(b util.String) {
 	a.Balance = b
+}
+
+// GetNonce gets the nonce
+func (a *Account) GetNonce() uint64 {
+	return a.Nonce
+}
+
+// IncrNonce increments the nonce by 1
+func (a *Account) IncrNonce() {
+	a.Nonce++
 }

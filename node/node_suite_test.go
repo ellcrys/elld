@@ -88,8 +88,8 @@ var _ = Describe("Engine", func() {
 	// Initialize the default test transaction pools
 	// and create the blockchain instances and set their db
 	BeforeEach(func() {
-		txPool = txpool.NewTxPool(100)
-		txPool2 = txpool.NewTxPool(100)
+		txPool = txpool.New(100)
+		txPool2 = txpool.New(100)
 		lpBc = blockchain.New(txPool, cfg, log)
 		lpBc.SetDB(db)
 		lpBc.SetGenesisBlock(blockchain.GenesisBlock)

@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ellcrys/elld/crypto"
@@ -20,7 +21,7 @@ var TransactionValidatorTest = func() bool {
 			var validator *TxsValidator
 
 			It("should return error if tx = nil", func() {
-				errs := validator.check(nil)
+				errs := validator.fieldsCheck(nil)
 				Expect(errs).To(HaveLen(1))
 				Expect(errs).To(ContainElement(fmt.Errorf("nil tx")))
 			})
@@ -28,7 +29,6 @@ var TransactionValidatorTest = func() bool {
 			It("should test all validation rules", func() {
 				var cases = map[core.Transaction]interface{}{
 					&objects.Transaction{Type: 0}:                                                                                                                    fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
-					&objects.Transaction{Type: objects.TxTypeBalance, Nonce: -1}:                                                                                     fmt.Errorf("index:0, field:nonce, error:nonce must be non-negative"),
 					&objects.Transaction{Type: objects.TxTypeBalance, Nonce: 0}:                                                                                      fmt.Errorf("index:0, field:to, error:recipient address is required"),
 					&objects.Transaction{To: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:                                                                       fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
 					&objects.Transaction{From: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:                                                                     fmt.Errorf("index:0, field:from, error:sender address is not valid"),
@@ -40,15 +40,14 @@ var TransactionValidatorTest = func() bool {
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
 					&objects.Transaction{Type: objects.TxTypeBalance}:                                                                                                fmt.Errorf("index:0, field:fee, error:fee is required"),
 					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "1oo"}:                                                                                    fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
-					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.0001"}:                                                                                 fmt.Errorf("index:0, field:fee, error:fee cannot be below the minimum balance transaction fee {0.0100000000000000}"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.000001"}:                                                                               fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.44 (for 44 bytes)"),
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:hash, error:hash is required"),
 					&objects.Transaction{Hash: util.StrToHash("incorrect")}:                                                                                          fmt.Errorf("index:0, field:hash, error:hash is not correct"),
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:sig, error:signature is required"),
-					&objects.Transaction{Type: objects.TxTypeAlloc, From: util.String(sender.Addr()), To: util.String(receiver.Addr())}: fmt.Errorf("index:0, field:from, error:sender and recipient must be same address"),
 				}
 				for tx, err := range cases {
 					validator = NewTxsValidator([]core.Transaction{tx}, nil, bc, false)
-					errs := validator.check(tx)
+					errs := validator.fieldsCheck(tx)
 					Expect(errs).To(ContainElement(err))
 				}
 			})
@@ -63,7 +62,7 @@ var TransactionValidatorTest = func() bool {
 					From:         util.String(receiver.Addr()),
 					Value:        "10",
 					SenderPubKey: util.String(sender.PubKey().Base58()),
-					Fee:          "0.1",
+					Fee:          "2.37",
 					Timestamp:    time.Now().Unix(),
 					Hash:         util.StrToHash("some_hash"),
 					Sig:          []byte("invalid"),
@@ -73,14 +72,14 @@ var TransactionValidatorTest = func() bool {
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 
-				txp := txpool.NewTxPool(1)
+				txp := txpool.New(1)
 				err = txp.Put(tx)
 				Expect(err).To(BeNil())
 
 				validator = NewTxsValidator([]core.Transaction{tx}, txp, bc, true)
 				errs := validator.Validate()
 				Expect(errs).To(HaveLen(1))
-				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in tx pool")))
+				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in the transactions pool")))
 			})
 
 			Context("transaction in main chain", func() {
@@ -94,7 +93,8 @@ var TransactionValidatorTest = func() bool {
 				})
 
 				It("should return error if transaction already exists in the main chain", func() {
-					validator = NewTxsValidator([]core.Transaction{tx}, nil, bc, true)
+					txp := txpool.New(1)
+					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc, true)
 					errs := validator.Validate()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in main chain")))
@@ -156,6 +156,167 @@ var TransactionValidatorTest = func() bool {
 				validator := NewTxsValidator(nil, nil, bc, false)
 				errs := validator.checkSignature(tx)
 				Expect(errs).To(HaveLen(0))
+			})
+		})
+
+		Describe(".consistencyCheck", func() {
+
+			var tx core.Transaction
+			var sender, receiver *crypto.Key
+			var txp *txpool.TxPool
+
+			BeforeEach(func() {
+				txp = txpool.New(1)
+				sender, receiver = crypto.NewKeyFromIntSeed(1), crypto.NewKeyFromIntSeed(2)
+				tx = &objects.Transaction{
+					Type:         objects.TxTypeBalance,
+					Nonce:        1,
+					To:           util.String(receiver.Addr()),
+					From:         util.String(sender.Addr()),
+					SenderPubKey: util.String(sender.PubKey().Base58()),
+					Value:        "10",
+					Timestamp:    1234567,
+					Fee:          "0.1",
+				}
+				tx.SetHash(tx.ComputeHash())
+			})
+
+			It("should return err='index:0, error:transaction already exist in the transactions pool' when exact transaction exist in pool", func() {
+				txp := txpool.New(1)
+				Expect(txp.Put(tx)).To(BeNil())
+				validator := NewTxValidator(nil, txp, bc)
+				errs := validator.consistencyCheck(tx)
+				Expect(errs).ToNot(BeEmpty())
+				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in the transactions pool")))
+			})
+
+			Context("add a block with test transactions", func() {
+
+				var block2 core.Block
+
+				BeforeEach(func() {
+					block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730723),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
+						},
+						Creator:    sender,
+						Nonce:      core.EncodeNonce(1),
+						Difficulty: new(big.Int).SetInt64(131072),
+					})
+					_, err = bc.ProcessBlock(block2)
+					Expect(err).To(BeNil())
+				})
+
+				It("should return err='index:0, error:transaction already exist in main chain' when exact transaction exist in the main chain", func() {
+					validator := NewTxValidator(nil, txp, bc)
+					errs := validator.consistencyCheck(block2.GetTransactions()[0])
+					Expect(errs).ToNot(BeEmpty())
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in main chain")))
+				})
+			})
+
+			When("transaction originator's account is not found", func() {
+				It("should return err='index:0, field:from, error:sender account not found'", func() {
+					tx.SetFrom("unknown_address")
+					validator := NewTxValidator(nil, txp, bc)
+					errs := validator.consistencyCheck(tx)
+					Expect(errs).ToNot(BeEmpty())
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, field:from, error:sender account not found")))
+				})
+			})
+
+			When("sender has insufficient balance", func() {
+				It("should return err='index:0, error:insufficient account balance'", func() {
+					tx.SetValue("10000000")
+					validator := NewTxValidator(nil, txp, bc)
+					errs := validator.consistencyCheck(tx)
+					Expect(errs).ToNot(BeEmpty())
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:insufficient account balance")))
+				})
+			})
+
+			When("In ContextTxPool validation context and a transaction's nonce is lower than expected", func() {
+
+				var tx2 core.Transaction
+
+				BeforeEach(func() {
+					tx2 = &objects.Transaction{
+						Type:         objects.TxTypeBalance,
+						Nonce:        0,
+						To:           util.String(receiver.Addr()),
+						From:         util.String(sender.Addr()),
+						SenderPubKey: util.String(sender.PubKey().Base58()),
+						Value:        "1",
+						Timestamp:    1234567,
+						Fee:          "0.1",
+					}
+					tx2.SetHash(tx2.ComputeHash())
+				})
+
+				It("should return err='index:0, error:invalid nonce: has 0, wants from 1", func() {
+					txp := txpool.New(1)
+
+					validator := NewTxValidator(nil, txp, bc)
+					errs := validator.consistencyCheck(tx2)
+
+					Expect(errs).ToNot(BeEmpty())
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:invalid nonce: has 0, wants from 1")))
+				})
+			})
+
+			When("In ContextTxPool validation context and a transaction's nonce 2 more than current nonce", func() {
+
+				var tx2 core.Transaction
+
+				BeforeEach(func() {
+					tx2 = &objects.Transaction{
+						Type:         objects.TxTypeBalance,
+						Nonce:        2,
+						To:           util.String(receiver.Addr()),
+						From:         util.String(sender.Addr()),
+						SenderPubKey: util.String(sender.PubKey().Base58()),
+						Value:        "1",
+						Timestamp:    1234567,
+						Fee:          "0.1",
+					}
+					tx2.SetHash(tx2.ComputeHash())
+				})
+
+				It("should return nil", func() {
+					txp := txpool.New(1)
+					validator := NewTxValidator(nil, txp, bc)
+					errs := validator.consistencyCheck(tx2)
+					Expect(errs).To(BeNil())
+				})
+			})
+
+			When("In ContextBlock validation context and a transaction's nonce is greater than expected", func() {
+
+				var tx2 core.Transaction
+
+				BeforeEach(func() {
+					tx2 = &objects.Transaction{
+						Type:         objects.TxTypeBalance,
+						Nonce:        2,
+						To:           util.String(receiver.Addr()),
+						From:         util.String(sender.Addr()),
+						SenderPubKey: util.String(sender.PubKey().Base58()),
+						Value:        "1",
+						Timestamp:    1234567,
+						Fee:          "0.1",
+					}
+					tx2.SetHash(tx2.ComputeHash())
+				})
+
+				It("should return err='index:0, error:invalid nonce: has 2, wants 1'", func() {
+					txp := txpool.New(1)
+					validator := NewTxValidator(nil, txp, bc)
+					validator.SetContext(ContextBlock)
+					errs := validator.consistencyCheck(tx2)
+					Expect(errs).ToNot(BeEmpty())
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:invalid nonce: has 2, wants 1")))
+				})
 			})
 		})
 	})

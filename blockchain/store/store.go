@@ -319,7 +319,7 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
-	var blockRangeOp = common.GetBlockRangeOp(opts...)
+	var blockRangeOp = common.GetBlockQueryRangeOp(opts...)
 	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
 		var bn = common.DecodeBlockNumber(kv.Key)
 

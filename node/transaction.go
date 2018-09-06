@@ -21,7 +21,7 @@ func makeTxHistoryKey(tx core.Transaction, peer types.Engine) histcache.MultiKey
 func (n *Node) addTransaction(tx core.Transaction) error {
 
 	// Validate the transactions
-	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain(), true)
+	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain())
 	if errs := txValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}
@@ -71,7 +71,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	// Validate the transaction and check whether
 	// it already exists in the transaction pool,
 	// main chain and side chains. If so, reject it
-	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain, true).Validate(); len(errs) > 0 {
+	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain).Validate(); len(errs) > 0 {
 		s.Reset()
 		g.log.Debug("Transaction is not valid", "Err", errs[0])
 		return
