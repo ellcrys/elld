@@ -2,7 +2,9 @@ package console
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util/logger"
@@ -82,6 +84,10 @@ func (e *Executor) login(args ...interface{}) interface{} {
 // contexts allowing users to have access to pre-defined values and objects
 func (e *Executor) PrepareContext() error {
 
+	e.vm.Set("pp", e.pp)
+	e.vm.Set("runScript", e.runScript)
+	e.vm.Set("rs", e.runScript)
+
 	// Get all the methods
 	resp, err := e.rpc.Client.call("methods", nil, e.authToken)
 	if err != nil {
@@ -129,6 +135,37 @@ func (e *Executor) PrepareContext() error {
 	e.vm.Set("ell", globalObj)
 
 	return nil
+}
+
+func (e *Executor) runScript(file string) {
+
+	fullPath, err := filepath.Abs(file)
+	if err != nil {
+		panic(err)
+	}
+
+	script, err := ioutil.ReadFile(fullPath)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = e.vm.Run(string(script))
+	if err != nil {
+		panic(err)
+	}
+}
+
+// pp pretty prints a slice of arbitrary objects
+func (e *Executor) pp(values ...interface{}) {
+	var v interface{} = values
+	if len(values) == 1 {
+		v = values[0]
+	}
+	bs, err := prettyjson.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(bs))
 }
 
 // OnInput receives inputs and executes
