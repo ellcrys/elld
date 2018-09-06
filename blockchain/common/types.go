@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ellcrys/elld/elldb"
@@ -60,16 +61,37 @@ func (t *TxOp) AllowFinish() *TxOp {
 	return t
 }
 
-// QueryBlockRange defines the minimum and maximum
+// BlockQueryRange defines the minimum and maximum
 // block number of objects to access.
-type QueryBlockRange struct {
+type BlockQueryRange struct {
 	Min uint64
 	Max uint64
 }
 
 // GetName returns the name of the op
-func (o *QueryBlockRange) GetName() string {
+func (o *BlockQueryRange) GetName() string {
 	return "QueryBlockRange"
+}
+
+// TransitionsOp defines a CallOp for
+// passing transition objects
+type TransitionsOp []Transition
+
+// GetName implements core.CallOp. Allows transitions
+func (t *TransitionsOp) GetName() string {
+	return "TransitionsOp"
+}
+
+// ChainerOp defines a CallOp for
+// passing a chain
+type ChainerOp struct {
+	Chain core.Chainer
+	name  string
+}
+
+// GetName implements core.CallOp. Allows transitions
+func (t *ChainerOp) GetName() string {
+	return fmt.Sprintf("ChainerOp{%s}", t.name)
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice

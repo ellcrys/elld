@@ -4,28 +4,28 @@ import (
 	"github.com/ellcrys/elld/types/core"
 )
 
-// NewChainTransverser creates a new ChainTransverser instance
-func (b *Blockchain) NewChainTransverser() *ChainTransverser {
-	return &ChainTransverser{
+// NewChainTraverser creates a new ChainTransverser instance
+func (b *Blockchain) NewChainTraverser() *ChainTraverser {
+	return &ChainTraverser{
 		bchain: b,
 	}
 }
 
-// ChainTransverseFunc is the function type that
+// ChainTraverseFunc is the function type that
 // runs a query against a given chain
-type ChainTransverseFunc func(chain core.Chainer) (bool, error)
+type ChainTraverseFunc func(chain core.Chainer) (bool, error)
 
-// ChainTransverser allows a user to run a query function
+// ChainTraverser allows a user to run a query function
 // against a chain of chains. If no result is found in
 // the start or initial chain, the parent chain is passed
 // to the query function till we reach a chain with no parent.
-type ChainTransverser struct {
+type ChainTraverser struct {
 	chain  core.Chainer
 	bchain *Blockchain
 }
 
 // Start sets the start chain
-func (t *ChainTransverser) Start(chain core.Chainer) *ChainTransverser {
+func (t *ChainTraverser) Start(chain core.Chainer) *ChainTraverser {
 	t.chain = chain
 	return t
 }
@@ -35,7 +35,7 @@ func (t *ChainTransverser) Start(chain core.Chainer) *ChainTransverser {
 // with no parent is encountered. If true is returned, the query
 // ends. If error is returned, the query ends with the error from
 // qf returned.
-func (t *ChainTransverser) Query(qf ChainTransverseFunc) error {
+func (t *ChainTraverser) Query(qf ChainTraverseFunc) error {
 	t.bchain.chainLock.RLock()
 	defer t.bchain.chainLock.RUnlock()
 

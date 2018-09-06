@@ -27,10 +27,6 @@ import (
 	"github.com/ellcrys/elld/util/math"
 )
 
-var (
-	allowedFutureBlockTime = 15 * time.Second // Max time from current time allowed for blocks, before they're considered future blocks
-)
-
 // Various error messages to mark blocks invalid. These should be private to
 // prevent engine specific errors from being referenced in the remainder of the
 // codebase, inherently breaking if the engine is swapped out. Please put common
@@ -51,7 +47,7 @@ func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 	}
 
 	// Verify the header's timestamp
-	if time.Unix(header.GetTimestamp(), 0).After(time.Now().Add(allowedFutureBlockTime)) {
+	if time.Unix(header.GetTimestamp(), 0).After(time.Now().Add(params.AllowedFutureBlockTime)) {
 		return ErrFutureBlock
 	}
 

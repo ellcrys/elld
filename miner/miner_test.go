@@ -32,7 +32,7 @@ var MinerTest = func() bool {
 		Describe(".getProposedBlock", func() {
 			It("should get a block", func() {
 				b, err := miner.getProposedBlock([]core.Transaction{
-					objects.NewTx(objects.TxTypeBalance, int64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
+					objects.NewTx(objects.TxTypeBalance, uint64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
 				})
 				Expect(err).To(BeNil())
 				Expect(b).ToNot(BeNil())

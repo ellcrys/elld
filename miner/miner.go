@@ -13,7 +13,6 @@ import (
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -161,12 +160,19 @@ func (m *Miner) Mine() {
 
 		// Get a proposed block compatible with the
 		// main chain and the current block.
-		m.proposedBlock, err = m.getProposedBlock([]core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
-		})
+		m.proposedBlock, err = m.getProposedBlock(nil)
 		if err != nil {
 			m.log.Error("Proposed block is not valid", "Error", err)
 			break
+		}
+
+		// if no transactions in the proposed block,
+		// do not mine the block, sleep for a few seconds
+		// and continue.
+		if len(m.proposedBlock.GetTransactions()) == 0 {
+			m.log.Debug("Proposed block has no transactions")
+			time.Sleep(3 * time.Second)
+			continue
 		}
 
 		// Prepare the proposed block. It will calculate

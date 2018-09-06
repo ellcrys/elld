@@ -80,14 +80,6 @@ type ConsensusConfig struct {
 	NumBlocksForTicketMaturity uint `json:"numBlocksForTicketMaturity"`
 }
 
-// MonetaryConfig defines configuration for the native coin and
-// other financial settings
-type MonetaryConfig struct {
-
-	// Decimals is the number of coin decimal places
-	Decimals int32 `json:"decimals"`
-}
-
 // MinerConfig defines configuration for mining
 type MinerConfig struct {
 
@@ -109,9 +101,6 @@ type EngineConfig struct {
 
 	// Chain holds blockchain related configurations
 	Chain *ChainConfig `json:"chain"`
-
-	// Monetary holds monetary configurations
-	Monetary *MonetaryConfig `json:"monetary"`
 
 	// Miner holds mining configurations
 	Miner *MinerConfig `json:"mining"`
@@ -175,10 +164,6 @@ func init() {
 
 	defaultConfig.TxPool = &TxPoolConfig{
 		Capacity: 1000,
-	}
-
-	defaultConfig.Monetary = &MonetaryConfig{
-		Decimals: 16,
 	}
 
 	defaultConfig.Chain = &ChainConfig{

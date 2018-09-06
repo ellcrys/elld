@@ -9,7 +9,7 @@ import (
 	"github.com/graarh/golang-socketio/transport"
 
 	"github.com/ellcrys/elld/blockcode"
-	"github.com/ellcrys/elld/constants"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core/objects"
 	logger "github.com/ellcrys/elld/util/logger"
 	docker "github.com/fsouza/go-dockerclient"
@@ -154,7 +154,7 @@ func (cm *ContainerManager) execTx(tx *objects.Transaction, output chan []byte, 
 		},
 	}
 
-	res, err := c.Ack("invoke", args, time.Duration(constants.MaxTxExecutionTime)*time.Second)
+	res, err := c.Ack("invoke", args, time.Duration(params.MaxTxExecutionTime)*time.Second)
 	if err != nil {
 		co.destroy()
 		_err := fmt.Errorf("failed to run invocation. %s", err)

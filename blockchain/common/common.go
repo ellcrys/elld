@@ -1,8 +1,7 @@
 package common
 
 import (
-	"bytes"
-	"sort"
+	"fmt"
 
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
@@ -34,7 +33,7 @@ func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
 	}
 	tx, err := db.NewTx()
 	if err != nil {
-		panic("failed to create transaction")
+		panic(fmt.Errorf("failed to create transaction: %s", err))
 	}
 	return &TxOp{
 		Tx:        tx,
@@ -42,26 +41,47 @@ func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
 	}
 }
 
-// GetBlockRangeOp is a convenience method to get QueryBlockRange
+// GetBlockQueryRangeOp is a convenience method to get QueryBlockRange
 // option from a slice of CallOps
-func GetBlockRangeOp(opts ...core.CallOp) *QueryBlockRange {
+func GetBlockQueryRangeOp(opts ...core.CallOp) *BlockQueryRange {
 	for _, op := range opts {
 		switch _op := op.(type) {
-		case *QueryBlockRange:
+		case *BlockQueryRange:
 			return _op
 		}
 	}
-	return &QueryBlockRange{}
+	return &BlockQueryRange{}
+}
+
+// GetTransitions finds a Transitions option from a given
+// slice of call options and returns a slice of transition objects
+func GetTransitions(opts ...core.CallOp) (transitions []Transition) {
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case *TransitionsOp:
+			for _, t := range *_op {
+				transitions = append(transitions, t)
+			}
+			return
+		}
+	}
+	return []Transition{}
+}
+
+// GetChainerOp is a convenience method to get ChainerOp
+// option from a slice of CallOps
+func GetChainerOp(opts ...core.CallOp) *ChainerOp {
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case *ChainerOp:
+			return _op
+		}
+	}
+	return &ChainerOp{}
 }
 
 // ComputeTxsRoot computes the merkle root of a set of transactions.
-// Transactions are first lexicographically sorted and added to a
-// brand new tree. Returns the tree root.
 func ComputeTxsRoot(txs []core.Transaction) util.Hash {
-
-	sort.Slice(txs, func(i, j int) bool {
-		return bytes.Compare(txs[i].GetHash().Bytes(), txs[j].GetHash().Bytes()) == -1
-	})
 
 	tree := NewTree()
 	for _, tx := range txs {

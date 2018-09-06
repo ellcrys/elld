@@ -6,7 +6,9 @@ import (
 
 	"github.com/jinzhu/copier"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -71,8 +73,10 @@ var BlockchainTest = func() bool {
 
 		Describe(".Up", func() {
 
+			txp := txpool.New(1)
+
 			BeforeEach(func() {
-				bc = New(nil, cfg, log)
+				bc = New(txp, cfg, log)
 			})
 
 			It("should return error if db is not set", func() {
@@ -93,7 +97,7 @@ var BlockchainTest = func() bool {
 					db = elldb.NewDB(cfg.ConfigDir())
 					err = db.Open(util.RandString(5))
 					Expect(err).To(BeNil())
-					bc = New(nil, cfg, log)
+					bc = New(txp, cfg, log)
 					bc.SetDB(db)
 					bc.SetGenesisBlock(GenesisBlock)
 				})
@@ -129,17 +133,29 @@ var BlockchainTest = func() bool {
 						})).To(BeNil())
 
 						block := makeBlockWithBalanceTx(chain)
-						block.GetTransactions()[0].SetFrom("unknown_account")
+
+						// modify a transaction's sender to one that
+						// does not exist
+						unknownSenderTx := block.GetTransactions()[0]
+						unknownSenderTx.SetSenderPubKey(util.String(receiver.PubKey().Base58()))
+						unknownSenderTx.SetFrom(util.String(receiver.Addr()))
+						unknownSenderTx.SetHash(unknownSenderTx.ComputeHash())
+						txSig, _ := objects.TxSign(unknownSenderTx, receiver.PrivKey().Base58())
+						unknownSenderTx.SetSignature(txSig)
+
+						// recompute block, transactions root, hash and signature
+						block.GetHeader().SetTransactionsRoot(common.ComputeTxsRoot(block.GetTransactions()))
 						block.SetHash(block.ComputeHash())
 						blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
 						block.SetSignature(blockSig)
 						bc.SetGenesisBlock(block)
+						block.SetChainReader(nil)
 					})
 
 					It("should return error if a transaction's sender does not exists", func() {
 						err = bc.Up()
 						Expect(err).ToNot(BeNil())
-						Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
+						Expect(err.Error()).To(Equal("genesis block error: tx:0, field:from, error:sender account not found"))
 					})
 				})
 			})
@@ -206,7 +222,7 @@ var BlockchainTest = func() bool {
 
 				b1 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -242,7 +258,7 @@ var BlockchainTest = func() bool {
 				BeforeEach(func() {
 					b2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -280,7 +296,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -364,7 +380,7 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				parentBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -373,7 +389,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					OverrideParentHash: parentBlock.GetHash(),
 					Creator:            sender,
@@ -384,7 +400,7 @@ var BlockchainTest = func() bool {
 
 				unknownParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:            sender,
 					OverrideParentHash: util.StrToHash("unknown"),
@@ -435,7 +451,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
