@@ -218,7 +218,7 @@ var BlockTest = func() bool {
 			})
 		})
 
-		Describe(".GenerateBlock", func() {
+		Describe(".Generate", func() {
 
 			var txs []core.Transaction
 
@@ -229,7 +229,6 @@ var BlockTest = func() bool {
 
 			It("should validate params", func() {
 				var cases = map[*core.GenerateBlockParams]interface{}{
-					&core.GenerateBlockParams{}:                                   fmt.Errorf("at least one transaction is required"),
 					&core.GenerateBlockParams{Transactions: txs}:                  fmt.Errorf("creator's key is required"),
 					&core.GenerateBlockParams{Transactions: txs, Creator: sender}: fmt.Errorf("difficulty is required"),
 				}
@@ -252,6 +251,34 @@ var BlockTest = func() bool {
 				Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
 				Expect(blk.GetHeader().GetNumber()).To(Equal(uint64(2)))
 				Expect(blk.GetHeader().GetParentHash()).To(Equal(genesisBlock.GetHash()))
+			})
+
+			When("transaction pool contains transactions", func() {
+
+				var tx, tx2 core.Transaction
+
+				BeforeEach(func() {
+					tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix())
+					tx.SetHash(tx.ComputeHash())
+					tx2 = objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix()+100)
+					tx2.SetHash(tx2.ComputeHash())
+					err = bc.txPool.Put(tx)
+					Expect(err).To(BeNil())
+					err = bc.txPool.Put(tx2)
+					Expect(err).To(BeNil())
+				})
+
+				It("should successfully create a new and valid block with transactions from the transaction pool", func() {
+					blk, err := bc.Generate(&core.GenerateBlockParams{Creator: sender, Nonce: core.EncodeNonce(1), Difficulty: new(big.Int).SetInt64(131072)})
+					Expect(err).To(BeNil())
+					Expect(blk).ToNot(BeNil())
+					Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
+					Expect(blk.GetHeader().GetNumber()).To(Equal(uint64(2)))
+					Expect(blk.GetHeader().GetParentHash()).To(Equal(genesisBlock.GetHash()))
+					Expect(blk.GetTransactions()).To(HaveLen(2))
+					Expect(blk.GetTransactions()[0]).To(Equal(tx))
+					Expect(blk.GetTransactions()[1]).To(Equal(tx2))
+				})
 			})
 
 			When("chain is directly passed", func() {

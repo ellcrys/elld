@@ -19,6 +19,7 @@ type TxPool interface {
 	Put(tx core.Transaction) error
 	Has(tx core.Transaction) bool
 	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
+	Select(maxSize int64) (txs []core.Transaction)
 }
 
 // Engine represents node functionalities not provided by the

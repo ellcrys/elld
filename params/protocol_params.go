@@ -47,4 +47,8 @@ var (
 	// AllowedFutureBlockTime is the number of seconds
 	// a block's timestamp can have beyond the current timestamp
 	AllowedFutureBlockTime = 15 * time.Second
+
+	// MaxBlockTransactionsSize is the total size of
+	// transactions that can fit in a block
+	MaxBlockTransactionsSize = int64(10000000)
 )

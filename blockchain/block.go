@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	p "github.com/ellcrys/elld/params"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
@@ -62,8 +64,6 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	if params == nil {
 		return nil, fmt.Errorf("params is required")
-	} else if len(params.Transactions) == 0 {
-		return nil, fmt.Errorf("at least one transaction is required")
 	} else if params.Creator == nil {
 		return nil, fmt.Errorf("creator's key is required")
 	} else if params.Difficulty == nil || params.Difficulty.Cmp(util.Big0) == 0 {
@@ -169,6 +169,13 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	// override state root if params include a state root
 	if !params.OverrideStateRoot.IsEmpty() {
 		block.Header.SetStateRoot(params.OverrideStateRoot)
+	}
+
+	// select transactions
+	if len(params.Transactions) == 0 {
+		for _, tx := range b.txPool.Select(p.MaxBlockTransactionsSize) {
+			block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
+		}
 	}
 
 	// Compute hash
