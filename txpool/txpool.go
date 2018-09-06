@@ -95,7 +95,7 @@ func (tp *TxPool) Select(maxSize int64) (txs []core.Transaction) {
 	defer tp.Unlock()
 
 	curTxSize := int64(0)
-	unfitTxs := []core.Transaction{}
+	unSelected := []core.Transaction{}
 	for tp.Size() > 0 {
 		tx := tp.container.First()
 		if curTxSize+tx.SizeNoFee() <= maxSize {
@@ -103,11 +103,11 @@ func (tp *TxPool) Select(maxSize int64) (txs []core.Transaction) {
 			curTxSize += tx.SizeNoFee()
 			continue
 		}
-		unfitTxs = append(unfitTxs, tx)
+		unSelected = append(unSelected, tx)
 	}
 
 	// put the unfit transactions back
-	for _, tx := range unfitTxs {
+	for _, tx := range unSelected {
 		tp.addTx(tx)
 	}
 
