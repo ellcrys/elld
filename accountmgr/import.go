@@ -3,7 +3,7 @@ package accountmgr
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/ellcrys/elld/crypto"
@@ -27,8 +27,13 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 		return fmt.Errorf("Keyfile is required")
 	}
 
-	// read keyfile content
-	keyFileContent, err := ioutil.ReadFile(keyfile)
+	fullKeyfilePath, err := filepath.Abs(keyfile)
+	if err != nil {
+		printErr("Invalid keyfile path {%s}", keyfile)
+		return fmt.Errorf("Invalid keyfile path")
+	}
+
+	keyFileContent, err := ioutil.ReadFile(fullKeyfilePath)
 	if err != nil {
 		if funk.Contains(err.Error(), "no such file") {
 			printErr("Keyfile {%s} not found.", keyfile)
@@ -40,11 +45,14 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 	}
 
 	// attempt to validate and instantiate the private key
-	sk, err := crypto.PrivKeyFromBase58(string(keyFileContent))
+	fileContentStr := strings.TrimSpace(string(keyFileContent))
+	sk, err := crypto.PrivKeyFromBase58(fileContentStr)
 	if err != nil {
 		printErr("Keyfile contains invalid private key")
 		return err
 	}
+
+	var content []byte
 
 	// if no password or password file is provided, ask for password
 	if len(pwd) == 0 {
@@ -54,26 +62,28 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 			printErr(err.Error())
 			return err
 		}
+		goto create
 	}
 
-	// pwd is set and is a valid file, read it and use as password
-	if len(pwd) > 0 && (os.IsPathSeparator(pwd[0]) || pwd[:2] == "./") {
-		content, err := ioutil.ReadFile(pwd)
-		if err != nil {
-			if funk.Contains(err.Error(), "no such file") {
-				printErr("Password file {%s} not found.", pwd)
-			}
-			if funk.Contains(err.Error(), "is a directory") {
-				printErr("Password file path {%s} is a directory. Expects a file.", pwd)
-			}
-			return err
-		}
-		passphrase = string(content)
-		passphrase = strings.TrimSpace(strings.Trim(passphrase, "/n"))
-	} else if len(pwd) > 0 {
+	if !strings.HasPrefix(pwd, "./") && !strings.HasPrefix(pwd, "/") && filepath.Ext(pwd) == "" {
 		passphrase = pwd
+		goto create
 	}
 
+	content, err = ioutil.ReadFile(pwd)
+	if err != nil {
+		if funk.Contains(err.Error(), "no such file") {
+			printErr("Password file {%s} not found.", pwd)
+		}
+		if funk.Contains(err.Error(), "is a directory") {
+			printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+		}
+		return err
+	}
+	passphrase = string(content)
+	passphrase = strings.TrimSpace(strings.Trim(passphrase, "/n"))
+
+create:
 	address := crypto.NewKeyFromPrivKey(sk)
 	if err := am.CreateAccount(address, passphrase); err != nil {
 		printErr(err.Error())
