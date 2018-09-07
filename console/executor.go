@@ -6,7 +6,11 @@ import (
 	"os"
 	"path/filepath"
 
+	prompt "github.com/c-bata/go-prompt"
+
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/fatih/color"
 	"github.com/fatih/structs"
@@ -49,6 +53,7 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	e := new(Executor)
 	e.vm = otto.New()
 	e.log = l
+	e.coinbase = coinbase
 	return e
 }
 
@@ -82,11 +87,15 @@ func (e *Executor) login(args ...interface{}) interface{} {
 
 // PrepareContext adds objects and functions into the VM's global
 // contexts allowing users to have access to pre-defined values and objects
-func (e *Executor) PrepareContext() error {
+func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 
+	var suggestions = []prompt.Suggest{}
 	e.vm.Set("pp", e.pp)
 	e.vm.Set("runScript", e.runScript)
 	e.vm.Set("rs", e.runScript)
+	e.vm.Set("tx", func() *TxBuilder {
+		return NewTxBuilder(e)
+	})
 
 	// Get all the methods
 	resp, err := e.rpc.Client.call("methods", nil, e.authToken)
@@ -94,20 +103,33 @@ func (e *Executor) PrepareContext() error {
 		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 	}
 
-	// Define global object
-	var globalObj = map[string]interface{}{}
+	// Create console suggestions and collect methods info
+	var methodsInfo = []jsonrpc.MethodInfo{}
+	for _, m := range resp.Result.([]interface{}) {
+		var mInfo jsonrpc.MethodInfo
+		util.MapDecode(m, &mInfo)
+		suggestions = append(suggestions, prompt.Suggest{
+			Text:        fmt.Sprintf("%s.%s", mInfo.Namespace, mInfo.Name),
+			Description: mInfo.Description,
+		})
+		methodsInfo = append(methodsInfo, mInfo)
+	}
 
-	// Add supported methods to the global
-	// objects map
-	if resp != nil {
+	var namespacesObj = map[string]map[string]interface{}{}
+
+	// Add supported methods to the global objects map
+	if len(methodsInfo) > 0 {
 
 		// set methods as a global variable for quick
-		e.vm.Set("methods", resp.Result)
 		e.vm.Set("login", e.login)
 
-		for _, methodName := range resp.Result.([]interface{}) {
-			var mName = methodName.(string)
-			globalObj[mName] = func(args ...interface{}) interface{} {
+		for _, methodInfo := range methodsInfo {
+			var mName = methodInfo.Name
+			var ns = methodInfo.Namespace
+			if namespacesObj[ns] == nil {
+				namespacesObj[ns] = map[string]interface{}{}
+			}
+			namespacesObj[ns][mName] = func(args ...interface{}) interface{} {
 
 				// parse arguments.
 				// App RPC functions can have zero or one argument
@@ -132,9 +154,11 @@ func (e *Executor) PrepareContext() error {
 		}
 	}
 
-	e.vm.Set("ell", globalObj)
+	for ns, objs := range namespacesObj {
+		e.vm.Set(ns, objs)
+	}
 
-	return nil
+	return suggestions, nil
 }
 
 func (e *Executor) runScript(file string) {

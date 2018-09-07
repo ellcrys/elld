@@ -8,7 +8,6 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/ncodes/authtoken"
-	"github.com/thoas/go-funk"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -18,6 +17,14 @@ import (
 const (
 	middlewareErrCode = -32000
 )
+
+// MethodInfo describe an RPC method info
+type MethodInfo struct {
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	Description string `json:"description"`
+	Private     bool   `json:"private"`
+}
 
 // OnRequestFunc is the type of function to use
 // as a callback when new requests are received
@@ -149,6 +156,8 @@ func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 func (s *JSONRPC) APIs() APISet {
 	return APISet{
 		"methods": APIInfo{
+			Description: "List RPC methods",
+			Namespace:   "rpc",
 			Func: func(interface{}) *Response {
 				return Success(s.Methods())
 			},
@@ -158,8 +167,16 @@ func (s *JSONRPC) APIs() APISet {
 
 // Methods gets the names of all methods
 // in the API set.
-func (s *JSONRPC) Methods() []string {
-	return funk.Keys(s.apiSet).([]string)
+func (s *JSONRPC) Methods() (methodsInfo []MethodInfo) {
+	for name, d := range s.apiSet {
+		methodsInfo = append(methodsInfo, MethodInfo{
+			Name:        name,
+			Description: d.Description,
+			Namespace:   d.Namespace,
+			Private:     d.Private,
+		})
+	}
+	return
 }
 
 // Serve starts the server

@@ -278,7 +278,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		// RPC client.
 		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
 		cs.ConfigureRPC(rpcAddress, false)
-		if err := cs.PrepareVM(); err != nil {
+		if err := cs.Prepare(); err != nil {
 			log.Fatal("failed to prepare console VM", "Err", err)
 		}
 

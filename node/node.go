@@ -298,13 +298,9 @@ func (n *Node) PM() *Manager {
 	return n.peerManager
 }
 
-// Cfg returns the config object
-func (n *Node) Cfg() *config.EngineConfig {
-	return n.cfg
-}
-
-// History returns the cache holding items (messages etc) we have seen
-func (n *Node) History() *histcache.HistoryCache {
+// history return a cache for holding arbitrary
+// objects we want to keep track of
+func (n *Node) history() *histcache.HistoryCache {
 	return n.historyCache
 }
 

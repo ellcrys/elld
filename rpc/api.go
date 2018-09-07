@@ -28,7 +28,9 @@ func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
 func (s *Server) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 		"auth": jsonrpc.APIInfo{
-			Func: s.rpcAuth,
+			Namespace:   "admin",
+			Description: "Get a session token",
+			Func:        s.rpcAuth,
 		},
 	}
 }
