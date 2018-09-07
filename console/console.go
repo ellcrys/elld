@@ -62,29 +62,7 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 		msgpack.Unmarshal(data, &history)
 	}
 
-	// Set some options
-	options := []prompt.Option{
-		prompt.OptionPrefixTextColor(prompt.White),
-		prompt.OptionAddKeyBind(prompt.KeyBind{
-			Key: prompt.ControlC,
-			Fn: func(*prompt.Buffer) {
-				c.saveHistory()
-				c.executor.exitProgram(false)
-			},
-		}),
-		prompt.OptionDescriptionBGColor(prompt.Black),
-		prompt.OptionDescriptionTextColor(prompt.White),
-		prompt.OptionSuggestionTextColor(prompt.Turquoise),
-		prompt.OptionSuggestionBGColor(prompt.Black),
-		prompt.OptionHistory(history),
-	}
-
-	// create new prompt and configure it
-	// with the options create above
-	c.prompt = prompt.New(func(in string) {
-		c.history = append(c.history, in)
-		c.executor.OnInput(in)
-	}, c.suggestMgr.completer, options...)
+	c.history = append(c.history, history...)
 
 	return c
 }
@@ -102,9 +80,41 @@ func (c *Console) ConfigureRPC(rpcAddress string, secured bool) {
 	c.executor.rpc.Client = RPCClient(c.executor.rpc.GetAddr())
 }
 
-// PrepareVM sets up the VM executor
-func (c *Console) PrepareVM() error {
-	return c.executor.PrepareContext()
+// Prepare sets up the console
+func (c *Console) Prepare() error {
+
+	// Set some options
+	options := []prompt.Option{
+		prompt.OptionPrefixTextColor(prompt.White),
+		prompt.OptionAddKeyBind(prompt.KeyBind{
+			Key: prompt.ControlC,
+			Fn: func(*prompt.Buffer) {
+				c.saveHistory()
+				c.executor.exitProgram(false)
+			},
+		}),
+		prompt.OptionDescriptionBGColor(prompt.Black),
+		prompt.OptionDescriptionTextColor(prompt.White),
+		prompt.OptionSuggestionTextColor(prompt.Turquoise),
+		prompt.OptionSuggestionBGColor(prompt.Black),
+		prompt.OptionHistory(c.history),
+	}
+
+	suggestions, err := c.executor.PrepareContext()
+	if err != nil {
+		return err
+	}
+
+	c.suggestMgr.suggestions = append(c.suggestMgr.suggestions, suggestions...)
+
+	// create new prompt and configure it
+	// with the options create above
+	c.prompt = prompt.New(func(in string) {
+		c.history = append(c.history, in)
+		c.executor.OnInput(in)
+	}, c.suggestMgr.completer, options...)
+
+	return nil
 }
 
 // Run the console

@@ -8,20 +8,6 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
-// apiSendTx sends adds a transaction to transaction pool
-func (n *Node) apiSendTx(params interface{}) *jsonrpc.Response {
-
-	p, ok := params.(map[string]interface{})
-	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("JSON").Error(), nil)
-	}
-
-	var tx objects.Transaction
-	util.MapDecode(p, &tx)
-
-	return jsonrpc.Success(n.addTransaction(&tx))
-}
-
 // apiJoin attempts to establish connection with a node
 // at the specified address.
 func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
@@ -74,28 +60,79 @@ func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.getSyncStateInfo())
 }
 
+// apiTxPoolSizeInfo fetches the size information
+// of the transaction pool
+func (n *Node) apiTxPoolSizeInfo(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(map[string]int64{
+		"byteSize": n.GetTxPool().ByteSize(),
+		"numTxs":   n.GetTxPool().Size(),
+	})
+}
+
+// apiSend creates a balance transaction and
+// attempts to add it to the transaction pool.
+func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
+
+	txData, ok := arg.(map[string]interface{})
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("JSON").Error(), nil)
+	}
+	// set the type to TxTypeBalance.
+	// it will override the type given
+	txData["type"] = objects.TxTypeBalance
+
+	// Copy data in txData to a core.Transaction
+	var tx objects.Transaction
+	util.MapDecode(txData, &tx)
+
+	if err := n.addTransaction(&tx); err != nil {
+		return jsonrpc.Error(types.ErrTxFailed, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"id": tx.ID(),
+	})
+}
+
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
-		"sendTx": jsonrpc.APIInfo{
-			Private: true,
-			Func:    n.apiSendTx,
+		"send": jsonrpc.APIInfo{
+			Namespace:   "ell",
+			Description: "Create a balance transaction",
+			Private:     true,
+			Func:        n.apiSend,
 		},
 		"join": jsonrpc.APIInfo{
-			Private: true,
-			Func:    n.apiJoin,
+			Namespace:   "net",
+			Description: "Connect to a peer",
+			Private:     true,
+			Func:        n.apiJoin,
 		},
 		"numConnections": jsonrpc.APIInfo{
-			Func: n.apiNumConnections,
+			Namespace:   "net",
+			Description: "Get number of active connections",
+			Func:        n.apiNumConnections,
 		},
 		"getActivePeers": jsonrpc.APIInfo{
-			Func: n.apiGetActivePeers,
+			Namespace:   "net",
+			Description: "Get a list of active peers",
+			Func:        n.apiGetActivePeers,
 		},
 		"isSyncing": jsonrpc.APIInfo{
-			Func: n.apiIsSyncing,
+			Namespace:   "node",
+			Description: "Check whether blockchain synchronization is active",
+			Func:        n.apiIsSyncing,
 		},
 		"getSyncState": jsonrpc.APIInfo{
-			Func: n.apiGetSyncState,
+			Namespace:   "node",
+			Description: "Get blockchain synchronization status",
+			Func:        n.apiGetSyncState,
+		},
+		"getPoolSize": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get size information of the transaction pool",
+			Func:        n.apiTxPoolSizeInfo,
 		},
 	}
 }

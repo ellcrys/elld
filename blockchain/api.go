@@ -140,22 +140,34 @@ func (b *Blockchain) apiGetReOrgs(arg interface{}) *jsonrpc.Response {
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 		"getChains": jsonrpc.APIInfo{
-			Func: b.apiGetChains,
+			Namespace:   "node",
+			Description: "Get all chains",
+			Func:        b.apiGetChains,
 		},
 		"getBlock": jsonrpc.APIInfo{
-			Func: b.apiGetBlock,
+			Namespace:   "node",
+			Description: "Get a block by number",
+			Func:        b.apiGetBlock,
 		},
 		"getBlockByHash": jsonrpc.APIInfo{
-			Func: b.apiGetBlockByHash,
+			Namespace:   "node",
+			Description: "Get a block by hash",
+			Func:        b.apiGetBlockByHash,
 		},
 		"getOrphans": jsonrpc.APIInfo{
-			Func: b.apiGetOrphans,
+			Namespace:   "node",
+			Description: "Get a list of orphans",
+			Func:        b.apiGetOrphans,
 		},
 		"getBestChain": jsonrpc.APIInfo{
-			Func: b.apiGetBestchain,
+			Namespace:   "node",
+			Description: "Get the best chain",
+			Func:        b.apiGetBestchain,
 		},
 		"getReOrgs": jsonrpc.APIInfo{
-			Func: b.apiGetReOrgs,
+			Namespace:   "node",
+			Description: "Get a list of re-organization events",
+			Func:        b.apiGetReOrgs,
 		},
 	}
 }

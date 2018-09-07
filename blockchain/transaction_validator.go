@@ -84,7 +84,9 @@ func (v *TxsValidator) SetContext(ctx ValidationContext) {
 func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
 	for i, tx := range v.txs {
 		v.curIndex = i
+		fmt.Println("1")
 		errs = append(errs, v.ValidateTx(tx, opts...)...)
+		fmt.Println("2")
 	}
 	return
 }
@@ -348,7 +350,12 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 // ValidateTx validates a single transaction coming received
 // by the gossip handler..
 func (v *TxsValidator) ValidateTx(tx core.Transaction, opts ...core.CallOp) []error {
+
 	errs := v.fieldsCheck(tx)
+	if len(errs) > 0 {
+		return errs
+	}
+
 	errs = append(errs, v.consistencyCheck(tx, opts...)...)
 	return errs
 }
