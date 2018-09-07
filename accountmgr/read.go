@@ -98,6 +98,11 @@ func (sa *StoredAccount) GetAddress() *crypto.Key {
 	return sa.key
 }
 
+// GetKey gets the decrypted key
+func (sa *StoredAccount) GetKey() *crypto.Key {
+	return sa.key
+}
+
 // Decrypt decrypts the account cipher and initializes the address field
 func (sa *StoredAccount) Decrypt(passphrase string) error {
 
