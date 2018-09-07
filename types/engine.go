@@ -5,7 +5,6 @@ import (
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -20,6 +19,8 @@ type TxPool interface {
 	Has(tx core.Transaction) bool
 	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
 	Select(maxSize int64) (txs []core.Transaction)
+	ByteSize() int64
+	Size() int64
 }
 
 // Engine represents node functionalities not provided by the
@@ -27,7 +28,6 @@ type TxPool interface {
 // APIs etc.
 type Engine interface {
 	SetEventBus(*emitter.Emitter)         // Set the event bus used to broadcast events across the engine
-	Cfg() *config.EngineConfig            // Returns the engine configuration
 	DB() elldb.DB                         // The engine's database instance
 	AddTxSession(txID string)             // Add new transaction session
 	HasTxSession(txID string) bool        // Check if a transaction has an existing session

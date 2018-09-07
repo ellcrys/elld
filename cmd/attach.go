@@ -50,7 +50,7 @@ account does not exist, the command will fail.`,
 
 		cs := console.New(coinbase, consoleHistoryFilePath, cfg, log)
 		cs.ConfigureRPC(rpcAddress, false)
-		if err := cs.PrepareVM(); err != nil {
+		if err := cs.Prepare(); err != nil {
 			log.Fatal("failed to prepare console VM", "Err", err)
 		}
 
