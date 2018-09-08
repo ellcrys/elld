@@ -20,7 +20,7 @@ var (
 type StoredAccount struct {
 	Address   string
 	Cipher    []byte
-	address   *crypto.Key
+	key       *crypto.Key
 	CreatedAt time.Time
 }
 
@@ -95,7 +95,12 @@ func (am *AccountManager) GetByAddress(addr string) (*StoredAccount, error) {
 // GetAddress returns the address object which contains the private
 // key and public key. Must call Decrypt() first.
 func (sa *StoredAccount) GetAddress() *crypto.Key {
-	return sa.address
+	return sa.key
+}
+
+// GetKey gets the decrypted key
+func (sa *StoredAccount) GetKey() *crypto.Key {
+	return sa.key
 }
 
 // Decrypt decrypts the account cipher and initializes the address field
@@ -105,20 +110,20 @@ func (sa *StoredAccount) Decrypt(passphrase string) error {
 	acctBytes, err := util.Decrypt(sa.Cipher, passphraseBs[:])
 	if err != nil {
 		if funk.Contains(err.Error(), "invalid key") {
-			return fmt.Errorf("invalid password. %s", err)
+			return fmt.Errorf("invalid password")
 		}
 		return err
 	}
 
 	// we expect a base58check content, verify it
-	acctBytesBase58Dec, _, err := base58.CheckDecode(string(acctBytes))
+	acctData, _, err := base58.CheckDecode(string(acctBytes))
 	if err != nil {
-		return fmt.Errorf("invalid password. %s", err)
+		return fmt.Errorf("invalid password")
 	}
 
 	// attempt to decode to ensure content is json encoded
 	var accountData map[string]string
-	if err := msgpack.Unmarshal(acctBytesBase58Dec, &accountData); err != nil {
+	if err := msgpack.Unmarshal(acctData, &accountData); err != nil {
 		return fmt.Errorf("unable to parse account data")
 	}
 
@@ -127,6 +132,6 @@ func (sa *StoredAccount) Decrypt(passphrase string) error {
 		return err
 	}
 
-	sa.address = crypto.NewKeyFromPrivKey(privKey)
+	sa.key = crypto.NewKeyFromPrivKey(privKey)
 	return nil
 }

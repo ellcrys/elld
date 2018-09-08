@@ -5,6 +5,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/shopspring/decimal"
+
+	"github.com/ellcrys/elld/crypto"
 	p "github.com/ellcrys/elld/params"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -52,6 +55,39 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 	}
 
 	return have, reason, nil
+}
+
+// getFeeAllocTx creates an allocation transaction
+// with value equal to the sum of all fee of
+// all transactions in a given block.
+// The transaction will be awarded to the provide
+// beneficiary.
+func (b *Blockchain) getFeeAllocTx(block *objects.Block, beneficiary *crypto.Key) *objects.Transaction {
+
+	// calculate total fees
+	totalMinerFee := decimal.Zero
+	for _, tx := range block.Transactions {
+		if tx.Type != objects.TxTypeAlloc {
+			totalMinerFee = totalMinerFee.Add(tx.GetFee().Decimal())
+		}
+	}
+
+	// create an alloc transaction
+	tx := &objects.Transaction{
+		Type:         objects.TxTypeAlloc,
+		Nonce:        0,
+		From:         util.String(beneficiary.PubKey().Addr()),
+		To:           util.String(beneficiary.PubKey().Addr()),
+		SenderPubKey: util.String(beneficiary.PubKey().Base58()),
+		Value:        util.String(totalMinerFee.StringFixed(p.Decimals)),
+		Fee:          "",
+		Timestamp:    time.Now().Unix(),
+	}
+	tx.Hash = tx.ComputeHash()
+	sig, _ := objects.TxSign(tx, beneficiary.PrivKey().Base58())
+	tx.SetSignature(sig)
+
+	return tx
 }
 
 // Generate produces a valid block for a target chain. By default
@@ -159,35 +195,42 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 		block.Header.Difficulty = params.Difficulty
 	}
 
-	// mock execute the transaction and set the new state root
-	root, _, err := b.execBlock(chain, block)
-	if err != nil {
-		return nil, fmt.Errorf("exec: %s", err)
-	}
-	block.Header.SetStateRoot(root)
-
-	// override state root if params include a state root
-	if !params.OverrideStateRoot.IsEmpty() {
-		block.Header.SetStateRoot(params.OverrideStateRoot)
-	}
-
-	// select transactions
+	// select transactions and compute transaction root
 	if len(params.Transactions) == 0 {
 		for _, tx := range b.txPool.Select(p.MaxBlockTransactionsSize) {
 			block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
 		}
 	}
 
-	// Compute hash
-	block.Hash = block.ComputeHash()
+	// If there are transactions in the block,
+	// and AddFeeAlloc is true, we must add a fee allocation
+	if len(block.Transactions) > 0 && params.AddFeeAlloc {
+		block.Transactions = append(block.Transactions, b.getFeeAllocTx(block, params.Creator))
+	}
+
+	// Compute transactions root
+	block.Header.TransactionsRoot = common.ComputeTxsRoot(block.GetTransactions())
+
+	// mock execute the transaction and set the new state root
+	block.Header.StateRoot, _, err = b.execBlock(chain, block)
+	if err != nil {
+		return nil, fmt.Errorf("exec: %s", err)
+	}
+
+	// override state root if params include a state root
+	if !params.OverrideStateRoot.IsEmpty() {
+		block.Header.SetStateRoot(params.OverrideStateRoot)
+	}
 
 	// Sign the block using the creators private key
 	sig, err := objects.BlockSign(block, params.Creator.PrivKey().Base58())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign block: %s", err)
 	}
-
 	block.Sig = sig
+
+	// Compute hash
+	block.Hash = block.ComputeHash()
 
 	return block, nil
 }

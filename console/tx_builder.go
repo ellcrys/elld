@@ -1,9 +1,11 @@
 package console
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/util"
 )
 
 // TxBuilder provides methods for building
@@ -22,17 +24,19 @@ func NewTxBuilder(e *Executor) *TxBuilder {
 // TxBalanceBuilder provides methods for building
 // a balance transaction.
 type TxBalanceBuilder struct {
+	e    *Executor
 	data map[string]interface{}
 }
 
 // Balance creates a balance transaction builder.
 // It will attempt to fetch the address
-func (o *TxBuilder) Balance(senderAddress string) *TxBalanceBuilder {
+func (o *TxBuilder) Balance() *TxBalanceBuilder {
 	return &TxBalanceBuilder{
+		e: o.e,
 		data: map[string]interface{}{
-			"from":         senderAddress,
+			"from":         o.e.coinbase.Addr(),
 			"type":         objects.TxTypeBalance,
-			"senderPubKey": "",
+			"senderPubKey": o.e.coinbase.PubKey().Base58(),
 		},
 	}
 }
@@ -45,8 +49,51 @@ func (o *TxBalanceBuilder) Payload() map[string]interface{} {
 // Send signs, compute hash and signature
 // and sends the payload to the transaction
 // handling RPC API.
-func (o *TxBalanceBuilder) Send() {
+func (o *TxBalanceBuilder) Send() map[string]interface{} {
+	resp, err := o.send()
+	if err != nil {
+		panic(o.e.vm.MakeCustomError("SendError", err.Error()))
+	}
+	return resp
+}
+
+func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
+
+	// If the nonce has not been sent at this point
+	// we must attempt to determine the current
+	// nonce of the account, increment it and set it
+	if o.data["nonce"] == nil {
+		result, err := o.e.callRPCMethod("getAccountNonce", o.data["from"])
+		if err != nil {
+			return nil, err
+		}
+		o.data["nonce"] = int64(result["result"].(float64)) + 1
+	}
+
+	// Set the timestamp
 	o.data["timestamp"] = time.Now().Unix()
+
+	// marshal into core.Transaction
+	var tx objects.Transaction
+	util.MapDecode(o.data, &tx)
+
+	// Compute and set hash
+	o.data["hash"] = tx.ComputeHash()
+
+	// Compute and set signature
+	sig, err := objects.TxSign(&tx, o.e.coinbase.PrivKey().Base58())
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign tx: %s", err)
+	}
+	o.data["sig"] = sig
+
+	// Call the RPC method
+	resp, err := o.e.callRPCMethod("send", o.data)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 // Nonce sets the nonce
