@@ -2,7 +2,6 @@ package console
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -188,12 +187,12 @@ func (e *Executor) runScript(file string) {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
 
-	script, err := ioutil.ReadFile(fullPath)
+	script, err := e.vm.Compile(fullPath, nil)
 	if err != nil {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
 
-	_, err = e.vm.Run(string(script))
+	_, err = e.vm.Run(script)
 	if err != nil {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
