@@ -68,9 +68,15 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 		}
 	}
 
-	// If we did not get the latest account status
-	// of the recipient from previous operations, we must
-	// fetch it from the database or create it
+	// If the sender and recipient account
+	// are the same, assign the sender account
+	// to the recipient account variable.
+	if tx.GetFrom().Equal(tx.GetTo()) {
+		recipientAcct = senderAcct
+	}
+
+	// If we don't know the recipient account yet,
+	// we must fetch it from the database or create it
 	if recipientAcct == nil {
 		recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
 		if err != nil {
@@ -169,9 +175,7 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 
 	// Update the recipients account balance to be the
 	// sum of current balance and the new allocation
-	newBal := recipientAcct.GetBalance().Decimal().
-		Add(tx.GetValue().Decimal()).
-		StringFixed(params.Decimals)
+	newBal := recipientAcct.GetBalance().Decimal().Add(tx.GetValue().Decimal()).StringFixed(params.Decimals)
 	recipientAcct.SetBalance(util.String(newBal))
 
 	// construct an OpNewAccountBalance transition object

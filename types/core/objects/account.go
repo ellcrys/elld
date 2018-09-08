@@ -22,7 +22,7 @@ type Account struct {
 	Address     util.String  `json:"address" msgpack:"address"`
 	Balance     util.String  `json:"balance" msgpack:"balance"`
 	Nonce       uint64       `json:"nonce" msgpack:"nonce"`
-	AccountInfo *AccountInfo `json:"accountInfo" msgpack:"accountInfo"`
+	AccountInfo *AccountInfo `json:"accountInfo,omitempty" msgpack:"accountInfo"`
 }
 
 // GetAddress gets the address

@@ -95,6 +95,7 @@ func (m *Miner) getProposedBlock(txs []core.Transaction) (core.Block, error) {
 		Creator:      m.minerKey,
 		Nonce:        core.EncodeNonce(1),
 		Difficulty:   new(big.Int).SetInt64(1),
+		AddFeeAlloc:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -194,16 +195,9 @@ func (m *Miner) Mine() {
 			continue
 		}
 
-		// Finalize the block. Calculate rewards etc
-		block, err = m.blakimoto.Finalize(m.blockMaker, block)
-		if err != nil {
-			m.log.Error("Block finalization failed", "Err", err)
-			break
-		}
-
 		// Recompute hash and signature
 		block.SetHash(block.ComputeHash())
-		blockSig, err := objects.BlockSign(block, m.minerKey.PrivKey().Base58())
+		blockSig, _ := objects.BlockSign(block, m.minerKey.PrivKey().Base58())
 		block.SetSignature(blockSig)
 
 		// Attempt to add to the blockchain to the main chain.

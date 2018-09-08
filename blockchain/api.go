@@ -136,6 +136,42 @@ func (b *Blockchain) apiGetReOrgs(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(b.getReOrgs())
 }
 
+// apiGetAccount gets an account
+func (b *Blockchain) apiGetAccount(arg interface{}) *jsonrpc.Response {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	account, err := b.GetAccount(util.String(address))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(account)
+}
+
+// apiGetAccount gets the nonce of an account
+func (b *Blockchain) apiGetNonce(arg interface{}) *jsonrpc.Response {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	account, err := b.GetAccount(util.String(address))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(account.GetNonce())
+}
+
 // APIs returns all API handlers
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -168,6 +204,16 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   "node",
 			Description: "Get a list of re-organization events",
 			Func:        b.apiGetReOrgs,
+		},
+		"getAccount": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get an account",
+			Func:        b.apiGetAccount,
+		},
+		"getAccountNonce": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get the nonce of an account",
+			Func:        b.apiGetNonce,
 		},
 	}
 }

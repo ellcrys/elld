@@ -307,27 +307,87 @@ var ProcessTest = func() bool {
 		})
 
 		Describe(".execBlock", func() {
-			Context("when block has invalid transaction", func() {
+			var block core.Block
 
-				var block core.Block
-
-				BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
-						},
-						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
-						Difficulty: new(big.Int).SetInt64(131072),
-					})
+			BeforeEach(func() {
+				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+					},
+					Creator:    sender,
+					Nonce:      core.EncodeNonce(1),
+					Difficulty: new(big.Int).SetInt64(131072),
 				})
+			})
 
+			Context("when block has invalid transaction", func() {
 				It("should return err ", func() {
 					newSender := crypto.NewKeyFromIntSeed(3)
 					block.GetTransactions()[0].SetFrom(util.String(newSender.Addr()))
 					_, _, err := bc.execBlock(genesisChain, block)
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("transaction error: index{0}: failed to get sender's account: account not found"))
+				})
+			})
+
+			Context("sender and recipient are the same", func() {
+
+				BeforeEach(func() {
+					err = bc.putAccount(1, genesisChain, &objects.Account{
+						Type:    objects.AccountTypeBalance,
+						Address: util.String(sender.Addr()),
+						Balance: "100",
+					})
+					Expect(err).To(BeNil())
+				})
+
+				When("block does not include fee allocation transaction", func() {
+
+					BeforeEach(func() {
+						block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730724),
+							},
+							Creator:    sender,
+							Nonce:      core.EncodeNonce(1),
+							Difficulty: new(big.Int).SetInt64(131072),
+						})
+					})
+
+					Specify("balance must be less than initial balance because no fee is paid back. The fee is lost", func() {
+						_, stateObjs, err := bc.execBlock(genesisChain, block)
+						Expect(err).To(BeNil())
+						Expect(stateObjs).To(HaveLen(1))
+
+						var m map[string]interface{}
+						util.BytesToObject(stateObjs[0].Value, &m)
+						Expect(m["balance"]).To(Equal("97.640000000000000000"))
+					})
+				})
+
+				When("block includes a fee allocation transaction", func() {
+
+					BeforeEach(func() {
+						block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730724),
+							},
+							Creator:     sender,
+							Nonce:       core.EncodeNonce(1),
+							Difficulty:  new(big.Int).SetInt64(131072),
+							AddFeeAlloc: true,
+						})
+					})
+
+					Specify("balance is equal to initial balance; fee is paid back; fee is not lost", func() {
+						_, stateObjs, err := bc.execBlock(genesisChain, block)
+						Expect(err).To(BeNil())
+						Expect(stateObjs).To(HaveLen(1))
+
+						var m map[string]interface{}
+						util.BytesToObject(stateObjs[0].Value, &m)
+						Expect(m["balance"]).To(Equal("100.000000000000000000"))
+					})
 				})
 			})
 		})

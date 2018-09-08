@@ -1,6 +1,8 @@
 package node
 
 import (
+	"encoding/base64"
+
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
@@ -85,8 +87,16 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	var tx objects.Transaction
 	util.MapDecode(txData, &tx)
 
+	// The signature being of type []uint8, will be
+	// encoded to base64 by the json encoder.
+	// We must convert the base64 back to []uint8
+	if sig := txData["sig"]; sig != nil {
+		tx.Sig, _ = base64.StdEncoding.DecodeString(sig.(string))
+	}
+
+	// Attempt to add the transaction to the pool
 	if err := n.addTransaction(&tx); err != nil {
-		return jsonrpc.Error(types.ErrTxFailed, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeTxFailed, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(map[string]interface{}{

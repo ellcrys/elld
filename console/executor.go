@@ -89,6 +89,18 @@ func (e *Executor) login(args ...interface{}) interface{} {
 	return s.Map()
 }
 
+func (e *Executor) callRPCMethod(method string, arg interface{}) (map[string]interface{}, error) {
+	rpcResp, err := e.rpc.Client.call(method, arg, e.authToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// decode response object to a map
+	s := structs.New(rpcResp)
+	s.TagName = "json"
+	return s.Map(), nil
+}
+
 // PrepareContext adds objects and functions into the VM's global
 // contexts allowing users to have access to pre-defined values and objects
 func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
@@ -99,9 +111,6 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	e.vm.Set("pp", e.pp)
 	e.vm.Set("runScript", e.runScript)
 	e.vm.Set("rs", e.runScript)
-	e.vm.Set("tx", func() *TxBuilder {
-		return NewTxBuilder(e)
-	})
 
 	// Get all the methods
 	resp, err := e.rpc.Client.call("methods", nil, e.authToken)
@@ -121,16 +130,16 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 		methodsInfo = append(methodsInfo, mInfo)
 	}
 
-	// Add supported methods to the global objects map
-	var namespacesObj = map[string]map[string]interface{}{}
+	// Add supported methods to the namespace object
+	var nsObj = map[string]map[string]interface{}{}
 	if len(methodsInfo) > 0 {
 		for _, methodInfo := range methodsInfo {
-			var mName = methodInfo.Name
-			var ns = methodInfo.Namespace
-			if namespacesObj[ns] == nil {
-				namespacesObj[ns] = map[string]interface{}{}
+			mName := methodInfo.Name
+			ns := methodInfo.Namespace
+			if nsObj[ns] == nil {
+				nsObj[ns] = map[string]interface{}{}
 			}
-			namespacesObj[ns][mName] = func(args ...interface{}) interface{} {
+			nsObj[ns][mName] = func(args ...interface{}) interface{} {
 
 				// parse arguments.
 				// App RPC functions can have zero or one argument
@@ -139,35 +148,35 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 					arg = args[0]
 				}
 
-				// Call the RPC method passing the RPC API params
-				rpcResp, err := e.rpc.Client.call(mName, arg, e.authToken)
+				result, err := e.callRPCMethod(mName, arg)
 				if err != nil {
 					e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 					v, _ := otto.ToValue(nil)
 					return v
 				}
 
-				// decode response object to a map
-				s := structs.New(rpcResp)
-				s.TagName = "json"
-				return s.Map()
+				return result
 			}
 		}
 	}
 
-	for ns, objs := range namespacesObj {
+	for ns, objs := range nsObj {
 		e.vm.Set(ns, objs)
 	}
 
 	// Add some methods to namespaces
-	namespacesObj["personal"]["login"] = e.login
-	namespacesObj["personal"]["loadAccount"] = e.loadAccount
-	namespacesObj["personal"]["loadedAccount"] = e.loadedAccount
+	nsObj["admin"]["login"] = e.login
+	nsObj["personal"]["loadAccount"] = e.loadAccount
+	nsObj["personal"]["loadedAccount"] = e.loadedAccount
+	nsObj["ell"]["balance"] = func() *TxBalanceBuilder {
+		return NewTxBuilder(e).Balance()
+	}
 
 	// Add some methods to the suggestions
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.login", Description: "Authenticate the console RPC session"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "ell.balance", Description: "Create and send a balance transaction"})
 
 	return suggestions, nil
 }
