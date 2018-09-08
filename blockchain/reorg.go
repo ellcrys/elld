@@ -49,14 +49,14 @@ func (b *Blockchain) decideBestChain() error {
 			return fmt.Errorf("Reorganization error: %s", err)
 		}
 
-		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID())
+		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID().SS())
 	}
 
 	// When no best chain has been set, set
 	// the best chain to the proposed best chain
 	if b.bestChain == nil {
 		b.bestChain = proposedBestChain
-		b.log.Info("Best chain set", "CurBestChainID", b.bestChain.GetID())
+		b.log.Info("Best chain set", "CurBestChainID", b.bestChain.GetID().SS())
 	}
 
 	return nil

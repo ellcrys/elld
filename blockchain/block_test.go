@@ -344,7 +344,6 @@ var BlockTest = func() bool {
 
 				BeforeEach(func() {
 					targetChain = NewChain("abc", db, cfg, log)
-					// block.GetHeader().GetParentHash() = "0x1cdf0e214bcdb7af36885316506f7388f262f7b710a28a00d21706550cdd72c2"
 					targetChain.parentBlock = genesisBlock
 				})
 
@@ -401,6 +400,33 @@ var BlockTest = func() bool {
 					Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
 					Expect(blk.GetHeader().GetNumber()).To(Equal(uint64(1)))
 					Expect(blk.GetHeader().GetParentHash().IsEmpty()).To(BeTrue())
+				})
+			})
+
+			When("fee allocation is enabled", func() {
+				It("should successfully add an allocation allocation transaction", func() {
+					blk, err := bc.Generate(&core.GenerateBlockParams{
+						Transactions: txs,
+						Creator:      sender,
+						Nonce:        core.EncodeNonce(1),
+						Difficulty:   new(big.Int).SetInt64(131072),
+						AddFeeAlloc:  true,
+					})
+					Expect(err).To(BeNil())
+
+					nTxs := blk.GetTransactions()
+
+					Describe("that there are 2 transactions", func() {
+						Expect(nTxs).To(HaveLen(2))
+					})
+
+					Describe("that the last transaction to be TxTypeAlloc", func() {
+						Expect(nTxs[1].GetType()).To(Equal(objects.TxTypeAlloc))
+					})
+
+					Describe("that the allocation value is the total fee of all txs", func() {
+						Expect(nTxs[1].GetValue().Decimal()).To(Equal(txs[0].GetFee().Decimal()))
+					})
 				})
 			})
 		})

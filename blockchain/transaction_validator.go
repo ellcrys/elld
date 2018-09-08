@@ -84,9 +84,7 @@ func (v *TxsValidator) SetContext(ctx ValidationContext) {
 func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
 	for i, tx := range v.txs {
 		v.curIndex = i
-		fmt.Println("1")
 		errs = append(errs, v.ValidateTx(tx, opts...)...)
-		fmt.Println("2")
 	}
 	return
 }

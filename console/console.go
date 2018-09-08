@@ -3,8 +3,10 @@ package console
 import (
 	"fmt"
 	"io/ioutil"
+	"path"
 	"runtime"
 
+	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util/logger"
@@ -53,6 +55,7 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	c.executor = newExecutor(coinbase, log)
 	c.suggestMgr = newSuggestionManager(initialSuggestions)
 	c.coinbase = coinbase
+	c.executor.acctMgr = accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
 	c.cfg = cfg
 
 	// retrieve the history
