@@ -189,6 +189,49 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(core.MapFieldsToHex(tx))
 }
 
+// apiGetTransactionStatus gets the status of
+// a transaction matching a given hash.
+// Status: 'unknown' - not found, 'pooled' - in
+// the transaction pool & 'mined' - In a mined block.
+func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response {
+
+	txHash, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	var status = "unknown"
+
+	if b.txPool.HasByHash(txHash) {
+		status = "pooled"
+	}
+
+	hash, err := util.HexToHash(txHash)
+	if err != nil {
+		return jsonrpc.Error(
+			types.ErrCodeQueryParamError,
+			fmt.Sprintf("invalid transaction id: %s", err.Error()),
+			nil,
+		)
+	}
+
+	tx, err := b.GetTransaction(hash)
+	if err != nil {
+		if err != core.ErrTxNotFound {
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+		}
+	}
+
+	if tx != nil {
+		status = "mined"
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"status": status,
+	})
+
+}
+
 // apiGetDifficultyInfo gets the difficulty and total
 // difficulty of the main chain
 func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
@@ -263,6 +306,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   "node",
 			Description: "Get difficulty information",
 			Func:        b.apiGetDifficultyInfo,
+		},
+		"getTransactionStatus": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get a transaction's status",
+			Func:        b.apiGetTransactionStatus,
 		},
 	}
 }

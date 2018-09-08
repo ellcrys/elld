@@ -129,6 +129,13 @@ func (q *TxContainer) Has(tx core.Transaction) bool {
 	return q.index[tx.GetHash().HexStr()] != nil
 }
 
+// HasByHash is like Has but accepts a transaction hash
+func (q *TxContainer) HasByHash(hash string) bool {
+	q.gmx.RLock()
+	defer q.gmx.RUnlock()
+	return q.index[hash] != nil
+}
+
 // First returns a single transaction at head.
 // Returns nil if container is empty
 func (q *TxContainer) First() core.Transaction {

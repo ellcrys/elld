@@ -240,6 +240,7 @@ var _ = Describe("TxContainer", func() {
 		It("should return true when tx exist in queue", func() {
 			q := newQueue(1)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
 			added := q.Add(tx)
 			Expect(added).To(BeTrue())
 			has := q.Has(tx)
@@ -249,7 +250,28 @@ var _ = Describe("TxContainer", func() {
 		It("should return false when tx does not exist in queue", func() {
 			q := newQueue(1)
 			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
 			has := q.Has(tx)
+			Expect(has).To(BeFalse())
+		})
+	})
+
+	Describe(".HasByHash", func() {
+		It("should return true when tx exist in queue", func() {
+			q := newQueue(1)
+			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
+			added := q.Add(tx)
+			Expect(added).To(BeTrue())
+			has := q.HasByHash(tx.GetHash().HexStr())
+			Expect(has).To(BeTrue())
+		})
+
+		It("should return false when tx does not exist in queue", func() {
+			q := newQueue(1)
+			tx := objects.NewTransaction(objects.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
+			has := q.HasByHash(tx.GetHash().HexStr())
 			Expect(has).To(BeFalse())
 		})
 	})

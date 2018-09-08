@@ -79,6 +79,11 @@ func (tp *TxPool) Has(tx core.Transaction) bool {
 	return tp.container.Has(tx)
 }
 
+// HasByHash is like Has but accepts a hash
+func (tp *TxPool) HasByHash(hash string) bool {
+	return tp.container.HasByHash(hash)
+}
+
 // SenderHasTxWithSameNonce checks whether a transaction
 // with a matching sender address and nonce exist in
 // the pool

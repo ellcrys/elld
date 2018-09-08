@@ -17,6 +17,7 @@ type TxPool interface {
 	SetEventEmitter(ee *emitter.Emitter)
 	Put(tx core.Transaction) error
 	Has(tx core.Transaction) bool
+	HasByHash(hash string) bool
 	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
 	Select(maxSize int64) (txs []core.Transaction)
 	ByteSize() int64
