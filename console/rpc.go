@@ -5,6 +5,7 @@ import (
 	gojson "encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	json "github.com/gorilla/rpc/v2/json2"
@@ -12,7 +13,9 @@ import (
 
 // RPCClient provides the ability to
 // call methods of an rpc server.
-type RPCClient string
+type RPCClient struct {
+	Address string
+}
 
 // RPCClientError creates an error describing
 // an issue with the rpc client.
@@ -31,7 +34,7 @@ func (c *RPCClient) call(method string, params interface{}, authToken string) (*
 
 	// create a request, pass the message
 	// and send the request
-	req, err := http.NewRequest("POST", string(*c), bytes.NewBuffer(message))
+	req, err := http.NewRequest("POST", c.Address, bytes.NewBuffer(message))
 	if err != nil {
 		return nil, RPCClientError(err.Error())
 	}
@@ -56,16 +59,60 @@ func (c *RPCClient) call(method string, params interface{}, authToken string) (*
 // RPCConfig holds information required
 // to create an rpc client
 type RPCConfig struct {
-	Client  RPCClient
-	Secured bool
+	Client RPCClient
 }
 
 // GetAddr constructs the appropriate
 // RPC server address
-func (c *RPCConfig) GetAddr() string {
+func makeAddr(addr string, secured bool) string {
 	var s = "s"
-	if !c.Secured {
+	if !secured {
 		s = ""
 	}
-	return fmt.Sprintf("http%s://%s", s, c.Client)
+	return fmt.Sprintf("http%s://%s", s, addr)
+}
+
+// startRPCServer starts the RPC server.
+// It is intended to be called in the JS environment.
+// It will panic if console is in attach mode.
+func (e *Executor) startRPCServer() {
+
+	if e.console.attached {
+		panic(e.vm.MakeCustomError("AttachError", "cannot start rpc server in attach mode"))
+	}
+
+	if e.rpcServer.IsStarted() {
+		return
+	}
+
+	go func() {
+		e.rpcServer.Serve()
+	}()
+
+	go func() {
+		time.Sleep(10 * time.Millisecond)
+		e.console.Prepare()
+	}()
+}
+
+// isRPCServerStarted checks whether the RPC
+// server has started. Intended to be
+// called in the JS environment.
+// It will panic if console is in attach mode
+func (e *Executor) isRPCServerStarted() bool {
+	if e.console.attached {
+		panic(e.vm.MakeCustomError("AttachError", "not applicable in attach mode"))
+	}
+	return e.rpcServer.IsStarted()
+}
+
+// stopRPC checks whether the RPC
+// server has started. Intended to be
+// called in the JS environment.
+// It will panic if console is in attach mode
+func (e *Executor) stopRPCServer() {
+	if e.console.attached {
+		panic(e.vm.MakeCustomError("AttachError", "not applicable in attach mode"))
+	}
+	e.rpcServer.Stop()
 }

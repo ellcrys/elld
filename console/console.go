@@ -6,6 +6,8 @@ import (
 	"path"
 	"runtime"
 
+	"github.com/ellcrys/elld/rpc"
+
 	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
@@ -29,6 +31,10 @@ type Console struct {
 
 	// suggestMgr managers prompt suggestions
 	suggestMgr *SuggestionManager
+
+	// attached indicates whether the console
+	// is in attach mode.
+	attached bool
 
 	// coinbase is the default account required
 	// for signing secure operations
@@ -56,6 +62,7 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	c.suggestMgr = newSuggestionManager(initialSuggestions)
 	c.coinbase = coinbase
 	c.executor.acctMgr = accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+	c.executor.console = c
 	c.cfg = cfg
 
 	// retrieve the history
@@ -70,20 +77,37 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	return c
 }
 
-// ConfigureRPC configures the RPC client
-func (c *Console) ConfigureRPC(rpcAddress string, secured bool) {
-	c.executor.rpc = &RPCConfig{
-		Client:  RPCClient(rpcAddress),
-		Secured: secured,
-	}
-
-	// reinitialize the rpc client,
-	// this time compute while taking
-	// the secured field into account
-	c.executor.rpc.Client = RPCClient(c.executor.rpc.GetAddr())
+// NewAttached is like New but enables attach mode
+func NewAttached(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
+	c := New(coinbase, historyPath, cfg, log)
+	c.attached = true
+	return c
 }
 
-// Prepare sets up the console
+// SetRPCServerAddr sets the address of the
+// RPC server to be dialled
+func (c *Console) SetRPCServerAddr(addr string, secured bool) {
+	c.executor.rpc = &RPCConfig{
+		Client: RPCClient{
+			Address: makeAddr(addr, secured),
+		},
+	}
+}
+
+// SetRPCServer sets the rpc server
+// so we can start and stop it.
+// It will panic if this is called on
+// a console with attach mode enabled.
+func (c *Console) SetRPCServer(rpcServer *rpc.Server, secured bool) {
+	if c.attached {
+		panic("we don't need a server in attach mode")
+	}
+	c.executor.rpcServer = rpcServer
+	c.SetRPCServerAddr(rpcServer.GetAddr(), secured)
+}
+
+// Prepare sets up the console's prompt
+// colors, suggestions etc.
 func (c *Console) Prepare() error {
 
 	// Set some options
@@ -108,7 +132,7 @@ func (c *Console) Prepare() error {
 		return err
 	}
 
-	c.suggestMgr.suggestions = append(c.suggestMgr.suggestions, suggestions...)
+	c.suggestMgr.add(suggestions...)
 
 	// create new prompt and configure it
 	// with the options create above

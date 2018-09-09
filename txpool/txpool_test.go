@@ -7,6 +7,7 @@ import (
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
+	"github.com/olebedev/emitter"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -187,15 +188,15 @@ var _ = Describe("TxPool", func() {
 		BeforeEach(func() {
 			tp = New(100)
 			tx = objects.NewTransaction(objects.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
-			tx.Hash = util.StrToHash("hash1")
+			tx.Hash = tx.ComputeHash()
 			tp.Put(tx)
 
 			tx2 = objects.NewTransaction(objects.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
-			tx2.Hash = util.StrToHash("hash2")
+			tx2.Hash = tx2.ComputeHash()
 			tp.Put(tx2)
 
 			tx3 = objects.NewTransaction(objects.TxTypeBalance, 100, "something3", util.String("abc3"), "0", "0", time.Now().Unix())
-			tx3.Hash = util.StrToHash("hash3")
+			tx3.Hash = tx3.ComputeHash()
 			tp.Put(tx3)
 		})
 
@@ -218,6 +219,42 @@ var _ = Describe("TxPool", func() {
 				Expect(txs).To(HaveLen(0))
 				Expect(tp.container.container).To(HaveLen(3))
 			})
+		})
+	})
+
+	Describe(".handleNewBlockEvent", func() {
+
+		var tp *TxPool
+		var ee *emitter.Emitter
+		var tx, tx2, tx3 *objects.Transaction
+
+		BeforeEach(func() {
+			tp = New(100)
+			ee = &emitter.Emitter{}
+			tp.SetEventEmitter(ee)
+
+			tx = objects.NewTransaction(objects.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
+			tp.Put(tx)
+
+			tx2 = objects.NewTransaction(objects.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
+			tx2.Hash = tx2.ComputeHash()
+			tp.Put(tx2)
+
+			tx3 = objects.NewTransaction(objects.TxTypeBalance, 100, "something3", util.String("abc3"), "0", "0", time.Now().Unix())
+			tx3.Hash = tx3.ComputeHash()
+			tp.Put(tx3)
+		})
+
+		It("should remove the transactions included in the block", func() {
+			go tp.handleNewBlockEvent()
+			block := &objects.Block{
+				Transactions: []*objects.Transaction{tx2, tx3},
+			}
+			ee.Emit(core.EventNewBlock, block)
+			time.Sleep(50 * time.Millisecond)
+			Expect(tp.Size()).To(Equal(int64(1)))
+			Expect(tp.container.container[0].Tx).To(Equal(tx))
 		})
 	})
 })

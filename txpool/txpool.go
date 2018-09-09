@@ -24,7 +24,7 @@ type TxPool struct {
 // queue at any given time. If it is full, transactions will be dropped.
 func New(cap int64) *TxPool {
 	tp := new(TxPool)
-	tp.container = newQueue(cap)
+	tp.container = newTxContainer(cap)
 	tp.event = &emitter.Emitter{}
 	return tp
 }
@@ -32,6 +32,19 @@ func New(cap int64) *TxPool {
 // SetEventEmitter sets the event emitter
 func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
 	tp.event = ee
+	go tp.handleNewBlockEvent()
+}
+
+// handleNewBlockEvent removes transactions from
+// the pool if they are contained in the broadcast
+// block that was appended to the chain
+func (tp *TxPool) handleNewBlockEvent() {
+	// When a new block is added to the chain,
+	// remove any of its transactions from the pool
+	for evt := range tp.event.On(core.EventNewBlock) {
+		txs := evt.Args[0].(core.Block).GetTransactions()
+		tp.container.Remove(txs...)
+	}
 }
 
 // Put adds a transaction to the transaction pool queue.
@@ -77,6 +90,11 @@ func (tp *TxPool) addTx(tx core.Transaction) error {
 // Has checks whether a transaction is in the pool
 func (tp *TxPool) Has(tx core.Transaction) bool {
 	return tp.container.Has(tx)
+}
+
+// HasByHash is like Has but accepts a hash
+func (tp *TxPool) HasByHash(hash string) bool {
+	return tp.container.HasByHash(hash)
 }
 
 // SenderHasTxWithSameNonce checks whether a transaction

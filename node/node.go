@@ -358,9 +358,10 @@ func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
-// SetEventBus set the event bus used to broadcast events across the engine
-func (n *Node) SetEventBus(ee *emitter.Emitter) {
+// SetEventEmitter set the event bus used to broadcast events across the engine
+func (n *Node) SetEventEmitter(ee *emitter.Emitter) {
 	n.event = ee
+	n.transactionsPool.SetEventEmitter(ee)
 }
 
 // SetLocalNode sets the local peer
@@ -620,36 +621,52 @@ func (n *Node) relayBlock(block core.Block) {
 	}
 }
 
-func (n *Node) handleEvents() {
+func (n *Node) handleNewBlockEvent() {
+	for evt := range n.event.On(core.EventNewBlock) {
+		n.relayBlock(evt.Args[0].(core.Block))
+	}
+}
 
-	go func() {
-		// handle core.EventNewBlock event
-		for evt := range n.event.On(core.EventNewBlock) {
-			n.relayBlock(evt.Args[0].(core.Block))
+func (n *Node) handleNewTransactionEvent() {
+	for evt := range n.event.On(core.EventNewTransaction) {
+		if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
+			n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
 		}
-	}()
+	}
+}
 
-	go func() {
-		// handle core.EventNewTransaction event
-		for evt := range n.event.On(core.EventNewTransaction) {
-			if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
-				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+func (n *Node) handleOrphanBlockEvent() {
+	for evt := range n.event.On(core.EventOrphanBlock) {
+		// We need to request the parent block from the
+		// peer who sent it to us (a.k.a broadcaster)
+		orphanBlock := evt.Args[0].(*objects.Block)
+		parentHash := orphanBlock.GetHeader().GetParentHash()
+		n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
+			orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
+		n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
+	}
+}
+
+func (n *Node) handleAbortedMinerBlockEvent() {
+	// handle core.EventMinerProposedBlockAborted
+	// listens for aborted miner blocks and attempt
+	// to re-add the transactions to the pool.
+	for evt := range n.event.On(core.EventMinerProposedBlockAborted) {
+		abortedBlock := evt.Args[0].(*objects.Block)
+		n.log.Debug("Attempting to re-add transactions in aborted miner block", "NumTx", len(abortedBlock.Transactions))
+		for _, tx := range abortedBlock.Transactions {
+			if err := n.addTransaction(tx); err != nil {
+				n.log.Debug("failed to re-add transaction", "Err", err.Error())
 			}
 		}
-	}()
+	}
+}
 
-	go func() {
-		// handle core.EventOrphanBlock event
-		for evt := range n.event.On(core.EventOrphanBlock) {
-			// We need to request the parent block from the
-			// peer who sent it to us (a.k.a broadcaster)
-			orphanBlock := evt.Args[0].(*objects.Block)
-			parentHash := orphanBlock.GetHeader().GetParentHash()
-			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
-				orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
-			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
-		}
-	}()
+func (n *Node) handleEvents() {
+	go n.handleNewBlockEvent()
+	go n.handleNewTransactionEvent()
+	go n.handleOrphanBlockEvent()
+	go n.handleAbortedMinerBlockEvent()
 }
 
 // processBlockHashes collects hashes and request for their

@@ -348,7 +348,7 @@ var BlockTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					err = bc.putAccount(1, targetChain, &objects.Account{
+					err = bc.CreateAccount(1, targetChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",
@@ -380,7 +380,7 @@ var BlockTest = func() bool {
 				})
 
 				BeforeEach(func() {
-					err = bc.putAccount(1, targetChain, &objects.Account{
+					err = bc.CreateAccount(1, targetChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",

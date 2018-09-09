@@ -17,6 +17,7 @@ type TxPool interface {
 	SetEventEmitter(ee *emitter.Emitter)
 	Put(tx core.Transaction) error
 	Has(tx core.Transaction) bool
+	HasByHash(hash string) bool
 	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
 	Select(maxSize int64) (txs []core.Transaction)
 	ByteSize() int64
@@ -27,7 +28,7 @@ type TxPool interface {
 // protocol. This can include peer discovery, configuration,
 // APIs etc.
 type Engine interface {
-	SetEventBus(*emitter.Emitter)         // Set the event bus used to broadcast events across the engine
+	SetEventEmitter(*emitter.Emitter)     // Set the event emitter used to broadcast/receive events
 	DB() elldb.DB                         // The engine's database instance
 	AddTxSession(txID string)             // Add new transaction session
 	HasTxSession(txID string) bool        // Check if a transaction has an existing session

@@ -10,11 +10,13 @@ const (
 	ErrCodeInvalidAuthCredentials = 40001
 
 	// Blochchain package errors from 50000
-	ErrCodeQueryFailed   = 50000
-	ErrCodeBlockNotFound = 50001
+	ErrCodeQueryFailed         = 50000
+	ErrCodeBlockNotFound       = 50001
+	ErrCodeTransactionNotFound = 50001
 
 	// General
 	ErrCodeUnexpectedArgType = 60000
+	ErrCodeQueryParamError   = 60001
 
 	// Engine package errors from 70000
 	ErrCodeAddress     = 70000
