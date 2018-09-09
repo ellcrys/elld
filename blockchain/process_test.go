@@ -60,7 +60,7 @@ var ProcessTest = func() bool {
 
 			BeforeEach(func() {
 				account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(sender.Addr()), Balance: "10"}
-				err = bc.putAccount(1, genesisChain, account)
+				err = bc.CreateAccount(1, genesisChain, account)
 				Expect(err).To(BeNil())
 			})
 
@@ -139,7 +139,7 @@ var ProcessTest = func() bool {
 
 				BeforeEach(func() {
 					account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
-					err = bc.putAccount(1, genesisChain, account)
+					err = bc.CreateAccount(1, genesisChain, account)
 					Expect(err).To(BeNil())
 				})
 
@@ -175,7 +175,7 @@ var ProcessTest = func() bool {
 
 					BeforeEach(func() {
 						account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
-						err = bc.putAccount(1, genesisChain, account)
+						err = bc.CreateAccount(1, genesisChain, account)
 						Expect(err).To(BeNil())
 					})
 
@@ -265,7 +265,7 @@ var ProcessTest = func() bool {
 
 				When("recipient account already exists with account balance = 100", func() {
 					BeforeEach(func() {
-						Expect(bc.putAccount(1, genesisChain, &objects.Account{
+						Expect(bc.CreateAccount(1, genesisChain, &objects.Account{
 							Type:    objects.AccountTypeBalance,
 							Address: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
 							Balance: "100",
@@ -333,7 +333,7 @@ var ProcessTest = func() bool {
 			Context("sender and recipient are the same", func() {
 
 				BeforeEach(func() {
-					err = bc.putAccount(1, genesisChain, &objects.Account{
+					err = bc.CreateAccount(1, genesisChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",
@@ -715,7 +715,7 @@ var ProcessTest = func() bool {
 					bc.bestChain = replayChain
 					bc.chains = map[util.String]*Chain{replayChain.id: replayChain}
 
-					Expect(bc.putAccount(1, replayChain, &objects.Account{
+					Expect(bc.CreateAccount(1, replayChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "1000",
@@ -758,7 +758,7 @@ var ProcessTest = func() bool {
 					bc.bestChain = replayChain
 					bc.chains = map[util.String]*Chain{replayChain.id: replayChain}
 
-					Expect(bc.putAccount(1, replayChain, &objects.Account{
+					Expect(bc.CreateAccount(1, replayChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "1000",

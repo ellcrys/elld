@@ -119,7 +119,7 @@ var _ = Describe("Blockchain", func() {
 
 	// create test accounts here
 	BeforeEach(func() {
-		Expect(bc.putAccount(1, genesisChain, &objects.Account{
+		Expect(bc.CreateAccount(1, genesisChain, &objects.Account{
 			Type:    objects.AccountTypeBalance,
 			Address: util.String(sender.Addr()),
 			Balance: "1000",

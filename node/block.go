@@ -6,6 +6,7 @@ import (
 
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/jinzhu/copier"
+	"github.com/k0kubun/pp"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/node/histcache"
@@ -113,6 +114,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 
 		// Add the transaction to the transaction pool and wait for error response
 		if _, err := g.GetBlockchain().ProcessBlock(&block); err != nil {
+			pp.Println(err)
 			return
 		}
 

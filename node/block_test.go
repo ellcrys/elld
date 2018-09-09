@@ -72,9 +72,12 @@ func BlockTest() bool {
 					Expect(err).To(BeNil())
 
 					time.Sleep(10 * time.Millisecond)
-					rpCurBlock, err = rpBc.ChainReader().Current()
-					Expect(err).To(BeNil())
-					Expect(rpCurBlock.GetNumber()).To(Equal(block.GetNumber()))
+
+					Describe("remote peer should successfully process and append the block", func() {
+						rpCurBlock, err = rpBc.ChainReader().Current()
+						Expect(err).To(BeNil())
+						Expect(rpCurBlock.GetNumber()).To(Equal(block.GetNumber()))
+					})
 				})
 
 				It("should emit core.EventNewBlock", func() {

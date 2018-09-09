@@ -239,7 +239,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	}
 
 	// Set the event handler in the node
-	n.SetEventBus(event)
+	n.SetEventEmitter(event)
 
 	// Start the node
 	n.Start()
