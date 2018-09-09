@@ -12,7 +12,7 @@ var AccountTest = func() bool {
 
 		Describe(".putAccount", func() {
 			It("should successfully create account", func() {
-				err = bc.putAccount(1, genesisChain, &objects.Account{
+				err = bc.CreateAccount(1, genesisChain, &objects.Account{
 					Type:    objects.AccountTypeBalance,
 					Address: "abc",
 					Nonce:   1,
@@ -30,7 +30,7 @@ var AccountTest = func() bool {
 			}
 
 			BeforeEach(func() {
-				err = bc.putAccount(1, genesisChain, account)
+				err = bc.CreateAccount(1, genesisChain, account)
 				Expect(err).To(BeNil())
 			})
 

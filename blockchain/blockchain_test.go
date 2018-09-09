@@ -126,7 +126,7 @@ var BlockchainTest = func() bool {
 					BeforeEach(func() {
 						bc.bestChain = genesisChain
 						chain := NewChain("c1", db, cfg, log)
-						Expect(bc.putAccount(1, chain, &objects.Account{
+						Expect(bc.CreateAccount(1, chain, &objects.Account{
 							Type:    objects.AccountTypeBalance,
 							Address: util.String(sender.Addr()),
 							Balance: "1000",
@@ -214,7 +214,7 @@ var BlockchainTest = func() bool {
 				chain2 = NewChain("chain2", db, cfg, log)
 				bc.addChain(chain2)
 
-				Expect(bc.putAccount(1, chain2, &objects.Account{
+				Expect(bc.CreateAccount(1, chain2, &objects.Account{
 					Type:    objects.AccountTypeBalance,
 					Address: util.String(sender.Addr()),
 					Balance: "1000",

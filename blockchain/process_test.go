@@ -60,7 +60,7 @@ var ProcessTest = func() bool {
 
 			BeforeEach(func() {
 				account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(sender.Addr()), Balance: "10"}
-				err = bc.putAccount(1, genesisChain, account)
+				err = bc.CreateAccount(1, genesisChain, account)
 				Expect(err).To(BeNil())
 			})
 
@@ -139,7 +139,7 @@ var ProcessTest = func() bool {
 
 				BeforeEach(func() {
 					account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
-					err = bc.putAccount(1, genesisChain, account)
+					err = bc.CreateAccount(1, genesisChain, account)
 					Expect(err).To(BeNil())
 				})
 
@@ -175,7 +175,7 @@ var ProcessTest = func() bool {
 
 					BeforeEach(func() {
 						account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
-						err = bc.putAccount(1, genesisChain, account)
+						err = bc.CreateAccount(1, genesisChain, account)
 						Expect(err).To(BeNil())
 					})
 
@@ -265,7 +265,7 @@ var ProcessTest = func() bool {
 
 				When("recipient account already exists with account balance = 100", func() {
 					BeforeEach(func() {
-						Expect(bc.putAccount(1, genesisChain, &objects.Account{
+						Expect(bc.CreateAccount(1, genesisChain, &objects.Account{
 							Type:    objects.AccountTypeBalance,
 							Address: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
 							Balance: "100",
@@ -333,7 +333,7 @@ var ProcessTest = func() bool {
 			Context("sender and recipient are the same", func() {
 
 				BeforeEach(func() {
-					err = bc.putAccount(1, genesisChain, &objects.Account{
+					err = bc.CreateAccount(1, genesisChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",
@@ -447,7 +447,31 @@ var ProcessTest = func() bool {
 			})
 
 			When("a block's parent exists in a chain", func() {
-				// var block2, block2_2, block3, block4 core.Block
+
+				When("block's timestamp is lesser than its parent's timestamp", func() {
+
+					var block2 core.Block
+
+					BeforeEach(func() {
+						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730724),
+							},
+							Creator:           sender,
+							Nonce:             core.EncodeNonce(1),
+							Difficulty:        new(big.Int).SetInt64(131072),
+							OverrideTimestamp: genesisBlock.GetHeader().GetTimestamp() - 1,
+						})
+					})
+
+					It("should return error", func() {
+						_, err = bc.ProcessBlock(block2)
+						Expect(err).ToNot(BeNil())
+						Expect(err.Error()).To(Equal("block timestamp must be greater than its parent's"))
+						Expect(bc.isRejected(block2)).To(BeTrue())
+					})
+				})
 
 				When("block number is less than the chain tip block number", func() {
 
@@ -691,7 +715,7 @@ var ProcessTest = func() bool {
 					bc.bestChain = replayChain
 					bc.chains = map[util.String]*Chain{replayChain.id: replayChain}
 
-					Expect(bc.putAccount(1, replayChain, &objects.Account{
+					Expect(bc.CreateAccount(1, replayChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "1000",
@@ -734,7 +758,7 @@ var ProcessTest = func() bool {
 					bc.bestChain = replayChain
 					bc.chains = map[util.String]*Chain{replayChain.id: replayChain}
 
-					Expect(bc.putAccount(1, replayChain, &objects.Account{
+					Expect(bc.CreateAccount(1, replayChain, &objects.Account{
 						Type:    objects.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "1000",

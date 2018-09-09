@@ -48,8 +48,13 @@ account does not exist, the command will fail.`,
 			}
 		}
 
-		cs := console.New(coinbase, consoleHistoryFilePath, cfg, log)
-		cs.ConfigureRPC(rpcAddress, false)
+		// Set up the console in attach mode
+		cs := console.NewAttached(coinbase, consoleHistoryFilePath, cfg, log)
+
+		// Set the RPC server address to be dialled
+		cs.SetRPCServerAddr(rpcAddress, false)
+
+		// Prepare the console and JS context
 		if err := cs.Prepare(); err != nil {
 			log.Fatal("failed to prepare console VM", "Err", err)
 		}

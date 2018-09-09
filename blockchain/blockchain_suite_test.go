@@ -53,9 +53,10 @@ var makeBlock = func(ch *Chain) core.Block {
 		Transactions: []core.Transaction{
 			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "0.1", time.Now().UnixNano()),
 		},
-		Creator:    sender,
-		Nonce:      core.EncodeNonce(1),
-		Difficulty: new(big.Int).SetInt64(131072),
+		Creator:           sender,
+		Nonce:             core.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: time.Now().Unix(),
 	})
 }
 
@@ -118,7 +119,7 @@ var _ = Describe("Blockchain", func() {
 
 	// create test accounts here
 	BeforeEach(func() {
-		Expect(bc.putAccount(1, genesisChain, &objects.Account{
+		Expect(bc.CreateAccount(1, genesisChain, &objects.Account{
 			Type:    objects.AccountTypeBalance,
 			Address: util.String(sender.Addr()),
 			Balance: "1000",

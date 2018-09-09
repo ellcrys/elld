@@ -276,6 +276,12 @@ func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
 // transaction pool. It also performs nonce checks.
 func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp) (errs []error) {
 
+	// No need for consistency check for
+	// TxTypeAlloc transactions
+	if tx.GetType() == objects.TxTypeAlloc {
+		return
+	}
+
 	if v.txpool.Has(tx) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in the transactions pool"))
@@ -293,11 +299,6 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	} else {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in main chain"))
-	}
-
-	// Validate nonce for non-TxTypeAlloc transactions
-	if tx.GetType() == objects.TxTypeAlloc {
-		return
 	}
 
 	// Get the sender account

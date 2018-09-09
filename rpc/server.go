@@ -1,8 +1,6 @@
 package rpc
 
 import (
-	"net"
-
 	"github.com/ellcrys/elld/elldb"
 
 	"github.com/ellcrys/elld/config"
@@ -33,11 +31,12 @@ type Server struct {
 	// log is the logger
 	log logger.Logger
 
-	// conn is the listener
-	conn net.Listener
-
 	// rpc is the JSONRPC 2.0 server
 	rpc *jsonrpc.JSONRPC
+
+	// started indicates the start state
+	// of the server
+	started bool
 }
 
 // NewServer creates a new RPC server
@@ -51,19 +50,28 @@ func NewServer(db elldb.DB, addr string, cfg *config.EngineConfig, log logger.Lo
 	return s
 }
 
+// GetAddr gets the address
+func (s *Server) GetAddr() string {
+	return s.addr
+}
+
 // Serve starts the server
-func (s *Server) Serve() error {
-	s.log.Info("RPC service started", "Address", s.addr)
+func (s *Server) Serve() {
 	s.AddAPI(s.APIs())
+	s.started = true
+	s.log.Info("RPC service started", "Address", s.addr)
 	s.rpc.Serve()
-	return nil
+}
+
+// IsStarted returns the start state
+func (s *Server) IsStarted() bool {
+	return s.started
 }
 
 // Stop stops the server and frees resources
 func (s *Server) Stop() {
-	if s != nil && s.conn != nil {
-		s.conn.Close()
-	}
+	s.rpc.Stop()
+	s.started = false
 }
 
 // AddAPI adds one or more API sets

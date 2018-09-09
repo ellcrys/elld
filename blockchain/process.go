@@ -302,6 +302,17 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		return nil, nil
 	}
 
+	// Ensure the block is not older than its parent.
+	// If so, we must reject such a block
+	if block.GetHeader().GetTimestamp() < parentBlock.GetHeader().GetTimestamp() {
+		b.log.Info("Block's timestamp must be greater than its parent's",
+			"BlockNo", block.GetNumber(),
+			"BlockTime", block.GetHeader().GetTimestamp(),
+			"ParentBlockTime", parentBlock.GetHeader().GetTimestamp())
+		b.addRejectedBlock(block)
+		return nil, fmt.Errorf("block timestamp must be greater than its parent's")
+	}
+
 	// Since this block is of a lower height than
 	// the current block in the chain, it should
 	// result in new chain.

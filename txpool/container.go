@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -49,8 +51,8 @@ type TxContainer struct {
 	byteSize  int64
 }
 
-// newQueue creates a new container
-func newQueue(cap int64) *TxContainer {
+// newTxContainer creates a new container
+func newTxContainer(cap int64) *TxContainer {
 	q := new(TxContainer)
 	q.container = []*ContainerItem{}
 	q.cap = cap
@@ -127,6 +129,13 @@ func (q *TxContainer) Has(tx core.Transaction) bool {
 	q.gmx.RLock()
 	defer q.gmx.RUnlock()
 	return q.index[tx.GetHash().HexStr()] != nil
+}
+
+// HasByHash is like Has but accepts a transaction hash
+func (q *TxContainer) HasByHash(hash string) bool {
+	q.gmx.RLock()
+	defer q.gmx.RUnlock()
+	return q.index[hash] != nil
 }
 
 // First returns a single transaction at head.
@@ -211,4 +220,33 @@ func (q *TxContainer) IFind(predicate func(core.Transaction) bool) core.Transact
 		}
 	}
 	return nil
+}
+
+// Remove removes a transaction
+func (q *TxContainer) Remove(txs ...core.Transaction) {
+
+	// Filter out the transactions that
+	// do not exists in the container
+	filteredTxs := funk.Filter(txs, func(tx core.Transaction) bool {
+		return q.Has(tx)
+	})
+
+	q.gmx.Lock()
+	defer q.gmx.Unlock()
+
+	// Remove transactions that are present
+	// in the filtered txs
+	finalTxs := funk.Filter(q.container, func(o *ContainerItem) bool {
+		if funk.Find(filteredTxs.([]core.Transaction), func(tx core.Transaction) bool {
+			return o.Tx.GetHash().Equal(tx.GetHash())
+		}) != nil {
+			delete(q.index, o.Tx.GetHash().HexStr())
+			q.byteSize -= o.Tx.SizeNoFee()
+			q.len--
+			return false
+		}
+		return true
+	})
+
+	q.container = finalTxs.([]*ContainerItem)
 }

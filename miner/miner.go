@@ -122,14 +122,23 @@ func (m *Miner) Stop() {
 // handleNewBlockEvt detects and processes event about
 // a new block being accepted in a chain. Since the
 // miner always mines on the main chain, it will
-// will cause the current proposed block to be dumped
-// if the new block was appended to the main chain.
-// Additionally, it emits a core.EventAborted event.
+// will cause the current proposed block to be dumped.
+// Additionally, it emits a core.EventMinerProposedBlockAborted event
+// to inform other processes about the aborted proposed block.
 func (m *Miner) handleNewBlockEvt(newBlock *objects.Block) {
-	if m.isMining && (m.proposedBlock == nil ||
-		(m.blockMaker.IsMainChain(newBlock.ChainReader) && !m.proposedBlock.GetHash().Equal(newBlock.GetHash()))) {
+	if !m.isMining {
+		return
+	}
+	if m.proposedBlock != nil {
+		return
+	}
+	// If the new block was appended to the main chain
+	// and it is not the same with the proposed block,
+	// abort current proposed block and emit an event.
+	if m.blockMaker.IsMainChain(newBlock.ChainReader) &&
+		!m.proposedBlock.GetHash().Equal(newBlock.GetHash()) {
 		m.log.Debug("Aborting on-going miner session. Proposing a new block.", "Number", newBlock.Header.Number)
-		go m.event.Emit(core.EventAborted, m.proposedBlock)
+		go m.event.Emit(core.EventMinerProposedBlockAborted, m.proposedBlock)
 		m.abortCurrent()
 	}
 }
