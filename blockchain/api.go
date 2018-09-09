@@ -164,6 +164,22 @@ func (b *Blockchain) apiGetNonce(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(account.GetNonce())
 }
 
+// apiGetBalance gets the balance of an account
+func (b *Blockchain) apiGetBalance(arg interface{}) *jsonrpc.Response {
+
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	account, err := b.GetAccount(util.String(address))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(account.GetBalance())
+}
+
 // apiGetTransaction gets a transaction by hash
 func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 
@@ -296,6 +312,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   "node",
 			Description: "Get the nonce of an account",
 			Func:        b.apiGetNonce,
+		},
+		"getBalance": jsonrpc.APIInfo{
+			Namespace:   "ell",
+			Description: "Get account balance",
+			Func:        b.apiGetBalance,
 		},
 		"getTransaction": jsonrpc.APIInfo{
 			Namespace:   "node",

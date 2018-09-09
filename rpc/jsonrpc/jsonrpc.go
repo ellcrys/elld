@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -89,6 +90,14 @@ type JSONRPC struct {
 	// disableAuth when set to true causes
 	// authorization check to be skipped (not recommended)
 	disableAuth bool
+
+	// handlerConfigured lets us know when the
+	// handle has been configured
+	handlerConfigured bool
+
+	// done is used to wait for the server to
+	// shutdown
+	done chan bool
 }
 
 // MakeSessionToken creates a session token for
@@ -147,6 +156,7 @@ func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 		apiSet:      APISet{},
 		sessionKey:  sessionKey,
 		disableAuth: disableAuth,
+		done:        make(chan bool),
 	}
 	rpc.MergeAPISet(rpc.APIs())
 	return rpc
@@ -188,18 +198,33 @@ func (s *JSONRPC) Serve() {
 	server.RegisterCodec(json2.NewCodec(), "application/json;charset=UTF-8")
 	r.Handle("/rpc", server)
 
-	// Set request handler
-	http.ListenAndServe(s.addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := &http.Server{Addr: s.addr}
+	s.registerHandler()
+	go srv.ListenAndServe()
 
+	<-s.done
+	srv.Shutdown(context.Background())
+}
+
+func (s *JSONRPC) registerHandler() {
+	if s.handlerConfigured {
+		return
+	}
+	http.HandleFunc("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.OnRequest != nil {
 			if err := s.OnRequest(r); err != nil {
 				json.NewEncoder(w).Encode(Error(middlewareErrCode, err.Error(), nil))
 				return
 			}
 		}
-
 		json.NewEncoder(w).Encode(s.handle(w, r))
 	}))
+	s.handlerConfigured = true
+}
+
+// Stop stops the RPC server
+func (s *JSONRPC) Stop() {
+	close(s.done)
 }
 
 // MergeAPISet merges an API set with s current api sets

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ellcrys/elld/rpc"
+
 	"github.com/ellcrys/elld/accountmgr"
 
 	prompt "github.com/c-bata/go-prompt"
@@ -48,7 +50,14 @@ type Executor struct {
 	// log is a logger
 	log logger.Logger
 
+	// acctMgr is the account manager
 	acctMgr *accountmgr.AccountManager
+
+	// rpcServer is the rpc server to start/connect/stop
+	rpcServer *rpc.Server
+
+	// console is the console instance
+	console *Console
 }
 
 // NewExecutor creates a new executor
@@ -111,10 +120,54 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	e.vm.Set("runScript", e.runScript)
 	e.vm.Set("rs", e.runScript)
 
-	// Get all the methods
+	// nsObj is a namespace for storing
+	// rpc methods and other categorized functions
+	var nsObj = map[string]map[string]interface{}{
+		"admin":    map[string]interface{}{},
+		"personal": map[string]interface{}{},
+		"ell":      map[string]interface{}{},
+		"rpc":      map[string]interface{}{},
+	}
+
+	// Add some methods to namespaces
+	nsObj["rpc"]["started"] = e.isRPCServerStarted
+	nsObj["rpc"]["start"] = e.startRPCServer
+	nsObj["rpc"]["stop"] = e.stopRPCServer
+	nsObj["admin"]["login"] = e.login
+	nsObj["personal"]["loadAccount"] = e.loadAccount
+	nsObj["personal"]["loadedAccount"] = e.loadedAccount
+	nsObj["ell"]["balance"] = func() *TxBalanceBuilder {
+		return NewTxBuilder(e).Balance()
+	}
+
+	defer func() {
+		for ns, objs := range nsObj {
+			e.vm.Set(ns, objs)
+		}
+	}()
+
+	// Add some methods to the suggestions
+	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.start", Description: "Start RPC Server"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.stop", Description: "Stop RPC Server"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.started", Description: "Check whether RPC server has started"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "ell.balance", Description: "Create and send a balance transaction"})
+
+	// If the console is not in attach mode and
+	// the rpc server is not started, we cannot
+	// set up rpc methods in the namespace and
+	// add them as suggestions
+	if !e.console.attached && !e.rpcServer.IsStarted() {
+		return suggestions, nil
+	}
+
+	// Get all the rpc methods information
 	resp, err := e.rpc.Client.call("methods", nil, e.authToken)
 	if err != nil {
 		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
+		return suggestions, err
 	}
 
 	// Create console suggestions and collect methods info
@@ -130,52 +183,35 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	}
 
 	// Add supported methods to the namespace object
-	var nsObj = map[string]map[string]interface{}{}
-	if len(methodsInfo) > 0 {
-		for _, methodInfo := range methodsInfo {
-			mName := methodInfo.Name
-			ns := methodInfo.Namespace
-			if nsObj[ns] == nil {
-				nsObj[ns] = map[string]interface{}{}
+	if len(methodsInfo) == 0 {
+		return suggestions, nil
+	}
+
+	for _, methodInfo := range methodsInfo {
+		mName := methodInfo.Name
+		ns := methodInfo.Namespace
+		if nsObj[ns] == nil {
+			nsObj[ns] = map[string]interface{}{}
+		}
+		nsObj[ns][mName] = func(args ...interface{}) interface{} {
+
+			// parse arguments.
+			// App RPC functions can have zero or one argument
+			var arg interface{}
+			if len(args) > 0 {
+				arg = args[0]
 			}
-			nsObj[ns][mName] = func(args ...interface{}) interface{} {
 
-				// parse arguments.
-				// App RPC functions can have zero or one argument
-				var arg interface{}
-				if len(args) > 0 {
-					arg = args[0]
-				}
-
-				result, err := e.callRPCMethod(mName, arg)
-				if err != nil {
-					e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
-					v, _ := otto.ToValue(nil)
-					return v
-				}
-
-				return result
+			result, err := e.callRPCMethod(mName, arg)
+			if err != nil {
+				e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
+				v, _ := otto.ToValue(nil)
+				return v
 			}
+
+			return result
 		}
 	}
-
-	for ns, objs := range nsObj {
-		e.vm.Set(ns, objs)
-	}
-
-	// Add some methods to namespaces
-	nsObj["admin"]["login"] = e.login
-	nsObj["personal"]["loadAccount"] = e.loadAccount
-	nsObj["personal"]["loadedAccount"] = e.loadedAccount
-	nsObj["ell"]["balance"] = func() *TxBalanceBuilder {
-		return NewTxBuilder(e).Balance()
-	}
-
-	// Add some methods to the suggestions
-	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "ell.balance", Description: "Create and send a balance transaction"})
 
 	return suggestions, nil
 }
