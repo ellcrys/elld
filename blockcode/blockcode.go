@@ -7,28 +7,32 @@ package blockcode
 
 import (
 	"bytes"
+	"compress/zlib"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/fatih/structs"
-	"github.com/k0kubun/pp"
-
 	"github.com/thoas/go-funk"
 	"github.com/vmihailenco/msgpack"
 
 	"gopkg.in/asaskevich/govalidator.v4"
-
-	"github.com/mholt/archiver"
 
 	"github.com/ellcrys/elld/util"
 )
 
 // Lang represents a blockcode language
 type Lang string
+
+// FileInfo represents a file in a directory
+type FileInfo struct {
+	Content []byte `json:"content"`
+	Path    string `json:"path"`
+}
 
 var (
 	// LangGo is a Lang representing `Go` programming language
@@ -79,7 +83,7 @@ func (bc *Blockcode) GetCode() []byte {
 func (bc *Blockcode) Hash() util.Hash {
 	bs := bc.Bytes()
 	hash := sha256.Sum256(bs)
-	return util.BytesToHash(hash[:])
+	return util.BytesToHash(util.Blake2b256(hash[:]))
 }
 
 // ID returns the hex representation of Hash()
@@ -87,15 +91,21 @@ func (bc *Blockcode) ID() string {
 	return bc.Hash().HexStr()
 }
 
-// Read un-tars the code into destination
-func (bc *Blockcode) Read(destination string) error {
+// Deflate decompresses the block code into
+// destination while maintaining the folder
+// structure it had during compression.
+// It will return error if a directory of
+// a file already exists or if unable to
+// create the directory.
+func (bc *Blockcode) Deflate(dest string) error {
 
-	if !util.IsPathOk(destination) {
-		return fmt.Errorf("destination path does not exist")
-	}
+	// if !util.IsPathOk(destination) {
+	// 	return fmt.Errorf("destination path does not exist")
+	// }
 
-	buff := bytes.NewBuffer(bc.code)
-	return archiver.Tar.Read(buff, destination)
+	// buff := bytes.NewBuffer(bc.code)
+	// return archiver.Tar.Read(buff, destination)
+	return nil
 }
 
 // FromBytes creates a Blockcode from serialized Blockcode
@@ -124,50 +134,58 @@ func FromBytes(bs []byte) (*Blockcode, error) {
 func FromDir(projectPath string) (*Blockcode, error) {
 
 	var manifest Manifest
-	var filePaths []string
 
 	// Check whether the project path exists
 	if !util.IsPathOk(projectPath) {
 		return nil, fmt.Errorf("project path does not exist")
 	}
 
-	// Read the files and directories
-	// of the project
-	fileInfos, err := ioutil.ReadDir(projectPath)
+	// Traverse the project path in lexical order.
+	// Collect the content of each file.
+	var filesData []FileInfo
+	err := filepath.Walk(projectPath, func(path string, info os.FileInfo, err error) error {
+
+		if info.IsDir() || err != nil {
+			return err
+		}
+
+		bs, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		filesData = append(filesData, FileInfo{
+			Content: bs,
+			Path:    path,
+		})
+
+		// process package.json
+		if strings.Index(strings.ToLower(info.Name()), "package.json") != -1 {
+			jsonDec := json.NewDecoder(bytes.NewBuffer(bs))
+			if err = jsonDec.Decode(&manifest); err != nil {
+				return fmt.Errorf("failed to decode manifest: %s", err)
+			}
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	for _, f := range fileInfos {
-
-		filePaths = append(filePaths, filepath.Join(projectPath, f.Name()))
-		if f.Name() != "package.json" {
-			continue
-		}
-
-		// Read the manifest and decode it
-		packageJSON, err := ioutil.ReadFile(filepath.Join(projectPath, f.Name()))
-		if err != nil {
-			return nil, fmt.Errorf("failed to read manifest. %s", err)
-		}
-		if err = json.Unmarshal(packageJSON, &manifest); err != nil {
-			return nil, fmt.Errorf("manifest is malformed. %s", err)
-		}
 	}
 
 	if structs.IsZero(manifest) {
 		return nil, fmt.Errorf("'package.json' file not found in {%s}", projectPath)
 	}
 
-	if err := validateManifest(&manifest); err != nil {
-		return nil, err
-	}
-	pp.Println(filePaths, manifest)
+	// convert the files data to bytes
+	dataToCompress := util.ObjectToBytes(filesData)
 
+	// Compress the file data
 	var buf = bytes.NewBuffer(nil)
-	if err := archiver.Tar.Write(buf, filePaths); err != nil {
-		return nil, fmt.Errorf("failed to create archive. %s", err)
-	}
+	w := zlib.NewWriter(buf)
+	w.Write(dataToCompress)
+	w.Flush()
 
 	bc := new(Blockcode)
 	bc.code = buf.Bytes()

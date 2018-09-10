@@ -1,13 +1,9 @@
 package blockcode
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"os"
 
 	"github.com/ellcrys/elld/util"
-	"github.com/k0kubun/pp"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -41,10 +37,10 @@ var _ = Describe("Blockcode", func() {
 			Expect(err.Error()).To(Equal("project path does not exist"))
 		})
 
-		It("should return error = 'manifest is malformed. invalid character ':' after top-level value' if manifest is not valid JSON", func() {
+		It("should return error = 'failed to decode manifest: json: cannot unmarshal string into Go value of type blockcode.Manifest' if manifest is not valid JSON", func() {
 			_, err := FromDir("./testdata/invalid_manifest")
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("manifest is malformed. invalid character ':' after top-level value"))
+			Expect(err.Error()).To(Equal("failed to decode manifest: json: cannot unmarshal string into Go value of type blockcode.Manifest"))
 		})
 
 		It("should return error = ''package.json' file not found in {./testdata/missing_manifest}' if package.json is missing", func() {
@@ -58,17 +54,17 @@ var _ = Describe("Blockcode", func() {
 			Expect(err).To(BeNil())
 			Expect(bc.code).ToNot(BeEmpty())
 			Expect(bc.Manifest).ToNot(BeNil())
-			Expect(bc.Manifest.Lang).ToNot(BeEmpty())
-			Expect(bc.Manifest.LangVersion).ToNot(BeEmpty())
-			Expect(bc.Manifest.PublicFuncs).ToNot(BeEmpty())
+			Expect(bc.Manifest.Lang).To(Equal(Lang("go")))
+			Expect(bc.Manifest.LangVersion).To(Equal("1.10.2"))
+			Expect(bc.Manifest.PublicFuncs).To(Equal([]string{"some_func"}))
 		})
 	})
 
 	Describe(".Bytes", func() {
-		It("should return 3072", func() {
+		It("should return 305", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Size()).To(Equal(3072))
+			Expect(bc.Size()).To(Equal(305))
 		})
 	})
 
@@ -82,12 +78,9 @@ var _ = Describe("Blockcode", func() {
 
 	Describe(".Hash", func() {
 		It("should return Hash", func() {
-			fmt.Println("_____")
-			bc, _ := FromDir("./testdata/blockcode_example")
-			bs := sha256.Sum256(bc.code)
-			pp.Println(util.ToHex(bs[:]))
-			// Expect(err).To(BeNil())
-			// Expect(bc.Hash()).To(Equal(util.Hash{22, 245, 70, 201, 167, 104, 236, 58, 225, 199, 104, 183, 168, 196, 32, 146, 224, 31, 187, 35, 172, 5, 25, 11, 10, 253, 237, 165, 149, 134, 226, 161}))
+			bc, err := FromDir("./testdata/blockcode_example")
+			Expect(err).To(BeNil())
+			Expect(bc.Hash()).To(Equal(util.Hash{56, 35, 70, 128, 167, 183, 163, 31, 92, 65, 159, 242, 111, 193, 88, 182, 139, 48, 93, 65, 34, 12, 71, 8, 41, 192, 22, 89, 81, 52, 72, 77}))
 		})
 	})
 
@@ -95,7 +88,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return ID", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.ID()).To(Equal("0x16f546c9a768ec3ae1c768b7a8c42092e01fbb23ac05190b0afdeda59586e2a1"))
+			Expect(bc.ID()).To(Equal("0x38234680a7b7a31f5c419ff26fc158b68b305d41220c470829c016595134484d"))
 		})
 	})
 
@@ -110,27 +103,27 @@ var _ = Describe("Blockcode", func() {
 		})
 	})
 
-	Describe(".Read", func() {
-		It("should return err = 'destination path does not exist' if destination path does not exist", func() {
-			bc, err := FromDir("./testdata/blockcode_example")
-			Expect(err).To(BeNil())
-			err = bc.Read("./unknown/path")
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("destination path does not exist"))
-		})
+	// Describe(".Read", func() {
+	// 	It("should return err = 'destination path does not exist' if destination path does not exist", func() {
+	// 		bc, err := FromDir("./testdata/blockcode_example")
+	// 		Expect(err).To(BeNil())
+	// 		err = bc.Read("./unknown/path")
+	// 		Expect(err).ToNot(BeNil())
+	// 		Expect(err.Error()).To(Equal("destination path does not exist"))
+	// 	})
 
-		It("should successfully un-tar to destination", func() {
+	// 	It("should successfully un-tar to destination", func() {
 
-			destination := "/tmp/blockcode_example_untar"
-			err := os.Mkdir(destination, 0700)
-			Expect(err).To(BeNil())
-			defer os.RemoveAll(destination)
+	// 		destination := "/tmp/blockcode_example_untar"
+	// 		err := os.Mkdir(destination, 0700)
+	// 		Expect(err).To(BeNil())
+	// 		defer os.RemoveAll(destination)
 
-			bc, err := FromDir("./testdata/blockcode_example")
-			Expect(err).To(BeNil())
+	// 		bc, err := FromDir("./testdata/blockcode_example")
+	// 		Expect(err).To(BeNil())
 
-			err = bc.Read(destination)
-			Expect(err).To(BeNil())
-		})
-	})
+	// 		err = bc.Read(destination)
+	// 		Expect(err).To(BeNil())
+	// 	})
+	// })
 })
