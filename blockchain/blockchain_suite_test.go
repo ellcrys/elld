@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -85,7 +86,7 @@ var _ = Describe("Blockchain", func() {
 	// Create the database and store instances
 	BeforeEach(func() {
 		db = elldb.NewDB(cfg.ConfigDir())
-		err = db.Open("")
+		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 	})
 
@@ -145,7 +146,8 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		err = os.RemoveAll(cfg.ConfigDir())
+		Expect(err).To(BeNil())
 	})
 
 	var tests = []func() bool{

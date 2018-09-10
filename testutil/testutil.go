@@ -13,6 +13,7 @@ import (
 	crypto "github.com/libp2p/go-libp2p-crypto"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
@@ -86,17 +87,10 @@ func RandBytes(n int) []byte {
 func SetTestCfg() (*config.EngineConfig, error) {
 	var err error
 	dir, _ := homedir.Dir()
-	cfgDir := path.Join(dir, ".ellcrys_test")
+	cfgDir := path.Join(dir, util.RandString(5))
 	os.MkdirAll(cfgDir, 0700)
 	cfg, err := config.LoadCfg(cfgDir)
 	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5
 	return cfg, err
-}
-
-// RemoveTestCfgDir removes test config directory
-func RemoveTestCfgDir() error {
-	dir, _ := homedir.Dir()
-	err := os.RemoveAll(path.Join(dir, ".ellcrys_test"))
-	return err
 }

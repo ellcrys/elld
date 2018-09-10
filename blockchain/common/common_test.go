@@ -1,6 +1,7 @@
 package common
 
 import (
+	"os"
 	"time"
 
 	"github.com/ellcrys/elld/config"
@@ -26,14 +27,15 @@ var _ = Describe("Common", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		err = os.RemoveAll(cfg.ConfigDir())
+		Expect(err).To(BeNil())
 	})
 
 	Describe(".GetTxOp", func() {
 
 		BeforeEach(func() {
 			db = elldb.NewDB(cfg.ConfigDir())
-			err = db.Open("")
+			err = db.Open(util.RandString(5))
 			Expect(err).To(BeNil())
 		})
 

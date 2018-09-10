@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -66,7 +67,8 @@ var _ = Describe("Engine", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		err = os.RemoveAll(cfg.ConfigDir())
+		Expect(err).To(BeNil())
 	})
 
 	BeforeEach(func() {
