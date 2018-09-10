@@ -15,23 +15,6 @@ import (
 	"github.com/ellcrys/elld/util/math"
 )
 
-// Block represents a block
-type Block struct {
-	sync.RWMutex `json:"-" msgpack:"-"`
-	Header       *Header        `json:"header" msgpack:"header"`
-	Transactions []*Transaction `json:"transactions" msgpack:"transactions"`
-	Hash         util.Hash      `json:"hash" msgpack:"hash"`
-	Sig          []byte         `json:"sig" msgpack:"sig"`
-
-	// ChainReader holds the chain on which
-	// this block was added.
-	ChainReader core.ChainReader `json:"-" msgpack:"-"`
-
-	// Broadcaster is the peer responsible
-	// for sending this block.
-	Broadcaster types.Engine `json:"-" msgpack:"-"`
-}
-
 // Header represents the header of a block
 type Header struct {
 	Number           uint64          `json:"number" msgpack:"number"`
@@ -156,6 +139,29 @@ func (h *Header) EncodeMsgpack(enc *msgpack.Encoder) error {
 		h.ParentHash, h.StateRoot, h.TransactionsRoot, h.Extra, difficultyStr, tdStr)
 }
 
+// Bytes return the bytes representation of the header
+func (h *Header) Bytes() []byte {
+	return getBytes([]interface{}{
+		h.ParentHash,
+		h.Number,
+		h.CreatorPubKey,
+		h.TransactionsRoot,
+		h.StateRoot,
+		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
+		h.Timestamp,
+		h.Nonce,
+		h.Extra,
+	})
+}
+
+// ComputeHash returns the SHA256 hash of the header
+func (h *Header) ComputeHash() util.Hash {
+	bs := h.Bytes()
+	hash := sha256.Sum256(bs)
+	return util.BytesToHash(hash[:])
+}
+
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var difficultyStr, tdStr string
@@ -166,6 +172,23 @@ func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
 	h.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
 	h.TotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
 	return nil
+}
+
+// Block represents a block
+type Block struct {
+	sync.RWMutex `json:"-" msgpack:"-"`
+	Header       *Header        `json:"header" msgpack:"header"`
+	Transactions []*Transaction `json:"transactions" msgpack:"transactions"`
+	Hash         util.Hash      `json:"hash" msgpack:"hash"`
+	Sig          []byte         `json:"sig" msgpack:"sig"`
+
+	// ChainReader holds the chain on which
+	// this block was added.
+	ChainReader core.ChainReader `json:"-" msgpack:"-"`
+
+	// Broadcaster is the peer responsible
+	// for sending this block.
+	Broadcaster types.Engine `json:"-" msgpack:"-"`
 }
 
 // GetChainReader gets the chain reader
@@ -202,12 +225,12 @@ func (b *Block) HashToHex() string {
 
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (b *Block) EncodeMsgpack(enc *msgpack.Encoder) error {
-	return enc.Encode(b.Transactions, b.Hash, b.Sig, b.Header)
+	return enc.Encode(b.Hash, b.Sig, b.Header, b.Transactions)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
-	return dec.Decode(&b.Transactions, &b.Hash, &b.Sig, &b.Header)
+	return dec.Decode(&b.Hash, &b.Sig, &b.Header, &b.Transactions)
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
@@ -224,29 +247,6 @@ func (h *Header) HashNoNonce() util.Hash {
 		h.Extra,
 	})
 	return sha256.Sum256(result)
-}
-
-// Bytes return the bytes representation of the header
-func (h *Header) Bytes() []byte {
-	return getBytes([]interface{}{
-		h.ParentHash,
-		h.Number,
-		h.CreatorPubKey,
-		h.TransactionsRoot,
-		h.StateRoot,
-		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
-		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
-		h.Timestamp,
-		h.Nonce,
-		h.Extra,
-	})
-}
-
-// ComputeHash returns the SHA256 hash of the header
-func (h *Header) ComputeHash() util.Hash {
-	bs := h.Bytes()
-	hash := sha256.Sum256(bs)
-	return util.BytesToHash(hash[:])
 }
 
 // Bytes returns the ANS1 bytes equivalent of the block data.

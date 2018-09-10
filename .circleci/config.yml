@@ -11,19 +11,19 @@ jobs:
           command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - restore_cache:
           keys:
-            - vendor-{{ checksum "Gopkg.toml" }}
+            - vendor-{{ checksum "Gopkg.lock" }}
       - run:
           name: Install Dependencies
           command: dep ensure -v
       - save_cache:
-          key: vendor-{{ checksum "Gopkg.toml" }}
+          key: vendor-{{ checksum "Gopkg.lock" }}
           paths:
             - "vendor"
       - run: 
           name: Run tests
           command: |
-            cd blockchain
-            go test -v ./...
+            cd blockchain && go test -v ./...
+            cd ../blockcode && go test -v ./...
         
 workflows:
   version: 2
