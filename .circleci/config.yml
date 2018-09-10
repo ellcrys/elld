@@ -14,7 +14,7 @@ jobs:
           command: dep ensure -v
       - run: 
           name: Run tests
-          command: go test -v ./...
+          command: pwd
         
 workflows:
   version: 2
