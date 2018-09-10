@@ -3,9 +3,16 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+    working_directory: /go/src/github.com/$ORGNAME/$REPONAME
     steps:
+      - restore_cache:
+          keys:
+            - vendor-{{ checksum "Gopkg.lock" }}
       - checkout
+      - save_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+          paths:
+            - "vendor"
       - run:
           name: Instal Dep
           command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
