@@ -9,6 +9,9 @@ jobs:
       - run:
           name: Instal Dep
           command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run:
+          name: Install Dependencies
+          command: dep ensure
       - run: 
           name: Run tests
           command: go test -v ./...
