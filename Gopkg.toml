@@ -112,3 +112,11 @@
 [[constraint]]
   branch = "master"
   name = "github.com/ellcrys/merkletree"
+
+[[constraint]]
+  name = "github.com/btcsuite/btcutil"
+  revision = "ff82dacded1c76d101bce55c394c03c0bbff69e8"
+
+[[constraint]]
+  name = "github.com/c-bata/go-prompt"
+  revision = "15992ed45e46edd6168d7c8bfda14b700f6b756a"
