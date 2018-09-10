@@ -265,7 +265,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	var parentBlock core.Block
 	var chainTip core.Header
 	var createNewChain bool
-	var bValidator = b.createBlockValidator(block)
+	var bValidator = b.getBlockValidator(block)
 
 	// Sanity check. This should have been done
 	// in ProcessBlock
@@ -484,7 +484,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	}
 
 	// Validate the block fields.
-	bValidator := b.createBlockValidator(block)
+	bValidator := b.getBlockValidator(block)
 	if errs := bValidator.checkFields(); len(errs) > 0 {
 		return nil, errs[0]
 	}

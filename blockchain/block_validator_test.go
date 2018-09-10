@@ -18,6 +18,14 @@ var BlockValidatorTest = func() bool {
 
 		Describe(".checkFields", func() {
 
+			When("block is nil", func() {
+				It("should return error", func() {
+					errs := NewBlockValidator(nil, nil, nil, cfg, log).checkFields()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs[0].Error()).To(Equal("nil block"))
+				})
+			})
+
 			Context("Header", func() {
 
 				var txs = []*objects.Transaction{
@@ -54,6 +62,14 @@ var BlockValidatorTest = func() bool {
 					})
 				})
 
+				When("genesis block has a parent hash", func() {
+					It("should return error", func() {
+						genesisBlock.GetHeader().SetParentHash(util.StrToHash("unexpected_abc"))
+						errs := NewBlockValidator(genesisBlock, nil, nil, cfg, log).checkFields()
+						Expect(errs).To(HaveLen(1))
+						Expect(errs[0].Error()).To(Equal("field:header.parentHash, error:parent hash is not expected in a genesis block"))
+					})
+				})
 				When("header number is equal to 1", func() {
 					It("should not return error about a missing parent hash", func() {
 						b := &objects.Block{Transactions: txs, Header: &objects.Header{Number: 1}}
@@ -312,6 +328,27 @@ var BlockValidatorTest = func() bool {
 		Describe(".checkPow", func() {
 			var block core.Block
 
+			Context("with a block whose parent is unknown", func() {
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+						},
+						Creator:            sender,
+						OverrideParentHash: util.StrToHash("unknown_abc"),
+						Nonce:              core.EncodeNonce(1),
+						Difficulty:         new(big.Int).SetInt64(131),
+						OverrideTimestamp:  time.Now().Add(2 * time.Second).Unix(),
+					})
+				})
+
+				It("should return error when total difficulty is invalid", func() {
+					errs := NewBlockValidator(block, nil, bc, cfg, log).checkPoW()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:block not found")))
+				})
+			})
+
 			Context("with a block that has an invalid difficulty", func() {
 				BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
@@ -353,7 +390,34 @@ var BlockValidatorTest = func() bool {
 			})
 		})
 
+		Describe(".checkSignature", func() {
+			When("block creator public key is not valid", func() {
+				It("should return no error", func() {
+					genesisBlock.(*objects.Block).Header.CreatorPubKey = "invalid"
+					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).checkSignature()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs[0].Error()).To(Equal("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"))
+				})
+			})
+
+			When("signature is not valid", func() {
+				It("should return no error", func() {
+					genesisBlock.(*objects.Block).Sig = []byte("invalid")
+					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).checkSignature()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs[0].Error()).To(Equal("field:sig, error:signature is not valid"))
+				})
+			})
+		})
+
 		Describe(".checkAllocs", func() {
+
+			When("block is a genesis block", func() {
+				It("should return no error", func() {
+					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).checkAllocs()
+					Expect(errs).To(BeEmpty())
+				})
+			})
 
 			When("block has not fee allocation", func() {
 				var block core.Block

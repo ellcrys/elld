@@ -16,60 +16,14 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var BlockchainTest = func() bool {
+var BlockchainTests = func() bool {
+	BlockchainIntegrationTests()
+	BlockchainUnitTests()
+	return true
+}
 
-	return Describe("Blockchain", func() {
-
-		Describe(".SetStore", func() {
-			It("should set store", func() {
-				bc := New(nil, cfg, log)
-				bc.SetDB(db)
-			})
-		})
-
-		Describe(".addChain", func() {
-			It("should add chain", func() {
-				chain := NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(1))
-				bc.addChain(chain)
-				Expect(bc.chains).To(HaveLen(2))
-			})
-		})
-
-		Describe(".removeChain", func() {
-
-			var chain *Chain
-
-			BeforeEach(func() {
-				chain = NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-				bc.addChain(chain)
-				Expect(bc.chains).To(HaveLen(2))
-			})
-
-			It("should remove chain", func() {
-				bc.removeChain(chain)
-				Expect(bc.chains).To(HaveLen(1))
-				Expect(bc.chains[chain.GetID()]).To(BeNil())
-			})
-		})
-
-		Describe(".hasChain", func() {
-
-			var chain *Chain
-
-			BeforeEach(func() {
-				chain = NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-			})
-
-			It("should return true if chain exists", func() {
-				Expect(bc.hasChain(chain)).To(BeFalse())
-				bc.addChain(chain)
-				Expect(bc.hasChain(chain)).To(BeTrue())
-			})
-		})
+var BlockchainIntegrationTests = func() {
+	Describe("Blockchain", func() {
 
 		Describe(".Up", func() {
 
@@ -182,26 +136,6 @@ var BlockchainTest = func() bool {
 				Expect(bc.chains).To(HaveKey(c1.id))
 				Expect(bc.chains).To(HaveKey(c2.id))
 				Expect(bc.chains).To(HaveKey(genesisChain.id))
-			})
-		})
-
-		Describe(".HybridMode", func() {
-
-			BeforeEach(func() {
-				bc.bestChain = genesisChain
-			})
-
-			It("should return false if we have not reached hybrid mode block height", func() {
-				reached, err := bc.HybridMode()
-				Expect(err).To(BeNil())
-				Expect(reached).To(BeFalse())
-			})
-
-			It("should return true if we have reached hybrid mode block height", func() {
-				cfg.Chain.TargetHybridModeBlock = 1 // set to 1 (genesis block height)
-				reached, err := bc.HybridMode()
-				Expect(err).To(BeNil())
-				Expect(reached).To(BeTrue())
 			})
 		})
 
@@ -483,6 +417,105 @@ var BlockchainTest = func() bool {
 				Expect(err).ToNot(BeNil())
 				Expect(err).To(Equal(core.ErrTxNotFound))
 				Expect(tx).To(BeNil())
+			})
+		})
+	})
+}
+
+var BlockchainUnitTests = func() {
+	Describe("UnitBlockchainTest", func() {
+
+		Describe(".IsMainChain", func() {
+			It("should return false when the given chain is not the main chain", func() {
+				ch := NewChain("c1", db, cfg, log)
+				Expect(bc.IsMainChain(ch.ChainReader())).To(BeFalse())
+			})
+
+			It("should return true when the given chain is the main chain", func() {
+				ch := NewChain("c1", db, cfg, log)
+				bc.bestChain = ch
+				Expect(bc.IsMainChain(ch.ChainReader())).To(BeTrue())
+			})
+		})
+
+		Describe(".ChainReader", func() {
+			It("should return a chain reader with same ID as the chain", func() {
+				Expect(bc.ChainReader().GetID()).To(Equal(genesisChain.id))
+			})
+		})
+
+		Describe(".GetChainReaderByHash", func() {
+			It("should get chain of the genesis block", func() {
+				reader := bc.GetChainReaderByHash(genesisBlock.GetHash())
+				Expect(reader.GetID()).To(Equal(genesisChain.GetID()))
+			})
+
+			It("should nil when chain reader could not be found", func() {
+				reader := bc.GetChainReaderByHash(util.StrToHash("invalid_unknown"))
+				Expect(reader).To(BeNil())
+			})
+		})
+
+		Describe(".GetChainsReader", func() {
+			It("should get chain readers for all known chains", func() {
+				ch := NewChain("c1", db, cfg, log)
+				bc.chains[ch.id] = ch
+				Expect(bc.chains).To(HaveLen(2))
+				readers := bc.GetChainsReader()
+				Expect(readers).To(HaveLen(2))
+				Expect(readers[0].GetID()).To(Equal(genesisChain.GetID()))
+				Expect(readers[1].GetID()).To(Equal(ch.GetID()))
+			})
+		})
+
+		Describe(".SetStore", func() {
+			It("should set store", func() {
+				bc := New(nil, cfg, log)
+				bc.SetDB(db)
+			})
+		})
+
+		Describe(".addChain", func() {
+			It("should add chain", func() {
+				chain := NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+				Expect(bc.chains).To(HaveLen(1))
+				bc.addChain(chain)
+				Expect(bc.chains).To(HaveLen(2))
+			})
+		})
+
+		Describe(".removeChain", func() {
+
+			var chain *Chain
+
+			BeforeEach(func() {
+				chain = NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+				bc.addChain(chain)
+				Expect(bc.chains).To(HaveLen(2))
+			})
+
+			It("should remove chain", func() {
+				bc.removeChain(chain)
+				Expect(bc.chains).To(HaveLen(1))
+				Expect(bc.chains[chain.GetID()]).To(BeNil())
+			})
+		})
+
+		Describe(".hasChain", func() {
+
+			var chain *Chain
+
+			BeforeEach(func() {
+				chain = NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return true if chain exists", func() {
+				Expect(bc.hasChain(chain)).To(BeFalse())
+				bc.addChain(chain)
+				Expect(bc.hasChain(chain)).To(BeTrue())
 			})
 		})
 	})

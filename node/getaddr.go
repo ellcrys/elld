@@ -37,8 +37,9 @@ func (g *Gossip) sendGetAddr(remotePeer types.Engine) ([]*wire.Address, error) {
 	return g.onAddr(s)
 }
 
-// SendGetAddr sends GetAddr message to peers in separate goroutines.
-// GetAddr returns with a list of addr that should be relayed to other peers.
+// SendGetAddr sends simultaneous GetAddr message
+// to the given peers. GetAddr returns with a list
+// of address that should be relayed to other peers.
 func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 
 	// we need to know if wee need more peers before we requests
@@ -47,7 +48,6 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 		return nil
 	}
 
-	// for each remore peers, send the GetAddr message in different goroutines
 	for _, remotePeer := range remotePeers {
 		rp := remotePeer
 		go func() {
@@ -58,7 +58,8 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 				return
 			}
 
-			// As per discovery protocol, relay the addresses received
+			// As per discovery protocol,
+			// relay the addresses received
 			if len(addressToRelay) > 0 {
 				g.RelayAddr(addressToRelay)
 			}
@@ -81,7 +82,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	// check whether we can interact with this remote peer
 	if yes, reason := g.engine.canAcceptPeer(remotePeer); !yes {
 		s.Reset()
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", reason), 
+		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", reason),
 			"Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
 		return
 	}

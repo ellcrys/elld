@@ -154,11 +154,11 @@ func (m *Manager) Manage() {
 	go m.periodicSelfAdvertisement()
 	go m.periodicCleanUp()
 	go m.periodicPingMsgs()
-	// go m.sendPeriodicGetAddrMsg()
+	go m.sendPeriodicGetAddrMsg()
 }
 
-// sendPeriodicGetAddrMsg sends "getaddr" message to all known active
-// peers as long as the number of known peers is less than 1000
+// sendPeriodicGetAddrMsg sends "getaddr"
+// message to all known active peers
 func (m *Manager) sendPeriodicGetAddrMsg() {
 	m.getAddrTicker = time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
 	for {

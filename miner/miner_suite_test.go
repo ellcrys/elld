@@ -72,6 +72,7 @@ var _ = Describe("Blockchain", func() {
 		event = &emitter.Emitter{}
 		bc = blockchain.New(txPool, cfg, log)
 		bc.SetDB(db)
+		bc.SetGenesisBlock(blockchain.GenesisBlock)
 		bc.SetEventEmitter(event)
 	})
 
