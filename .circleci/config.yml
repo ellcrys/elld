@@ -22,7 +22,7 @@ jobs:
       - run: 
           name: Run tests
           command: |
-            cd elldb
+            cd blockchain
             go test -v ./...
         
 workflows:

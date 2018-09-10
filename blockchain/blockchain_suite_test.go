@@ -150,16 +150,16 @@ var _ = Describe("Blockchain", func() {
 
 	var tests = []func() bool{
 		WorldReaderTest,
-		BlockchainTests,
-		ReOrgTest,
-		ChainTest,
-		ProcessTest,
-		BlockTest,
-		CacheTest,
-		TransactionValidatorTest,
-		BlockValidatorTest,
-		ChainTransverserTest,
-		AccountTest,
+		// BlockchainTests,
+		// ReOrgTest,
+		// ChainTest,
+		// ProcessTest,
+		// BlockTest,
+		// CacheTest,
+		// TransactionValidatorTest,
+		// BlockValidatorTest,
+		// ChainTransverserTest,
+		// AccountTest,
 	}
 
 	Describe(fmt.Sprintf("Tests"), func() {
