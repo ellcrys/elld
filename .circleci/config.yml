@@ -1,22 +1,29 @@
-# Golang CircleCI 2.0 configuration file
 version: 2
 jobs:
   test:
     docker:
       - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
-    branches:
-    only:
-     - master 
-     - dev
+    working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
       - checkout
       - run:
-        name: Instal Dep
-        command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+          name: Instal Dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - restore_cache:
+          keys:
+            - vendor-{{ checksum "Gopkg.lock" }}
+      - run:
+          name: Install Dependencies
+          command: dep ensure -v
+      - save_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+          paths:
+            - "vendor"
       - run: 
-        name: Run tests
-        command: go test -v ./...
+          name: Run tests
+          command: |
+            cd blockchain && go test -v ./...
+            cd ../blockcode && go test -v ./...
         
 workflows:
   version: 2

@@ -418,7 +418,7 @@ var _ = Describe("Jsonrpc", func() {
 			expectedMethods := []string{"methods", "add", "div"}
 			Expect(expectedMethods).To(ContainElement(m[0].Name))
 			Expect(expectedMethods).To(ContainElement(m[1].Name))
-			Expect(expectedMethods).To(ContainElement(m[2c].Name))
+			Expect(expectedMethods).To(ContainElement(m[2].Name))
 		})
 	})
 })

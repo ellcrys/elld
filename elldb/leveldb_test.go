@@ -3,6 +3,9 @@ package elldb
 import (
 	"bytes"
 	"os"
+	"path/filepath"
+
+	"github.com/mitchellh/go-homedir"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,11 +13,13 @@ import (
 
 var _ = Describe("Database", func() {
 
-	var testCfgDir = "/Users/ncodes/.ellcrys_test"
+	var testCfgDir string
 	var db DB
 	var err error
 
 	BeforeEach(func() {
+		home, _ := homedir.Dir()
+		testCfgDir = filepath.Join(home, ".ellcrys_test")
 		err = os.Mkdir(testCfgDir, 0700)
 		Expect(err).To(BeNil())
 	})

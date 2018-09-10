@@ -2,6 +2,7 @@ package miner
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/olebedev/emitter"
@@ -93,7 +94,8 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		err = os.RemoveAll(cfg.ConfigDir())
+		Expect(err).To(BeNil())
 	})
 
 	var tests = []func() bool{
