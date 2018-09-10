@@ -11,7 +11,7 @@ jobs:
           command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run:
           name: Install Dependencies
-          command: dep ensure
+          command: dep ensure -v
       - run: 
           name: Run tests
           command: go test -v ./...
