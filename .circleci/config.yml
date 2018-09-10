@@ -22,7 +22,7 @@ jobs:
       - run: 
           name: Run tests
           command: |
-            cd blockchain/store
+            cd blockchain
             go test -v ./...
         
 workflows:
