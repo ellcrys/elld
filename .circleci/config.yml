@@ -3,7 +3,7 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.9
-    working_directory: '/go/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME'
+    working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
       - restore_cache:
           keys:
