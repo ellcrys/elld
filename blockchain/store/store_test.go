@@ -144,10 +144,15 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".PutBlock", func() {
 
-		var block = &objects.Block{
-			Header: &objects.Header{Number: 1},
-			Hash:   util.StrToHash("hash"),
-		}
+		var block *objects.Block
+
+		BeforeEach(func() {
+			block = &objects.Block{
+				Header: &objects.Header{Number: 1},
+				Hash:   util.StrToHash("hash"),
+				Sig:    []byte("stuff"),
+			}
+		})
 
 		It("should put block without error", func() {
 			err = store.PutBlock(block)
