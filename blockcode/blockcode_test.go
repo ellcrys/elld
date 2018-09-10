@@ -81,7 +81,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return Hash", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.Hash()).To(Equal(util.Hash{5, 125, 44, 203, 100, 69, 63, 216, 32, 34, 100, 113, 187, 108, 242, 91, 70, 218, 137, 211, 122, 143, 179, 219, 176, 130, 50, 196, 252, 223, 231, 80}))
+			Expect(bc.Hash()).To(Equal(util.Hash{22, 245, 70, 201, 167, 104, 236, 58, 225, 199, 104, 183, 168, 196, 32, 146, 224, 31, 187, 35, 172, 5, 25, 11, 10, 253, 237, 165, 149, 134, 226, 161}))
 		})
 	})
 
@@ -89,7 +89,7 @@ var _ = Describe("Blockcode", func() {
 		It("should return ID", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
 			Expect(err).To(BeNil())
-			Expect(bc.ID()).To(Equal("0x057d2ccb64453fd820226471bb6cf25b46da89d37a8fb3dbb08232c4fcdfe750"))
+			Expect(bc.ID()).To(Equal("0x16f546c9a768ec3ae1c768b7a8c42092e01fbb23ac05190b0afdeda59586e2a1"))
 		})
 	})
 

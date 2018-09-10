@@ -62,14 +62,10 @@ func (bc *Blockcode) Size() int {
 
 // Bytes return bytes representation of the Blockcode
 func (bc *Blockcode) Bytes() []byte {
-	result, err := msgpack.Marshal([]interface{}{
+	return util.ObjectToBytes([]interface{}{
 		bc.code,
 		bc.Manifest.Bytes(),
 	})
-	if err != nil {
-		panic(err)
-	}
-	return result
 }
 
 // GetCode returns the code in its tar archived form

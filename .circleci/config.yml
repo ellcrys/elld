@@ -22,8 +22,8 @@ jobs:
       - run: 
           name: Run tests
           command: |
-            cd blockchain
-            go test -v ./...
+            cd blockchain && go test -v ./...
+            cd blockcode && go test -v ./...
         
 workflows:
   version: 2
