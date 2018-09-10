@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/structs"
+
 	"github.com/thoas/go-funk"
 	"github.com/vmihailenco/msgpack"
 
@@ -51,8 +53,7 @@ type Manifest struct {
 
 // Bytes returns the bytes representation of the manifest
 func (m *Manifest) Bytes() []byte {
-	bs, _ := msgpack.Marshal(m)
-	return bs
+	return util.ObjectToBytes(m)
 }
 
 // Size returns the bytecode size
@@ -122,34 +123,38 @@ func FromBytes(bs []byte) (*Blockcode, error) {
 func FromDir(projectPath string) (*Blockcode, error) {
 
 	var manifest Manifest
-	var manifestFileExists = false
 	var filePaths []string
 
+	// Check whether the project path exists
 	if !util.IsPathOk(projectPath) {
 		return nil, fmt.Errorf("project path does not exist")
 	}
 
+	// Read the files and directories
+	// of the project
 	fileInfos, err := ioutil.ReadDir(projectPath)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, f := range fileInfos {
-		filePaths = append(filePaths, filepath.Join(projectPath, f.Name()))
 
-		if f.Name() == "package.json" {
-			manifestFileExists = true
-			packageJSON, err := ioutil.ReadFile(filepath.Join(projectPath, f.Name()))
-			if err != nil {
-				return nil, fmt.Errorf("failed to read manifest. %s", err)
-			}
-			if err = json.Unmarshal(packageJSON, &manifest); err != nil {
-				return nil, fmt.Errorf("manifest is malformed. %s", err)
-			}
+		filePaths = append(filePaths, filepath.Join(projectPath, f.Name()))
+		if f.Name() != "package.json" {
+			continue
+		}
+
+		// Read the manifest and decode it
+		packageJSON, err := ioutil.ReadFile(filepath.Join(projectPath, f.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read manifest. %s", err)
+		}
+		if err = json.Unmarshal(packageJSON, &manifest); err != nil {
+			return nil, fmt.Errorf("manifest is malformed. %s", err)
 		}
 	}
 
-	if !manifestFileExists {
+	if structs.IsZero(manifest) {
 		return nil, fmt.Errorf("'package.json' file not found in {%s}", projectPath)
 	}
 
