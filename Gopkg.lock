@@ -78,6 +78,12 @@
   revision = "e214231b295a8ea9479f11b70b35d5acf3556d9b"
 
 [[projects]]
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   name = "github.com/docker/docker"
   packages = [
     "api/types",
@@ -163,23 +169,8 @@
 [[projects]]
   name = "github.com/ethereum/go-ethereum"
   packages = [
-    "common",
-    "common/hexutil",
-    "common/math",
-    "consensus",
-    "core/state",
-    "core/types",
-    "crypto",
-    "crypto/secp256k1",
-    "crypto/sha3",
-    "ethdb",
     "log",
-    "metrics",
-    "p2p/netutil",
-    "params",
-    "rlp",
-    "rpc",
-    "trie"
+    "metrics"
   ]
   revision = "86be91b3e2dff5df28ee53c59df1ecfe9f97e007"
 
@@ -242,6 +233,27 @@
   name = "github.com/golang/snappy"
   packages = ["."]
   revision = "553a641470496b2327abcac10b36396bd98e45c9"
+
+[[projects]]
+  name = "github.com/gorilla/context"
+  packages = ["."]
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
+  version = "v1.6.2"
+
+[[projects]]
+  name = "github.com/gorilla/rpc"
+  packages = [
+    "v2",
+    "v2/json2"
+  ]
+  revision = "22c016f3df3febe0c1f6727598b6389507e03a18"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -368,16 +380,10 @@
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/keybase/go-codec"
-  packages = ["codec"]
-  revision = "73210629e9f31ec8745db957708cbcc344c6f173"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/keybase/go-merkle-tree"
+  name = "github.com/k0kubun/pp"
   packages = ["."]
-  revision = "90288bcf8366442e1d29ad22356fae3f2e8254a5"
+  revision = "027a6d1765d673d337e687394dbe780dd64e2a1e"
+  version = "v2.3.0"
 
 [[projects]]
   name = "github.com/libp2p/go-addr-util"
@@ -635,6 +641,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/ncodes/authtoken"
+  packages = ["."]
+  revision = "c0c89a690e30fc4e7ddd4a4a6001e4a032dcc959"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/ncodes/go-prettyjson"
+  packages = ["."]
+  revision = "d229c224a219dcf41e9d2af4684b9782f33f5eb7"
+
+[[projects]]
+  branch = "master"
   name = "github.com/nwaples/rardecode"
   packages = ["."]
   revision = "e06696f847aeda6f39a8f0b7cdff193b7690aef6"
@@ -762,12 +780,6 @@
     "token"
   ]
   revision = "6c383dd335ef8dcccef05e651ce1eccfe4d0f011"
-
-[[projects]]
-  name = "github.com/rs/cors"
-  packages = ["."]
-  revision = "3fb1b69b103a84de38a19c3c6ec073dd6caa4d3f"
-  version = "v1.5.0"
 
 [[projects]]
   branch = "master"
@@ -953,8 +965,7 @@
     "context",
     "html",
     "html/atom",
-    "html/charset",
-    "websocket"
+    "html/charset"
   ]
   revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
 
@@ -1014,22 +1025,10 @@
   version = "v4"
 
 [[projects]]
-  name = "gopkg.in/fatih/set.v0"
+  name = "gopkg.in/oleiade/lane.v1"
   packages = ["."]
-  revision = "2c768e3c5489976167bfc42b5c7c92ca783f4389"
-  version = "v0.2.1"
-
-[[projects]]
-  branch = "v2"
-  name = "gopkg.in/karalabe/cookiejar.v2"
-  packages = ["collections/prque"]
-  revision = "8dcd6a7f4951f6ff3ee9cbb919a06d8925822e57"
-
-[[projects]]
-  branch = "v2"
-  name = "gopkg.in/natefinch/npipe.v2"
-  packages = ["."]
-  revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
+  revision = "28f7c3f09254f12b51e620fa4db136ba58804762"
+  version = "v1.0.0"
 
 [[projects]]
   name = "gopkg.in/sourcemap.v1"
@@ -1049,6 +1048,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b43574454f2dd2f9b3ee6e243ca6f2c5e1ec47c33c81cfe0405c58f0135a67b5"
+  inputs-digest = "993a3bc69f275e8680c47a38ae0e5f3f67bbcae0f29c37960dc925f3d9a22fd2"
   solver-name = "gps-cdcl"
   solver-version = 1
