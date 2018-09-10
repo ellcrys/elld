@@ -7,11 +7,11 @@ jobs:
     steps:
       - checkout
       - run:
-        name: Instal Dep
-        command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+          name: Instal Dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: 
-        name: Run tests
-        command: go test -v ./...
+          name: Run tests
+          command: go test -v ./...
         
 workflows:
   version: 2
