@@ -463,8 +463,9 @@ var BlockchainUnitTests = func() {
 				Expect(bc.chains).To(HaveLen(2))
 				readers := bc.GetChainsReader()
 				Expect(readers).To(HaveLen(2))
-				Expect(readers[0].GetID()).To(Equal(genesisChain.GetID()))
-				Expect(readers[1].GetID()).To(Equal(ch.GetID()))
+				expectedChains := []string{genesisChain.id.String(), ch.id.String()}
+				Expect(expectedChains).To(ContainElement(genesisChain.GetID().String()))
+				Expect(expectedChains).To(ContainElement(ch.GetID().String()))
 			})
 		})
 
