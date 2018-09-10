@@ -5,23 +5,23 @@ jobs:
       - image: circleci/golang:1.9
     working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
+      - checkout
+      - run:
+          name: Instal Dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - restore_cache:
           keys:
             - vendor-{{ checksum "Gopkg.lock" }}
-      - checkout
+      - run:
+          name: Install Dependencies
+          command: dep ensure -v
       - save_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
           paths:
             - "vendor"
-      - run:
-          name: Instal Dep
-          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-      - run:
-          name: Install Dependencies
-          command: dep ensure -v
       - run: 
           name: Run tests
-          command: pwd
+          command: go test -v ./...
         
 workflows:
   version: 2
