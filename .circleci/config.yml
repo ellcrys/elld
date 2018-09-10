@@ -3,13 +3,8 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/$ORGNAME/$REPONAME
+    working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
-      - run:
-          name: Setup Environment Variables
-          command: |
-            echo 'export ORGNAME="$CIRCLE_PROJECT_USERNAME"' >> $BASH_ENV
-            echo 'export REPONAME="$CIRCLE_PROJECT_REPONAME"' >> $BASH_ENV
       - checkout
       - run:
           name: Instal Dep
@@ -29,6 +24,7 @@ jobs:
           command: |
             cd blockchain/common
             go test -v ./...
+        
 workflows:
   version: 2
   build:
