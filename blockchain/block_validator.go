@@ -153,7 +153,7 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
 
 	// find the parent header
-	parentHeader, err := v.bchain.(*Blockchain).getBlockByHash(v.block.GetHeader().GetParentHash(), opts...)
+	parentHeader, err := v.bchain.GetBlockByHash(v.block.GetHeader().GetParentHash(), opts...)
 	if err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
 		return errs
