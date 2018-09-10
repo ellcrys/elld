@@ -1,7 +1,7 @@
 # Golang CircleCI 2.0 configuration file
 version: 2
 jobs:
-  build:
+  test:
     docker:
       - image: circleci/golang:1.9
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
@@ -15,5 +15,11 @@ jobs:
         name: Instal Dep
         command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: 
-        name: Run Tests
+        name: Run tests
         command: go test -v ./...
+        
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test
