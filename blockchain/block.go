@@ -271,6 +271,6 @@ func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 }
 
 // GetBlockByHash finds a block in any chain with a matching hash.
-func (b *Blockchain) GetBlockByHash(hash util.Hash) (core.Block, error) {
-	return b.getBlockByHash(hash)
+func (b *Blockchain) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+	return b.getBlockByHash(hash, opts...)
 }

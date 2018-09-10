@@ -30,10 +30,6 @@ type TxPool interface {
 type Engine interface {
 	SetEventEmitter(*emitter.Emitter)     // Set the event emitter used to broadcast/receive events
 	DB() elldb.DB                         // The engine's database instance
-	AddTxSession(txID string)             // Add new transaction session
-	HasTxSession(txID string) bool        // Check if a transaction has an existing session
-	RemoveTxSession(txID string)          // Remove a transaction session
-	CountTxSession() int                  // Count the number of open transaction session
 	GetTxPool() TxPool                    // Returns the transaction pool
 	StringID() string                     // Returns the engine ID
 	ShortID() string                      // Return the short version of the engine ID

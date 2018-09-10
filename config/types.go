@@ -136,10 +136,6 @@ type ChainConfig struct {
 	// Checkpoints includes a collection of points on the chain of
 	// which blocks are supposed to exists after or before.
 	Checkpoints []*CheckPoint `json:"checkpoints"`
-
-	// TargetHybridModeBlock indicates the block number from which the client
-	// begins to use the hybrid consensus and block processing model.
-	TargetHybridModeBlock uint64 `json:"targetHybridModeBlock"`
 }
 
 var defaultConfig = EngineConfig{}
@@ -167,8 +163,7 @@ func init() {
 	}
 
 	defaultConfig.Chain = &ChainConfig{
-		Checkpoints:           nil,
-		TargetHybridModeBlock: 80640,
+		Checkpoints: nil,
 	}
 
 	defaultConfig.Miner = &MinerConfig{

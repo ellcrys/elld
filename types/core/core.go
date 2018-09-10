@@ -97,7 +97,7 @@ type Blockchain interface {
 	GetBlock(number uint64, hash util.Hash) (Block, error)
 
 	// GetBlockByHash finds a block in any chain with a matching hash.
-	GetBlockByHash(hash util.Hash) (Block, error)
+	GetBlockByHash(hash util.Hash, opts ...CallOp) (Block, error)
 
 	// GetChainReaderByHash returns a chain reader to a chain
 	// where a block with the given hash exists

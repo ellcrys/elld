@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"fmt"
-	"math/big"
 	"sync"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
@@ -167,7 +165,7 @@ func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 	b.eventEmitter = ee
 }
 
-func (b *Blockchain) createBlockValidator(block core.Block) *BlockValidator {
+func (b *Blockchain) getBlockValidator(block core.Block) *BlockValidator {
 	v := NewBlockValidator(block, b.txPool, b, b.cfg, b.log)
 	v.setContext(ContextBlock)
 	return v
@@ -181,23 +179,6 @@ func (b *Blockchain) OrphanBlocks() core.CacheReader {
 // GetEventEmitter gets the event emitter
 func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
 	return b.eventEmitter
-}
-
-// getChainParentBlock find the parent chain and block
-// of a chain using the chain's ChainInfo
-func (b *Blockchain) getChainParentBlock(ci *core.ChainInfo) (core.Block, error) {
-
-	r := b.db.GetByPrefix(common.MakeBlockKey(ci.ParentChainID.Bytes(), ci.ParentBlockNumber))
-	if len(r) == 0 {
-		return nil, core.ErrBlockNotFound
-	}
-
-	var pb objects.Block
-	if err := util.BytesToObject(r[0].Value, &pb); err != nil {
-		return nil, err
-	}
-
-	return &pb, nil
 }
 
 // loadChain finds and load a chain into the chain cache. It
@@ -255,21 +236,6 @@ func (b *Blockchain) removeChain(chain *Chain) {
 	return
 }
 
-// HybridMode checks whether the blockchain is a point where hybrid consensus
-// can be utilized. Hybrid consensus mode allows consensus and blocks processed differently
-// from standard block processing model. This mode is activated when we reach a target block height.
-func (b *Blockchain) HybridMode() (bool, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
-
-	h, err := b.bestChain.Current()
-	if err != nil {
-		return false, err
-	}
-
-	return h.GetNumber() >= b.cfg.Chain.TargetHybridModeBlock, nil
-}
-
 // findChainByBlockHash finds the chain where the given block
 // hash exists. It returns the block, the chain, the header of
 // highest block in the chain.
@@ -303,94 +269,6 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...core.CallOp) (
 	}
 
 	return nil, nil, nil, nil
-}
-
-// chooseBestChain returns the chain that is considered the
-// legitimate chain. It checks all chains according to the rules
-// defined below and return the chain that passes the rule on contested
-// by another chain.
-//
-// The rules (executed in the exact order) :
-// 1. The chain with the most difficulty wins.
-// 2. The chain that was received first.
-// 3. The chain with the larger pointer
-//
-// NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) chooseBestChain() (*Chain, error) {
-
-	var highTDChains = []*Chain{}
-	var curHighestTD = new(big.Int).SetInt64(0)
-
-	// If no chain exists on the blockchain, return nil
-	if len(b.chains) == 0 {
-		return nil, nil
-	}
-
-	// for each known chains, we must find the chain with the largest total
-	// difficulty and add to highTDChains. If multiple chains have same
-	// difficulty, then that indicates a tie and as such the highTDChains
-	// will also include these chains.
-	for _, chain := range b.chains {
-		tip, err := chain.Current()
-		if err != nil {
-			// A chain with no tip is ignored.
-			if err == core.ErrBlockNotFound {
-				continue
-			}
-			return nil, err
-		}
-		cmpResult := tip.GetTotalDifficulty().Cmp(curHighestTD)
-		if cmpResult > 0 {
-			curHighestTD = tip.GetTotalDifficulty()
-			highTDChains = []*Chain{chain}
-		} else if cmpResult == 0 {
-			highTDChains = append(highTDChains, chain)
-		}
-	}
-
-	// When there is no tie for the total difficulty rule,
-	// we return the only chain immediately
-	if len(highTDChains) == 1 {
-		return highTDChains[0], nil
-	}
-
-	// At this point there is a tie between two or more most difficult chains.
-	// We need to perform tie breaker using rule 2.
-	var oldestChains = []*Chain{}
-	var curOldestTimestamp int64
-	if len(highTDChains) > 1 {
-		for _, chain := range highTDChains {
-			if curOldestTimestamp == 0 || chain.info.Timestamp < curOldestTimestamp {
-				curOldestTimestamp = chain.info.Timestamp
-				oldestChains = []*Chain{chain}
-			} else if chain.info.Timestamp == curOldestTimestamp {
-				oldestChains = append(oldestChains, chain)
-			}
-		}
-	}
-
-	// When we have just one oldest chain, we return it immediately
-	if len(oldestChains) == 1 {
-		return oldestChains[0], nil
-	}
-
-	// If at this point we still have a tie in
-	// the list of oldest chains, then we find the chain
-	// with the highest pointer address
-	var largestPointerAddrs = []*Chain{}
-	var curLargestPointerAddress *big.Int
-	if len(oldestChains) > 1 {
-		for _, chain := range oldestChains {
-			if curLargestPointerAddress == nil || util.GetPtrAddr(chain).Cmp(curLargestPointerAddress) > 0 {
-				curLargestPointerAddress = util.GetPtrAddr(chain)
-				largestPointerAddrs = []*Chain{chain}
-			} else if util.GetPtrAddr(chain).Cmp(curLargestPointerAddress) == 0 {
-				largestPointerAddrs = append(largestPointerAddrs, chain)
-			}
-		}
-	}
-
-	return largestPointerAddrs[0], nil
 }
 
 // addRejectedBlock adds the block to the rejection cache.
@@ -498,18 +376,6 @@ func (b *Blockchain) getChains() (chainsInfo []*core.ChainInfo, err error) {
 			return nil, err
 		}
 		chainsInfo = append(chainsInfo, &ci)
-	}
-	return
-}
-
-// getChainsByParent gets chains by their parent block number
-func (b *Blockchain) getChainsByParent(blockNumber uint64) (chains []*Chain) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
-	for _, ch := range b.chains {
-		if ch.HasParent() && ch.info.ParentBlockNumber == blockNumber {
-			chains = append(chains, ch)
-		}
 	}
 	return
 }

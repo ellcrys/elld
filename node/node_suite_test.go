@@ -119,7 +119,6 @@ var _ = Describe("Engine", func() {
 		TransactionTest,
 		AddrTest,
 		GetAddrTest,
-		TransactionSessionTest,
 		SelfAdvTest,
 		PingTest,
 		PeerManagerTest,
@@ -128,8 +127,6 @@ var _ = Describe("Engine", func() {
 	}
 
 	for _, t := range tests {
-		// Describe(fmt.Sprintf("Test %d", i), func() {
 		t()
-		// })
 	}
 })
