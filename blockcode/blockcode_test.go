@@ -81,7 +81,7 @@ var _ = Describe("Blockcode", func() {
 	Describe(".Hash", func() {
 		It("should return Hash", func() {
 			bc, err := FromDir("./testdata/blockcode_example")
-			pp.Println(bc.Hash(), err)
+			pp.Println(bc.GetCode(), err)
 			// Expect(err).To(BeNil())
 			// Expect(bc.Hash()).To(Equal(util.Hash{22, 245, 70, 201, 167, 104, 236, 58, 225, 199, 104, 183, 168, 196, 32, 146, 224, 31, 187, 35, 172, 5, 25, 11, 10, 253, 237, 165, 149, 134, 226, 161}))
 		})
