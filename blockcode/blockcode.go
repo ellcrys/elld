@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/fatih/structs"
+	"github.com/k0kubun/pp"
 
 	"github.com/thoas/go-funk"
 	"github.com/vmihailenco/msgpack"
@@ -161,6 +162,7 @@ func FromDir(projectPath string) (*Blockcode, error) {
 	if err := validateManifest(&manifest); err != nil {
 		return nil, err
 	}
+	pp.Println(filePaths, manifest)
 
 	var buf = bytes.NewBuffer(nil)
 	if err := archiver.Tar.Write(buf, filePaths); err != nil {
