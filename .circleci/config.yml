@@ -3,8 +3,13 @@ jobs:
   test:
     docker:
       - image: circleci/golang:1.9
-    working_directory: '/go/src/github.com/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}'
+    working_directory: /go/src/github.com/$ORGNAME/$REPONAME
     steps:
+      - run:
+        name: Setup Environment Variables
+        command: |
+          echo 'export ORGNAME="$CIRCLE_PROJECT_USERNAME"' >> $BASH_ENV
+          echo 'export REPONAME="$CIRCLE_PROJECT_REPONAME"' >> $BASH_ENV
       - checkout
       - run:
           name: Instal Dep
