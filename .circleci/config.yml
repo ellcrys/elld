@@ -1,14 +1,9 @@
-# Golang CircleCI 2.0 configuration file
 version: 2
 jobs:
   test:
     docker:
       - image: circleci/golang:1.9
     working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
-    branches:
-    only:
-     - master 
-     - dev
     steps:
       - checkout
       - run:
