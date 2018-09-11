@@ -82,6 +82,11 @@ var _ = Describe("Engine", func() {
 		Expect(err).To(BeNil())
 	})
 
+	AfterEach(func() {
+		db.Close()
+		db2.Close()
+	})
+
 	// Initialize the default test transaction pools
 	// and create the blockchain instances and set their db
 	BeforeEach(func() {
