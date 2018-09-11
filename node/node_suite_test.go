@@ -83,6 +83,11 @@ var _ = Describe("Engine", func() {
 		Expect(err).To(BeNil())
 	})
 
+	AfterEach(func() {
+		db.Close()
+		db2.Close()
+	})
+
 	// Initialize the default test transaction pools
 	// and create the blockchain instances and set their db
 	BeforeEach(func() {
@@ -100,19 +105,9 @@ var _ = Describe("Engine", func() {
 	BeforeEach(func() {
 		err = lpBc.Up()
 		Expect(err).To(BeNil())
-		// Expect(lpBc.CreateAccount(1, lpBc.GetBestChain(), &objects.Account{
-		// 	Type:    objects.AccountTypeBalance,
-		// 	Address: util.String(sender.Addr()),
-		// 	Balance: "1000",
-		// })).To(BeNil())
 
 		err = rpBc.Up()
 		Expect(err).To(BeNil())
-		// Expect(rpBc.CreateAccount(1, rpBc.GetBestChain(), &objects.Account{
-		// 	Type:    objects.AccountTypeBalance,
-		// 	Address: util.String(sender.Addr()),
-		// 	Balance: "1000",
-		// })).To(BeNil())
 	})
 
 	var tests = []func() bool{
