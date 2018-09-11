@@ -64,12 +64,24 @@ func (db *LevelDB) GetByPrefix(prefix []byte) []*KVObject {
 	return getByPrefix(iter)
 }
 
-// Iterate finds a set of objects by prefix and passes them ro iterFunc
-// for further processing. If iterFunc returns true, the iterator is immediately released.
-// If first is set to true, it begins from the first item, otherwise, the last
-func (db *LevelDB) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
-	iter := db.ldb.NewIterator(util.BytesPrefix(prefix), nil)
-	iterate(iter, prefix, first, iterFunc)
+// Iterate finds a set of objects and
+// passes them to iterFunc for further processing.
+// If iterFunc returns true, the iteration is discontinued.
+// If first is set to true, iteration begins from the
+// first item, or the last if set to false
+func (db *LevelDB) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) error {
+	tx, err := db.ldb.OpenTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+	db.iterate(tx, prefix, first, iterFunc)
+	return nil
+}
+
+func (db *LevelDB) iterate(ldb *leveldb.Transaction, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
+	iter := ldb.NewIterator(util.BytesPrefix(prefix), nil)
+	iterater(iter, prefix, first, iterFunc)
 }
 
 // GetFirstOrLast returns one value matching a prefix.
@@ -111,6 +123,26 @@ func (db *LevelDB) DeleteByPrefix(prefix []byte) error {
 	return tx.Commit()
 }
 
+// Truncate deletes all items
+func (db *LevelDB) Truncate() error {
+
+	tx, err := db.ldb.OpenTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	db.iterate(tx, nil, true, func(kv *KVObject) bool {
+		if _err := tx.Delete(kv.GetKey(), nil); _err != nil {
+			err = _err
+			return true
+		}
+		return false
+	})
+
+	return err
+}
+
 // NewTx creates a new transaction
 func (db *LevelDB) NewTx() (Tx, error) {
 	_tx, err := db.ldb.OpenTransaction()
@@ -146,7 +178,7 @@ func (tx *Transaction) GetByPrefix(prefix []byte) []*KVObject {
 // If first is set to true, it begins from the first item, otherwise, the last
 func (tx *Transaction) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
 	iter := tx.ldb.NewIterator(util.BytesPrefix(prefix), nil)
-	iterate(iter, prefix, first, iterFunc)
+	iterater(iter, prefix, first, iterFunc)
 }
 
 // Commit the transaction
@@ -177,7 +209,7 @@ func getByPrefix(iter iterator.Iterator) []*KVObject {
 	return result
 }
 
-func iterate(iter iterator.Iterator, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
+func iterater(iter iterator.Iterator, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
 	var key, val []byte
 
 	var f, f2 = iter.First, iter.Next

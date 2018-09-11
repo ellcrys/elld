@@ -93,6 +93,23 @@ var _ = Describe("Database", func() {
 		})
 	})
 
+	Describe(".Truncate", func() {
+		It("should successfully get objects", func() {
+			objs := []*KVObject{
+				NewKVObject([]byte("object_1"), []byte("value1")),
+				NewKVObject([]byte("object_2"), []byte("value2")),
+			}
+			err = db.Put(objs)
+			Expect(err).To(BeNil())
+
+			err = db.Truncate()
+			Expect(err).To(BeNil())
+
+			results := db.GetByPrefix(nil)
+			Expect(results).To(HaveLen(0))
+		})
+	})
+
 	Describe(".GetFirstOrLast", func() {
 
 		var key, val, key2, val2 []byte

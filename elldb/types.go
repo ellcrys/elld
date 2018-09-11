@@ -136,10 +136,13 @@ type DB interface {
 	// Iterate finds a set of objects by prefix and passes them ro iterFunc
 	// for further processing. If iterFunc returns true, the iterator is immediately released.
 	// If first is set to true, it begins from the first item, otherwise, the last
-	Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool)
+	Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) error
 
 	// DeleteByPrefix deletes one or many records by prefix
 	DeleteByPrefix([]byte) error
+
+	// Truncate removes all items
+	Truncate() error
 
 	// NewTx creates a transaction
 	NewTx() (Tx, error)
