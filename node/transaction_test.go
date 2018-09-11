@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ellcrys/elld/config"
@@ -8,7 +9,6 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-	"github.com/k0kubun/pp"
 
 	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
@@ -128,22 +128,21 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 
-				pp.Println(tx)
+				// Verify pool size of remote peer
+				wait := make(chan bool)
+				fmt.Println(rpProto.txProcessed)
+				rpProto.txProcessed = func(err error) {
+					defer close(wait)
+					defer GinkgoRecover()
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("container is full"))
+					Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
+				}
 
-				// 	// Verify pool size of remote peer
-				// 	waitForRp := make(chan bool)
-				// 	rpProto.txProcessed = func(err error) {
-				// 		defer GinkgoRecover()
-				// 		defer close(waitForRp)
-				// 		Expect(err).ToNot(BeNil())
-				// 		Expect(err.Error()).To(Equal("container is full"))
-				// 		Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
-				// 	}
-
-				// 	// Relay transaction to remote peer
-				// 	err = lpProto.RelayTx(tx, []types.Engine{rp})
-				// 	Expect(err).To(BeNil())
-				// 	<-waitForRp
+				// Relay transaction to remote peer
+				err = lpProto.RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+				<-wait
 			})
 		})
 	})
