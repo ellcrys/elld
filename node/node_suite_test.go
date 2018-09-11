@@ -118,7 +118,7 @@ var _ = Describe("Engine", func() {
 	var tests = []func() bool{
 		HandshakeTest,
 		TransactionTest,
-		AddrTest,
+		// AddrTest,
 		// GetAddrTest,
 		// SelfAdvTest,
 		// PingTest,

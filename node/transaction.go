@@ -65,7 +65,8 @@ func (g *Gossip) OnTx(s net.Stream) {
 	// Validate the transaction and check whether
 	// it already exists in the transaction pool,
 	// main chain and side chains. If so, reject it
-	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain).Validate(); len(errs) > 0 {
+	errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain).Validate()
+	if len(errs) > 0 {
 		s.Reset()
 		g.log.Debug("Transaction is not valid", "Err", errs[0])
 		if g.txProcessed != nil {

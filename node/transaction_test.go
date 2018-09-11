@@ -63,6 +63,7 @@ func TransactionTest() bool {
 					Address: util.String(sender.Addr()),
 					Balance: "100",
 				})
+				Expect(err).To(BeNil())
 			})
 
 			// Shutdown the test nodes
@@ -88,25 +89,25 @@ func TransactionTest() bool {
 			// 	Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
 			// })
 
-			It("remote node should add tx in its tx pool", func() {
+			// It("remote node should add tx in its tx pool", func() {
 
-				// Create and sign test transaction
-				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				tx.From = util.String(sender.Addr())
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				Expect(err).To(BeNil())
-				tx.Sig = sig
+			// 	// Create and sign test transaction
+			// 	tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+			// 	tx.From = util.String(sender.Addr())
+			// 	tx.Hash = tx.ComputeHash()
+			// 	sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+			// 	Expect(err).To(BeNil())
+			// 	tx.Sig = sig
 
-				// Relay the transaction to the remote peer
-				rpProto.txProcessed = func(err error) {
-					defer GinkgoRecover()
-					Expect(err).To(BeNil())
-					Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
-				}
-				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
-				Expect(err).To(BeNil())
-			})
+			// 	// Relay the transaction to the remote peer
+			// 	rpProto.txProcessed = func(err error) {
+			// 		defer GinkgoRecover()
+			// 		Expect(err).To(BeNil())
+			// 		Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
+			// 	}
+			// 	err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
+			// 	Expect(err).To(BeNil())
+			// })
 
 			It("remote node will fail to add tx if its transaction pool is full", func() {
 
@@ -122,10 +123,6 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 
-				// Relay transaction to remote peer
-				err = proto.RelayTx(tx, []types.Engine{rp})
-				Expect(err).To(BeNil())
-
 				// Verify pool size of remote peer
 				rpProto.txProcessed = func(err error) {
 					defer GinkgoRecover()
@@ -133,6 +130,11 @@ func TransactionTest() bool {
 					Expect(err.Error()).To(Equal("container is full"))
 					Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
 				}
+
+				// Relay transaction to remote peer
+				err = proto.RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
 			})
 		})
 	})
