@@ -4,9 +4,11 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
+	"github.com/k0kubun/pp"
 
 	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
@@ -112,35 +114,37 @@ func TransactionTest() bool {
 				<-wait
 			})
 
-			// It("remote node will fail to add tx if its transaction pool is full", func() {
+			It("remote node will fail to add tx if its transaction pool is full", func() {
 
-			// 	// Set the transaction pool to
-			// 	// one with 0 capacity
-			// 	rp.transactionsPool = txpool.New(0)
+				// Set the transaction pool to
+				// one with 0 capacity
+				rp.transactionsPool = txpool.New(0)
 
-			// 	// Create the test transaction
-			// 	tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-			// 	tx.From = util.String(sender.Addr())
-			// 	tx.Hash = tx.ComputeHash()
-			// 	sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-			// 	Expect(err).To(BeNil())
-			// 	tx.Sig = sig
+				// Create the test transaction
+				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
+				tx.Hash = tx.ComputeHash()
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+				Expect(err).To(BeNil())
+				tx.Sig = sig
 
-			// 	// Verify pool size of remote peer
-			// 	waitForRp := make(chan bool)
-			// 	rpProto.txProcessed = func(err error) {
-			// 		defer GinkgoRecover()
-			// 		defer close(waitForRp)
-			// 		Expect(err).ToNot(BeNil())
-			// 		Expect(err.Error()).To(Equal("container is full"))
-			// 		Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
-			// 	}
+				pp.Println(tx)
 
-			// 	// Relay transaction to remote peer
-			// 	err = lpProto.RelayTx(tx, []types.Engine{rp})
-			// 	Expect(err).To(BeNil())
-			// 	<-waitForRp
-			// })
+				// 	// Verify pool size of remote peer
+				// 	waitForRp := make(chan bool)
+				// 	rpProto.txProcessed = func(err error) {
+				// 		defer GinkgoRecover()
+				// 		defer close(waitForRp)
+				// 		Expect(err).ToNot(BeNil())
+				// 		Expect(err.Error()).To(Equal("container is full"))
+				// 		Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
+				// 	}
+
+				// 	// Relay transaction to remote peer
+				// 	err = lpProto.RelayTx(tx, []types.Engine{rp})
+				// 	Expect(err).To(BeNil())
+				// 	<-waitForRp
+			})
 		})
 	})
 }
