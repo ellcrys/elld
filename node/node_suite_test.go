@@ -117,14 +117,14 @@ var _ = Describe("Engine", func() {
 
 	var tests = []func() bool{
 		HandshakeTest,
-		TransactionTest,
-		AddrTest,
-		GetAddrTest,
-		SelfAdvTest,
-		PingTest,
-		PeerManagerTest,
-		NodeTest,
-		BlockTest,
+		// TransactionTest,
+		// AddrTest,
+		// GetAddrTest,
+		// SelfAdvTest,
+		// PingTest,
+		// PeerManagerTest,
+		// NodeTest,
+		// BlockTest,
 	}
 
 	for _, t := range tests {
