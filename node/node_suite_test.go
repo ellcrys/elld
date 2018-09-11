@@ -59,34 +59,35 @@ var txPool, txPool2 *txpool.TxPool
 var sender = crypto.NewKeyFromIntSeed(1)
 var receiver = crypto.NewKeyFromIntSeed(2)
 
+// Create the databases
+var _ = BeforeSuite(func() {
+	var err error
+	cfg, err = testutil.SetTestCfg()
+	Expect(err).To(BeNil())
+
+	db = elldb.NewDB(cfg.ConfigDir())
+	err = db.Open(util.RandString(5))
+	Expect(err).To(BeNil())
+
+	db2 = elldb.NewDB(cfg.ConfigDir())
+	err = db2.Open(util.RandString(5))
+	Expect(err).To(BeNil())
+})
+
+var _ = AfterSuite(func() {
+	db.Close()
+	db2.Close()
+
+	err := os.RemoveAll(cfg.ConfigDir())
+	Expect(err).To(BeNil())
+})
+
+var _ = BeforeEach(func() {
+	Expect(db.Truncate()).To(BeNil())
+	Expect(db2.Truncate()).To(BeNil())
+})
+
 var _ = Describe("Engine", func() {
-
-	BeforeEach(func() {
-		var err error
-		cfg, err = testutil.SetTestCfg()
-		Expect(err).To(BeNil())
-	})
-
-	AfterEach(func() {
-		err = os.RemoveAll(cfg.ConfigDir())
-		Expect(err).To(BeNil())
-	})
-
-	// Create the databases
-	BeforeEach(func() {
-		db = elldb.NewDB(cfg.ConfigDir())
-		err = db.Open(util.RandString(5))
-		Expect(err).To(BeNil())
-
-		db2 = elldb.NewDB(cfg.ConfigDir())
-		err = db2.Open(util.RandString(5))
-		Expect(err).To(BeNil())
-	})
-
-	AfterEach(func() {
-		db.Close()
-		db2.Close()
-	})
 
 	// Initialize the default test transaction pools
 	// and create the blockchain instances and set their db
@@ -100,9 +101,7 @@ var _ = Describe("Engine", func() {
 		rpBc = blockchain.New(txPool2, cfg, log)
 		rpBc.SetDB(db2)
 		rpBc.SetGenesisBlock(blockchain.GenesisBlock)
-	})
 
-	BeforeEach(func() {
 		err = lpBc.Up()
 		Expect(err).To(BeNil())
 

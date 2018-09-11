@@ -20,8 +20,8 @@ func TransactionTest() bool {
 
 			// var bchain types.Blockchain
 			var err error
-			var n, rp *Node
-			var proto, rpProto *Gossip
+			var lp, rp *Node
+			var lpProto, rpProto *Gossip
 			var sender, address *crypto.Key
 
 			// create test addresses
@@ -34,11 +34,11 @@ func TransactionTest() bool {
 			// Set the nodes blockchain manager
 			// Create and set the nodes gossip handler
 			BeforeEach(func() {
-				n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
+				lp, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
-				n.SetBlockchain(lpBc)
-				proto = NewGossip(n, log)
-				n.SetGossipProtocol(proto)
+				lp.SetBlockchain(lpBc)
+				lpProto = NewGossip(lp, log)
+				lp.SetGossipProtocol(lpProto)
 			})
 
 			// Create test remote node
@@ -68,45 +68,49 @@ func TransactionTest() bool {
 
 			// Shutdown the test nodes
 			AfterEach(func() {
-				closeNode(n)
+				closeNode(lp)
 				closeNode(rp)
 			})
 
-			// It("should return nil and history key of transaction should be in HistoryCache", func() {
+			It("should return nil and history key of transaction should be in HistoryCache", func() {
 
-			// 	// create and sign test transaction
-			// 	tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-			// 	tx.Hash = tx.ComputeHash()
-			// 	sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-			// 	Expect(err).To(BeNil())
-			// 	tx.Sig = sig
+				// create and sign test transaction
+				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.Hash = tx.ComputeHash()
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+				Expect(err).To(BeNil())
+				tx.Sig = sig
 
-			// 	// Call RelayTx on local node's gossip handler
-			// 	// and verify expected values
-			// 	err = proto.RelayTx(tx, []types.Engine{rp})
-			// 	Expect(err).To(BeNil())
-			// 	Expect(n.historyCache.Len()).To(Equal(1))
-			// 	Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
-			// })
+				// Call RelayTx on local node's gossip handler
+				// and verify expected values
+				err = lpProto.RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+				Expect(lp.historyCache.Len()).To(Equal(1))
+				Expect(lp.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
+			})
 
 			It("remote node should add tx in its tx pool", func() {
 
-				// 	// Create and sign test transaction
-				// 	tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				// 	tx.From = util.String(sender.Addr())
-				// 	tx.Hash = tx.ComputeHash()
-				// 	sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				// 	Expect(err).To(BeNil())
-				// 	tx.Sig = sig
+				// Create and sign test transaction
+				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
+				tx.Hash = tx.ComputeHash()
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+				Expect(err).To(BeNil())
+				tx.Sig = sig
 
-				// 	// Relay the transaction to the remote peer
-				// 	rpProto.txProcessed = func(err error) {
-				// 		defer GinkgoRecover()
-				// 		Expect(err).To(BeNil())
-				// 		Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
-				// 	}
-				// 	err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
-				// 	Expect(err).To(BeNil())
+				waitForRp := make(chan bool)
+				rpProto.txProcessed = func(err error) {
+					defer close(waitForRp)
+					defer GinkgoRecover()
+					Expect(err).To(BeNil())
+					Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
+				}
+
+				// Relay the transaction to the remote peer
+				err = lp.gProtoc.RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+				<-waitForRp
 			})
 
 			It("remote node will fail to add tx if its transaction pool is full", func() {
@@ -124,16 +128,19 @@ func TransactionTest() bool {
 				tx.Sig = sig
 
 				// Verify pool size of remote peer
+				waitForRp := make(chan bool)
 				rpProto.txProcessed = func(err error) {
 					defer GinkgoRecover()
+					defer close(waitForRp)
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("container is full"))
 					Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
 				}
 
 				// Relay transaction to remote peer
-				err = proto.RelayTx(tx, []types.Engine{rp})
+				err = lpProto.RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())
+				<-waitForRp
 			})
 		})
 	})
