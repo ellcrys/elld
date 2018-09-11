@@ -56,14 +56,13 @@ func (m *ConnectionManager) establishConnections() {
 	for {
 		select {
 		case <-m.connEstInt.C:
-			if m.pm.NeedMorePeers() {
-				unconnectedPeers := m.pm.getUnconnectedPeers()
-				if len(unconnectedPeers) > 0 {
-					m.log.Info("Establishing connection with more peers", "UnconnectedPeers", len(unconnectedPeers))
-					for _, p := range unconnectedPeers {
-						m.pm.connectToPeer(p.StringID())
-					}
-				}
+			unconnectedPeers := m.pm.getUnconnectedPeers()
+			if !m.pm.NeedMorePeers() || len(unconnectedPeers) == 0 {
+				continue
+			}
+			m.log.Info("Establishing connection with more peers", "UnconnectedPeers", len(unconnectedPeers))
+			for _, p := range unconnectedPeers {
+				m.pm.connectToPeer(p.StringID())
 			}
 		}
 	}

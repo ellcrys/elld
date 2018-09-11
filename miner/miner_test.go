@@ -1,13 +1,9 @@
 package miner
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
-	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/miner/blakimoto"
 	. "github.com/onsi/ginkgo"
@@ -31,9 +27,7 @@ var MinerTest = func() bool {
 
 		Describe(".getProposedBlock", func() {
 			It("should get a block", func() {
-				b, err := miner.getProposedBlock([]core.Transaction{
-					objects.NewTx(objects.TxTypeBalance, int64(rand.Intn(100)), util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
-				})
+				b, err := miner.getProposedBlock(nil)
 				Expect(err).To(BeNil())
 				Expect(b).ToNot(BeNil())
 			})

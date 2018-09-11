@@ -21,25 +21,12 @@ func makeTxHistoryKey(tx core.Transaction, peer types.Engine) histcache.MultiKey
 func (n *Node) addTransaction(tx core.Transaction) error {
 
 	// Validate the transactions
-	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain(), true)
+	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain())
 	if errs := txValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}
 
-	switch tx.GetType() {
-	case objects.TxTypeBalance:
-
-		// Add the transaction to the transaction pool where
-		// it will be broadcast to other peers and included in a block
-		if err := n.GetTxPool().Put(tx); err != nil {
-			return err
-		}
-
-		return nil
-
-	default:
-		return objects.ErrTxTypeUnknown
-	}
+	return n.GetTxPool().Put(tx)
 }
 
 // OnTx handles incoming transaction message
@@ -71,7 +58,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	// Validate the transaction and check whether
 	// it already exists in the transaction pool,
 	// main chain and side chains. If so, reject it
-	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain, true).Validate(); len(errs) > 0 {
+	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain).Validate(); len(errs) > 0 {
 		s.Reset()
 		g.log.Debug("Transaction is not valid", "Err", errs[0])
 		return
@@ -83,7 +70,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	// check if we have an history about this transaction with the remote peer,
 	// if no, add the transaction.
-	if !g.engine.History().Has(historyKey) {
+	if !g.engine.history().Has(historyKey) {
 
 		// Add the transaction to the transaction pool and wait for error response
 		if err := g.engine.addTransaction(msg); err != nil {
@@ -92,7 +79,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 		}
 
 		// add transaction to the history cache using the key we created earlier
-		g.engine.History().Add(historyKey)
+		g.engine.history().Add(historyKey)
 	}
 
 	g.log.Info("Added new transaction to pool", "TxID", msg.ID())
@@ -111,7 +98,7 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 
 		// check if we have an history of sending or receiving this transaction
 		// from this remote peer. If yes, do not relay
-		if g.engine.History().Has(historyKey) {
+		if g.engine.history().Has(historyKey) {
 			continue
 		}
 
@@ -131,7 +118,7 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		}
 
 		// add new history
-		g.engine.History().Add(historyKey)
+		g.engine.history().Add(historyKey)
 
 		sent++
 	}

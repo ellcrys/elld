@@ -6,7 +6,9 @@ import (
 
 	"github.com/jinzhu/copier"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -14,65 +16,21 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var BlockchainTest = func() bool {
+var BlockchainTests = func() bool {
+	BlockchainIntegrationTests()
+	BlockchainUnitTests()
+	return true
+}
 
-	return Describe("Blockchain", func() {
-
-		Describe(".SetStore", func() {
-			It("should set store", func() {
-				bc := New(nil, cfg, log)
-				bc.SetDB(db)
-			})
-		})
-
-		Describe(".addChain", func() {
-			It("should add chain", func() {
-				chain := NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(1))
-				bc.addChain(chain)
-				Expect(bc.chains).To(HaveLen(2))
-			})
-		})
-
-		Describe(".removeChain", func() {
-
-			var chain *Chain
-
-			BeforeEach(func() {
-				chain = NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-				bc.addChain(chain)
-				Expect(bc.chains).To(HaveLen(2))
-			})
-
-			It("should remove chain", func() {
-				bc.removeChain(chain)
-				Expect(bc.chains).To(HaveLen(1))
-				Expect(bc.chains[chain.GetID()]).To(BeNil())
-			})
-		})
-
-		Describe(".hasChain", func() {
-
-			var chain *Chain
-
-			BeforeEach(func() {
-				chain = NewChain("chain_id", db, cfg, log)
-				Expect(err).To(BeNil())
-			})
-
-			It("should return true if chain exists", func() {
-				Expect(bc.hasChain(chain)).To(BeFalse())
-				bc.addChain(chain)
-				Expect(bc.hasChain(chain)).To(BeTrue())
-			})
-		})
+var BlockchainIntegrationTests = func() {
+	Describe("Blockchain", func() {
 
 		Describe(".Up", func() {
 
+			txp := txpool.New(1)
+
 			BeforeEach(func() {
-				bc = New(nil, cfg, log)
+				bc = New(txp, cfg, log)
 			})
 
 			It("should return error if db is not set", func() {
@@ -93,7 +51,7 @@ var BlockchainTest = func() bool {
 					db = elldb.NewDB(cfg.ConfigDir())
 					err = db.Open(util.RandString(5))
 					Expect(err).To(BeNil())
-					bc = New(nil, cfg, log)
+					bc = New(txp, cfg, log)
 					bc.SetDB(db)
 					bc.SetGenesisBlock(GenesisBlock)
 				})
@@ -122,24 +80,36 @@ var BlockchainTest = func() bool {
 					BeforeEach(func() {
 						bc.bestChain = genesisChain
 						chain := NewChain("c1", db, cfg, log)
-						Expect(bc.putAccount(1, chain, &objects.Account{
+						Expect(bc.CreateAccount(1, chain, &objects.Account{
 							Type:    objects.AccountTypeBalance,
 							Address: util.String(sender.Addr()),
 							Balance: "1000",
 						})).To(BeNil())
 
 						block := makeBlockWithBalanceTx(chain)
-						block.GetTransactions()[0].SetFrom("unknown_account")
+
+						// modify a transaction's sender to one that
+						// does not exist
+						unknownSenderTx := block.GetTransactions()[0]
+						unknownSenderTx.SetSenderPubKey(util.String(receiver.PubKey().Base58()))
+						unknownSenderTx.SetFrom(util.String(receiver.Addr()))
+						unknownSenderTx.SetHash(unknownSenderTx.ComputeHash())
+						txSig, _ := objects.TxSign(unknownSenderTx, receiver.PrivKey().Base58())
+						unknownSenderTx.SetSignature(txSig)
+
+						// recompute block, transactions root, hash and signature
+						block.GetHeader().SetTransactionsRoot(common.ComputeTxsRoot(block.GetTransactions()))
 						block.SetHash(block.ComputeHash())
 						blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
 						block.SetSignature(blockSig)
 						bc.SetGenesisBlock(block)
+						block.SetChainReader(nil)
 					})
 
 					It("should return error if a transaction's sender does not exists", func() {
 						err = bc.Up()
 						Expect(err).ToNot(BeNil())
-						Expect(err.Error()).To(Equal("genesis block error: transaction error: index{0}: failed to get sender's account: account not found"))
+						Expect(err.Error()).To(Equal("genesis block error: tx:0, field:from, error:sender account not found"))
 					})
 				})
 			})
@@ -169,26 +139,6 @@ var BlockchainTest = func() bool {
 			})
 		})
 
-		Describe(".HybridMode", func() {
-
-			BeforeEach(func() {
-				bc.bestChain = genesisChain
-			})
-
-			It("should return false if we have not reached hybrid mode block height", func() {
-				reached, err := bc.HybridMode()
-				Expect(err).To(BeNil())
-				Expect(reached).To(BeFalse())
-			})
-
-			It("should return true if we have reached hybrid mode block height", func() {
-				cfg.Chain.TargetHybridModeBlock = 1 // set to 1 (genesis block height)
-				reached, err := bc.HybridMode()
-				Expect(err).To(BeNil())
-				Expect(reached).To(BeTrue())
-			})
-		})
-
 		Describe(".findChainByLastBlockHash", func() {
 
 			var b1 core.Block
@@ -198,7 +148,7 @@ var BlockchainTest = func() bool {
 				chain2 = NewChain("chain2", db, cfg, log)
 				bc.addChain(chain2)
 
-				Expect(bc.putAccount(1, chain2, &objects.Account{
+				Expect(bc.CreateAccount(1, chain2, &objects.Account{
 					Type:    objects.AccountTypeBalance,
 					Address: util.String(sender.Addr()),
 					Balance: "1000",
@@ -206,7 +156,7 @@ var BlockchainTest = func() bool {
 
 				b1 = MakeTestBlock(bc, chain2, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -242,7 +192,7 @@ var BlockchainTest = func() bool {
 				BeforeEach(func() {
 					b2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),
@@ -280,7 +230,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -364,7 +314,7 @@ var BlockchainTest = func() bool {
 			BeforeEach(func() {
 				parentBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -373,7 +323,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					OverrideParentHash: parentBlock.GetHash(),
 					Creator:            sender,
@@ -384,7 +334,7 @@ var BlockchainTest = func() bool {
 
 				unknownParent = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:            sender,
 					OverrideParentHash: util.StrToHash("unknown"),
@@ -435,7 +385,7 @@ var BlockchainTest = func() bool {
 
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730724),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -467,6 +417,106 @@ var BlockchainTest = func() bool {
 				Expect(err).ToNot(BeNil())
 				Expect(err).To(Equal(core.ErrTxNotFound))
 				Expect(tx).To(BeNil())
+			})
+		})
+	})
+}
+
+var BlockchainUnitTests = func() {
+	Describe("UnitBlockchainTest", func() {
+
+		Describe(".IsMainChain", func() {
+			It("should return false when the given chain is not the main chain", func() {
+				ch := NewChain("c1", db, cfg, log)
+				Expect(bc.IsMainChain(ch.ChainReader())).To(BeFalse())
+			})
+
+			It("should return true when the given chain is the main chain", func() {
+				ch := NewChain("c1", db, cfg, log)
+				bc.bestChain = ch
+				Expect(bc.IsMainChain(ch.ChainReader())).To(BeTrue())
+			})
+		})
+
+		Describe(".ChainReader", func() {
+			It("should return a chain reader with same ID as the chain", func() {
+				Expect(bc.ChainReader().GetID()).To(Equal(genesisChain.id))
+			})
+		})
+
+		Describe(".GetChainReaderByHash", func() {
+			It("should get chain of the genesis block", func() {
+				reader := bc.GetChainReaderByHash(genesisBlock.GetHash())
+				Expect(reader.GetID()).To(Equal(genesisChain.GetID()))
+			})
+
+			It("should nil when chain reader could not be found", func() {
+				reader := bc.GetChainReaderByHash(util.StrToHash("invalid_unknown"))
+				Expect(reader).To(BeNil())
+			})
+		})
+
+		Describe(".GetChainsReader", func() {
+			It("should get chain readers for all known chains", func() {
+				ch := NewChain("c1", db, cfg, log)
+				bc.chains[ch.id] = ch
+				Expect(bc.chains).To(HaveLen(2))
+				readers := bc.GetChainsReader()
+				Expect(readers).To(HaveLen(2))
+				expectedChains := []string{genesisChain.id.String(), ch.id.String()}
+				Expect(expectedChains).To(ContainElement(genesisChain.GetID().String()))
+				Expect(expectedChains).To(ContainElement(ch.GetID().String()))
+			})
+		})
+
+		Describe(".SetStore", func() {
+			It("should set store", func() {
+				bc := New(nil, cfg, log)
+				bc.SetDB(db)
+			})
+		})
+
+		Describe(".addChain", func() {
+			It("should add chain", func() {
+				chain := NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+				Expect(bc.chains).To(HaveLen(1))
+				bc.addChain(chain)
+				Expect(bc.chains).To(HaveLen(2))
+			})
+		})
+
+		Describe(".removeChain", func() {
+
+			var chain *Chain
+
+			BeforeEach(func() {
+				chain = NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+				bc.addChain(chain)
+				Expect(bc.chains).To(HaveLen(2))
+			})
+
+			It("should remove chain", func() {
+				bc.removeChain(chain)
+				Expect(bc.chains).To(HaveLen(1))
+				Expect(bc.chains[chain.GetID()]).To(BeNil())
+			})
+		})
+
+		Describe(".hasChain", func() {
+
+			var chain *Chain
+
+			BeforeEach(func() {
+				chain = NewChain("chain_id", db, cfg, log)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return true if chain exists", func() {
+				Expect(bc.hasChain(chain)).To(BeFalse())
+				bc.addChain(chain)
+				Expect(bc.hasChain(chain)).To(BeTrue())
 			})
 		})
 	})

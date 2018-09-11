@@ -1,0 +1,37 @@
+version: 2
+jobs:
+  test:
+    docker:
+      - image: circleci/golang:1.9
+    working_directory: '/go/src/github.com/ellcrys/elld'
+    steps:
+      - checkout
+      - run:
+          name: Instal Dep
+          command: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - restore_cache:
+          keys:
+            - vendor-{{ checksum "Gopkg.lock" }}
+      - run:
+          name: Install Dependencies
+          command: dep ensure -v
+      - save_cache:
+          key: vendor-{{ checksum "Gopkg.lock" }}
+          paths:
+            - "vendor"
+      - run: 
+          name: Run tests
+          command: |
+            # cd blockchain && go test -v ./...
+            # cd ../blockcode && go test -v ./...
+            # cd ../config && go test -v ./...
+            # cd ../crypto && go test -v ./...
+            # cd ../elldb && go test -v ./...
+            # cd ../miner && go test -v ./...
+            cd node && go test -v ./...
+        
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test

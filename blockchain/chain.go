@@ -15,16 +15,6 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 )
 
-// ChainOp defines a method option for passing a chain object
-type ChainOp struct {
-	Chain *Chain
-}
-
-// GetName returns the name of the op
-func (t ChainOp) GetName() string {
-	return "ChainOp"
-}
-
 // Chain represents a chain of blocks
 // Implements core.Chainer
 type Chain struct {
@@ -389,8 +379,8 @@ func (c *Chain) PutTransactions(txs []core.Transaction, blockNumber uint64, opts
 }
 
 // GetTransaction gets a transaction by hash
-func (c *Chain) GetTransaction(hash util.Hash) core.Transaction {
-	return c.store.GetTransaction(hash)
+func (c *Chain) GetTransaction(hash util.Hash, opts ...core.CallOp) core.Transaction {
+	return c.store.GetTransaction(hash, opts...)
 }
 
 // removeBlock deletes a block and all objects

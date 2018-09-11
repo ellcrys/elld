@@ -135,13 +135,38 @@ var accountImportCmd = &cobra.Command{
 	},
 }
 
+var accountRevealCmd = &cobra.Command{
+	Use:   "reveal [flags] <address>",
+	Short: "Reveal the private key of an account",
+	Long: `Description:
+  This command reveals the private key from a account. You will be prompted to 
+  provide your password. 
+	
+  You can skip the interactive mode by providing your password via the '--pwd' flag. 
+  Also, a path to a file containing a password can be provided to the flag.
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		var address string
+		if len(args) >= 1 {
+			address = args[0]
+		}
+
+		pwd, _ := cmd.Flags().GetString("pwd")
+		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+		am.RevealCmd(address, pwd)
+	},
+}
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)
 	accountCmd.AddCommand(accountUpdateCmd)
 	accountCmd.AddCommand(accountImportCmd)
+	accountCmd.AddCommand(accountRevealCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	accountImportCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
+	accountRevealCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	rootCmd.AddCommand(accountCmd)
 }

@@ -5,32 +5,13 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
-	"github.com/shopspring/decimal"
 )
-
-// validateBlock handles block validation. A block that successfully
-// passes this validation is considered safe to add to the chain.
-func (b *Blockchain) validateBlock(block core.Block) error {
-
-	blockValidator := b.createBlockValidator(block)
-
-	if errs := blockValidator.Validate(); len(errs) > 0 {
-		return errs[0]
-	}
-
-	// TODO: move this to the block validator
-	// validate the transaction root
-	if !block.GetHeader().GetTransactionsRoot().Equal(common.ComputeTxsRoot(block.GetTransactions())) {
-		return fmt.Errorf("failed transaction root check")
-	}
-
-	return nil
-}
 
 // addOp adds a transition operation object to the list of
 // operations (ops). It a similar transition to op already exists,
@@ -48,160 +29,154 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 	return append(newOps, op)
 }
 
-// processBalanceTx processes a TxTypeBalance transaction. It returns series of transition
-// operations that must be applied to effect changes the world state and transaction accounts.
-// It accepts the following args:
+// processBalanceTx process a TxTypeBalance transaction.
+// It takes value from a sender's account and adds to
+// a recipient's account. The nonce of the sender
+// account is incremented.
 //
-// @tx: 	The transaction
-// @ops: 	The list of recent operations generated from other transactions of same block as tx.
-//			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
-// @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
+// The recipient account is searched in the
+// given ops which contains other transition objects
+// effected by other transactions in same block.
+//
+// It will create a OpCreateAccount transition
+// object if the recipient account does not exist.
 func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transition, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var senderAcct, recipientAcct core.Account
-	var senderAcctBalance = decimal.Zero
-	var recipientAcctBalance = decimal.Zero
 
-	// first, we check if we can determine the balances of the sender and recipient accounts
-	// from OpNewAccountBalance operations by previous transactions. If an account was
-	// updated by a previous transaction, the new balance will be found in the ops list.
+	// Find the current account object in previous operations
+	// passed via ops. If an account has been updated by
+	// the processing of other transactions, the new account
+	// state must be taken as the truth current state of the account
 	for _, prevOp := range ops {
-		// check for balance change for the sender
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetFrom() {
-			senderAcctBalance = opNewBalance.Account.GetBalance().Decimal()
+			senderAcct = opNewBalance.Account
 		}
-		// check for balance change for the recipient
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetTo() {
-			recipientAcctBalance = opNewBalance.Account.GetBalance().Decimal()
+			recipientAcct = opNewBalance.Account
 		}
 	}
 
-	// find the sender account. Return error if sender account
-	// does not exist. This should never happen here as the caller must
-	// have validated all transactions in the containing block.
-	senderAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetFrom(), opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sender's account: %s", err)
-	}
-
-	// if we were unable to learn about the sender's latest balance from the ops list
-	// as a result of previous transactions in same block, then we use the current account balance.
-	if senderAcctBalance.Equals(decimal.Zero) {
-		senderAcctBalance = senderAcct.GetBalance().Decimal()
-	}
-
-	// find the account of the recipient. If the recipient account does not
-	// exists, then we must create a OpCreateAccount transition to instruct the creation of a new account.
-	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
-	if err != nil {
-		if err != core.ErrAccountNotFound {
-			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+	// If we did not get the latest account status
+	// of the sender from previous operations, we must
+	// fetch it from the database.
+	if senderAcct == nil {
+		senderAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetFrom(), opts...)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get sender's account: %s", err)
 		}
-		txOps = append(txOps, &common.OpCreateAccount{
-			OpBase: &common.OpBase{Addr: tx.GetTo()},
-			Account: &objects.Account{
+	}
+
+	// If the sender and recipient account
+	// are the same, assign the sender account
+	// to the recipient account variable.
+	if tx.GetFrom().Equal(tx.GetTo()) {
+		recipientAcct = senderAcct
+	}
+
+	// If we don't know the recipient account yet,
+	// we must fetch it from the database or create it
+	if recipientAcct == nil {
+		recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
+		if err != nil {
+			if err != core.ErrAccountNotFound {
+				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+			}
+			recipientAcct = &objects.Account{
 				Type:    objects.AccountTypeBalance,
 				Address: tx.GetTo(),
 				Balance: "0",
-			},
-		})
-		recipientAcct = &objects.Account{
-			Type:    objects.AccountTypeBalance,
-			Address: tx.GetTo(),
-			Balance: "0",
+			}
+			txOps = append(txOps, &common.OpCreateAccount{
+				OpBase:  &common.OpBase{Addr: tx.GetTo()},
+				Account: recipientAcct,
+			})
 		}
 	}
 
-	// if we are unable to learn about the recipient's latest balance from the ops list as
-	// then we can use the balance of the recipient account
-	if recipientAcctBalance.Equals(decimal.Zero) {
-		recipientAcctBalance = recipientAcct.GetBalance().Decimal()
-	}
-
-	// convert the amount to be sent to decimal
+	// Convert the amount to be sent to decimal
 	sendingAmount := tx.GetValue().Decimal()
+	fee := tx.GetFee().Decimal()
+	deductable := sendingAmount.Add(fee)
 
-	// ensure the sender's account balance is sufficient for this transaction
-	if senderAcctBalance.LessThan(sendingAmount) {
+	// Ensure the sender's account balance is
+	// sufficient for this transaction value + fee
+	if senderAcct.GetBalance().Decimal().LessThan(deductable) {
 		return nil, fmt.Errorf("insufficient sender account balance")
 	}
 
-	// add an operation to set a new account balance for the sender
-	senderAcct.SetBalance(util.String(
-		senderAcctBalance.
-			Sub(sendingAmount).
-			StringFixed(b.cfg.Monetary.Decimals),
-	))
-
+	// Add an operation to set a new account
+	// balance for the sender
+	newSenderBal := senderAcct.GetBalance().Decimal().Sub(deductable).StringFixed(params.Decimals)
+	senderAcct.SetBalance(util.String(newSenderBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetFrom()},
 		Account: senderAcct,
 	})
 
-	// add an operation to set a new balance of the recipient
-	recipientAcct.SetBalance(util.String(
-		recipientAcctBalance.
-			Add(sendingAmount).
-			StringFixed(b.cfg.Monetary.Decimals),
-	))
-
+	// Add an operation to set a new balance
+	// of the recipient
+	newRecipientBal := recipientAcct.GetBalance().Decimal().Add(sendingAmount).StringFixed(params.Decimals)
+	recipientAcct.SetBalance(util.String(newRecipientBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetTo()},
 		Account: recipientAcct,
 	})
 
+	// increment the sender's nonce
+	senderAcct.IncrNonce()
+
 	return txOps, nil
 }
 
-// processAllocCoinTx process a TxTypeAllocCoin which request the creation of a new
-// account as well as allocation of some value to that account.
-// @tx: 	The transaction
-// @ops: 	The list of recent operations generated from other transactions of same block as tx.
-//			We use ops to check the latest and uncommitted  operations of an account derived from other transactions.
-// @returns	A slice of transitions to be applied to the chain state or error if something bad happened.
+// processAllocCoinTx process a TxTypeAllocCoin. It
+// allocates value set in a transaction to specific
+// account.
+//
+// The recipient account is searched in the
+// given ops which contains other transition objects
+// effected by other transactions in same block.
+//
+// It will create a OpCreateAccount transition
+// object if the account does not exist.
 func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transition, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var recipientAcct core.Account
-	var recipientAcctBalance = decimal.Zero
 
-	// first, we check if we can determine the balances of the recipient account
-	// from OpNewAccountBalance operations by previous transactions. If an account was
-	// updated by a previous transaction, the new balance will be found in the ops list.
+	// Find the current account object in previous operations
+	// passed via ops. If an account has been updated by
+	// the processing of other transactions, the new account
+	// state must be taken as the truth current state of the account
 	for _, prevOp := range ops {
 		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetTo() {
-			recipientAcctBalance = opNewBalance.Account.GetBalance().Decimal()
+			recipientAcct = opNewBalance.Account
 		}
 	}
 
-	// find the account of the recipient. If the account does not exists,
+	// If we did not get the latest account status
+	// from previous operations, we must fetch it
+	// from the database. If the account does not exists,
 	// initialize a new account object for the recipient
-	recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
-	if err != nil {
-		if err != core.ErrAccountNotFound {
-			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+	if recipientAcct == nil {
+		recipientAcct, err = b.NewWorldReader().GetAccount(chain, tx.GetTo(), opts...)
+		if err != nil {
+			if err != core.ErrAccountNotFound {
+				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
+			}
+			recipientAcct = &objects.Account{
+				Type:    objects.AccountTypeBalance,
+				Address: tx.GetTo(),
+				Balance: "0",
+			}
 		}
-		recipientAcct = &objects.Account{
-			Type:    objects.AccountTypeBalance,
-			Address: tx.GetTo(),
-			Balance: "0",
-		}
-	}
-
-	// If the recipients account balance is zero and unchanged
-	// in previous ops execution, we set it to the value of the current,
-	// committed account balance
-	if recipientAcctBalance.Equals(decimal.Zero) {
-		recipientAcctBalance = recipientAcct.GetBalance().Decimal()
 	}
 
 	// Update the recipients account balance to be the
 	// sum of current balance and the new allocation
-	recipientAcct.SetBalance(util.String(
-		recipientAcctBalance.Add(tx.GetValue().Decimal()).
-			StringFixed(b.cfg.Monetary.Decimals),
-	))
+	newBal := recipientAcct.GetBalance().Decimal().Add(tx.GetValue().Decimal()).StringFixed(params.Decimals)
+	recipientAcct.SetBalance(util.String(newBal))
 
 	// construct an OpNewAccountBalance transition object
 	// and set the account to the updated recipient.
@@ -243,15 +218,14 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops
 	return stateObjs, nil
 }
 
-// processTransactions computes the operations that must be applied to the
-// hash tree and world state.
-func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+// ProcessTransactions computes the state transition operations
+// for each transactions that must be applied to the state tree
+// and world state
+func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
 
-	var ops []common.Transition
-
-	// here we will process each transaction and attempt
-	// to decide what should happen to the chain state by
-	// producing transition objects.
+	var ops = common.GetTransitions(opts...)
 	for i, tx := range txs {
 		var err error
 		var newOps []common.Transition
@@ -286,53 +260,86 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 //
 // NOTE: This method must be called with chain lock held by the caller.
 func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...core.CallOp) (*Chain, error) {
+
+	var err error
 	var parentBlock core.Block
 	var chainTip core.Header
 	var createNewChain bool
-	var err error
+	var bValidator = b.getBlockValidator(block)
 
-	// find the chain that is compatible with the block.
-	if chain == nil {
-		parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
-		if err != nil {
-			if err != core.ErrBlockNotFound {
-				return nil, err
-			}
-			b.log.Debug("Block is not compatible with any chain", "BlockNo", block.GetNumber(), "Err", err.Error())
-
-		} else if chain == nil {
-			// Since we are unable to find a chain for this block,
-			// we will add it to the orphan cache awaiting a time when
-			// it's parent is found and processed.
-			b.addOrphanBlock(block)
-
-			// emit core.EventOrphanBlock
-			b.eventEmitter.Emit(core.EventOrphanBlock, block)
-
-			return nil, nil
-
-		} else if block.GetHeader().GetNumber() < chainTip.GetNumber() {
-			// Since this block is of a lower height than the current
-			// block in the chain, it should result in new chain.
-			createNewChain = true
-			b.log.Info("Stale block found. Child chain will be created",
-				"BlockNo", block.GetNumber(),
-				"BestChainHeight", chainTip.GetNumber())
-
-		} else if block.GetNumber() == chainTip.GetNumber() {
-			// Here block height and the chain height are the same.
-			// A new chain must be created
-			createNewChain = true
-			b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
-				"BlockNo", block.GetNumber(),
-				"ChainHeight", chainTip.GetNumber())
-		}
+	// Sanity check. This should have been done
+	// in ProcessBlock
+	if errs := bValidator.checkFields(); len(errs) > 0 {
+		return nil, errs[0]
 	}
+
+	// Skip trying to determine what chain the block
+	// belongs to if a chain was explicitly provided
+	if chain != nil {
+		goto process
+	}
+
+	// We need to find the chain in which the block's
+	// parent belongs to. This chain may be the main cain or
+	// a side chain (branch). We also need the tip of this chain.
+	parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
+
+	// If the block's parent does not belong to
+	// any known chain. This is a orphan block
+	if err != nil {
+		if err != core.ErrBlockNotFound {
+			return nil, err
+		}
+		b.log.Debug("Block is not compatible with any chain", "BlockNo", block.GetNumber(), "Err", err.Error())
+	}
+
+	// Since we are unable to find a chain for this block,
+	// we will add it to the orphan cache awaiting a
+	// time when its parent is found and processed.
+	if chain == nil {
+		b.addOrphanBlock(block)
+		b.eventEmitter.Emit(core.EventOrphanBlock, block)
+		return nil, nil
+	}
+
+	// Ensure the block is not older than its parent.
+	// If so, we must reject such a block
+	if block.GetHeader().GetTimestamp() < parentBlock.GetHeader().GetTimestamp() {
+		b.log.Info("Block's timestamp must be greater than its parent's",
+			"BlockNo", block.GetNumber(),
+			"BlockTime", block.GetHeader().GetTimestamp(),
+			"ParentBlockTime", parentBlock.GetHeader().GetTimestamp())
+		b.addRejectedBlock(block)
+		return nil, fmt.Errorf("block timestamp must be greater than its parent's")
+	}
+
+	// Since this block is of a lower height than
+	// the current block in the chain, it should
+	// result in new chain.
+	if block.GetHeader().GetNumber() < chainTip.GetNumber() {
+		createNewChain = true
+		b.log.Info("Stale block found. Child chain will be created",
+			"BlockNo", block.GetNumber(),
+			"BestChainHeight", chainTip.GetNumber())
+		goto process
+	}
+
+	// Here, the block height and the chain height
+	// are the same.A new chain must be created
+	if block.GetNumber() == chainTip.GetNumber() {
+		createNewChain = true
+		b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
+			"BlockNo", block.GetNumber(),
+			"ChainHeight", chainTip.GetNumber())
+		goto process
+	}
+
+process:
 
 	// Verify that the block's PoW for non-genesis blocks is valid.
 	// Only do this in production or development mode
 	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev && block.GetNumber() > 1 {
-		if errs := b.createBlockValidator(block).checkPoW(opts...); len(errs) > 0 {
+		if errs := bValidator.checkPoW(opts...); len(errs) > 0 {
 			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", errs[0])
 			return nil, errs[0]
 		}
@@ -356,10 +363,9 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		return nil
 	}
 
-	// If the block number is the same as the chainTip, then this
-	// is a fork and as such creates a new chain.
-	if chainTip != nil && createNewChain {
-		// create the new chain, set its root to the parent of the forked block
+	// create the new chain, set its root to
+	// the parent of the forked block
+	if createNewChain {
 		if chain, err = b.newChain(txOp.Tx, block, parentBlock, chain); err != nil {
 			rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
@@ -370,8 +376,15 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 			"ParentBlockNo", parentBlock.GetNumber())
 	}
 
-	// Execute block to derive the state objects and the resulting
-	// state root should the state object be applied to the blockchain state tree.
+	// validate transactions in the block
+	chainOp := &common.ChainerOp{Chain: chain}
+	if errs := bValidator.checkTransactions(txOp, chainOp); len(errs) > 0 {
+		return nil, errs[0]
+	}
+
+	// Execute block to derive the state objects and
+	// the resulting state root should the state
+	// object be applied to the blockchain state tree.
 	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
 		rollback()
@@ -454,12 +467,13 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	return chain, nil
 }
 
-// ProcessBlock takes a block and attempts to add it to the
-// tip of one of the known chains (main chain or forked chain). It returns
-// a chain reader associated with the chain in which the block belongs to.
+// ProcessBlock takes a block, performs initial validations
+// and attempts to add it to the tip of one of the known
+// chains (main chain or forked chain). It returns a chain reader
+// pointing to the chain in which the block was added to.
 func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
-	b.mLock.Lock()
-	defer b.mLock.Unlock()
+	b.processLock.Lock()
+	defer b.processLock.Unlock()
 
 	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().SS())
 
@@ -469,35 +483,38 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 		panic("initialization error: transaction pool not set")
 	}
 
-	// validate the block
-	if err := b.validateBlock(block); err != nil {
-		b.log.Debug("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
-		return nil, err
+	// Validate the block fields.
+	bValidator := b.getBlockValidator(block)
+	if errs := bValidator.checkFields(); len(errs) > 0 {
+		return nil, errs[0]
 	}
 
-	// if the block has been previously rejected, return err
+	// Validate allocations. We need to know whether
+	// the allocations in this block are as expected.
+	if errs := bValidator.checkAllocs(); len(errs) > 0 {
+		return nil, errs[0]
+	}
+
+	// Check whether the block has been previously rejected
 	if b.isRejected(block) {
 		b.log.Debug("Block had already been rejected", "BlockNo", block.GetNumber())
 		return nil, core.ErrBlockRejected
 	}
 
-	// check if the block has previously been detected as an orphan.
+	// Check whether the block has previously been detected as an orphan.
 	// We do not need to go re-process this block if it is an orphan.
+	// Emit an EventOrphanBlock event if the block is an orphan
 	if b.isOrphanBlock(block.GetHash()) {
 		b.log.Debug("Block is an orphan", "BlockNo", block.GetNumber())
-
-		// emit core.EventOrphanBlock
 		b.eventEmitter.Emit(core.EventOrphanBlock, block)
-
 		return nil, core.ErrOrphanBlock
 	}
 
-	// check if the block exists in any known chain
+	// Check if the block exists in any known chain
 	exists, err := b.HaveBlock(block.GetHash())
 	if err != nil {
 		return nil, fmt.Errorf("failed to check block existence: %s", err)
-	}
-	if exists {
+	} else if exists {
 		b.log.Debug("Block already exists", "BlockNo", block.GetNumber())
 		return nil, core.ErrBlockExists
 	}
@@ -509,6 +526,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	}
 
 	// process any remaining orphan blocks
+	// that may depend on this newly accepted block
 	b.processOrphanBlocks(block.GetHash().HexStr())
 
 	return block.GetChainReader(), nil
@@ -520,7 +538,7 @@ func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...cor
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
-	ops, err := b.processTransactions(block.GetTransactions(), chain, opts...)
+	ops, err := b.ProcessTransactions(block.GetTransactions(), chain, opts...)
 	if err != nil {
 		return util.EmptyHash, nil, fmt.Errorf("transaction error: %s", err)
 	}

@@ -63,32 +63,31 @@ type SyncStateInfo struct {
 
 // Node represents a network node
 type Node struct {
-	mtx                     *sync.RWMutex
-	cfg                     *config.EngineConfig    // node config
-	address                 ma.Multiaddr            // node multiaddr
-	IP                      net.IP                  // node ip
-	host                    host.Host               // node libp2p host
-	wg                      sync.WaitGroup          // wait group for preventing the main thread from exiting
-	localNode               *Node                   // local node
-	peerManager             *Manager                // node manager for managing connections to other remote peers
-	gProtoc                 *Gossip                 // gossip protocol instance
-	remote                  bool                    // remote indicates the node represents a remote peer
-	Timestamp               time.Time               // the last time this node was seen/active
-	isHardcodedSeed         bool                    // whether the node was hardcoded as a seed
-	stopped                 bool                    // flag to tell if node has stopped
-	log                     logger.Logger           // node logger
-	rSeed                   []byte                  // random 256 bit seed to be used for seed random operations
-	db                      elldb.DB                // used to access and modify local database
-	signatory               *d_crypto.Key           // signatory address used to get node ID and for signing
-	historyCache            *histcache.HistoryCache // Used to track objects and behaviours
-	event                   *emitter.Emitter        // Provides access event emitting service
-	openTransactionsSession map[string]struct{}     // Holds the id of transactions awaiting endorsement. Protected by mtx.
-	transactionsPool        *txpool.TxPool          // the transaction pool for transactions
-	txsRelayQueue           *txpool.TxQueue         // stores transactions waiting to be relayed
-	bchain                  core.Blockchain         // The blockchain manager
-	blockHashQueue          *lane.Deque             // Contains headers collected during block syncing
-	bestRemoteBlockInfo     *BestBlockInfo          // Holds information about the best known block heard from peers
-	syncing                 bool                    // Indicates the process of syncing the blockchain with peers
+	mtx                 *sync.RWMutex
+	cfg                 *config.EngineConfig    // node config
+	address             ma.Multiaddr            // node multiaddr
+	IP                  net.IP                  // node ip
+	host                host.Host               // node libp2p host
+	wg                  sync.WaitGroup          // wait group for preventing the main thread from exiting
+	localNode           *Node                   // local node
+	peerManager         *Manager                // node manager for managing connections to other remote peers
+	gProtoc             *Gossip                 // gossip protocol instance
+	remote              bool                    // remote indicates the node represents a remote peer
+	Timestamp           time.Time               // the last time this node was seen/active
+	isHardcodedSeed     bool                    // whether the node was hardcoded as a seed
+	stopped             bool                    // flag to tell if node has stopped
+	log                 logger.Logger           // node logger
+	rSeed               []byte                  // random 256 bit seed to be used for seed random operations
+	db                  elldb.DB                // used to access and modify local database
+	signatory           *d_crypto.Key           // signatory address used to get node ID and for signing
+	historyCache        *histcache.HistoryCache // Used to track objects and behaviours
+	event               *emitter.Emitter        // Provides access event emitting service
+	transactionsPool    *txpool.TxPool          // the transaction pool for transactions
+	txsRelayQueue       *txpool.TxContainer     // stores transactions waiting to be relayed
+	bchain              core.Blockchain         // The blockchain manager
+	blockHashQueue      *lane.Deque             // Contains headers collected during block syncing
+	bestRemoteBlockInfo *BestBlockInfo          // Holds information about the best known block heard from peers
+	syncing             bool                    // Indicates the process of syncing the blockchain with peers
 }
 
 // NewNode creates a node instance at the specified port
@@ -126,20 +125,19 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 	}
 
 	node := &Node{
-		mtx:       &sync.RWMutex{},
-		cfg:       config,
-		address:   util.FullAddressFromHost(host),
-		host:      host,
-		wg:        sync.WaitGroup{},
-		log:       log,
-		rSeed:     util.RandBytes(64),
-		signatory: coinbase,
-		db:        db,
-		event:     &emitter.Emitter{},
-		openTransactionsSession: make(map[string]struct{}),
-		transactionsPool:        txpool.NewTxPool(config.TxPool.Capacity),
-		txsRelayQueue:           txpool.NewQueueNoSort(config.TxPool.Capacity),
-		blockHashQueue:          lane.NewDeque(),
+		mtx:              &sync.RWMutex{},
+		cfg:              config,
+		address:          util.FullAddressFromHost(host),
+		host:             host,
+		wg:               sync.WaitGroup{},
+		log:              log,
+		rSeed:            util.RandBytes(64),
+		signatory:        coinbase,
+		db:               db,
+		event:            &emitter.Emitter{},
+		transactionsPool: txpool.New(config.TxPool.Capacity),
+		txsRelayQueue:    txpool.NewQueueNoSort(config.TxPool.Capacity),
+		blockHashQueue:   lane.NewDeque(),
 	}
 
 	node.localNode = node
@@ -298,13 +296,9 @@ func (n *Node) PM() *Manager {
 	return n.peerManager
 }
 
-// Cfg returns the config object
-func (n *Node) Cfg() *config.EngineConfig {
-	return n.cfg
-}
-
-// History returns the cache holding items (messages etc) we have seen
-func (n *Node) History() *histcache.HistoryCache {
+// history return a cache for holding arbitrary
+// objects we want to keep track of
+func (n *Node) history() *histcache.HistoryCache {
 	return n.historyCache
 }
 
@@ -362,9 +356,10 @@ func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
-// SetEventBus set the event bus used to broadcast events across the engine
-func (n *Node) SetEventBus(ee *emitter.Emitter) {
+// SetEventEmitter set the event bus used to broadcast events across the engine
+func (n *Node) SetEventEmitter(ee *emitter.Emitter) {
 	n.event = ee
+	n.transactionsPool.SetEventEmitter(ee)
 }
 
 // SetLocalNode sets the local peer
@@ -624,36 +619,52 @@ func (n *Node) relayBlock(block core.Block) {
 	}
 }
 
-func (n *Node) handleEvents() {
+func (n *Node) handleNewBlockEvent() {
+	for evt := range n.event.On(core.EventNewBlock) {
+		n.relayBlock(evt.Args[0].(core.Block))
+	}
+}
 
-	go func() {
-		// handle core.EventNewBlock event
-		for evt := range n.event.On(core.EventNewBlock) {
-			n.relayBlock(evt.Args[0].(core.Block))
+func (n *Node) handleNewTransactionEvent() {
+	for evt := range n.event.On(core.EventNewTransaction) {
+		if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
+			n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
 		}
-	}()
+	}
+}
 
-	go func() {
-		// handle core.EventNewTransaction event
-		for evt := range n.event.On(core.EventNewTransaction) {
-			if !n.GetTxRelayQueue().Append(evt.Args[0].(core.Transaction)) {
-				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+func (n *Node) handleOrphanBlockEvent() {
+	for evt := range n.event.On(core.EventOrphanBlock) {
+		// We need to request the parent block from the
+		// peer who sent it to us (a.k.a broadcaster)
+		orphanBlock := evt.Args[0].(*objects.Block)
+		parentHash := orphanBlock.GetHeader().GetParentHash()
+		n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
+			orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
+		n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
+	}
+}
+
+func (n *Node) handleAbortedMinerBlockEvent() {
+	// handle core.EventMinerProposedBlockAborted
+	// listens for aborted miner blocks and attempt
+	// to re-add the transactions to the pool.
+	for evt := range n.event.On(core.EventMinerProposedBlockAborted) {
+		abortedBlock := evt.Args[0].(*objects.Block)
+		n.log.Debug("Attempting to re-add transactions in aborted miner block", "NumTx", len(abortedBlock.Transactions))
+		for _, tx := range abortedBlock.Transactions {
+			if err := n.addTransaction(tx); err != nil {
+				n.log.Debug("failed to re-add transaction", "Err", err.Error())
 			}
 		}
-	}()
+	}
+}
 
-	go func() {
-		// handle core.EventOrphanBlock event
-		for evt := range n.event.On(core.EventOrphanBlock) {
-			// We need to request the parent block from the
-			// peer who sent it to us (a.k.a broadcaster)
-			orphanBlock := evt.Args[0].(*objects.Block)
-			parentHash := orphanBlock.GetHeader().GetParentHash()
-			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
-				orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
-			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
-		}
-	}()
+func (n *Node) handleEvents() {
+	go n.handleNewBlockEvent()
+	go n.handleNewTransactionEvent()
+	go n.handleOrphanBlockEvent()
+	go n.handleAbortedMinerBlockEvent()
 }
 
 // processBlockHashes collects hashes and request for their
@@ -783,7 +794,7 @@ func (n *Node) IsBadTimestamp() bool {
 }
 
 // GetTxRelayQueue returns the transaction relay queue
-func (n *Node) GetTxRelayQueue() *txpool.TxQueue {
+func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
 	return n.txsRelayQueue
 }
 

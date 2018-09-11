@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func closeNode(n *Node) {
 var makeBlock = func(bchain core.Blockchain) core.Block {
 	block, err := bchain.Generate(&core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "0", "0", time.Now().UnixNano()),
 		},
 		Creator:    sender,
 		Nonce:      core.EncodeNonce(1),
@@ -66,12 +67,7 @@ var _ = Describe("Engine", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
-	})
-
-	BeforeEach(func() {
-		var err error
-		cfg, err = testutil.SetTestCfg()
+		err = os.RemoveAll(cfg.ConfigDir())
 		Expect(err).To(BeNil())
 	})
 
@@ -80,6 +76,7 @@ var _ = Describe("Engine", func() {
 		db = elldb.NewDB(cfg.ConfigDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
+
 		db2 = elldb.NewDB(cfg.ConfigDir())
 		err = db2.Open(util.RandString(5))
 		Expect(err).To(BeNil())
@@ -88,11 +85,12 @@ var _ = Describe("Engine", func() {
 	// Initialize the default test transaction pools
 	// and create the blockchain instances and set their db
 	BeforeEach(func() {
-		txPool = txpool.NewTxPool(100)
-		txPool2 = txpool.NewTxPool(100)
+		txPool = txpool.New(100)
 		lpBc = blockchain.New(txPool, cfg, log)
 		lpBc.SetDB(db)
 		lpBc.SetGenesisBlock(blockchain.GenesisBlock)
+
+		txPool2 = txpool.New(100)
 		rpBc = blockchain.New(txPool2, cfg, log)
 		rpBc.SetDB(db2)
 		rpBc.SetGenesisBlock(blockchain.GenesisBlock)
@@ -101,6 +99,7 @@ var _ = Describe("Engine", func() {
 	BeforeEach(func() {
 		err = lpBc.Up()
 		Expect(err).To(BeNil())
+
 		err = rpBc.Up()
 		Expect(err).To(BeNil())
 	})
@@ -114,19 +113,16 @@ var _ = Describe("Engine", func() {
 	var tests = []func() bool{
 		HandshakeTest,
 		TransactionTest,
-		AddrTest,
-		GetAddrTest,
-		TransactionSessionTest,
-		SelfAdvTest,
-		PingTest,
-		PeerManagerTest,
-		NodeTest,
-		BlockTest,
+		// AddrTest,
+		// GetAddrTest,
+		// SelfAdvTest,
+		// PingTest,
+		// PeerManagerTest,
+		// NodeTest,
+		// BlockTest,
 	}
 
 	for _, t := range tests {
-		// Describe(fmt.Sprintf("Test %d", i), func() {
 		t()
-		// })
 	}
 })

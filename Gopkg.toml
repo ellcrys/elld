@@ -114,9 +114,18 @@
   name = "github.com/ellcrys/merkletree"
 
 [[constraint]]
+<<<<<<< HEAD
   name = "github.com/tensorflow/tensorflow"
   version = "1.10.0"
 
 [[constraint]]
   name = "github.com/goreleaser/goreleaser"
   version = "0.83.3"
+=======
+  name = "github.com/btcsuite/btcutil"
+  revision = "ff82dacded1c76d101bce55c394c03c0bbff69e8"
+
+[[constraint]]
+  name = "github.com/c-bata/go-prompt"
+  revision = "15992ed45e46edd6168d7c8bfda14b700f6b756a"
+>>>>>>> 5b4b982b1fff5a2fc59151c7b5a589d4593ea5e4

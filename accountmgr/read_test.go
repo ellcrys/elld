@@ -164,16 +164,16 @@ var _ = Describe("Read", func() {
 				Expect(account).ToNot(BeNil())
 			})
 
-			It("should return err = 'invalid password. invalid format: version and/or checksum bytes missing' when password is invalid", func() {
+			It("should return err = 'invalid password' when password is invalid", func() {
 				err := account.Decrypt("invalid")
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("invalid password. invalid format: version and/or checksum bytes missing"))
+				Expect(err.Error()).To(Equal("invalid password"))
 			})
 
 			It("should return nil when decryption is successful. account.address must not be nil.", func() {
 				err := account.Decrypt(passphrase)
 				Expect(err).To(BeNil())
-				Expect(account.address).ToNot(BeNil())
+				Expect(account.key).ToNot(BeNil())
 			})
 		})
 	})

@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,7 +9,6 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/ncodes/authtoken"
-	"github.com/thoas/go-funk"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
@@ -18,6 +18,14 @@ import (
 const (
 	middlewareErrCode = -32000
 )
+
+// MethodInfo describe an RPC method info
+type MethodInfo struct {
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	Description string `json:"description"`
+	Private     bool   `json:"private"`
+}
 
 // OnRequestFunc is the type of function to use
 // as a callback when new requests are received
@@ -82,6 +90,14 @@ type JSONRPC struct {
 	// disableAuth when set to true causes
 	// authorization check to be skipped (not recommended)
 	disableAuth bool
+
+	// handlerConfigured lets us know when the
+	// handle has been configured
+	handlerConfigured bool
+
+	// done is used to wait for the server to
+	// shutdown
+	done chan bool
 }
 
 // MakeSessionToken creates a session token for
@@ -140,6 +156,7 @@ func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 		apiSet:      APISet{},
 		sessionKey:  sessionKey,
 		disableAuth: disableAuth,
+		done:        make(chan bool),
 	}
 	rpc.MergeAPISet(rpc.APIs())
 	return rpc
@@ -149,6 +166,8 @@ func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 func (s *JSONRPC) APIs() APISet {
 	return APISet{
 		"methods": APIInfo{
+			Description: "List RPC methods",
+			Namespace:   "rpc",
 			Func: func(interface{}) *Response {
 				return Success(s.Methods())
 			},
@@ -158,8 +177,16 @@ func (s *JSONRPC) APIs() APISet {
 
 // Methods gets the names of all methods
 // in the API set.
-func (s *JSONRPC) Methods() []string {
-	return funk.Keys(s.apiSet).([]string)
+func (s *JSONRPC) Methods() (methodsInfo []MethodInfo) {
+	for name, d := range s.apiSet {
+		methodsInfo = append(methodsInfo, MethodInfo{
+			Name:        name,
+			Description: d.Description,
+			Namespace:   d.Namespace,
+			Private:     d.Private,
+		})
+	}
+	return
 }
 
 // Serve starts the server
@@ -171,18 +198,33 @@ func (s *JSONRPC) Serve() {
 	server.RegisterCodec(json2.NewCodec(), "application/json;charset=UTF-8")
 	r.Handle("/rpc", server)
 
-	// Set request handler
-	http.ListenAndServe(s.addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := &http.Server{Addr: s.addr}
+	s.registerHandler()
+	go srv.ListenAndServe()
 
+	<-s.done
+	srv.Shutdown(context.Background())
+}
+
+func (s *JSONRPC) registerHandler() {
+	if s.handlerConfigured {
+		return
+	}
+	http.HandleFunc("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.OnRequest != nil {
 			if err := s.OnRequest(r); err != nil {
 				json.NewEncoder(w).Encode(Error(middlewareErrCode, err.Error(), nil))
 				return
 			}
 		}
-
 		json.NewEncoder(w).Encode(s.handle(w, r))
 	}))
+	s.handlerConfigured = true
+}
+
+// Stop stops the RPC server
+func (s *JSONRPC) Stop() {
+	close(s.done)
 }
 
 // MergeAPISet merges an API set with s current api sets

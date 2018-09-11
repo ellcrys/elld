@@ -9,7 +9,7 @@ import (
 
 	"github.com/vmihailenco/msgpack"
 
-	"github.com/ellcrys/elld/constants"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
@@ -117,7 +117,7 @@ func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
 	}
 
 	if msg.Code != 0 {
-		return &msg, constants.ErrRejected
+		return &msg, params.ErrRejected
 	}
 
 	return nil, nil

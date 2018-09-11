@@ -3,8 +3,12 @@ package console
 import (
 	"fmt"
 	"io/ioutil"
+	"path"
 	"runtime"
 
+	"github.com/ellcrys/elld/rpc"
+
+	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util/logger"
@@ -27,6 +31,10 @@ type Console struct {
 
 	// suggestMgr managers prompt suggestions
 	suggestMgr *SuggestionManager
+
+	// attached indicates whether the console
+	// is in attach mode.
+	attached bool
 
 	// coinbase is the default account required
 	// for signing secure operations
@@ -53,6 +61,8 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	c.executor = newExecutor(coinbase, log)
 	c.suggestMgr = newSuggestionManager(initialSuggestions)
 	c.coinbase = coinbase
+	c.executor.acctMgr = accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+	c.executor.console = c
 	c.cfg = cfg
 
 	// retrieve the history
@@ -61,6 +71,44 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	if len(data) > 0 {
 		msgpack.Unmarshal(data, &history)
 	}
+
+	c.history = append(c.history, history...)
+
+	return c
+}
+
+// NewAttached is like New but enables attach mode
+func NewAttached(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
+	c := New(coinbase, historyPath, cfg, log)
+	c.attached = true
+	return c
+}
+
+// SetRPCServerAddr sets the address of the
+// RPC server to be dialled
+func (c *Console) SetRPCServerAddr(addr string, secured bool) {
+	c.executor.rpc = &RPCConfig{
+		Client: RPCClient{
+			Address: makeAddr(addr, secured),
+		},
+	}
+}
+
+// SetRPCServer sets the rpc server
+// so we can start and stop it.
+// It will panic if this is called on
+// a console with attach mode enabled.
+func (c *Console) SetRPCServer(rpcServer *rpc.Server, secured bool) {
+	if c.attached {
+		panic("we don't need a server in attach mode")
+	}
+	c.executor.rpcServer = rpcServer
+	c.SetRPCServerAddr(rpcServer.GetAddr(), secured)
+}
+
+// Prepare sets up the console's prompt
+// colors, suggestions etc.
+func (c *Console) Prepare() error {
 
 	// Set some options
 	options := []prompt.Option{
@@ -76,8 +124,15 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 		prompt.OptionDescriptionTextColor(prompt.White),
 		prompt.OptionSuggestionTextColor(prompt.Turquoise),
 		prompt.OptionSuggestionBGColor(prompt.Black),
-		prompt.OptionHistory(history),
+		prompt.OptionHistory(c.history),
 	}
+
+	suggestions, err := c.executor.PrepareContext()
+	if err != nil {
+		return err
+	}
+
+	c.suggestMgr.add(suggestions...)
 
 	// create new prompt and configure it
 	// with the options create above
@@ -86,25 +141,7 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 		c.executor.OnInput(in)
 	}, c.suggestMgr.completer, options...)
 
-	return c
-}
-
-// ConfigureRPC configures the RPC client
-func (c *Console) ConfigureRPC(rpcAddress string, secured bool) {
-	c.executor.rpc = &RPCConfig{
-		Client:  RPCClient(rpcAddress),
-		Secured: secured,
-	}
-
-	// reinitialize the rpc client,
-	// this time compute while taking
-	// the secured field into account
-	c.executor.rpc.Client = RPCClient(c.executor.rpc.GetAddr())
-}
-
-// PrepareVM sets up the VM executor
-func (c *Console) PrepareVM() error {
-	return c.executor.PrepareContext()
+	return nil
 }
 
 // Run the console

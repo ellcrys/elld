@@ -3,12 +3,15 @@ package blockchain
 import (
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
@@ -17,6 +20,7 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/shopspring/decimal"
 )
 
 var log logger.Logger
@@ -38,7 +42,7 @@ func TestBlockchain(t *testing.T) {
 }
 
 func MakeTestBlock(bc core.Blockchain, chain *Chain, gp *core.GenerateBlockParams) core.Block {
-	blk, err := bc.Generate(gp, ChainOp{Chain: chain})
+	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
 	if err != nil {
 		panic(err)
 	}
@@ -48,18 +52,19 @@ func MakeTestBlock(bc core.Blockchain, chain *Chain, gp *core.GenerateBlockParam
 var makeBlock = func(ch *Chain) core.Block {
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "0.1", time.Now().UnixNano()),
 		},
-		Creator:    sender,
-		Nonce:      core.EncodeNonce(1),
-		Difficulty: new(big.Int).SetInt64(131072),
+		Creator:           sender,
+		Nonce:             core.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: time.Now().Unix(),
 	})
 }
 
 var makeBlockWithBalanceTx = func(ch *Chain) core.Block {
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", time.Now().UnixNano()),
 		},
 		Creator:    sender,
 		Nonce:      core.EncodeNonce(1),
@@ -67,10 +72,13 @@ var makeBlockWithBalanceTx = func(ch *Chain) core.Block {
 	})
 }
 
+var _ = BeforeSuite(func() {
+	params.FeePerByte = decimal.NewFromFloat(0.01)
+})
+
 var _ = Describe("Blockchain", func() {
 
 	BeforeEach(func() {
-		var err error
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 	})
@@ -78,7 +86,7 @@ var _ = Describe("Blockchain", func() {
 	// Create the database and store instances
 	BeforeEach(func() {
 		db = elldb.NewDB(cfg.ConfigDir())
-		err = db.Open("")
+		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 	})
 
@@ -86,7 +94,7 @@ var _ = Describe("Blockchain", func() {
 	// and create the blockchain. Also set the store
 	// on the blockchain.
 	BeforeEach(func() {
-		txPool = txpool.NewTxPool(100)
+		txPool = txpool.New(100)
 		bc = New(txPool, cfg, log)
 		bc.SetDB(db)
 		bc.SetGenesisBlock(GenesisBlock)
@@ -112,7 +120,7 @@ var _ = Describe("Blockchain", func() {
 
 	// create test accounts here
 	BeforeEach(func() {
-		Expect(bc.putAccount(1, genesisChain, &objects.Account{
+		Expect(bc.CreateAccount(1, genesisChain, &objects.Account{
 			Type:    objects.AccountTypeBalance,
 			Address: util.String(sender.Addr()),
 			Balance: "1000",
@@ -122,7 +130,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 			Transactions: []core.Transaction{
-				objects.NewTx(objects.TxTypeBalance, 123, util.String(receiver.Addr()), sender, "1", "0.1", 1532730722),
+				objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
 			},
 			Creator:           sender,
 			Nonce:             core.EncodeNonce(1),
@@ -138,12 +146,13 @@ var _ = Describe("Blockchain", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		err = os.RemoveAll(cfg.ConfigDir())
+		Expect(err).To(BeNil())
 	})
 
 	var tests = []func() bool{
 		WorldReaderTest,
-		BlockchainTest,
+		BlockchainTests,
 		ReOrgTest,
 		ChainTest,
 		ProcessTest,
@@ -152,6 +161,7 @@ var _ = Describe("Blockchain", func() {
 		TransactionValidatorTest,
 		BlockValidatorTest,
 		ChainTransverserTest,
+		AccountTest,
 	}
 
 	Describe(fmt.Sprintf("Tests"), func() {

@@ -1,6 +1,8 @@
 package store
 
 import (
+	"os"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
@@ -26,12 +28,13 @@ var _ = Describe("Leveldb", func() {
 	})
 
 	AfterEach(func() {
-		Expect(testutil.RemoveTestCfgDir()).To(BeNil())
+		err = os.RemoveAll(cfg.ConfigDir())
+		Expect(err).To(BeNil())
 	})
 
 	BeforeEach(func() {
 		db = elldb.NewDB(cfg.ConfigDir())
-		err = db.Open("")
+		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 	})
 
@@ -144,10 +147,15 @@ var _ = Describe("Leveldb", func() {
 
 	Describe(".PutBlock", func() {
 
-		var block = &objects.Block{
-			Header: &objects.Header{Number: 1},
-			Hash:   util.StrToHash("hash"),
-		}
+		var block *objects.Block
+
+		BeforeEach(func() {
+			block = &objects.Block{
+				Header: &objects.Header{Number: 1},
+				Hash:   util.StrToHash("hash"),
+				Sig:    []byte("stuff"),
+			}
+		})
 
 		It("should put block without error", func() {
 			err = store.PutBlock(block)

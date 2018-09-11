@@ -20,6 +20,12 @@ type APIInfo struct {
 	// Private indicates a requirement for a private, authenticated
 	// user session before this API function is executed.
 	Private bool
+
+	// Namespace is the JS namespace where the method should reside
+	Namespace string
+
+	// Description describes the API
+	Description string
 }
 
 // APISet defines a collection of APIs

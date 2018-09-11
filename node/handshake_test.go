@@ -1,6 +1,8 @@
 package node
 
 import (
+	"time"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
@@ -46,6 +48,7 @@ func HandshakeTest() bool {
 				It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
 					err = lpGossip.SendHandshake(rp)
 					Expect(err).To(BeNil())
+					time.Sleep(5 * time.Second)
 					activePeerRp := rp.PM().GetActivePeers(0)
 					activePeerLp := lp.PM().GetActivePeers(0)
 					Expect(len(activePeerRp)).To(Equal(1))

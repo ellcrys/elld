@@ -66,7 +66,7 @@ var ChainTest = func() bool {
 			})
 
 			Context("with a non-empty chain", func() {
-				When("and back linking enabled", func() {
+				When("back linking enabled", func() {
 
 					It("should successfully create seeded state tree", func() {
 						tree, err := genesisChain.NewStateTree(false)
@@ -86,7 +86,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{111, 183, 233, 32, 210, 221, 41, 140, 249, 7, 72, 33, 13, 169, 116, 214, 218, 129, 230, 179, 131, 136, 26, 83, 184, 122, 230, 224, 55, 64, 244, 159}
+							expected := util.Hash{86, 104, 252, 31, 15, 175, 110, 130, 124, 131, 17, 172, 0, 212, 95, 167, 13, 167, 123, 24, 83, 110, 253, 120, 174, 161, 5, 199, 64, 214, 148, 99}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 
@@ -113,7 +113,7 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -220,7 +220,8 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 123, util.String(sender.Addr()), sender, "1", "0.1", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730722),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),

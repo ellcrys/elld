@@ -232,7 +232,7 @@ func (g *Gossip) RelayAddr(addrs []*wire.Address) []error {
 		historyKey := makeAddrRelayHistoryKey(addrMsg, remotePeer)
 
 		// ensure we have not relayed same message to this peer before
-		if g.engine.History().Has(historyKey) {
+		if g.engine.history().Has(historyKey) {
 			errs = append(errs, fmt.Errorf("already sent same Addr to node"))
 			g.log.Debug("Already sent same Addr to node. Skipping.", "PeerID", remotePeer.ShortID())
 			continue
@@ -253,7 +253,7 @@ func (g *Gossip) RelayAddr(addrs []*wire.Address) []error {
 		}
 
 		// add new history
-		g.engine.History().Add(historyKey)
+		g.engine.history().Add(historyKey)
 
 		successfullyRelayed++
 	}

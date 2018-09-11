@@ -13,7 +13,6 @@ import (
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -96,6 +95,7 @@ func (m *Miner) getProposedBlock(txs []core.Transaction) (core.Block, error) {
 		Creator:      m.minerKey,
 		Nonce:        core.EncodeNonce(1),
 		Difficulty:   new(big.Int).SetInt64(1),
+		AddFeeAlloc:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -122,14 +122,23 @@ func (m *Miner) Stop() {
 // handleNewBlockEvt detects and processes event about
 // a new block being accepted in a chain. Since the
 // miner always mines on the main chain, it will
-// will cause the current proposed block to be dumped
-// if the new block was appended to the main chain.
-// Additionally, it emits a core.EventAborted event.
+// will cause the current proposed block to be dumped.
+// Additionally, it emits a core.EventMinerProposedBlockAborted event
+// to inform other processes about the aborted proposed block.
 func (m *Miner) handleNewBlockEvt(newBlock *objects.Block) {
-	if m.isMining && (m.proposedBlock == nil ||
-		(m.blockMaker.IsMainChain(newBlock.ChainReader) && !m.proposedBlock.GetHash().Equal(newBlock.GetHash()))) {
+	if !m.isMining {
+		return
+	}
+	if m.proposedBlock != nil {
+		return
+	}
+	// If the new block was appended to the main chain
+	// and it is not the same with the proposed block,
+	// abort current proposed block and emit an event.
+	if m.blockMaker.IsMainChain(newBlock.ChainReader) &&
+		!m.proposedBlock.GetHash().Equal(newBlock.GetHash()) {
 		m.log.Debug("Aborting on-going miner session. Proposing a new block.", "Number", newBlock.Header.Number)
-		go m.event.Emit(core.EventAborted, m.proposedBlock)
+		go m.event.Emit(core.EventMinerProposedBlockAborted, m.proposedBlock)
 		m.abortCurrent()
 	}
 }
@@ -161,12 +170,19 @@ func (m *Miner) Mine() {
 
 		// Get a proposed block compatible with the
 		// main chain and the current block.
-		m.proposedBlock, err = m.getProposedBlock([]core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
-		})
+		m.proposedBlock, err = m.getProposedBlock(nil)
 		if err != nil {
 			m.log.Error("Proposed block is not valid", "Error", err)
 			break
+		}
+
+		// if no transactions in the proposed block,
+		// do not mine the block, sleep for a few seconds
+		// and continue.
+		if len(m.proposedBlock.GetTransactions()) == 0 {
+			m.log.Debug("Proposed block has no transactions")
+			time.Sleep(3 * time.Second)
+			continue
 		}
 
 		// Prepare the proposed block. It will calculate
@@ -188,16 +204,9 @@ func (m *Miner) Mine() {
 			continue
 		}
 
-		// Finalize the block. Calculate rewards etc
-		block, err = m.blakimoto.Finalize(m.blockMaker, block)
-		if err != nil {
-			m.log.Error("Block finalization failed", "Err", err)
-			break
-		}
-
 		// Recompute hash and signature
 		block.SetHash(block.ComputeHash())
-		blockSig, err := objects.BlockSign(block, m.minerKey.PrivKey().Base58())
+		blockSig, _ := objects.BlockSign(block, m.minerKey.PrivKey().Base58())
 		block.SetSignature(blockSig)
 
 		// Attempt to add to the blockchain to the main chain.

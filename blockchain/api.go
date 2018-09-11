@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"fmt"
+
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
@@ -109,9 +111,6 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 
 // apiGetBestchain fetches the best chain
 func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
-
 	if b.bestChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
@@ -131,31 +130,208 @@ func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 
 // apiGetReOrgs fetches the re-organization records
 func (b *Blockchain) apiGetReOrgs(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	return jsonrpc.Success(b.getReOrgs())
+}
+
+// apiGetAccount gets an account
+func (b *Blockchain) apiGetAccount(arg interface{}) *jsonrpc.Response {
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	account, err := b.GetAccount(util.String(address))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(account)
+}
+
+// apiGetAccount gets the nonce of an account
+func (b *Blockchain) apiGetNonce(arg interface{}) *jsonrpc.Response {
+
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	account, err := b.GetAccount(util.String(address))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(account.GetNonce())
+}
+
+// apiGetBalance gets the balance of an account
+func (b *Blockchain) apiGetBalance(arg interface{}) *jsonrpc.Response {
+
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	account, err := b.GetAccount(util.String(address))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(account.GetBalance())
+}
+
+// apiGetTransaction gets a transaction by hash
+func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
+
+	txHash, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	hash, err := util.HexToHash(txHash)
+	if err != nil {
+		return jsonrpc.Error(
+			types.ErrCodeQueryParamError,
+			fmt.Sprintf("invalid transaction id: %s", err.Error()),
+			nil,
+		)
+	}
+
+	tx, err := b.GetTransaction(hash)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeTransactionNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(core.MapFieldsToHex(tx))
+}
+
+// apiGetTransactionStatus gets the status of
+// a transaction matching a given hash.
+// Status: 'unknown' - not found, 'pooled' - in
+// the transaction pool & 'mined' - In a mined block.
+func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response {
+
+	txHash, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	var status = "unknown"
+
+	if b.txPool.HasByHash(txHash) {
+		status = "pooled"
+	}
+
+	hash, err := util.HexToHash(txHash)
+	if err != nil {
+		return jsonrpc.Error(
+			types.ErrCodeQueryParamError,
+			fmt.Sprintf("invalid transaction id: %s", err.Error()),
+			nil,
+		)
+	}
+
+	tx, err := b.GetTransaction(hash)
+	if err != nil {
+		if err != core.ErrTxNotFound {
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+		}
+	}
+
+	if tx != nil {
+		status = "mined"
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"status": status,
+	})
+
+}
+
+// apiGetDifficultyInfo gets the difficulty and total
+// difficulty of the main chain
+func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
+
+	if b.bestChain == nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+	}
+
+	tip, err := b.bestChain.Current()
+	if err != nil {
+		if err != core.ErrBlockNotFound {
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+		}
+		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(core.MapFieldsToHex(map[string]interface{}{
+		"difficulty":      tip.GetDifficulty(),
+		"totalDifficulty": tip.GetTotalDifficulty(),
+	}))
 }
 
 // APIs returns all API handlers
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 		"getChains": jsonrpc.APIInfo{
-			Func: b.apiGetChains,
+			Namespace:   "node",
+			Description: "Get all chains",
+			Func:        b.apiGetChains,
 		},
 		"getBlock": jsonrpc.APIInfo{
-			Func: b.apiGetBlock,
+			Namespace:   "node",
+			Description: "Get a block by number",
+			Func:        b.apiGetBlock,
 		},
 		"getBlockByHash": jsonrpc.APIInfo{
-			Func: b.apiGetBlockByHash,
+			Namespace:   "node",
+			Description: "Get a block by hash",
+			Func:        b.apiGetBlockByHash,
 		},
 		"getOrphans": jsonrpc.APIInfo{
-			Func: b.apiGetOrphans,
+			Namespace:   "node",
+			Description: "Get a list of orphans",
+			Func:        b.apiGetOrphans,
 		},
 		"getBestChain": jsonrpc.APIInfo{
-			Func: b.apiGetBestchain,
+			Namespace:   "node",
+			Description: "Get the best chain",
+			Func:        b.apiGetBestchain,
 		},
 		"getReOrgs": jsonrpc.APIInfo{
-			Func: b.apiGetReOrgs,
+			Namespace:   "node",
+			Description: "Get a list of re-organization events",
+			Func:        b.apiGetReOrgs,
+		},
+		"getAccount": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get an account",
+			Func:        b.apiGetAccount,
+		},
+		"getAccountNonce": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get the nonce of an account",
+			Func:        b.apiGetNonce,
+		},
+		"getBalance": jsonrpc.APIInfo{
+			Namespace:   "ell",
+			Description: "Get account balance",
+			Func:        b.apiGetBalance,
+		},
+		"getTransaction": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get a transaction by hash",
+			Func:        b.apiGetTransaction,
+		},
+		"getDifficulty": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get difficulty information",
+			Func:        b.apiGetDifficultyInfo,
+		},
+		"getTransactionStatus": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get a transaction's status",
+			Func:        b.apiGetTransactionStatus,
 		},
 	}
 }

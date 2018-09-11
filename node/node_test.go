@@ -2,7 +2,12 @@ package node
 
 import (
 	"context"
+	"math/big"
 	"time"
+
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/testutil"
@@ -18,9 +23,15 @@ func NodeTest() bool {
 
 		var n *Node
 
+		// Create test local node
+		// Set the nodes blockchain manager
+		// Create and set the nodes gossip handler
 		BeforeEach(func() {
 			n, err = NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
+			n.SetBlockchain(lpBc)
+			proto := NewGossip(n, log)
+			n.SetGossipProtocol(proto)
 		})
 
 		AfterEach(func() {
@@ -267,6 +278,51 @@ func NodeTest() bool {
 				ip := n.ip()
 				Expect(ip).ToNot(BeNil())
 				Expect(ip.String()).To(Equal("127.0.0.1"))
+			})
+		})
+
+		Describe(".handleAbortedMinerBlockEvent", func() {
+
+			var block core.Block
+			var tx *objects.Transaction
+
+			// Create the test account
+			BeforeEach(func() {
+				err = lpBc.CreateAccount(1, lpBc.GetBestChain(), &objects.Account{
+					Type:    objects.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "100",
+				})
+				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				// Create and sign test transaction
+				tx = objects.NewTransaction(objects.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+				tx.From = util.String(sender.Addr())
+				tx.Hash = tx.ComputeHash()
+				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+				Expect(err).To(BeNil())
+				tx.Sig = sig
+
+				block, err = lpBc.Generate(&core.GenerateBlockParams{
+					Transactions: []core.Transaction{tx},
+					Creator:      sender,
+					Nonce:        core.EncodeNonce(1),
+					Difficulty:   new(big.Int).SetInt64(131072),
+				})
+				Expect(err).To(BeNil())
+			})
+
+			It("should move transactions in the aborted block to the tx pool", func() {
+				go func() {
+					n.handleAbortedMinerBlockEvent()
+				}()
+				time.Sleep(1 * time.Millisecond)
+				<-n.event.Emit(core.EventMinerProposedBlockAborted, block)
+				time.Sleep(1 * time.Millisecond)
+				Expect(n.GetTxPool().Size()).To(Equal(int64(1)))
+				Expect(n.GetTxPool().Has(tx)).To(BeTrue())
 			})
 		})
 	})
