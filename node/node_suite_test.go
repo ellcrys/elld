@@ -75,9 +75,6 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
-	db.Close()
-	db2.Close()
-
 	err := os.RemoveAll(cfg.ConfigDir())
 	Expect(err).To(BeNil())
 })
@@ -87,27 +84,27 @@ var _ = BeforeEach(func() {
 	Expect(db2.Truncate()).To(BeNil())
 })
 
+// Initialize the default test transaction pools
+// and create the blockchain instances and set their db
+var _ = BeforeEach(func() {
+	txPool = txpool.New(100)
+	lpBc = blockchain.New(txPool, cfg, log)
+	lpBc.SetDB(db)
+	lpBc.SetGenesisBlock(blockchain.GenesisBlock)
+
+	txPool2 = txpool.New(100)
+	rpBc = blockchain.New(txPool2, cfg, log)
+	rpBc.SetDB(db2)
+	rpBc.SetGenesisBlock(blockchain.GenesisBlock)
+
+	err = lpBc.Up()
+	Expect(err).To(BeNil())
+
+	err = rpBc.Up()
+	Expect(err).To(BeNil())
+})
+
 var _ = Describe("Engine", func() {
-
-	// Initialize the default test transaction pools
-	// and create the blockchain instances and set their db
-	BeforeEach(func() {
-		txPool = txpool.New(100)
-		lpBc = blockchain.New(txPool, cfg, log)
-		lpBc.SetDB(db)
-		lpBc.SetGenesisBlock(blockchain.GenesisBlock)
-
-		txPool2 = txpool.New(100)
-		rpBc = blockchain.New(txPool2, cfg, log)
-		rpBc.SetDB(db2)
-		rpBc.SetGenesisBlock(blockchain.GenesisBlock)
-
-		err = lpBc.Up()
-		Expect(err).To(BeNil())
-
-		err = rpBc.Up()
-		Expect(err).To(BeNil())
-	})
 
 	var tests = []func() bool{
 		HandshakeTest,
