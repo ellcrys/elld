@@ -63,6 +63,10 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 		return fmt.Errorf("handshake failed. failed to write to stream")
 	}
 
+	if g.handshakeSent != nil {
+		g.handshakeSent()
+	}
+
 	g.log.Info("Sent handshake with current main chain state", "PeerID",
 		remotePeerIDShort, "SubVersion",
 		engineHandshakeMsg.SubVersion, "TotalDifficulty",
@@ -73,6 +77,10 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	if err := readStream(s, resp); err != nil {
 		g.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
+	}
+
+	if g.handshakeReceived != nil {
+		g.handshakeReceived()
 	}
 
 	// update the timestamp of the peer
@@ -107,6 +115,10 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	copier.Copy(&bestBlockInfo, resp)
 	g.engine.updateSyncInfo(&bestBlockInfo)
 
+	if g.handshakeProcessed != nil {
+		g.handshakeProcessed()
+	}
+
 	return nil
 }
 
@@ -130,6 +142,10 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 		return
 	}
 
+	if g.handshakeReceived != nil {
+		g.handshakeReceived()
+	}
+
 	g.log.Info("Received handshake",
 		"PeerID", remotePeerIDShort,
 		"SubVersion", msg.SubVersion,
@@ -145,6 +161,10 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	if err := writeStream(s, engineHandshakeMsg); err != nil {
 		g.log.Error("failed to send handshake response", "Err", err)
 		return
+	}
+
+	if g.handshakeSent != nil {
+		g.handshakeSent()
 	}
 
 	// update the remote peer's timestamp and add it to the peer manager's list
@@ -174,6 +194,9 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	// remote block information
 	var bestBlockInfo BestBlockInfo
 	copier.Copy(&bestBlockInfo, msg)
-
 	g.engine.updateSyncInfo(&bestBlockInfo)
+
+	if g.handshakeProcessed != nil {
+		g.handshakeProcessed()
+	}
 }

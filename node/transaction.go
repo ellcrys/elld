@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
@@ -47,11 +48,19 @@ func (g *Gossip) OnTx(s net.Stream) {
 		return
 	}
 
+	if g.txReceived != nil {
+		g.txReceived()
+	}
+
 	// AllocCoin transactions are meant to be added by a miner
 	// to a block and not relayed like regular transactions.
 	if msg.Type == objects.TxTypeAlloc {
 		s.Reset()
-		g.log.Error("cannot add <AllocCoin> transaction to pool")
+		err := fmt.Errorf("cannot add <AllocCoin> transaction to pool")
+		g.log.Error(err.Error())
+		if g.txProcessed != nil {
+			g.txProcessed(err)
+		}
 		return
 	}
 
@@ -61,6 +70,9 @@ func (g *Gossip) OnTx(s net.Stream) {
 	if errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(), g.engine.bchain).Validate(); len(errs) > 0 {
 		s.Reset()
 		g.log.Debug("Transaction is not valid", "Err", errs[0])
+		if g.txProcessed != nil {
+			g.txProcessed(errs[0])
+		}
 		return
 	}
 
@@ -74,12 +86,19 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 		// Add the transaction to the transaction pool and wait for error response
 		if err := g.engine.addTransaction(msg); err != nil {
-			g.log.Error("failed to add transaction to pool")
+			g.log.Error("failed to add transaction to pool", "Err", msg)
+			if g.txProcessed != nil {
+				g.txProcessed(err)
+			}
 			return
 		}
 
 		// add transaction to the history cache using the key we created earlier
 		g.engine.history().Add(historyKey)
+	}
+
+	if g.txProcessed != nil {
+		g.txProcessed(nil)
 	}
 
 	g.log.Info("Added new transaction to pool", "TxID", msg.ID())
@@ -90,7 +109,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 
 	txID := tx.ID()
 	sent := 0
-
 	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
 	for _, peer := range remotePeers {
 
@@ -121,6 +139,10 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		g.engine.history().Add(historyKey)
 
 		sent++
+	}
+
+	if g.txSent != nil {
+		g.txSent()
 	}
 
 	g.log.Info("Finished relaying transaction", "TxID", txID, "NumPeersSentTo", sent)

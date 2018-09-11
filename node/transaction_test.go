@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -100,18 +101,18 @@ func TransactionTest() bool {
 				// Relay the transaction to the remote peer
 				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())
-				time.Sleep(5 * time.Second)
-				Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
+				rpProto.txProcessed = func(err error) {
+					defer GinkgoRecover()
+					Expect(err).To(BeNil())
+					Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
+				}
 			})
 
 			It("remote node will fail to add tx if its transaction pool is full", func() {
 
-				// Create the remote peer and
-				// set pool capacity to zero
-				cfg.TxPool.Capacity = 0
-				rp, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
-				Expect(err).To(BeNil())
-				rp.SetGossipProtocol(proto)
+				// Set the transaction pool to
+				// one with 0 capacity
+				rp.transactionsPool = txpool.New(0)
 
 				// Create the test transaction
 				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
@@ -126,8 +127,12 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 
 				// Verify pool size of remote peer
-				time.Sleep(5 * time.Second)
-				Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
+				rpProto.txProcessed = func(err error) {
+					defer GinkgoRecover()
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("container is full"))
+					Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
+				}
 			})
 		})
 	})

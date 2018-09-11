@@ -25,6 +25,16 @@ type Gossip struct {
 	log                         logger.Logger // the logger
 	lastRelayPeersSelectionTime time.Time     // the time the last peers responsible for relaying "addr" wire where selected
 	addrRelayPeers              [2]*Node      // peers to relay addr msgs to
+
+	// handshake message callbacks
+	handshakeSent      func() // Invoked when handshake message has been sent
+	handshakeReceived  func() // Invoked when handshake message has been received
+	handshakeProcessed func() // Invoked when handshake message has been processed
+
+	// transaction relay
+	txSent      func()          // Invoked when a transaction has been relayed
+	txReceived  func()          // Invoked when a transaction has been received
+	txProcessed func(err error) // Invoked when a transaction has been processed
 }
 
 // NewGossip creates a new instance of the Gossip protocol
