@@ -99,7 +99,7 @@ func TransactionTest() bool {
 
 				// Relay the transaction to the remote peer
 				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 				Expect(err).To(BeNil())
 				Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 			})
@@ -126,7 +126,7 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 
 				// Verify pool size of remote peer
-				time.Sleep(100 * time.Millisecond)
+				time.Sleep(1 * time.Second)
 				Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
 			})
 		})
