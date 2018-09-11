@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ellcrys/elld/config"
@@ -99,10 +100,11 @@ func TransactionTest() bool {
 				Expect(err).To(BeNil())
 				tx.Sig = sig
 
-				waitForRp := make(chan bool)
+				wait := make(chan bool)
 				rpProto.txProcessed = func(err error) {
-					defer close(waitForRp)
+					fmt.Println("Called")
 					defer GinkgoRecover()
+					defer close(wait)
 					Expect(err).To(BeNil())
 					Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 				}
@@ -110,7 +112,7 @@ func TransactionTest() bool {
 				// Relay the transaction to the remote peer
 				err = lp.gProtoc.RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())
-				<-waitForRp
+				<-wait
 			})
 
 			It("remote node will fail to add tx if its transaction pool is full", func() {
