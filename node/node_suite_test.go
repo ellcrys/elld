@@ -71,12 +71,6 @@ var _ = Describe("Engine", func() {
 		Expect(err).To(BeNil())
 	})
 
-	BeforeEach(func() {
-		var err error
-		cfg, err = testutil.SetTestCfg()
-		Expect(err).To(BeNil())
-	})
-
 	// Create the databases
 	BeforeEach(func() {
 		db = elldb.NewDB(cfg.ConfigDir())
@@ -86,6 +80,11 @@ var _ = Describe("Engine", func() {
 		db2 = elldb.NewDB(cfg.ConfigDir())
 		err = db2.Open(util.RandString(5))
 		Expect(err).To(BeNil())
+	})
+
+	AfterEach(func() {
+		db.Close()
+		db2.Close()
 	})
 
 	// Initialize the default test transaction pools
