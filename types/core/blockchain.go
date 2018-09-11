@@ -6,8 +6,12 @@ import (
 	"github.com/olebedev/emitter"
 )
 
-// Chainer defines an interface for Chain
+// Chainer (a.k.a Chains) defines an interface for accessing
+// mutating and managing a collection of blocks
 type Chainer interface {
+
+	// GetStore returns the store
+	GetStore() ChainStorer
 
 	// NewStateTree returns a new tree
 	NewStateTree(noBackLink bool, opts ...CallOp) (Tree, error)
@@ -27,9 +31,6 @@ type Chainer interface {
 	// GetInfo gets the chain's parent information
 	GetInfo() *ChainInfo
 
-	// GetParent returns the parent chain
-	GetParent() Chainer
-
 	// CreateAccount creates an account on a target block
 	CreateAccount(targetBlockNum uint64, account Account, opts ...CallOp) error
 
@@ -41,6 +42,14 @@ type Chainer interface {
 
 	// GetTransaction gets a transaction by hash
 	GetTransaction(hash util.Hash) Transaction
+
+	// ChainReader gets a chain reader for this chain
+	ChainReader() ChainReader
+
+	// GetRoot fetches the root block of this chain. If the chain
+	// has more than one parents/ancestors, it will traverse
+	// the parents to return the root parent block.
+	GetRoot() Block
 }
 
 // Blockchain defines an interface for a blockchain manager
@@ -89,6 +98,13 @@ type Blockchain interface {
 
 	// GetBlockByHash finds a block in any chain with a matching hash.
 	GetBlockByHash(hash util.Hash) (Block, error)
+
+	// GetChainReaderByHash returns a chain reader to a chain
+	// where a block with the given hash exists
+	GetChainReaderByHash(hash util.Hash) ChainReader
+
+	// SetGenesisBlock sets the genesis block
+	SetGenesisBlock(block Block)
 }
 
 // BlockMaker defines an interface providing the
@@ -131,6 +147,18 @@ type ChainReader interface {
 
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)
+
+	// GetParent returns a chain reader to the parent chain.
+	// Returns nil if chain has no parent.
+	GetParent() ChainReader
+
+	// GetParentBlock returns the parent block
+	GetParentBlock() Block
+
+	// GetRoot fetches the root block of this chain. If the chain
+	// has more than one parents/ancestors, it will traverse
+	// the parents to return the root parent block.
+	GetRoot() Block
 }
 
 // CacheReader provides an interface for reading the orphan cache

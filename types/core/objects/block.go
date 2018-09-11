@@ -1,9 +1,10 @@
-package wire
+package objects
 
 import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/vmihailenco/msgpack"
 
@@ -11,10 +12,12 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/math"
 )
 
 // Block represents a block
 type Block struct {
+	sync.RWMutex `json:"-" msgpack:"-"`
 	Header       *Header        `json:"header" msgpack:"header"`
 	Transactions []*Transaction `json:"transactions" msgpack:"transactions"`
 	Hash         util.Hash      `json:"hash" msgpack:"hash"`
@@ -31,6 +34,7 @@ type Block struct {
 
 // Header represents the header of a block
 type Header struct {
+	sync.RWMutex     `json:"-" msgpack:"-"`
 	Number           uint64          `json:"number" msgpack:"number"`
 	Nonce            core.BlockNonce `json:"nonce" msgpack:"nonce"`
 	Timestamp        int64           `json:"timestamp" msgpack:"timestamp"`
@@ -41,6 +45,10 @@ type Header struct {
 	Difficulty       *big.Int        `json:"difficulty" msgpack:"difficulty"`
 	TotalDifficulty  *big.Int        `json:"totalDifficulty" msgpack:"totalDifficulty"`
 	Extra            []byte          `json:"extra" msgpack:"extra"`
+
+	// Broadcaster is the peer responsible
+	// for sending this header.
+	Broadcaster types.Engine `json:"-" msgpack:"-"`
 }
 
 // GetTransactionsRoot gets the transaction root
@@ -133,6 +141,20 @@ func (h *Header) GetNumber() uint64 {
 	return h.Number
 }
 
+// SetBroadcaster sets the originator
+func (h *Header) SetBroadcaster(o types.Engine) {
+	h.Lock()
+	defer h.Unlock()
+	h.Broadcaster = o
+}
+
+// GetBroadcaster gets the originator
+func (h *Header) GetBroadcaster() types.Engine {
+	h.RLock()
+	defer h.RUnlock()
+	return h.Broadcaster
+}
+
 // Copy creates a copy of the header
 func (h *Header) Copy() core.Header {
 	newH := *h
@@ -145,18 +167,44 @@ func (h *Header) Copy() core.Header {
 	return &newH
 }
 
+// EncodeMsgpack implements msgpack.CustomEncoder
+func (h *Header) EncodeMsgpack(enc *msgpack.Encoder) error {
+	difficultyStr := h.Difficulty.String()
+	tdStr := h.TotalDifficulty.String()
+	return enc.Encode(h.Number, h.Nonce, h.Timestamp, h.CreatorPubKey,
+		h.ParentHash, h.StateRoot, h.TransactionsRoot, h.Extra, difficultyStr, tdStr)
+}
+
+// DecodeMsgpack implements msgpack.CustomDecoder
+func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
+	var difficultyStr, tdStr string
+	if err := dec.Decode(&h.Number, &h.Nonce, &h.Timestamp, &h.CreatorPubKey,
+		&h.ParentHash, &h.StateRoot, &h.TransactionsRoot, &h.Extra, &difficultyStr, &tdStr); err != nil {
+		return err
+	}
+	h.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
+	h.TotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
+	return nil
+}
+
 // GetChainReader gets the chain reader
 func (b *Block) GetChainReader() core.ChainReader {
+	b.RLock()
+	defer b.RUnlock()
 	return b.ChainReader
 }
 
 // SetBroadcaster sets the originator
 func (b *Block) SetBroadcaster(o types.Engine) {
+	b.Lock()
+	defer b.Unlock()
 	b.Broadcaster = o
 }
 
 // GetBroadcaster gets the originator
 func (b *Block) GetBroadcaster() types.Engine {
+	b.RLock()
+	defer b.RUnlock()
 	return b.Broadcaster
 }
 
@@ -173,20 +221,12 @@ func (b *Block) HashToHex() string {
 
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (b *Block) EncodeMsgpack(enc *msgpack.Encoder) error {
-	difficultyStr := b.Header.Difficulty.String()
-	tdStr := b.Header.TotalDifficulty.String()
-	return enc.Encode(b.Header, b.Transactions, b.Hash, b.Sig, difficultyStr, tdStr)
+	return enc.Encode(b.Transactions, b.Hash, b.Sig, b.Header)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
-	var difficultyStr, tdStr string
-	if err := dec.Decode(&b.Header, &b.Transactions, &b.Hash, &b.Sig, &difficultyStr, &tdStr); err != nil {
-		return err
-	}
-	b.Header.Difficulty, _ = new(big.Int).SetString(difficultyStr, 10)
-	b.Header.TotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
-	return nil
+	return dec.Decode(&b.Transactions, &b.Hash, &b.Sig, &b.Header)
 }
 
 // HashNoNonce returns the hash which is used as input for the proof-of-work search.
@@ -197,7 +237,8 @@ func (h *Header) HashNoNonce() util.Hash {
 		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.Difficulty,
+		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
 		h.Timestamp,
 		h.Extra,
 	})
@@ -212,7 +253,8 @@ func (h *Header) Bytes() []byte {
 		h.CreatorPubKey,
 		h.TransactionsRoot,
 		h.StateRoot,
-		h.Difficulty,
+		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
 		h.Timestamp,
 		h.Nonce,
 		h.Extra,
@@ -270,6 +312,8 @@ func (b *Block) GetSignature() []byte {
 
 // SetChainReader sets the chain reader
 func (b *Block) SetChainReader(cr core.ChainReader) {
+	b.Lock()
+	defer b.Unlock()
 	b.ChainReader = cr
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/wire"
+	"github.com/ellcrys/elld/types/core/objects"
 )
 
 // TxPool defines a structure and functionalities of a transaction pool
@@ -51,10 +51,10 @@ func (tp *TxPool) Put(tx core.Transaction) error {
 	}
 
 	switch tx.GetType() {
-	case wire.TxTypeBalance:
+	case objects.TxTypeBalance:
 		return tp.addTx(tx)
 	default:
-		return wire.ErrTxTypeUnknown
+		return objects.ErrTxTypeUnknown
 	}
 }
 

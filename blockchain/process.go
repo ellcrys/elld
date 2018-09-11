@@ -6,10 +6,10 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/wire"
 	"github.com/shopspring/decimal"
 )
 
@@ -100,14 +100,14 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 		}
 		txOps = append(txOps, &common.OpCreateAccount{
 			OpBase: &common.OpBase{Addr: tx.GetTo()},
-			Account: &wire.Account{
-				Type:    wire.AccountTypeBalance,
+			Account: &objects.Account{
+				Type:    objects.AccountTypeBalance,
 				Address: tx.GetTo(),
 				Balance: "0",
 			},
 		})
-		recipientAcct = &wire.Account{
-			Type:    wire.AccountTypeBalance,
+		recipientAcct = &objects.Account{
+			Type:    objects.AccountTypeBalance,
 			Address: tx.GetTo(),
 			Balance: "0",
 		}
@@ -182,8 +182,8 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 		if err != core.ErrAccountNotFound {
 			return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
 		}
-		recipientAcct = &wire.Account{
-			Type:    wire.AccountTypeBalance,
+		recipientAcct = &objects.Account{
+			Type:    objects.AccountTypeBalance,
 			Address: tx.GetTo(),
 			Balance: "0",
 		}
@@ -257,9 +257,9 @@ func (b *Blockchain) processTransactions(txs []core.Transaction, chain core.Chai
 		var newOps []common.Transition
 
 		switch tx.GetType() {
-		case wire.TxTypeBalance:
+		case objects.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
-		case wire.TxTypeAlloc:
+		case objects.TxTypeAlloc:
 			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
 
@@ -404,7 +404,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// We will also index the transactions so
 	// they can are queryable but only if the
 	// chain is not a side chain
-	if !chain.HasParent() {
+	if !chain.HasParent(txOp) {
 		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
 			rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
@@ -461,7 +461,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	b.mLock.Lock()
 	defer b.mLock.Unlock()
 
-	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().HexStr())
+	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().SS())
 
 	// If ever we forgot to set the transaction pool,
 	// the client should be forced to exit.
@@ -471,7 +471,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 
 	// validate the block
 	if err := b.validateBlock(block); err != nil {
-		b.log.Error("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
+		b.log.Debug("Block failed validation", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
 
@@ -507,6 +507,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// process any remaining orphan blocks
 	b.processOrphanBlocks(block.GetHash().HexStr())
 

@@ -7,16 +7,15 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/blockchain/store"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -24,12 +23,12 @@ import (
 var log logger.Logger
 var cfg *config.EngineConfig
 var err error
-var testStore store.ChainStorer
+var testStore core.ChainStorer
 var db elldb.DB
 var bc *blockchain.Blockchain
 var chainID = util.String("chain1")
 var genesisChain *blockchain.Chain
-var genesisBlock *wire.Block
+var genesisBlock *objects.Block
 var txPool *txpool.TxPool
 var sender, receiver *crypto.Key
 var event *emitter.Emitter

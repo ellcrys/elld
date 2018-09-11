@@ -12,9 +12,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 )
 
 // Miner provides mining, block header modification and
@@ -76,7 +76,7 @@ func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter
 	// proposed block
 	go func() {
 		for event := range m.event.On(core.EventNewBlock) {
-			m.handleNewBlockEvt(event.Args[0].(*wire.Block))
+			m.handleNewBlockEvt(event.Args[0].(*objects.Block))
 		}
 	}()
 
@@ -125,7 +125,7 @@ func (m *Miner) Stop() {
 // will cause the current proposed block to be dumped
 // if the new block was appended to the main chain.
 // Additionally, it emits a core.EventAborted event.
-func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
+func (m *Miner) handleNewBlockEvt(newBlock *objects.Block) {
 	if m.isMining && (m.proposedBlock == nil ||
 		(m.blockMaker.IsMainChain(newBlock.ChainReader) && !m.proposedBlock.GetHash().Equal(newBlock.GetHash()))) {
 		m.log.Debug("Aborting on-going miner session. Proposing a new block.", "Number", newBlock.Header.Number)
@@ -136,7 +136,7 @@ func (m *Miner) handleNewBlockEvt(newBlock *wire.Block) {
 
 // ValidateHeader validates a given header according to
 // the Ethash specification.
-func (m *Miner) ValidateHeader(chain core.ChainReader, header, parent *wire.Header, seal bool) {
+func (m *Miner) ValidateHeader(chain core.ChainReader, header, parent *objects.Header, seal bool) {
 	m.blakimoto.VerifyHeader(header, parent, seal)
 }
 
@@ -162,7 +162,7 @@ func (m *Miner) Mine() {
 		// Get a proposed block compatible with the
 		// main chain and the current block.
 		m.proposedBlock, err = m.getProposedBlock([]core.Transaction{
-			wire.NewTx(wire.TxTypeAlloc, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
+			objects.NewTx(objects.TxTypeAlloc, 123, util.String(m.minerKey.Addr()), m.minerKey, "0.1", "0.1", time.Now().Unix()),
 		})
 		if err != nil {
 			m.log.Error("Proposed block is not valid", "Error", err)
@@ -197,7 +197,7 @@ func (m *Miner) Mine() {
 
 		// Recompute hash and signature
 		block.SetHash(block.ComputeHash())
-		blockSig, err := wire.BlockSign(block, m.minerKey.PrivKey().Base58())
+		blockSig, err := objects.BlockSign(block, m.minerKey.PrivKey().Base58())
 		block.SetSignature(blockSig)
 
 		// Attempt to add to the blockchain to the main chain.

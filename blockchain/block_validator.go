@@ -10,9 +10,9 @@ import (
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 )
 
 func fieldError(field, err string) error {
@@ -176,7 +176,7 @@ func (v *BlockValidator) check() (errs []error) {
 	}
 
 	// Transaction type must be known and acceptable
-	if v.block.GetHeader().(*wire.Header) == nil {
+	if v.block.GetHeader().(*objects.Header) == nil {
 		errs = append(errs, fieldError("header", "header is required"))
 	} else {
 		for _, err := range v.validateHeader(v.block.GetHeader()) {

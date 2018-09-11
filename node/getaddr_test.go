@@ -38,9 +38,9 @@ func GetAddrTest() bool {
 		})
 
 		AfterEach(func() {
-			lp.Host().Close()
-			rp.Host().Close()
-			rp2.Host().Close()
+			closeNode(lp)
+			closeNode(rp)
+			closeNode(rp2)
 		})
 
 		Describe(".sendGetAddr", func() {
@@ -56,7 +56,7 @@ func GetAddrTest() bool {
 			})
 
 			It("when rp2 timestamp is 3 hours ago, it should not be returned", func() {
-				rp2.Timestamp = time.Now().Add(-3 * time.Hour)
+				rp2.SetTimestamp(time.Now().Add(-3 * time.Hour))
 				err := rp.PM().AddOrUpdatePeer(rp2)
 				Expect(err).To(BeNil())
 				addrs, err := lpGossip.sendGetAddr(rp)

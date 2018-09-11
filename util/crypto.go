@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -36,6 +37,16 @@ func (h Hash) Equal(o Hash) bool { return bytes.Equal(h.Bytes(), o.Bytes()) }
 // HexStr returns the hex string version of the hash beginning with 0x
 func (h Hash) HexStr() string {
 	return ToHex(h[:])
+}
+
+// SS returns a short version of HexStr with the middle
+// characters truncated when length is at least 32
+func (h Hash) SS() string {
+	s := h.HexStr()
+	if len(s) >= 32 {
+		return fmt.Sprintf("%s...%s", string(s)[0:10], string(s)[len(s)-10:])
+	}
+	return s
 }
 
 // IsEmpty checks whether the hash is empty (having zero values)

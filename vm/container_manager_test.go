@@ -3,8 +3,8 @@ package vm
 import (
 	"fmt"
 
+	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire"
 	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -68,9 +68,9 @@ var _ = Describe("ContainerManager", func() {
 			var output = make(chan []byte)
 			var errCh = make(chan error)
 
-			tx := &wire.Transaction{
+			tx := &objects.Transaction{
 				To: "blockcode_0",
-				InvokeArgs: &wire.InvokeArgs{
+				InvokeArgs: &objects.InvokeArgs{
 					Func: "some_func",
 					Params: map[string][]byte{
 						"amount": []byte("100"),

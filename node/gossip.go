@@ -11,8 +11,9 @@ import (
 
 	"github.com/ellcrys/elld/constants"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/wire/messages"
+	"github.com/ellcrys/elld/wire"
 	ic "github.com/libp2p/go-libp2p-crypto"
 	net "github.com/libp2p/go-libp2p-net"
 )
@@ -20,10 +21,9 @@ import (
 // Gossip represents the peer protocol
 type Gossip struct {
 	mtx                         *sync.Mutex   // main mutex
-	version                     string        // the protocol version
 	engine                      *Node         // the local peer
 	log                         logger.Logger // the logger
-	lastRelayPeersSelectionTime time.Time     // the time the last peers responsible for relaying "addr" messages where selected
+	lastRelayPeersSelectionTime time.Time     // the time the last peers responsible for relaying "addr" wire where selected
 	addrRelayPeers              [2]*Node      // peers to relay addr msgs to
 }
 
@@ -34,6 +34,11 @@ func NewGossip(p *Node, log logger.Logger) *Gossip {
 		log:    log,
 		mtx:    &sync.Mutex{},
 	}
+}
+
+// GetBlockchain returns the blockchain manager
+func (g *Gossip) GetBlockchain() core.Blockchain {
+	return g.engine.bchain
 }
 
 func (g *Gossip) newStream(ctx context.Context, remotePeer types.Engine, msgVersion string) (net.Stream, error) {
@@ -90,7 +95,7 @@ func (g *Gossip) verify(msg interface{}, sig []byte, pKey ic.PubKey) error {
 // reject sends a reject message.
 // The caller is expected to close the stream after the call.
 func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extraData []byte) error {
-	rMsg := messages.Reject{
+	rMsg := wire.Reject{
 		Message:   msg,
 		Code:      int32(code),
 		Reason:    reason,
@@ -104,9 +109,9 @@ func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extra
 
 // isRejected checks if the message is a `reject`.
 // Returns the message`
-func (g *Gossip) isRejected(s net.Stream) (*messages.Reject, error) {
+func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
 
-	var msg messages.Reject
+	var msg wire.Reject
 	if err := readStream(s, &msg); err != nil {
 		return nil, fmt.Errorf("failed to read from stream. %s", err)
 	}

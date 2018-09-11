@@ -28,11 +28,19 @@ var (
 	// incoming transactions
 	TxVersion = ProtocolVersion + "/tx/1"
 
-	// BlockVersion is the message version for
+	// BlockBodyVersion is the message version for
 	// handling incoming block
-	BlockVersion = ProtocolVersion + "/block/1"
+	BlockBodyVersion = ProtocolVersion + "/blockbody/1"
+
+	// GetBlockHashesVersion is the message version for
+	// handling request for block hashes
+	GetBlockHashesVersion = ProtocolVersion + "/getblockhashes/1"
 
 	// RequestBlockVersion is the message version for handling
 	// block requests
 	RequestBlockVersion = ProtocolVersion + "/requestblock/1"
+
+	// GetBlockBodiesVersion is the message version for
+	// handling request to get block bodies
+	GetBlockBodiesVersion = ProtocolVersion + "/getblockbodies/1"
 )
