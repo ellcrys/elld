@@ -61,7 +61,7 @@ var _ = Describe("Blockchain", func() {
 	// Create the database and store instances
 	BeforeEach(func() {
 		db = elldb.NewDB(cfg.ConfigDir())
-		err = db.Open("")
+		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 	})
 
