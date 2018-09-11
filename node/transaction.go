@@ -47,7 +47,6 @@ func (g *Gossip) OnTx(s net.Stream) {
 		g.log.Error("failed to read tx message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
-
 	if g.txReceived != nil {
 		g.txReceived()
 	}
@@ -56,10 +55,9 @@ func (g *Gossip) OnTx(s net.Stream) {
 	// to a block and not relayed like regular transactions.
 	if msg.Type == objects.TxTypeAlloc {
 		s.Reset()
-		err := fmt.Errorf("cannot add <AllocCoin> transaction to pool")
-		g.log.Error(err.Error())
+		g.log.Debug("Refusing to process allocation transaction")
 		if g.txProcessed != nil {
-			g.txProcessed(err)
+			g.txProcessed(fmt.Errorf("unexpected allocation transaction received"))
 		}
 		return
 	}

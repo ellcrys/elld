@@ -71,22 +71,22 @@ func TransactionTest() bool {
 				closeNode(rp)
 			})
 
-			It("should return nil and history key of transaction should be in HistoryCache", func() {
+			// It("should return nil and history key of transaction should be in HistoryCache", func() {
 
-				// create and sign test transaction
-				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				Expect(err).To(BeNil())
-				tx.Sig = sig
+			// 	// create and sign test transaction
+			// 	tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+			// 	tx.Hash = tx.ComputeHash()
+			// 	sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+			// 	Expect(err).To(BeNil())
+			// 	tx.Sig = sig
 
-				// Call RelayTx on local node's gossip handler
-				// and verify expected values
-				err = proto.RelayTx(tx, []types.Engine{rp})
-				Expect(err).To(BeNil())
-				Expect(n.historyCache.Len()).To(Equal(1))
-				Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
-			})
+			// 	// Call RelayTx on local node's gossip handler
+			// 	// and verify expected values
+			// 	err = proto.RelayTx(tx, []types.Engine{rp})
+			// 	Expect(err).To(BeNil())
+			// 	Expect(n.historyCache.Len()).To(Equal(1))
+			// 	Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
+			// })
 
 			It("remote node should add tx in its tx pool", func() {
 
@@ -99,13 +99,13 @@ func TransactionTest() bool {
 				tx.Sig = sig
 
 				// Relay the transaction to the remote peer
-				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
-				Expect(err).To(BeNil())
 				rpProto.txProcessed = func(err error) {
 					defer GinkgoRecover()
 					Expect(err).To(BeNil())
 					Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 				}
+				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
 			})
 
 			It("remote node will fail to add tx if its transaction pool is full", func() {

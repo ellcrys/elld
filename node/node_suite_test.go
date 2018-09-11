@@ -56,7 +56,8 @@ var db, db2 elldb.DB
 var lpBc, rpBc core.Blockchain
 var chainID = util.String("chain1")
 var txPool, txPool2 *txpool.TxPool
-var sender, receiver *crypto.Key
+var sender = crypto.NewKeyFromIntSeed(1)
+var receiver = crypto.NewKeyFromIntSeed(2)
 
 var _ = Describe("Engine", func() {
 
@@ -99,22 +100,26 @@ var _ = Describe("Engine", func() {
 	BeforeEach(func() {
 		err = lpBc.Up()
 		Expect(err).To(BeNil())
+		// Expect(lpBc.CreateAccount(1, lpBc.GetBestChain(), &objects.Account{
+		// 	Type:    objects.AccountTypeBalance,
+		// 	Address: util.String(sender.Addr()),
+		// 	Balance: "1000",
+		// })).To(BeNil())
 
 		err = rpBc.Up()
 		Expect(err).To(BeNil())
-	})
-
-	// Create test account keys
-	BeforeEach(func() {
-		sender = crypto.NewKeyFromIntSeed(1)
-		receiver = crypto.NewKeyFromIntSeed(2)
+		// Expect(rpBc.CreateAccount(1, rpBc.GetBestChain(), &objects.Account{
+		// 	Type:    objects.AccountTypeBalance,
+		// 	Address: util.String(sender.Addr()),
+		// 	Balance: "1000",
+		// })).To(BeNil())
 	})
 
 	var tests = []func() bool{
 		HandshakeTest,
 		TransactionTest,
 		AddrTest,
-		GetAddrTest,
+		// GetAddrTest,
 		// SelfAdvTest,
 		// PingTest,
 		// PeerManagerTest,
