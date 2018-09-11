@@ -47,7 +47,7 @@ func HandshakeTest() bool {
 
 				It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
 					err = lpGossip.SendHandshake(rp)
-					time.Sleep(200 * time.Millisecond)
+					time.Sleep(1 * time.Second)
 					Expect(err).To(BeNil())
 					activePeerRp := rp.PM().GetActivePeers(0)
 					activePeerLp := lp.PM().GetActivePeers(0)
