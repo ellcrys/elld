@@ -53,6 +53,21 @@ var (
 	DefaultTrainModelFetchURI = "https://storage.googleapis.com/krogan/sample_train_file.model"
 )
 
+// argMax returns the maximum number  and its index in a slice
+func argMax(result []float32) (int, float32) {
+
+	index := 0
+	max := float32(0)
+
+	for idx, arg := range result {
+		if arg > max {
+			max = arg
+			index = idx
+		}
+	}
+	return index, max
+}
+
 // subImagePosition provides interface to
 // get the sliced sub section of the image
 type subImagePosition interface {
@@ -407,6 +422,8 @@ func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 	predictions := tensors[0].Value().([][]float32)
 	resultData := predictions[0]
 
+	position, _ := argMax(resultData)
+
 	// Merge one hot encoder to construct
 	// a key that we can use to extract the result object
 	// from the manifest.
@@ -431,7 +448,8 @@ func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 	}
 
 	var cMap = manifest["currencies"].(map[string]interface{})
-	if result, ok := cMap[resultKey]; ok {
+	if result, ok := cMap[string(position)]; ok {
+		// if result, ok := cMap[resultKey]; ok {
 		return &BankNote{
 			currencyCode: result.(map[string]interface{})["currencyCode"].(string),
 			denomination: result.(map[string]interface{})["denomination"].(string),
