@@ -41,10 +41,10 @@ var _ = Describe("Database", func() {
 
 	Describe(".Open", func() {
 		It("should return error if unable to open database", func() {
-			db = NewDB("/*^&^")
+			db = NewDB(testCfgDir)
 			err = db.Open("")
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("failed to create database. mkdir /*^&^: permission denied"))
+			Expect(err.Error()).To(Equal("failed to create database. resource temporarily unavailable"))
 		})
 	})
 
@@ -90,6 +90,23 @@ var _ = Describe("Database", func() {
 
 			objs = db.GetByPrefix(MakeKey([]byte("an")))
 			Expect(objs).To(HaveLen(1))
+		})
+	})
+
+	Describe(".Truncate", func() {
+		It("should successfully get objects", func() {
+			objs := []*KVObject{
+				NewKVObject([]byte("object_1"), []byte("value1")),
+				NewKVObject([]byte("object_2"), []byte("value2")),
+			}
+			err = db.Put(objs)
+			Expect(err).To(BeNil())
+
+			err = db.Truncate()
+			Expect(err).To(BeNil())
+
+			results := db.GetByPrefix(nil)
+			Expect(results).To(HaveLen(0))
 		})
 	})
 

@@ -27,7 +27,7 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 	rn.isHardcodedSeed = true
 
 	if err := n.connectToNode(rn); err != nil {
-		return jsonrpc.Error(types.ErrCodeNodeConnect, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeNodeConnectFailure, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(nil)

@@ -1,134 +1,147 @@
-package node
+package node_test
 
 import (
 	"time"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-
-	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func TransactionTest() bool {
-	return Describe("Transaction", func() {
-		Describe(".RelayTx", func() {
+var _ = Describe("Transaction", func() {
 
-			// var bchain types.Blockchain
-			var err error
-			var n, rp *Node
-			var proto, rpProto *Gossip
-			var sender, address *crypto.Key
+	var lp, rp *node.Node
+	var sender, _ = crypto.NewKey(nil)
+	var receiver, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
-			// create test addresses
-			BeforeEach(func() {
-				address, _ = crypto.NewKey(nil)
-				sender, _ = crypto.NewKey(nil)
+	BeforeEach(func() {
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
+		Expect(lp.GetBlockchain().Up()).To(BeNil())
+
+		rp = makeTestNode(rpPort)
+		Expect(rp.GetBlockchain().Up()).To(BeNil())
+		rp.SetProtocolHandler(config.TxVersion, rp.Gossip().OnTx)
+
+		// On the remote node blockchain,
+		// Create the sender's account
+		// with some initial balance
+		Expect(rp.GetBlockchain().CreateAccount(1, rp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
+	})
+
+	AfterEach(func() {
+		closeNode(lp)
+		closeNode(rp)
+	})
+
+	Describe(".RelayTx", func() {
+		tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+		tx.From = util.String(sender.Addr())
+		tx.Hash = tx.ComputeHash()
+		sig, _ := objects.TxSign(tx, sender.PrivKey().Base58())
+		tx.Sig = sig
+
+		Context("when a transaction is successfully relayed", func() {
+
+			var evt emitter.Event
+			BeforeEach(func(done Done) {
+				err := lp.Gossip().RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
+				go func() {
+					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
+				}()
 			})
 
-			// Create test local node
-			// Set the nodes blockchain manager
-			// Create and set the nodes gossip handler
-			BeforeEach(func() {
-				n, err = NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
-				Expect(err).To(BeNil())
-				n.SetBlockchain(lpBc)
-				proto = NewGossip(n, log)
-				n.SetGossipProtocol(proto)
+			It("expects the history cache to have an item for the transaction", func() {
+				Expect(evt.Args).To(BeEmpty())
+				Expect(lp.HistoryCache().Len()).To(Equal(1))
+				Expect(lp.HistoryCache().Has(node.MakeTxHistoryKey(tx, rp))).To(BeTrue())
 			})
 
-			// Create test remote node
-			// Set the nodes blockchain manager
-			// Create and set the nodes gossip handler
-			// Set protocol handler
-			BeforeEach(func() {
-				rp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(1), log)
-				Expect(err).To(BeNil())
-				rp.SetBlockchain(rpBc)
-				rpProto = NewGossip(rp, log)
-				rp.SetGossipProtocol(rpProto)
-				rp.SetProtocolHandler(config.TxVersion, rpProto.OnTx)
-			})
-
-			// On the remote node blockchain,
-			// Create the sender's account
-			// with some initial balance
-			BeforeEach(func() {
-				err = rp.bchain.CreateAccount(1, rp.bchain.GetBestChain(), &objects.Account{
-					Type:    objects.AccountTypeBalance,
-					Address: util.String(sender.Addr()),
-					Balance: "100",
-				})
-			})
-
-			// Shutdown the test nodes
-			AfterEach(func() {
-				closeNode(n)
-				closeNode(rp)
-			})
-
-			It("should return nil and history key of transaction should be in HistoryCache", func() {
-
-				// create and sign test transaction
-				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				Expect(err).To(BeNil())
-				tx.Sig = sig
-
-				// Call RelayTx on local node's gossip handler
-				// and verify expected values
-				err = proto.RelayTx(tx, []types.Engine{rp})
-				Expect(err).To(BeNil())
-				Expect(n.historyCache.Len()).To(Equal(1))
-				Expect(n.historyCache.Has(makeTxHistoryKey(tx, rp))).To(BeTrue())
-			})
-
-			It("remote node should add tx in its tx pool", func() {
-
-				// Create and sign test transaction
-				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				tx.From = util.String(sender.Addr())
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				Expect(err).To(BeNil())
-				tx.Sig = sig
-
-				// Relay the transaction to the remote peer
-				err = n.gProtoc.RelayTx(tx, []types.Engine{rp})
-				Expect(err).To(BeNil())
-				time.Sleep(5 * time.Second)
+			Specify("remote peer's must have the transaction in its pool", func() {
 				Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 			})
+		})
 
-			It("remote node will fail to add tx if its transaction pool is full", func() {
+		Context("when transaction failed remote peer's transaction validation", func() {
 
-				// Create the remote peer and
-				// set pool capacity to zero
-				cfg.TxPool.Capacity = 0
-				rp, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(2), log)
+			var evt emitter.Event
+			BeforeEach(func(done Done) {
+				var tx2 = *tx
+				tx2.Sig = []byte("invalid signature")
+				err := lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
 				Expect(err).To(BeNil())
-				rp.SetGossipProtocol(proto)
+				go func() {
+					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
+				}()
+			})
 
-				// Create the test transaction
-				tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(address.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				tx.From = util.String(sender.Addr())
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+			It("should return error about the transaction's invalid signature", func() {
+				Expect(evt.Args).To(HaveLen(1))
+				Expect(evt.Args[0].(error).Error()).To(Equal("index:0, field:sig, error:signature is not valid"))
+			})
+		})
+
+		Context("when transaction type is TypeTxAlloc", func() {
+
+			var evt emitter.Event
+			BeforeEach(func(done Done) {
+				var tx2 = *tx
+				tx2.Type = objects.TxTypeAlloc
+
+				go func() {
+					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
+				}()
+
+				err := lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
 				Expect(err).To(BeNil())
-				tx.Sig = sig
 
-				// Relay transaction to remote peer
-				err = proto.RelayTx(tx, []types.Engine{rp})
+			})
+
+			It("should return error about unexpected allocation transaction", func() {
+				Expect(evt.Args).To(HaveLen(1))
+				Expect(evt.Args[0].(error).Error()).To(Equal("unexpected allocation transaction received"))
+			})
+		})
+
+		Context("when the remote peer's transaction pool is full", func() {
+
+			var eventArgs emitter.Event
+			BeforeEach(func(done Done) {
+				rp.SetTransactionPool(txpool.New(0))
+				err := lp.Gossip().RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())
 
-				// Verify pool size of remote peer
-				time.Sleep(5 * time.Second)
+				go func() {
+					eventArgs = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
+				}()
+			})
+
+			It("should not add the transaction to the remote peer's transaction pool", func() {
+				Expect(eventArgs.Args).To(HaveLen(1))
+				Expect(eventArgs.Args[0].(error).Error()).To(Equal("container is full"))
 				Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
 			})
 		})
 	})
-}
+})

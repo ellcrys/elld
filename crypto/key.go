@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"math/big"
 	mrand "math/rand"
 
 	"github.com/gogo/protobuf/proto"
@@ -48,16 +47,10 @@ type PrivKey struct {
 // NewKey creates a new key
 func NewKey(seed *int64) (*Key, error) {
 
-	var r *mrand.Rand
+	var r = rand.Reader
 
 	if seed != nil {
 		r = mrand.New(mrand.NewSource(*seed))
-	} else {
-		bigN, err := rand.Int(rand.Reader, big.NewInt(32))
-		if err != nil {
-			return nil, err
-		}
-		r = mrand.New(mrand.NewSource(bigN.Int64()))
 	}
 
 	priv, _, err := crypto.GenerateEd25519Key(r)

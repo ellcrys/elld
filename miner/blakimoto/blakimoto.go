@@ -29,7 +29,9 @@ var (
 type Mode uint
 
 const (
+	// ModeNormal refers to normal mode
 	ModeNormal Mode = iota
+	// ModeTest refers to test mode
 	ModeTest
 )
 

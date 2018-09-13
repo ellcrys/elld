@@ -18,13 +18,36 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 )
 
+const (
+	EventReceivedBlockHashes  = "event.receivedBlockHashes"
+	EventRequestedBlockHashes = "event.requestedBlockHashes"
+	EventTransactionProcessed = "event.transactionProcessed"
+	EventBlockProcessed       = "event.blockProcessed"
+	EventBlockBodiesProcessed = "event.blockBodiesProcessed"
+	EventAddrProcessed        = "event.addrProcessed"
+	EventAddressesRelayed     = "event.addressesRelayed"
+	EventReceivedAddr         = "event.receivedAddr"
+)
+
 // Gossip represents the peer protocol
 type Gossip struct {
-	mtx                         *sync.Mutex   // main mutex
-	engine                      *Node         // the local peer
-	log                         logger.Logger // the logger
-	lastRelayPeersSelectionTime time.Time     // the time the last peers responsible for relaying "addr" wire where selected
-	addrRelayPeers              [2]*Node      // peers to relay addr msgs to
+
+	// mtx is the general mutex
+	mtx *sync.Mutex
+
+	// engine represents the local node
+	engine *Node
+
+	// log is used for logging events
+	log logger.Logger
+
+	// relayPeerSelectedAt is the time the
+	// last relay peers where selected
+	relayPeerSelectedAt time.Time
+
+	// RelayPeers contains the selected relay
+	// peers to broadcast addresses to.
+	RelayPeers []*Node
 }
 
 // NewGossip creates a new instance of the Gossip protocol
@@ -41,15 +64,19 @@ func (g *Gossip) GetBlockchain() core.Blockchain {
 	return g.engine.bchain
 }
 
-func (g *Gossip) newStream(ctx context.Context, remotePeer types.Engine, msgVersion string) (net.Stream, error) {
+// NewStream creates a stream for a given protocol
+// ID and between the local peer and the given remote peer.
+func (g *Gossip) NewStream(ctx context.Context, remotePeer types.Engine, msgVersion string) (net.Stream, error) {
 	return g.engine.addToPeerStore(remotePeer).newStream(ctx, remotePeer.ID(), msgVersion)
 }
 
-func readStream(s net.Stream, dest interface{}) error {
+// ReadStream reads the content of a steam into dest
+func ReadStream(s net.Stream, dest interface{}) error {
 	return msgpack.NewDecoder(bufio.NewReader(s)).Decode(dest)
 }
 
-func writeStream(s net.Stream, msg interface{}) error {
+// WriteStream writes msg to the given stream
+func WriteStream(s net.Stream, msg interface{}) error {
 	w := bufio.NewWriter(s)
 	if err := msgpack.NewEncoder(w).Encode(msg); err != nil {
 		return err
@@ -101,7 +128,7 @@ func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extra
 		Reason:    reason,
 		ExtraData: extraData,
 	}
-	if err := writeStream(s, rMsg); err != nil {
+	if err := WriteStream(s, rMsg); err != nil {
 		return fmt.Errorf("reject message failed. failed to write to stream")
 	}
 	return nil
@@ -112,7 +139,7 @@ func (g *Gossip) reject(s net.Stream, msg string, code int, reason string, extra
 func (g *Gossip) isRejected(s net.Stream) (*wire.Reject, error) {
 
 	var msg wire.Reject
-	if err := readStream(s, &msg); err != nil {
+	if err := ReadStream(s, &msg); err != nil {
 		return nil, fmt.Errorf("failed to read from stream. %s", err)
 	}
 

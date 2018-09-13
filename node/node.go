@@ -178,6 +178,14 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	return node
 }
 
+// NewAlmostEmptyNode returns a node with
+// almost all its field uninitialized.
+func NewAlmostEmptyNode() *Node {
+	return &Node{
+		mtx: &sync.RWMutex{},
+	}
+}
+
 // OpenDB opens the database.
 // In dev mode, create a namespace and open database file prefixed with the namespace.
 func (n *Node) OpenDB() error {
@@ -205,6 +213,16 @@ func (n *Node) setSyncing(syncing bool) {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
 	n.syncing = syncing
+}
+
+// SetCfg sets the node's config
+func (n *Node) SetCfg(cfg *config.EngineConfig) {
+	*n.cfg = *cfg
+}
+
+// GetCfg returns the config
+func (n *Node) GetCfg() *config.EngineConfig {
+	return n.cfg
 }
 
 // updateSyncInfo sets a given remote best
@@ -261,6 +279,10 @@ func (n *Node) getSyncStateInfo() *SyncStateInfo {
 		return nil
 	}
 
+	if n.bestRemoteBlockInfo == nil {
+		return nil
+	}
+
 	var syncState = &SyncStateInfo{}
 
 	// Get the current local best chain
@@ -286,8 +308,8 @@ func (n *Node) isSyncing() bool {
 	return n.syncing
 }
 
-// GossipProto returns the set protocol
-func (n *Node) GossipProto() *Gossip {
+// Gossip returns the set protocol
+func (n *Node) Gossip() *Gossip {
 	return n.gProtoc
 }
 
@@ -322,11 +344,21 @@ func (n *Node) IsHardcodedSeed() bool {
 	return n.isHardcodedSeed
 }
 
+// MakeHardcoded sets the node has an hardcoded seed node
+func (n *Node) MakeHardcoded() {
+	n.isHardcodedSeed = true
+}
+
 // SetTimestamp sets the timestamp value
 func (n *Node) SetTimestamp(newTime time.Time) {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
 	n.Timestamp = newTime
+}
+
+// GetEventEmitter gets the event emitter
+func (n *Node) GetEventEmitter() *emitter.Emitter {
+	return n.event
 }
 
 // GetTimestamp gets the nodes timestamp
@@ -370,20 +402,19 @@ func (n *Node) SetLocalNode(node *Node) {
 // canAcceptPeer determines whether we can continue to interact with
 // a remote node. This is a good place to check if a remote node
 // has been blacklisted etc
-func (n *Node) canAcceptPeer(remotePeer *Node) (bool, string) {
-
+func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
 	// In non-production mode, we cannot interact with a remote peer with a public IP
 	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
-		return false, "in development mode, we cannot interact with peers with public IP"
+		return false, fmt.Errorf("in development mode, we cannot interact with peers with public IP")
 	}
 
 	// If the local peer does not know the remotePeer, it cannot interact with it.
 	// This only applies in production mode.
 	if n.ProdMode() && !remotePeer.IsKnown() {
-		return false, "remote peer is unknown"
+		return false, fmt.Errorf("remote peer is unknown")
 	}
 
-	return true, ""
+	return true, nil
 }
 
 // addToPeerStore adds a remote node to the host's peerstore
@@ -397,6 +428,16 @@ func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string)
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
 }
 
+// HistoryCache gets the history cache
+func (n *Node) HistoryCache() *histcache.HistoryCache {
+	return n.historyCache
+}
+
+// SetTransactionPool sets the transaction pool
+func (n *Node) SetTransactionPool(txp *txpool.TxPool) {
+	n.transactionsPool = txp
+}
+
 // SetGossipProtocol sets the gossip protocol implementation
 func (n *Node) SetGossipProtocol(protoc *Gossip) {
 	n.gProtoc = protoc
@@ -405,6 +446,11 @@ func (n *Node) SetGossipProtocol(protoc *Gossip) {
 // GetHost returns the node's host
 func (n *Node) GetHost() host.Host {
 	return n.host
+}
+
+// GetBlockHashQueue returns the block hash queue
+func (n *Node) GetBlockHashQueue() *lane.Deque {
+	return n.blockHashQueue
 }
 
 // Peerstore returns the Peerstore of the node
@@ -608,7 +654,7 @@ func (n *Node) Start() {
 
 	// start a block body requester workers
 	for i := 0; i < params.NumBlockBodiesRequesters; i++ {
-		go n.processBlockHashes()
+		go n.ProcessBlockHashes()
 	}
 }
 
@@ -667,9 +713,9 @@ func (n *Node) handleEvents() {
 	go n.handleAbortedMinerBlockEvent()
 }
 
-// processBlockHashes collects hashes and request for their
+// ProcessBlockHashes collects hashes and request for their
 // block bodies from the initial broadcaster if the headers.
-func (n *Node) processBlockHashes() {
+func (n *Node) ProcessBlockHashes() {
 	for !n.stopped {
 
 		if n.blockHashQueue.Empty() {
@@ -704,7 +750,9 @@ func (n *Node) processBlockHashes() {
 		n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
 
 		// politely sleep for a while
-		time.Sleep(5 * time.Second)
+		if !n.TestMode() {
+			time.Sleep(5 * time.Second)
+		}
 	}
 }
 

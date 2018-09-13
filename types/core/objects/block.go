@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
-	"sync"
 
 	"github.com/vmihailenco/msgpack"
 
@@ -176,7 +175,6 @@ func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
 
 // Block represents a block
 type Block struct {
-	sync.RWMutex `json:"-" msgpack:"-"`
 	Header       *Header        `json:"header" msgpack:"header"`
 	Transactions []*Transaction `json:"transactions" msgpack:"transactions"`
 	Hash         util.Hash      `json:"hash" msgpack:"hash"`
@@ -193,22 +191,22 @@ type Block struct {
 
 // GetChainReader gets the chain reader
 func (b *Block) GetChainReader() core.ChainReader {
-	b.RLock()
-	defer b.RUnlock()
+	// b.RLock()
+	// defer b.RUnlock()
 	return b.ChainReader
 }
 
 // SetBroadcaster sets the originator
 func (b *Block) SetBroadcaster(o types.Engine) {
-	b.Lock()
-	defer b.Unlock()
+	// b.Lock()
+	// defer b.Unlock()
 	b.Broadcaster = o
 }
 
 // GetBroadcaster gets the originator
 func (b *Block) GetBroadcaster() types.Engine {
-	b.RLock()
-	defer b.RUnlock()
+	// b.RLock()
+	// defer b.RUnlock()
 	return b.Broadcaster
 }
 
@@ -293,8 +291,8 @@ func (b *Block) GetSignature() []byte {
 
 // SetChainReader sets the chain reader
 func (b *Block) SetChainReader(cr core.ChainReader) {
-	b.Lock()
-	defer b.Unlock()
+	// b.Lock()
+	// defer b.Unlock()
 	b.ChainReader = cr
 }
 

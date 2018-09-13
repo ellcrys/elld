@@ -222,7 +222,7 @@ var _ = Describe("TxPool", func() {
 		})
 	})
 
-	Describe(".handleNewBlockEvent", func() {
+	Describe(".removeTransactionsInBlock", func() {
 
 		var tp *TxPool
 		var ee *emitter.Emitter
@@ -247,12 +247,8 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should remove the transactions included in the block", func() {
-			go tp.handleNewBlockEvent()
-			block := &objects.Block{
-				Transactions: []*objects.Transaction{tx2, tx3},
-			}
-			ee.Emit(core.EventNewBlock, block)
-			time.Sleep(50 * time.Millisecond)
+			block := &objects.Block{Transactions: []*objects.Transaction{tx2, tx3}}
+			tp.removeTransactionsInBlock(block)
 			Expect(tp.Size()).To(Equal(int64(1)))
 			Expect(tp.container.container[0].Tx).To(Equal(tx))
 		})
