@@ -335,8 +335,6 @@ func (a *BanknoteAnalyzer) Validator(imgName string) (float32, error) {
 			// predictions is the array of result from  the predictions on all the features
 			prediction := result[0].Value().([][]float32)
 
-			//fmt.Println(">>>>> : ", sn, " -- ", prediction)
-
 			// resultData is the array of result
 			resultData := prediction[0]
 
