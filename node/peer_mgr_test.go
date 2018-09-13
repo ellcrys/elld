@@ -38,9 +38,11 @@ var _ = Describe("GetAddr", func() {
 	var lp *node.Node
 	var mgr *node.Manager
 	var cfg *config.EngineConfig
+	var lpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNodeWith(30000, 1)
+		lpPort = getPort()
+		lp = makeTestNodeWith(lpPort, 1)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 		mgr = lp.PM()
 		mgr.SetLocalNode(lp)

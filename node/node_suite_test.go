@@ -1,13 +1,13 @@
 package node_test
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/phayes/freeport"
 	"github.com/thoas/go-funk"
 
 	. "github.com/onsi/gomega"
@@ -43,6 +43,14 @@ var makeBlock = func(bchain core.Blockchain, sender, receiver *crypto.Key, times
 		panic(err)
 	}
 	return block
+}
+
+func getPort() int {
+	port, err := freeport.GetFreePort()
+	if err != nil {
+		panic(err)
+	}
+	return port
 }
 
 // makeTestNode creates a node with
@@ -92,7 +100,7 @@ func TestNodeSuite(t *testing.T) {
 }
 
 func closeNode(n *node.Node) {
-	n.Host().ConnManager().TrimOpenConns(context.Background())
+	n.Host().Close()
 	err := os.RemoveAll(n.GetCfg().ConfigDir())
 	Expect(err).To(BeNil())
 }

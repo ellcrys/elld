@@ -18,14 +18,18 @@ var _ = Describe("Handshake", func() {
 
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 		lp.SetProtocolHandler(config.HandshakeVersion, lp.Gossip().OnHandshake)
 		lp.SetProtocolHandler(config.GetBlockHashesVersion, lp.Gossip().OnGetBlockHashes)
 
-		rp = makeTestNode(30001)
+		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.HandshakeVersion, rp.Gossip().OnHandshake)
 		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)

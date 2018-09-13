@@ -18,8 +18,6 @@ import (
 // onAddr processes "addr" message
 func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
-	defer s.Reset()
-
 	remoteAddr := util.FullRemoteAddressFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 	remotePeerIDShort := remotePeer.ShortID()

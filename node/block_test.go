@@ -17,17 +17,20 @@ import (
 
 var _ = Describe("Block", func() {
 
-	var err error
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
 	var receiver, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 		lp.SetProtocolHandler(config.RequestBlockVersion, lp.Gossip().OnRequestBlock)
 
-		rp = makeTestNode(30001)
+		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.BlockBodyVersion, rp.Gossip().OnBlockBody)
 		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
@@ -62,13 +65,14 @@ var _ = Describe("Block", func() {
 
 			BeforeEach(func(done Done) {
 				block = makeBlock(lp.GetBlockchain(), sender, sender, time.Now().Unix())
+
 				go func() {
-					defer GinkgoRecover()
-					err = lp.Gossip().RelayBlock(block, []types.Engine{rp})
-					Expect(err).To(BeNil())
+					evtArgs = <-rp.GetEventEmitter().Once(node.EventBlockProcessed)
+					close(done)
 				}()
-				evtArgs = <-rp.GetEventEmitter().On(node.EventBlockProcessed)
-				close(done)
+
+				err := lp.Gossip().RelayBlock(block, []types.Engine{rp})
+				Expect(err).To(BeNil())
 			})
 
 			Specify("relayed block must be processed by the remote peer", func() {
@@ -87,34 +91,40 @@ var _ = Describe("Block", func() {
 		Context("when relayed block is considered an orphan by the remote peer", func() {
 
 			var block2, block3 core.Block
-			var evtOrphanBlock emitter.Event
+			var evtOrphanBlock = make(chan emitter.Event)
 
 			BeforeEach(func(done Done) {
 				block2 = makeBlock(lp.GetBlockchain(), sender, sender, time.Now().Unix()-1)
-				_, err = lp.GetBlockchain().ProcessBlock(block2)
+				_, err := lp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
 				block3 = makeBlock(lp.GetBlockchain(), sender, sender, time.Now().Unix())
 				_, err = lp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 
+				err = lp.Gossip().RelayBlock(block3, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
 				go func() {
-					defer GinkgoRecover()
-					err = lp.Gossip().RelayBlock(block3, []types.Engine{rp})
-					Expect(err).To(BeNil())
-					evtOrphanBlock = <-rp.GetBlockchain().GetEventEmitter().On(core.EventOrphanBlock)
+					evt := <-rp.GetBlockchain().GetEventEmitter().Once(core.EventOrphanBlock)
+					evtOrphanBlock <- evt
 				}()
-				<-rp.GetEventEmitter().On(node.EventBlockProcessed)
-				close(done)
+
+				go func() {
+					<-rp.GetEventEmitter().Once(node.EventBlockProcessed)
+					close(done)
+				}()
 			})
 
-			It("should emit core.EventOrphanBlock", func() {
-				Expect(evtOrphanBlock).ToNot(BeNil())
-				Expect(evtOrphanBlock.Args).To(HaveLen(1))
-				orphanBlock := evtOrphanBlock.Args[0].(*objects.Block)
+			It("should emit core.EventOrphanBlock", func(done Done) {
+				evt := <-evtOrphanBlock
+				Expect(evt).ToNot(BeNil())
+				Expect(evt.Args).To(HaveLen(1))
+				orphanBlock := evt.Args[0].(*objects.Block)
 				Expect(orphanBlock.GetNumber()).To(Equal(block3.GetNumber()))
 				Expect(orphanBlock.GetBroadcaster().StringID()).To(Equal(lp.StringID()))
 				Expect(rp.GetBlockchain().OrphanBlocks().Len()).To(Equal(1))
+				close(done)
 			})
 		})
 	})
@@ -130,12 +140,12 @@ var _ = Describe("Block", func() {
 			Expect(err).To(BeNil())
 
 			go func() {
-				defer GinkgoRecover()
-				err = rp.Gossip().RequestBlock(lp, block2.GetHash())
-				Expect(err).To(BeNil())
+				evtArgs = <-rp.GetEventEmitter().Once(node.EventBlockProcessed)
+				close(done)
 			}()
-			evtArgs = <-rp.GetEventEmitter().On(node.EventBlockProcessed)
-			close(done)
+
+			err = rp.Gossip().RequestBlock(lp, block2.GetHash())
+			Expect(err).To(BeNil())
 		})
 
 		It("Should request and process block from remote peer", func() {
@@ -162,7 +172,7 @@ var _ = Describe("Block", func() {
 		// [1]
 		Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
 
-			BeforeEach(func(done Done) {
+			BeforeEach(func() {
 				block2 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix()-1)
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
@@ -171,14 +181,8 @@ var _ = Describe("Block", func() {
 				_, err = rp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 
-				go func() {
-					defer GinkgoRecover()
-					err := lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
-					Expect(err).To(BeNil())
-				}()
-
-				<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
-				close(done)
+				err = lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
+				Expect(err).To(BeNil())
 			})
 
 			It("should get 2 block hashes from remote peer", func() {
@@ -205,17 +209,13 @@ var _ = Describe("Block", func() {
 
 			var block2 core.Block
 
-			BeforeEach(func(done Done) {
+			BeforeEach(func() {
 				block2 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix()-1)
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
-				go func() {
-					err = lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
-				}()
-				<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
+				err = lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
 				Expect(err).To(BeNil())
-				close(done)
 			})
 
 			It("should get 1 block hash from remote peer", func() {
@@ -237,13 +237,9 @@ var _ = Describe("Block", func() {
 		// [1]
 		Context("when remote peer's blockchain shape is [1] and local peer's blockchain shape is [1]", func() {
 
-			BeforeEach(func(done Done) {
-				go func() {
-					err = lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
-				}()
-				<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
+			BeforeEach(func() {
+				err := lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
 				Expect(err).To(BeNil())
-				close(done)
 			})
 
 			Specify("local peer block hash queue should be empty", func() {
@@ -263,7 +259,7 @@ var _ = Describe("Block", func() {
 				block2 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix()-10)
 				chainBBlock2 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix()-9)
 
-				_, err = rp.GetBlockchain().ProcessBlock(block2)
+				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
 				// processing chainBBlock2 will create a fork
@@ -278,13 +274,9 @@ var _ = Describe("Block", func() {
 
 			When("locator hash is block [2] of Chain B", func() {
 
-				BeforeEach(func(done Done) {
-					go func() {
-						err = lp.Gossip().SendGetBlockHashes(rp, chainBBlock2.GetHash())
-					}()
-					<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
+				BeforeEach(func() {
+					err := lp.Gossip().SendGetBlockHashes(rp, chainBBlock2.GetHash())
 					Expect(err).To(BeNil())
-					close(done)
 				})
 
 				Specify("the block hash queue should contain 2 hashes from ChainA", func() {
@@ -309,20 +301,15 @@ var _ = Describe("Block", func() {
 		// [1]
 		Context("when remote peer's blockchain shape is [1] and local peer's blockchain shape is: [1]", func() {
 
-			BeforeEach(func(done Done) {
-				go func() {
-					err = lp.Gossip().SendGetBlockHashes(rp, util.StrToHash("unknown"))
-				}()
-				<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
+			BeforeEach(func() {
+				err := lp.Gossip().SendGetBlockHashes(rp, util.StrToHash("unknown"))
 				Expect(err).To(BeNil())
-				close(done)
 			})
 
 			It("local peer's block hash queue should be empty", func() {
 				Expect(lp.GetBlockHashQueue().Size()).To(Equal(0))
 			})
 		})
-
 	})
 
 	Describe(".SendGetBlockBodies", func() {
@@ -366,7 +353,7 @@ var _ = Describe("Block", func() {
 
 			Context("no hash is requested", func() {
 				BeforeEach(func() {
-					err = lp.Gossip().SendGetBlockBodies(rp, []util.Hash{})
+					err := lp.Gossip().SendGetBlockBodies(rp, []util.Hash{})
 					Expect(err).To(BeNil())
 				})
 

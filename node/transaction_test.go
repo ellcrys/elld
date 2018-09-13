@@ -18,16 +18,19 @@ import (
 
 var _ = Describe("Transaction", func() {
 
-	var err error
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
 	var receiver, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 
-		rp = makeTestNode(30001)
+		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.TxVersion, rp.Gossip().OnTx)
 
@@ -57,13 +60,13 @@ var _ = Describe("Transaction", func() {
 
 			var evt emitter.Event
 			BeforeEach(func(done Done) {
+				err := lp.Gossip().RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
 				go func() {
-					defer GinkgoRecover()
-					err = lp.Gossip().RelayTx(tx, []types.Engine{rp})
-					Expect(err).To(BeNil())
+					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
 				}()
-				evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
-				close(done)
 			})
 
 			It("expects the history cache to have an item for the transaction", func() {
@@ -83,13 +86,12 @@ var _ = Describe("Transaction", func() {
 			BeforeEach(func(done Done) {
 				var tx2 = *tx
 				tx2.Sig = []byte("invalid signature")
+				err := lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
+				Expect(err).To(BeNil())
 				go func() {
-					defer GinkgoRecover()
-					err = lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
-					Expect(err).To(BeNil())
+					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
 				}()
-				evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
-				close(done)
 			})
 
 			It("should return error about the transaction's invalid signature", func() {
@@ -104,13 +106,13 @@ var _ = Describe("Transaction", func() {
 			BeforeEach(func(done Done) {
 				var tx2 = *tx
 				tx2.Type = objects.TxTypeAlloc
+				err := lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
 				go func() {
-					defer GinkgoRecover()
-					err = lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
-					Expect(err).To(BeNil())
+					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
 				}()
-				evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
-				close(done)
 			})
 
 			It("should return error about unexpected allocation transaction", func() {
@@ -124,13 +126,13 @@ var _ = Describe("Transaction", func() {
 			var eventArgs emitter.Event
 			BeforeEach(func(done Done) {
 				rp.SetTransactionPool(txpool.New(0))
+				err := lp.Gossip().RelayTx(tx, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
 				go func() {
-					defer GinkgoRecover()
-					err = lp.Gossip().RelayTx(tx, []types.Engine{rp})
-					Expect(err).To(BeNil())
+					eventArgs = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
+					close(done)
 				}()
-				eventArgs = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
-				close(done)
 			})
 
 			It("should not add the transaction to the remote peer's transaction pool", func() {

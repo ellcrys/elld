@@ -12,13 +12,17 @@ import (
 var _ = Describe("GetAddr", func() {
 
 	var lp, rp *node.Node
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 		lp.SetProtocolHandler(config.AddrVersion, lp.Gossip().OnAddr)
 
-		rp = makeTestNode(30001)
+		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.AddrVersion, rp.Gossip().OnAddr)
 	})
@@ -31,6 +35,7 @@ var _ = Describe("GetAddr", func() {
 	Describe(".SelfAdvertise", func() {
 		It("should successfully self advertise peer; remote peer must add the advertised peer", func(done Done) {
 			go func() {
+				defer GinkgoRecover()
 				n := lp.Gossip().SelfAdvertise([]types.Engine{rp})
 				Expect(n).To(Equal(1))
 			}()

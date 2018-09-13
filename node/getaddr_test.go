@@ -17,12 +17,16 @@ var _ = Describe("GetAddr", func() {
 
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 
-		rp = makeTestNode(30001)
+		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.BlockBodyVersion, rp.Gossip().OnBlockBody)
 		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
@@ -61,7 +65,7 @@ var _ = Describe("GetAddr", func() {
 			var remoteAddr *node.Node
 
 			BeforeEach(func() {
-				remoteAddr = makeTestNode(30004)
+				remoteAddr = makeTestNode(getPort())
 				remoteAddr.SetTimestamp(time.Now().Add(-3 * time.Hour))
 				err := rp.PM().AddOrUpdatePeer(remoteAddr)
 				Expect(err).To(BeNil())
@@ -96,7 +100,7 @@ var _ = Describe("GetAddr", func() {
 			var remoteAddr *node.Node
 
 			BeforeEach(func() {
-				remoteAddr = makeTestNode(30004)
+				remoteAddr = makeTestNode(getPort())
 				remoteAddr.SetTimestamp(time.Now())
 				err := rp.PM().AddOrUpdatePeer(remoteAddr)
 				Expect(err).To(BeNil())
@@ -118,7 +122,7 @@ var _ = Describe("GetAddr", func() {
 			var remoteAddr *node.Node
 
 			BeforeEach(func() {
-				remoteAddr = makeTestNode(30004)
+				remoteAddr = makeTestNode(getPort())
 				remoteAddr.MakeHardcoded()
 				remoteAddr.SetTimestamp(time.Now())
 				err := rp.PM().AddOrUpdatePeer(remoteAddr)
@@ -141,7 +145,7 @@ var _ = Describe("GetAddr", func() {
 
 			BeforeEach(func() {
 				lp.GetCfg().Node.MaxAddrsExpected = 0
-				remoteAddr = makeTestNode(30004)
+				remoteAddr = makeTestNode(getPort())
 				remoteAddr.SetTimestamp(time.Now())
 				err := rp.PM().AddOrUpdatePeer(remoteAddr)
 				Expect(err).To(BeNil())

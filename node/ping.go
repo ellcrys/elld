@@ -30,9 +30,9 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	s, err := g.NewStream(ctx, remotePeer, config.PingVersion)
 	if err != nil {
 		g.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
+		return fmt.Errorf("ping failed. failed to connect to peer. %s", err.Error())
 	}
-	defer s.Reset()
+	defer s.Close()
 
 	// determine the best block an the total
 	// difficulty of the block. Add these info

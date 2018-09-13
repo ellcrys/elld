@@ -15,18 +15,22 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("GetAddr", func() {
+var _ = Describe("Ping", func() {
 
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 		lp.SetProtocolHandler(config.GetBlockHashesVersion, lp.Gossip().OnGetBlockHashes)
 		lp.SetProtocolHandler(config.PingVersion, lp.Gossip().OnPing)
 
-		rp = makeTestNode(30001)
+		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.BlockBodyVersion, rp.Gossip().OnBlockBody)
 		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
@@ -56,6 +60,7 @@ var _ = Describe("GetAddr", func() {
 	})
 
 	Describe(".sendPing", func() {
+
 		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
 			err := rp.Gossip().SendPingToPeer(rp)
 			Expect(err).ToNot(BeNil())

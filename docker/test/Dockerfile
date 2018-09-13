@@ -1,4 +1,4 @@
-FROM "circleci/golang:1.9"
+FROM golang:1.10.4-stretch
 
 RUN mkdir /go/src/github.com
 WORKDIR /go/src/github.com/ellcrys/elld

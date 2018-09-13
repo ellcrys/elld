@@ -20,12 +20,16 @@ var _ = Describe("Addr", func() {
 
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
 	BeforeEach(func() {
-		lp = makeTestNode(30000)
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNodeWith(lpPort, 399)
 		Expect(lp.GetBlockchain().Up()).To(BeNil())
 
-		rp = makeTestNode(30001)
+		rp = makeTestNodeWith(rpPort, 382)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
 		rp.SetProtocolHandler(config.TxVersion, rp.Gossip().OnTx)
 		rp.SetProtocolHandler(config.AddrVersion, rp.Gossip().OnAddr)
@@ -218,7 +222,7 @@ var _ = Describe("Addr", func() {
 		})
 
 		Context("when the number of addresses is below max address expected", func() {
-			BeforeEach(func(done Done) {
+			BeforeEach(func() {
 				stream, err := lp.Gossip().NewStream(context.Background(), rp, config.AddrVersion)
 				Expect(err).To(BeNil())
 				defer stream.Close()
@@ -228,7 +232,6 @@ var _ = Describe("Addr", func() {
 					Expect(err).To(BeNil())
 				}()
 				evt = <-rp.GetEventEmitter().On(node.EventAddressesRelayed)
-				close(done)
 			})
 
 			It("should return no error", func() {

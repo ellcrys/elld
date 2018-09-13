@@ -403,7 +403,6 @@ func (n *Node) SetLocalNode(node *Node) {
 // a remote node. This is a good place to check if a remote node
 // has been blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
-
 	// In non-production mode, we cannot interact with a remote peer with a public IP
 	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
 		return false, fmt.Errorf("in development mode, we cannot interact with peers with public IP")
