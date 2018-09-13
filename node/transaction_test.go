@@ -106,13 +106,15 @@ var _ = Describe("Transaction", func() {
 			BeforeEach(func(done Done) {
 				var tx2 = *tx
 				tx2.Type = objects.TxTypeAlloc
-				err := lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
-				Expect(err).To(BeNil())
 
 				go func() {
 					evt = <-rp.GetEventEmitter().On(node.EventTransactionProcessed)
 					close(done)
 				}()
+
+				err := lp.Gossip().RelayTx(&tx2, []types.Engine{rp})
+				Expect(err).To(BeNil())
+
 			})
 
 			It("should return error about unexpected allocation transaction", func() {
