@@ -73,9 +73,6 @@
   branch = "master"
   name = "github.com/libp2p/go-libp2p-protocol"
 
-[[constraint]]
-  branch = "master"
-  name = "github.com/mholt/archiver"
 
 [[constraint]]
   branch = "master"
@@ -120,3 +117,4 @@
 [[constraint]]
   name = "github.com/c-bata/go-prompt"
   revision = "15992ed45e46edd6168d7c8bfda14b700f6b756a"
+

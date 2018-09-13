@@ -1,8 +1,6 @@
-/**
-This package provides functionalities for packaging a directory
-into a Blockcode. It includes functions for signing, verifying,
-encoding and decoding a Blockcode.
-*/
+// Package blockcode provides functionalities for packaging a directory
+// into a Blockcode. It includes functions for signing, verifying,
+// encoding and decoding a Blockcode.
 package blockcode
 
 import (

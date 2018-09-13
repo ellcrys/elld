@@ -15,7 +15,11 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-func (g *Gossip) sendPing(remotePeer types.Engine) error {
+// SendPingToPeer sends a Ping message to the given peer.
+// It receives the response Pong message and will start
+// blockchain synchronization if the Pong message includes
+// blockchain information that is better than the local blockchain
+func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
 
@@ -23,12 +27,12 @@ func (g *Gossip) sendPing(remotePeer types.Engine) error {
 	defer cancel()
 
 	// create stream to the remote peer
-	s, err := g.newStream(ctx, remotePeer, config.PingVersion)
+	s, err := g.NewStream(ctx, remotePeer, config.PingVersion)
 	if err != nil {
 		g.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("ping failed. failed to connect to peer. %s", err)
+		return fmt.Errorf("ping failed. failed to connect to peer. %s", err.Error())
 	}
-	defer s.Reset()
+	defer s.Close()
 
 	// determine the best block an the total
 	// difficulty of the block. Add these info
@@ -46,7 +50,7 @@ func (g *Gossip) sendPing(remotePeer types.Engine) error {
 	}
 
 	// construct the message and write it to the stream
-	if err := writeStream(s, msg); err != nil {
+	if err := WriteStream(s, msg); err != nil {
 		g.log.Debug("ping failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to write to stream")
 	}
@@ -55,15 +59,14 @@ func (g *Gossip) sendPing(remotePeer types.Engine) error {
 
 	// receive pong response from the remote peer
 	pongMsg := &wire.Pong{}
-	if err := readStream(s, pongMsg); err != nil {
+	if err := ReadStream(s, pongMsg); err != nil {
 		g.log.Debug("Failed to read pong response", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read pong response")
 	}
 
 	// update the remote peer's timestamp
+	// and add the remote peer to the peer manager's list
 	remotePeer.SetTimestamp(time.Now())
-
-	// add the remote peer to the peer manager's list
 	g.PM().AddOrUpdatePeer(remotePeer)
 
 	g.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
@@ -96,14 +99,19 @@ func (g *Gossip) SendPing(remotePeers []types.Engine) {
 	for _, remotePeer := range remotePeers {
 		_remotePeer := remotePeer
 		go func() {
-			if err := g.sendPing(_remotePeer); err != nil {
-				g.PM().onFailedConnection(_remotePeer)
+			if err := g.SendPingToPeer(_remotePeer); err != nil {
+				g.PM().OnFailedConnection(_remotePeer)
 			}
 		}()
 	}
 }
 
-// OnPing handles incoming ping message
+// OnPing processes a Ping message sent by a remote peer.
+// It sends back a Pong message containing information
+// about the main block chain. It will start
+// blockchain synchronization if the Ping message includes
+// blockchain information that is better than the local
+// blockchain
 func (g *Gossip) OnPing(s net.Stream) {
 
 	defer s.Close()
@@ -115,7 +123,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	// read the message from the stream
 	msg := &wire.Ping{}
-	if err := readStream(s, msg); err != nil {
+	if err := ReadStream(s, msg); err != nil {
 		g.log.Error("failed to read ping message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
@@ -136,7 +144,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	}
 
 	// send pong message
-	if err := writeStream(s, pongMsg); err != nil {
+	if err := WriteStream(s, pongMsg); err != nil {
 		g.log.Error("failed to send pong response", "Err", err)
 		return
 	}

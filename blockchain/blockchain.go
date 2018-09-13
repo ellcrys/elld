@@ -227,6 +227,11 @@ func (b *Blockchain) SetDB(db elldb.DB) {
 	b.db = db
 }
 
+// GetDB gets the database
+func (b *Blockchain) GetDB() elldb.DB {
+	return b.db
+}
+
 func (b *Blockchain) removeChain(chain *Chain) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()

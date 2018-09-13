@@ -6,8 +6,11 @@ import (
 )
 
 const (
+	// ModeProd refers to production mode
 	ModeProd = iota
+	// ModeDev refers to development mode
 	ModeDev
+	// ModeTest refers to test mode
 	ModeTest
 )
 

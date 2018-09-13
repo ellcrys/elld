@@ -56,13 +56,13 @@ func (m *ConnectionManager) establishConnections() {
 	for {
 		select {
 		case <-m.connEstInt.C:
-			unconnectedPeers := m.pm.getUnconnectedPeers()
+			unconnectedPeers := m.pm.GetUnconnectedPeers()
 			if !m.pm.NeedMorePeers() || len(unconnectedPeers) == 0 {
 				continue
 			}
 			m.log.Info("Establishing connection with more peers", "UnconnectedPeers", len(unconnectedPeers))
 			for _, p := range unconnectedPeers {
-				m.pm.connectToPeer(p.StringID())
+				m.pm.ConnectToPeer(p.StringID())
 			}
 		}
 	}
@@ -88,7 +88,7 @@ func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
 // Disconnected is called when a connection is closed
 func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
 	fullAddr := util.FullRemoteAddressFromConn(conn)
-	go m.pm.onPeerDisconnect(fullAddr)
+	go m.pm.OnPeerDisconnect(fullAddr)
 
 	m.gmx.Lock()
 	defer m.gmx.Unlock()

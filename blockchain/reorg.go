@@ -261,7 +261,7 @@ func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 	// At this point the blocks that are not in the
 	// side chain have been removed from the main chain.
 	// Now, we will re-process the blocks in the sidechain
-	// targetted for addition in the current best chain
+	// targeted for addition in the current best chain
 	nextBlockNumber = parentBlock.GetNumber() + 1
 	for nextBlockNumber <= sideTip.GetNumber() {
 

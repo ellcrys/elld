@@ -171,21 +171,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:988cfde37f089c50ba1ac8a1032c3f81d2ac0359e1872093b946a30139665eb6"
-  name = "github.com/dsnet/compress"
-  packages = [
-    ".",
-    "bzip2",
-    "bzip2/internal/sais",
-    "internal",
-    "internal/errors",
-    "internal/prefix",
-  ]
-  pruneopts = "UT"
-  revision = "cc9eb1d7ad760af14e8f918698f745e80377af4f"
-
-[[projects]]
-  branch = "master"
   digest = "1:6f9339c912bbdda81302633ad7e99a28dfa5a639c864061f1929510a9a64aa74"
   name = "github.com/dustin/go-humanize"
   packages = ["."]
@@ -486,14 +471,6 @@
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
 
 [[projects]]
-  digest = "1:16dd6b893b78a50564cdde1d9f7ea67224dece11bb0886bd882f1dc3dc1d440d"
-  name = "github.com/k0kubun/pp"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "027a6d1765d673d337e687394dbe780dd64e2a1e"
-  version = "v2.3.0"
-
-[[projects]]
   digest = "1:d38d6658922388905ca5d129ee4af7893efaa66f1f96e962dfed931acd8b3eb8"
   name = "github.com/libp2p/go-addr-util"
   packages = ["."]
@@ -749,14 +726,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:54810f1da274687d725732a273e250c59ac0374cdbf6288ac206ef24c53c5478"
-  name = "github.com/mholt/archiver"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "e4ef56d48eb029648b0e895bb0b6a393ef0829c3"
-
-[[projects]]
-  branch = "master"
   digest = "1:130cefe87d7eeefc824978dcb78e35672d4c49a11f25c153fbf0cfd952756fa3"
   name = "github.com/minio/blake2b-simd"
   packages = ["."]
@@ -846,14 +815,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "d229c224a219dcf41e9d2af4684b9782f33f5eb7"
-
-[[projects]]
-  branch = "master"
-  digest = "1:3bdb4203c03569a564d6a4bd54d84315575cebb2d76471f8676f8ee8c402005e"
-  name = "github.com/nwaples/rardecode"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "e06696f847aeda6f39a8f0b7cdff193b7690aef6"
 
 [[projects]]
   branch = "master"
@@ -957,22 +918,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "e27662a4a9d6b2083dfd7e7b5d0e30985daca925"
-
-[[projects]]
-  branch = "master"
-  digest = "1:34833843589f17bb48234a8cdd36b1038aed85a09d60e30fc73891b7d89b6c1d"
-  name = "github.com/pierrec/lz4"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ed8d4cc3b461464e69798080a0092bd028910298"
-
-[[projects]]
-  branch = "master"
-  digest = "1:5272d5bcf91d1db46fc9528f706019533f1b390b94b122cff427162bc5009e40"
-  name = "github.com/pierrec/xxHash"
-  packages = ["xxHash32"]
-  pruneopts = "UT"
-  revision = "a0006b13c722f7f12368c00a3d3c2ae8a999a0c6"
 
 [[projects]]
   branch = "master"
@@ -1085,19 +1030,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "54489e5ff3900f4618607d32d680f8cf112bcb18"
-
-[[projects]]
-  digest = "1:4aeb3860275fa1fd60cccfb5a6ef85da438bf17402e1e84412ade4d4b55066a0"
-  name = "github.com/ulikunitz/xz"
-  packages = [
-    ".",
-    "internal/hash",
-    "internal/xlog",
-    "lzma",
-  ]
-  pruneopts = "UT"
-  revision = "0c6b41e72360850ca4f98dc341fd999726ea007f"
-  version = "v0.5.4"
 
 [[projects]]
   digest = "1:8f9017baaaca37682b06d9f48a292bbeb0ea40c7807343628fd81b595f5a1f93"
@@ -1362,7 +1294,6 @@
     "github.com/imdario/mergo",
     "github.com/jinzhu/configor",
     "github.com/jinzhu/copier",
-    "github.com/k0kubun/pp",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-crypto/pb",
@@ -1371,7 +1302,6 @@
     "github.com/libp2p/go-libp2p-peer",
     "github.com/libp2p/go-libp2p-peerstore",
     "github.com/libp2p/go-libp2p-protocol",
-    "github.com/mholt/archiver",
     "github.com/mitchellh/go-homedir",
     "github.com/mitchellh/mapstructure",
     "github.com/multiformats/go-multiaddr",

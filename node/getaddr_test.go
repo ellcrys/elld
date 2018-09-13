@@ -1,97 +1,166 @@
-package node
+package node_test
 
 import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/util"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func GetAddrTest() bool {
-	return Describe("GetAddr", func() {
+var _ = Describe("GetAddr", func() {
 
-		var lp, rp, rp2 *Node
-		var err error
-		var lpGossip, rpGossip *Gossip
+	var lp, rp *node.Node
+	var sender, _ = crypto.NewKey(nil)
+	var lpPort, rpPort int
 
-		BeforeEach(func() {
-			lp, err = NewNode(cfg, "127.0.0.1:30011", crypto.NewKeyFromIntSeed(4), log)
-			Expect(err).To(BeNil())
-			lpGossip = NewGossip(lp, log)
+	BeforeEach(func() {
+		lpPort = getPort()
+		rpPort = getPort()
+
+		lp = makeTestNode(lpPort)
+		Expect(lp.GetBlockchain().Up()).To(BeNil())
+
+		rp = makeTestNode(rpPort)
+		Expect(rp.GetBlockchain().Up()).To(BeNil())
+		rp.SetProtocolHandler(config.BlockBodyVersion, rp.Gossip().OnBlockBody)
+		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
+		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
+		rp.SetProtocolHandler(config.GetAddrVersion, rp.Gossip().OnGetAddr)
+
+		// Create sender account on the remote peer
+		Expect(rp.GetBlockchain().CreateAccount(1, rp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
+
+		// Create sender account on the local peer
+		Expect(lp.GetBlockchain().CreateAccount(1, lp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
+	})
+
+	AfterEach(func() {
+		closeNode(lp)
+		closeNode(rp)
+	})
+
+	Describe(".SendGetAddrToPeer", func() {
+
+		It("should return err='getaddr failed. failed to connect to peer. dial to self attempted'", func() {
+			_, err := rp.Gossip().SendGetAddrToPeer(rp)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("getaddr failed. failed to connect to peer. dial to self attempted"))
 		})
 
-		BeforeEach(func() {
-			rp, err = NewNode(cfg, "127.0.0.1:30012", crypto.NewKeyFromIntSeed(5), log)
-			Expect(err).To(BeNil())
-			rpGossip = NewGossip(rp, log)
-			rp.SetProtocolHandler(config.GetAddrVersion, rpGossip.OnGetAddr)
-		})
+		Context("when a remote peer knows an address with timestamp of 3 hours ago", func() {
+			var remoteAddr *node.Node
 
-		BeforeEach(func() {
-			rp2, err = NewNode(cfg, "127.0.0.1:30013", crypto.NewKeyFromIntSeed(6), log)
-			Expect(err).To(BeNil())
-			err = rp.PM().AddOrUpdatePeer(rp2)
-			Expect(err).To(BeNil())
-		})
-
-		AfterEach(func() {
-			closeNode(lp)
-			closeNode(rp)
-			closeNode(rp2)
-		})
-
-		Describe(".sendGetAddr", func() {
-
-			It("should return error.Error('getaddr failed. failed to connect to peer. dial to self attempted')", func() {
-				rp, err := NewNode(cfg, "127.0.0.1:30010", crypto.NewKeyFromIntSeed(0), log)
+			BeforeEach(func() {
+				remoteAddr = makeTestNode(getPort())
+				remoteAddr.SetTimestamp(time.Now().Add(-3 * time.Hour))
+				err := rp.PM().AddOrUpdatePeer(remoteAddr)
 				Expect(err).To(BeNil())
-				rpGossip := NewGossip(rp, log)
-				rp.Host().Close()
-				_, err = rpGossip.sendGetAddr(rp)
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("getaddr failed. failed to connect to peer. dial to self attempted"))
 			})
 
-			It("when rp2 timestamp is 3 hours ago, it should not be returned", func() {
-				rp2.SetTimestamp(time.Now().Add(-3 * time.Hour))
-				err := rp.PM().AddOrUpdatePeer(rp2)
-				Expect(err).To(BeNil())
-				addrs, err := lpGossip.sendGetAddr(rp)
+			AfterEach(func() {
+				closeNode(remoteAddr)
+			})
+
+			It("should not be returned", func() {
+				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
 				Expect(err).To(BeNil())
 				Expect(addrs).To(HaveLen(0))
 			})
+		})
 
-			It("hardcoded seed peer should not be returned", func() {
-				rp2.isHardcodedSeed = true
-				err = rp.PM().AddOrUpdatePeer(rp2)
+		Context("when a remote peer knowns an address that is the same as the requesting peer", func() {
+
+			BeforeEach(func() {
+				err := rp.PM().AddOrUpdatePeer(lp)
 				Expect(err).To(BeNil())
-				defer rp2.Host().Close()
+			})
 
-				addrs, err := lpGossip.sendGetAddr(rp)
+			It("should not be returned", func() {
+				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
 				Expect(err).To(BeNil())
 				Expect(addrs).To(HaveLen(0))
 			})
+		})
 
-			It("when address returned is more than MaxAddrsExpected, error must be returned and none of the addresses are added", func() {
+		Context("when a remote peer knowns an address that is valid", func() {
+			var remoteAddr *node.Node
 
-				cfg.Node.MaxAddrsExpected = 1
-
+			BeforeEach(func() {
+				remoteAddr = makeTestNode(getPort())
+				remoteAddr.SetTimestamp(time.Now())
+				err := rp.PM().AddOrUpdatePeer(remoteAddr)
 				Expect(err).To(BeNil())
-				err = rp.PM().AddOrUpdatePeer(rp2)
-				Expect(err).To(BeNil())
+			})
 
-				rp3, err := NewNode(cfg, "127.0.0.1:30014", crypto.NewKeyFromIntSeed(7), log)
-				Expect(err).To(BeNil())
-				rp.PM().AddOrUpdatePeer(rp3)
+			AfterEach(func() {
+				closeNode(remoteAddr)
+			})
 
-				addrs, err := lpGossip.sendGetAddr(rp)
+			It("should return the address", func() {
+				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
+				Expect(err).To(BeNil())
+				Expect(addrs).To(HaveLen(1))
+				Expect(addrs[0].Address).To(Equal(remoteAddr.GetMultiAddr()))
+			})
+		})
+
+		Context("when a remote peer knowns an address that is hardcoded", func() {
+			var remoteAddr *node.Node
+
+			BeforeEach(func() {
+				remoteAddr = makeTestNode(getPort())
+				remoteAddr.MakeHardcoded()
+				remoteAddr.SetTimestamp(time.Now())
+				err := rp.PM().AddOrUpdatePeer(remoteAddr)
+				Expect(err).To(BeNil())
+			})
+
+			AfterEach(func() {
+				closeNode(remoteAddr)
+			})
+
+			It("should not return the address", func() {
+				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
+				Expect(err).To(BeNil())
+				Expect(addrs).To(HaveLen(0))
+			})
+		})
+
+		Context("when a remote peer returns addresses greater than MaxAddrsExpected", func() {
+			var remoteAddr *node.Node
+
+			BeforeEach(func() {
+				lp.GetCfg().Node.MaxAddrsExpected = 0
+				remoteAddr = makeTestNode(getPort())
+				remoteAddr.SetTimestamp(time.Now())
+				err := rp.PM().AddOrUpdatePeer(remoteAddr)
+				Expect(err).To(BeNil())
+			})
+
+			AfterEach(func() {
+				closeNode(remoteAddr)
+			})
+
+			It("should not return the address", func() {
+				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("too many addresses received. Ignoring addresses"))
 				Expect(addrs).To(HaveLen(0))
 			})
 		})
 	})
-}
+})

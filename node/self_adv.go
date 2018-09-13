@@ -21,7 +21,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 	for _, peer := range connectedPeers {
 
 		// create stream
-		s, err := g.newStream(context.Background(), peer, config.AddrVersion)
+		s, err := g.NewStream(context.Background(), peer, config.AddrVersion)
 		if err != nil {
 			g.log.Error("selfAdvertise failed. Failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
 			continue
@@ -29,7 +29,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 		defer s.Close()
 
 		// write to the stream
-		if err := writeStream(s, msg); err != nil {
+		if err := WriteStream(s, msg); err != nil {
 			s.Reset()
 			g.log.Error("Addr failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
 			continue
