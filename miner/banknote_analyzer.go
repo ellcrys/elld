@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-
-	"github.com/k0kubun/pp"
+	// "github.com/k0kubun/pp"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
@@ -37,8 +38,13 @@ const (
 
 	// TrainModelDirName is the actual directory
 	// within the training data directory containing the
-	// tensorflow model
+	// tensorflow model for predicting currency
 	TrainModelDirName = "models"
+
+	// ValidatorModelDirName is the directory
+	// within the training data directory containing the
+	// tensorflow model for validating currency
+	ValidatorModelDirName = "validators"
 )
 
 var (
@@ -191,6 +197,140 @@ func (a *BanknoteAnalyzer) Prepare() error {
 	a.fetched = true
 
 	return nil
+}
+
+// Validator validates the supplied image and output confidence level of it being a currency
+func (a *BanknoteAnalyzer) Validator(imgName string) (float32, error) {
+
+	// get the image extension for the proposed validated image
+	// we are dealing with .png, .jpg and .jpeg file format
+	imgExtension := filepath.Ext(imgName)
+	imgExtension = imgExtension[1:]
+
+	// open the image to be validated
+	imageFile, err := os.Open(imgName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to open image: %s", err)
+	}
+
+	var decodedImage image.Image
+
+	if imgExtension == "png" {
+		decodedImage, err = png.Decode(imageFile)
+		if err != nil {
+			return 0, fmt.Errorf("failed to decode png image: %s", err)
+		}
+	}
+
+	if imgExtension == "jpg" || imgExtension == "jpeg" {
+		decodedImage, err = jpeg.Decode(imageFile)
+		if err != nil {
+			return 0, fmt.Errorf("failed to decode jpg image: %s", err)
+		}
+	}
+
+	//load the model for Note validator
+	validatorRootDir := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName, ValidatorModelDirName)
+	model, err := tf.LoadSavedModel(validatorRootDir, []string{"tags"}, nil)
+	if err != nil {
+		return 0, fmt.Errorf("failed to load validator model : %s", err)
+	}
+
+	// get the total of all average of the slices
+	var cummulativeTotal float32
+
+	// step size for moving the sliding window around the image
+	stepSize := 10
+
+	// get the height and width of the image to validate
+	imageSize := decodedImage.Bounds().Size()
+	imageWidth := imageSize.X
+	imageHeight := imageSize.Y
+
+	// get the size of the sliding window
+	window_width := imageWidth / 4
+	window_height := imageHeight
+
+	y := 0
+	sn := 0
+
+	// loop through one-way sliding window by shifting only the x cordinates
+	for x := 0; x <= imageWidth; x += stepSize {
+
+		// continue slicing if the remains is greater than the window witdth
+		if (imageWidth - x) > window_width {
+
+			sn = sn + 1
+
+			// slice the image at cordiante x and y with the window width and height
+			slicedImage := decodedImage.(interface {
+				SubImage(r image.Rectangle) image.Image
+			}).SubImage(image.Rect(x, y, window_width+x, window_height))
+
+			// create a buffer to hold the sliced image
+			var imgBuffer bytes.Buffer
+
+			if imgExtension == "png" {
+				err = png.Encode(&imgBuffer, slicedImage)
+
+				if err != nil {
+					return 0, fmt.Errorf("failed to encode png image to byte : %s", err)
+				}
+			}
+
+			if imgExtension == "jpg" || imgExtension == "jpeg" {
+				err = jpeg.Encode(&imgBuffer, slicedImage, nil)
+
+				if err != nil {
+					return 0, fmt.Errorf("failed to encode jpg image to byte : %s", err)
+				}
+			}
+
+			// create a tensor from the image buffer
+			img, err := imageToTensor(&imgBuffer, imgExtension)
+			if err != nil {
+				return 0, fmt.Errorf("failed to make tensor from image : %s", err)
+			}
+
+			// pass the generated tensor to the computational graph
+			result, err := model.Session.Run(
+				map[tf.Output]*tf.Tensor{
+					model.Graph.Operation("inputNode_input").Output(0): img,
+				},
+				[]tf.Output{
+					model.Graph.Operation("inferNode/Softmax").Output(0),
+				},
+				nil,
+			)
+
+			if err != nil {
+				return 0, err
+			}
+
+			// predictions is the array of result from  the predictions on all the features
+			prediction := result[0].Value().([][]float32)
+
+			//fmt.Println(">>>>> : ", sn, " -- ", prediction)
+
+			// resultData is the array of result
+			resultData := prediction[0]
+
+			var sliceSumResult float32
+
+			totalCountSet := float32(len(resultData))
+
+			for _, singleResult := range resultData {
+				sliceSumResult = (sliceSumResult + singleResult)
+			}
+
+			sliceAverageResult := sliceSumResult / totalCountSet
+			cummulativeTotal = cummulativeTotal + sliceAverageResult
+
+		}
+	}
+
+	averageTotal := cummulativeTotal / float32(sn)
+	return averageTotal, nil
 }
 
 // Predict is like PredictBytes except it accepts an image path

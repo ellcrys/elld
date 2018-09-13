@@ -306,14 +306,14 @@ var BanknoteAnalyzerTest = func() bool {
 				// 	}))
 				// })
 
-				It("should return nil result and nil error when a prediction cannot be made", func() {
+				It("should return not nil result and nil error when a prediction cannot be made", func() {
 					f, _ := os.Open("./testdata/ball.jpg")
 					defer f.Close()
 					var img bytes.Buffer
 					io.Copy(&img, f)
 					res, err := ba.PredictBytes(&img)
 					Expect(err).To(BeNil())
-					Expect(res).To(BeNil())
+					Expect(res).ToNot(BeNil())
 				})
 			})
 		})
@@ -327,5 +327,9 @@ var BanknoteAnalyzerTest = func() bool {
 				Expect(err.Error()).To(Equal("failed to decompress model: invalid argument"))
 			})
 		})
+
+		// Describe(".Validator", func() {
+
+		// })
 	})
 }

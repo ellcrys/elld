@@ -2,13 +2,9 @@ package miner
 
 import (
 	"fmt"
-<<<<<<< HEAD
-	"os"
-=======
 	"net/http"
 	"os"
 	"sync"
->>>>>>> fdc6fc451c286d0966d6415b11249774030d710a
 	"testing"
 
 	"github.com/phayes/freeport"
