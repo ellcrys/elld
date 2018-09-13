@@ -252,7 +252,7 @@ var _ = Describe("TxPool", func() {
 				Transactions: []*objects.Transaction{tx2, tx3},
 			}
 			ee.Emit(core.EventNewBlock, block)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(1 * time.Second)
 			Expect(tp.Size()).To(Equal(int64(1)))
 			Expect(tp.container.container[0].Tx).To(Equal(tx))
 		})
