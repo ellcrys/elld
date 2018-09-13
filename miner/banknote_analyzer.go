@@ -53,6 +53,12 @@ var (
 	DefaultTrainModelFetchURI = "https://storage.googleapis.com/krogan/sample_train_file.model"
 )
 
+// subImagePosition provides interface to
+// get the sliced sub section of the image
+type subImagePosition interface {
+	subImage(r image.Rectangle) image.Image
+}
+
 // BankNote hold informations about the banknote Scanned
 type BankNote struct {
 	currencyCode string
