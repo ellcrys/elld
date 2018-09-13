@@ -20,12 +20,13 @@ import (
 
 	"github.com/franela/goreq"
 
-	"github.com/ellcrys/elld/config"
-
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
 
+	"strconv"
+
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/util/logger"
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 	"github.com/tensorflow/tensorflow/tensorflow/go/op"
@@ -44,7 +45,7 @@ const (
 	// ValidatorModelDirName is the directory
 	// within the training data directory containing the
 	// tensorflow model for validating currency
-	ValidatorModelDirName = "validators"
+	ValidatorModelDirName = "features"
 )
 
 var (
@@ -231,7 +232,7 @@ func (a *BanknoteAnalyzer) Validator(imgName string) (float32, error) {
 	// open the image to be validated
 	imageFile, err := os.Open(imgName)
 	if err != nil {
-		return 0, fmt.Errorf("failed to open image: %s", err)
+		return 0, err
 	}
 
 	var decodedImage image.Image
@@ -239,22 +240,25 @@ func (a *BanknoteAnalyzer) Validator(imgName string) (float32, error) {
 	if imgExtension == "png" {
 		decodedImage, err = png.Decode(imageFile)
 		if err != nil {
-			return 0, fmt.Errorf("failed to decode png image: %s", err)
+			return 0, err
 		}
 	}
 
 	if imgExtension == "jpg" || imgExtension == "jpeg" {
 		decodedImage, err = jpeg.Decode(imageFile)
 		if err != nil {
-			return 0, fmt.Errorf("failed to decode jpg image: %s", err)
+			return 0, err
 		}
 	}
 
+	if imgExtension != "jpg" && imgExtension != "jpeg" && imgExtension != "png" {
+		return 0, fmt.Errorf("failed : Invalid image format")
+	}
 	//load the model for Note validator
 	validatorRootDir := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName, ValidatorModelDirName)
 	model, err := tf.LoadSavedModel(validatorRootDir, []string{"tags"}, nil)
 	if err != nil {
-		return 0, fmt.Errorf("failed to load validator model : %s", err)
+		return 0, err
 	}
 
 	// get the total of all average of the slices
@@ -295,7 +299,7 @@ func (a *BanknoteAnalyzer) Validator(imgName string) (float32, error) {
 				err = png.Encode(&imgBuffer, slicedImage)
 
 				if err != nil {
-					return 0, fmt.Errorf("failed to encode png image to byte : %s", err)
+					return 0, err
 				}
 			}
 
@@ -303,14 +307,14 @@ func (a *BanknoteAnalyzer) Validator(imgName string) (float32, error) {
 				err = jpeg.Encode(&imgBuffer, slicedImage, nil)
 
 				if err != nil {
-					return 0, fmt.Errorf("failed to encode jpg image to byte : %s", err)
+					return 0, err
 				}
 			}
 
 			// create a tensor from the image buffer
 			img, err := imageToTensor(&imgBuffer, imgExtension)
 			if err != nil {
-				return 0, fmt.Errorf("failed to make tensor from image : %s", err)
+				return 0, err
 			}
 
 			// pass the generated tensor to the computational graph
@@ -422,7 +426,7 @@ func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 	predictions := tensors[0].Value().([][]float32)
 	resultData := predictions[0]
 
-	position, _ := argMax(resultData)
+	maxIntPosition, _ := argMax(resultData)
 
 	// Merge one hot encoder to construct
 	// a key that we can use to extract the result object
@@ -448,7 +452,10 @@ func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 	}
 
 	var cMap = manifest["currencies"].(map[string]interface{})
-	if result, ok := cMap[string(position)]; ok {
+
+	maxStrPosition := strconv.Itoa(maxIntPosition)
+
+	if result, ok := cMap[maxStrPosition]; ok {
 		// if result, ok := cMap[resultKey]; ok {
 		return &BankNote{
 			currencyCode: result.(map[string]interface{})["currencyCode"].(string),

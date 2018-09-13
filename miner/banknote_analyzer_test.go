@@ -293,20 +293,21 @@ var BanknoteAnalyzerTest = func() bool {
 					Expect(err).To(BeNil())
 				})
 
-				// It("should successfully return a predicted banknote", func() {
-				// 	f, _ := os.Open("./testdata/image128.png")
-				// 	defer f.Close()
-				// 	var img bytes.Buffer
-				// 	io.Copy(&img, f)
-				// 	res, err := ba.PredictBytes(&img)
-				// 	Expect(err).To(BeNil())
-				// 	Expect(res).To(Equal(&BankNote{
-				// 		currencyCode: "NGN",
-				// 		denomination: "500",
-				// 	}))
-				// })
+				It("should successfully return a predicted banknote", func() {
+					f, _ := os.Open("./testdata/image128.png")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).To(BeNil())
+					Expect(res).To(Equal(&BankNote{
+						currencyCode: "NGN",
+						denomination: "500",
+					}))
 
-				It("should return not nil result and nil error when a prediction cannot be made", func() {
+				})
+
+				It("should return nil result and nil error when a prediction cannot be made", func() {
 					f, _ := os.Open("./testdata/ball.jpg")
 					defer f.Close()
 					var img bytes.Buffer
@@ -328,8 +329,63 @@ var BanknoteAnalyzerTest = func() bool {
 			})
 		})
 
-		// Describe(".Validator", func() {
+		Describe(".Validator", func() {
 
-		// })
+			Context("with valid model archive", func() {
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				It("should return err when image is not png or jpg", func() {
+					imagePath := "./testdata/image.tiff"
+
+					res, err := ba.Validator(imagePath)
+
+					Expect(err).ToNot(BeNil())
+					Expect(res).To(BeZero())
+				})
+
+			})
+
+			Context("with invalid model archive", func() {
+
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models_invalid.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				It("should fail to validate", func() {
+					imagePath := "./testdata/image128.png"
+					res, err := ba.Validator(imagePath)
+
+					Expect(err).ToNot(BeNil())
+					Expect(res).To(BeZero())
+				})
+			})
+
+			Context("with valid feature model", func() {
+
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				It("should successfully return a confidence level prediction", func() {
+					imagePath := "./testdata/image128.png"
+					res, err := ba.Validator(imagePath)
+
+					Expect(err).To(BeNil())
+					Expect(res).ToNot(BeZero())
+				})
+			})
+		})
+
 	})
 }
