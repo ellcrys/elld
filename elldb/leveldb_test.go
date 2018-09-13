@@ -41,10 +41,10 @@ var _ = Describe("Database", func() {
 
 	Describe(".Open", func() {
 		It("should return error if unable to open database", func() {
-			db = NewDB("/*^&^")
+			db = NewDB(testCfgDir)
 			err = db.Open("")
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("failed to create database. mkdir /*^&^: permission denied"))
+			Expect(err.Error()).To(Equal("failed to create database. resource temporarily unavailable"))
 		})
 	})
 
