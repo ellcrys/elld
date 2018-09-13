@@ -227,6 +227,14 @@
   revision = "dcaf50131e4810440bed2cbb6f7f32c4f4cc95dd"
 
 [[projects]]
+  digest = "1:0afa63759ae8c5aa13d813346e414e7ed3bde76a98f48b9ebe3272f5a5e2f7ec"
+  name = "github.com/franela/goblin"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "cd5d08fb4ede9eaac1812fdb513552e7404eae2e"
+  version = "0.0.2"
+
+[[projects]]
   branch = "master"
   digest = "1:9f50f0543353c50296cc01fd8b623198799bc93d34ef3a32b410aa8386fc6e60"
   name = "github.com/franela/goreq"
@@ -1289,6 +1297,7 @@
     "github.com/ethereum/go-ethereum/metrics",
     "github.com/fatih/color",
     "github.com/fatih/structs",
+    "github.com/franela/goblin",
     "github.com/franela/goreq",
     "github.com/fsouza/go-dockerclient",
     "github.com/go-ozzo/ozzo-validation",

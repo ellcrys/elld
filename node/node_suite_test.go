@@ -1,16 +1,23 @@
-package node
+package node_test
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/thoas/go-funk"
+
+	. "github.com/onsi/gomega"
+
+	. "github.com/onsi/ginkgo"
+
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
@@ -18,27 +25,19 @@ import (
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var log = logger.NewLogrusNoOp()
-var cfg *config.EngineConfig
-var err error
 
-func closeNode(n *Node) {
-	n.Host().ConnManager().TrimOpenConns(context.Background())
-}
-
-var makeBlock = func(bchain core.Blockchain) core.Block {
+var makeBlock = func(bchain core.Blockchain, sender, receiver *crypto.Key, timestamp int64) core.Block {
 	block, err := bchain.Generate(&core.GenerateBlockParams{
 		Transactions: []core.Transaction{
 			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "0", "0", time.Now().UnixNano()),
 		},
-		Creator:    sender,
-		Nonce:      core.EncodeNonce(1),
-		Difficulty: new(big.Int).SetInt64(131072),
+		Creator:           sender,
+		Nonce:             core.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: timestamp,
 	})
 	if err != nil {
 		panic(err)
@@ -46,79 +45,54 @@ var makeBlock = func(bchain core.Blockchain) core.Block {
 	return block
 }
 
-func TestPeer(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Peer Suite")
+// makeTestNode creates a node with
+// a blockchain attached to it.
+func makeTestNode(port int) *node.Node {
+	return makeTestNodeWith(port, -1)
 }
 
-var testStore core.ChainStorer
-var db, db2 elldb.DB
-var lpBc, rpBc core.Blockchain
-var chainID = util.String("chain1")
-var txPool, txPool2 *txpool.TxPool
-var sender = crypto.NewKeyFromIntSeed(1)
-var receiver = crypto.NewKeyFromIntSeed(2)
+// makeTestNode creates a node with
+// a blockchain attached to it.
+func makeTestNodeWith(port int, seed int) *node.Node {
+	cfg, err := testutil.SetTestCfg()
+	if err != nil {
+		panic(err)
+	}
 
-// Create the databases
-var _ = BeforeSuite(func() {
-	var err error
-	cfg, err = testutil.SetTestCfg()
-	Expect(err).To(BeNil())
-
-	db = elldb.NewDB(cfg.ConfigDir())
+	db := elldb.NewDB(cfg.ConfigDir())
 	err = db.Open(util.RandString(5))
-	Expect(err).To(BeNil())
-
-	db2 = elldb.NewDB(cfg.ConfigDir())
-	err = db2.Open(util.RandString(5))
-	Expect(err).To(BeNil())
-})
-
-var _ = AfterSuite(func() {
-	err := os.RemoveAll(cfg.ConfigDir())
-	Expect(err).To(BeNil())
-})
-
-var _ = BeforeEach(func() {
-	Expect(db.Truncate()).To(BeNil())
-	Expect(db2.Truncate()).To(BeNil())
-})
-
-// Initialize the default test transaction pools
-// and create the blockchain instances and set their db
-var _ = BeforeEach(func() {
-	txPool = txpool.New(100)
-	lpBc = blockchain.New(txPool, cfg, log)
-	lpBc.SetDB(db)
-	lpBc.SetGenesisBlock(blockchain.GenesisBlock)
-
-	txPool2 = txpool.New(100)
-	rpBc = blockchain.New(txPool2, cfg, log)
-	rpBc.SetDB(db2)
-	rpBc.SetGenesisBlock(blockchain.GenesisBlock)
-
-	err = lpBc.Up()
-	Expect(err).To(BeNil())
-
-	err = rpBc.Up()
-	Expect(err).To(BeNil())
-})
-
-var _ = Describe("Engine", func() {
-
-	var tests = []func() bool{
-		HandshakeTest,
-		TransactionTest,
-		// AddrTest,
-		// GetAddrTest,
-		// SelfAdvTest,
-		// PingTest,
-		// PeerManagerTest,
-		// NodeTest,
-		// BlockTest,
+	if err != nil {
+		panic(err)
 	}
 
-	for _, t := range tests {
-		t()
+	txPool := txpool.New(100)
+	bc := blockchain.New(txPool, cfg, log)
+	bc.SetDB(db)
+	bc.SetGenesisBlock(blockchain.GenesisBlock)
+
+	if seed < 0 {
+		seed = funk.RandomInt(1, 5000000)
 	}
-})
+	sk := crypto.NewKeyFromIntSeed(seed)
+	n, err := node.NewNodeWithDB(db, cfg, fmt.Sprintf("127.0.0.1:%d", port), sk, log)
+	if err != nil {
+		panic(err)
+	}
+
+	gossip := node.NewGossip(n, log)
+	n.SetGossipProtocol(gossip)
+	n.SetBlockchain(bc)
+
+	return n
+}
+
+func TestNodeSuite(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Node Suite")
+}
+
+func closeNode(n *node.Node) {
+	n.Host().ConnManager().TrimOpenConns(context.Background())
+	err := os.RemoveAll(n.GetCfg().ConfigDir())
+	Expect(err).To(BeNil())
+}

@@ -60,3 +60,8 @@ func (hc *HistoryCache) Has(h MultiKey) bool {
 func (hc *HistoryCache) Len() int {
 	return hc.cache.Len()
 }
+
+// Keys returns the keys
+func (hc *HistoryCache) Keys() []interface{} {
+	return hc.cache.Keys()
+}

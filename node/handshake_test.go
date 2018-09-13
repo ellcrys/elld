@@ -1,60 +1,155 @@
-package node
+package node_test
 
 import (
+	"math/big"
+	"time"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func HandshakeTest() bool {
-	return Describe("Handshake", func() {
+var _ = Describe("Handshake", func() {
 
-		var lp, rp *Node
-		var err error
-		var lpGossip, rpGossip *Gossip
+	var lp, rp *node.Node
+	var sender, _ = crypto.NewKey(nil)
 
-		BeforeEach(func() {
-			lp, err = NewNode(cfg, "127.0.0.1:31100", crypto.NewKeyFromIntSeed(0), log)
-			lpGossip = NewGossip(lp, log)
-			lp.SetGossipProtocol(lpGossip)
-			lp.SetBlockchain(lpBc)
+	BeforeEach(func() {
+		lp = makeTestNode(30000)
+		Expect(lp.GetBlockchain().Up()).To(BeNil())
+		lp.SetProtocolHandler(config.HandshakeVersion, lp.Gossip().OnHandshake)
+		lp.SetProtocolHandler(config.GetBlockHashesVersion, lp.Gossip().OnGetBlockHashes)
+
+		rp = makeTestNode(30001)
+		Expect(rp.GetBlockchain().Up()).To(BeNil())
+		rp.SetProtocolHandler(config.HandshakeVersion, rp.Gossip().OnHandshake)
+		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
+
+		// Create sender account on the remote peer
+		Expect(rp.GetBlockchain().CreateAccount(1, rp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
+
+		// Create sender account on the local peer
+		Expect(lp.GetBlockchain().CreateAccount(1, lp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
+	})
+
+	AfterEach(func() {
+		closeNode(lp)
+		closeNode(rp)
+	})
+
+	Describe(".SendHandshake", func() {
+
+		It("should return err when connection to peer failed", func() {
+			err := rp.Gossip().SendHandshake(rp)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
 		})
 
-		BeforeEach(func() {
-			rp, err = NewNode(cfg, "127.0.0.1:31101", crypto.NewKeyFromIntSeed(1), log)
-			rpGossip = NewGossip(rp, log)
-			rp.SetProtocolHandler(config.HandshakeVersion, rpGossip.OnHandshake)
-			rp.SetBlockchain(rpBc)
-		})
+		Context("when local and remote peer have no active addresses", func() {
 
-		AfterEach(func() {
-			closeNode(lp)
-			closeNode(rp)
-		})
+			var err error
 
-		Describe(".SendHandshake", func() {
-
-			It("should return err when connection to peer failed", func() {
-				err = rpGossip.SendHandshake(rp)
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
+			BeforeEach(func() {
+				err = lp.Gossip().SendHandshake(rp)
 			})
 
-			Context("With 0 addresses in local and remote peers", func() {
+			It("should return nil when good connection is established", func() {
+				Expect(err).To(BeNil())
+			})
 
-				It("should return nil when good connection is established, local and remote peer should have 1 active peer each", func() {
-					rpGossip.handshakeProcessed = func() {
-						defer GinkgoRecover()
-						activePeerRp := rp.PM().GetActivePeers(0)
-						Expect(len(activePeerRp)).To(Equal(1))
-					}
-					err = lpGossip.SendHandshake(rp)
-					Expect(err).To(BeNil())
-					activePeerLp := lp.PM().GetActivePeers(0)
-					Expect(len(activePeerLp)).To(Equal(1))
+			Specify("local and remote peer should have 1 active peer each", func() {
+				activePeerRp := rp.PM().GetActivePeers(0)
+				Expect(activePeerRp).To(HaveLen(1))
+				activePeerLp := lp.PM().GetActivePeers(0)
+				Expect(activePeerLp).To(HaveLen(1))
+			})
+		})
+
+		Context("when remote node has a better (most difficulty, longest chain etc) chain", func() {
+
+			var block2 core.Block
+			var err error
+
+			BeforeEach(func() {
+				block2, err = rp.GetBlockchain().Generate(&core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().UnixNano()),
+					},
+					Creator:                 sender,
+					Nonce:                   core.EncodeNonce(1),
+					Difficulty:              new(big.Int).SetInt64(131072),
+					OverrideTotalDifficulty: new(big.Int).SetInt64(1000000),
+					AddFeeAlloc:             true,
 				})
+				Expect(err).To(BeNil())
+				_, err = rp.GetBlockchain().ProcessBlock(block2)
+				Expect(err).To(BeNil())
+			})
+
+			Specify("local peer should send block hashes request with the current block as the locator", func(done Done) {
+				go func() {
+					defer GinkgoRecover()
+					err := lp.Gossip().SendHandshake(rp)
+					Expect(err).To(BeNil())
+				}()
+
+				lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
+				Expect(err).To(BeNil())
+
+				evt := <-lp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
+				Expect(evt.Args[0].(util.Hash)).To(Equal(lpCurBlock.GetHash()))
+				close(done)
+			})
+		})
+
+		Context("when local node has a better (most difficulty, longest chain etc) chain", func() {
+
+			var block2 core.Block
+			var err error
+
+			BeforeEach(func() {
+				block2, err = lp.GetBlockchain().Generate(&core.GenerateBlockParams{
+					Transactions: []core.Transaction{
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().UnixNano()),
+					},
+					Creator:                 sender,
+					Nonce:                   core.EncodeNonce(1),
+					Difficulty:              new(big.Int).SetInt64(131072),
+					OverrideTotalDifficulty: new(big.Int).SetInt64(1000000),
+					AddFeeAlloc:             true,
+				})
+				Expect(err).To(BeNil())
+				_, err = lp.GetBlockchain().ProcessBlock(block2)
+				Expect(err).To(BeNil())
+			})
+
+			Specify("remote peer should send block hashes request with its current block as the locator", func(done Done) {
+				go func() {
+					defer GinkgoRecover()
+					err := lp.Gossip().SendHandshake(rp)
+					Expect(err).To(BeNil())
+				}()
+
+				rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
+				Expect(err).To(BeNil())
+
+				evt := <-rp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
+				Expect(evt.Args[0].(util.Hash)).To(Equal(rpCurBlock.GetHash()))
+				close(done)
 			})
 		})
 	})
-}
+})

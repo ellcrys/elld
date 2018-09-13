@@ -87,16 +87,19 @@ func (m *Manager) GetKnownPeer(peerID string) types.Engine {
 	return peer
 }
 
-// onPeerDisconnect is called when peer disconnects.
-// Decrement active peer count but do not remove from the known peer list
-// because the peer might come back in a short time. Subtract 2 hours from
-// its current timestamp. Eventually, it will be removed if it does not reconnect.
-func (m *Manager) onPeerDisconnect(peerAddr ma.Multiaddr) {
+// OnPeerDisconnect is called when peer disconnects.
+// Active peer count is decreased by one.
+// The disconnected peer is not removed from the
+// known peer list because it might come back in a
+// short time but subtract 2 hours from its current
+// timestamp.
+// Eventually, it will be removed if it does not reconnect.
+func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
 
 	peerID := util.IDFromAddr(peerAddr).Pretty()
 
 	if peer := m.GetKnownPeer(peerID); peer != nil {
-		m.onFailedConnection(peer)
+		m.OnFailedConnection(peer)
 		m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
 	}
 
@@ -118,8 +121,8 @@ func (m *Manager) GetBootstrapPeer(id string) types.Engine {
 	return m.bootstrapNodes[id]
 }
 
-// connectToPeer attempts to connect to a peer
-func (m *Manager) connectToPeer(peerID string) error {
+// ConnectToPeer attempts to connect to a peer
+func (m *Manager) ConnectToPeer(peerID string) error {
 	peer := m.GetKnownPeer(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -127,9 +130,10 @@ func (m *Manager) connectToPeer(peerID string) error {
 	return m.localNode.connectToNode(peer)
 }
 
-// getUnconnectedPeers returns the peers that are not connected
-// to the local peer. Hardcoded bootstrap peers are not included.
-func (m *Manager) getUnconnectedPeers() (peers []types.Engine) {
+// GetUnconnectedPeers returns the peers that
+// are not connected to the local peer.
+// Hardcoded bootstrap peers are not included.
+func (m *Manager) GetUnconnectedPeers() (peers []types.Engine) {
 	for _, p := range m.GetActivePeers(0) {
 		if !p.IsHardcodedSeed() && !p.Connected() {
 			peers = append(peers, p)
@@ -146,7 +150,7 @@ func (m *Manager) getUnconnectedPeers() (peers []types.Engine) {
 // Start periodic ping messages to peers
 func (m *Manager) Manage() {
 
-	if err := m.loadPeers(); err != nil {
+	if err := m.LoadPeers(); err != nil {
 		m.log.Error("failed to load peer addresses from database", "Err", err.Error())
 	}
 
@@ -259,7 +263,7 @@ func (m *Manager) AddOrUpdatePeer(p types.Engine) error {
 	// Save the known peers.
 	// don't do this in test environment (we will test savePeer alone)
 	if !m.localNode.TestMode() {
-		defer m.savePeers()
+		defer m.SavePeers()
 	}
 
 	m.knownPeerMtx.Lock()
@@ -316,6 +320,11 @@ func (m *Manager) KnownPeers() map[string]types.Engine {
 	return m.knownPeers
 }
 
+// SetKnownPeers sets the known peers
+func (m *Manager) SetKnownPeers(d map[string]types.Engine) {
+	m.knownPeers = d
+}
+
 // NeedMorePeers checks whether we need more peers
 func (m *Manager) NeedMorePeers() bool {
 	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
@@ -326,17 +335,28 @@ func (m *Manager) IsLocalNode(p types.Engine) bool {
 	return p != nil && m.localNode != nil && p.StringID() == m.localNode.StringID()
 }
 
-// isActive returns true of a peer is considered active.
+// SetLocalNode sets the local node
+func (m *Manager) SetLocalNode(n *Node) {
+	m.localNode = n
+}
+
+// SetNumActiveConnections sets the number of active
+// connections.
+func (m *Manager) SetNumActiveConnections(n int64) {
+	m.connMgr.activeConn = n
+}
+
+// IsActive returns true of a peer is considered active.
 // First rule, its timestamp must be within the last 3 hours
-func (m *Manager) isActive(p types.Engine) bool {
+func (m *Manager) IsActive(p types.Engine) bool {
 	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.GetTimestamp())
 }
 
-// onFailedConnection sets a new timestamp on a peer by deducting a fixed
+// OnFailedConnection sets a new timestamp on a peer by deducting a fixed
 // amount of time from its current timestamp.
 // It will also call CleanKnowPeer. The purpose is to expedite the removal
 // of disconnected
-func (m *Manager) onFailedConnection(remotePeer types.Engine) error {
+func (m *Manager) OnFailedConnection(remotePeer types.Engine) error {
 	if remotePeer == nil {
 		return fmt.Errorf("nil passed")
 	}
@@ -364,7 +384,7 @@ func (m *Manager) CleanKnownPeers() int {
 
 	newKnownPeers := make(map[string]types.Engine)
 	for k, p := range m.knownPeers {
-		if m.isActive(p) {
+		if m.IsActive(p) {
 			newKnownPeers[k] = p
 		}
 	}
@@ -395,7 +415,7 @@ func (m *Manager) GetActivePeers(limit int) (peers []types.Engine) {
 		if limit > 0 && len(peers) >= limit {
 			return
 		}
-		if m.isActive(p) {
+		if m.IsActive(p) {
 			peers = append(peers, p)
 		}
 	}
@@ -476,8 +496,8 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 	return peers, nil
 }
 
-// savePeers stores active peer addresses
-func (m *Manager) savePeers() error {
+// SavePeers stores active peer addresses
+func (m *Manager) SavePeers() error {
 
 	var numAddrs = 0
 	var kvObjs []*elldb.KVObject
@@ -509,7 +529,7 @@ func (m *Manager) savePeers() error {
 }
 
 // LoadPeers loads peers stored in the local database
-func (m *Manager) loadPeers() error {
+func (m *Manager) LoadPeers() error {
 
 	kvObjs := m.localNode.db.GetByPrefix([]byte("address"))
 

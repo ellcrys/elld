@@ -1,329 +1,105 @@
-package node
+package node_test
 
 import (
-	"context"
-	"math/big"
 	"time"
 
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
-
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/testutil"
-	host "github.com/libp2p/go-libp2p-host"
-	pstore "github.com/libp2p/go-libp2p-peerstore"
-	ma "github.com/multiformats/go-multiaddr"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func NodeTest() bool {
-	return Describe("Node", func() {
+var _ = Describe("Node", func() {
+	var lp, rp *node.Node
+	var sender, _ = crypto.NewKey(nil)
+	var receiver, _ = crypto.NewKey(nil)
 
-		var n *Node
+	BeforeEach(func() {
+		lp = makeTestNode(30000)
+		Expect(lp.GetBlockchain().Up()).To(BeNil())
+		lp.SetProtocolHandler(config.HandshakeVersion, lp.Gossip().OnHandshake)
+		lp.SetProtocolHandler(config.GetBlockHashesVersion, lp.Gossip().OnGetBlockHashes)
 
-		// Create test local node
-		// Set the nodes blockchain manager
-		// Create and set the nodes gossip handler
-		BeforeEach(func() {
-			n, err = NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(0), log)
-			Expect(err).To(BeNil())
-			n.SetBlockchain(lpBc)
-			proto := NewGossip(n, log)
-			n.SetGossipProtocol(proto)
-		})
+		rp = makeTestNode(30001)
+		Expect(rp.GetBlockchain().Up()).To(BeNil())
+		rp.SetProtocolHandler(config.HandshakeVersion, rp.Gossip().OnHandshake)
+		rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
+		rp.SetProtocolHandler(config.GetBlockBodiesVersion, rp.Gossip().OnGetBlockBodies)
 
-		AfterEach(func() {
-			closeNode(n)
-		})
+		// Create sender account on the remote peer
+		Expect(rp.GetBlockchain().CreateAccount(1, rp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
 
-		Describe(".NewNode", func() {
-			Context("address", func() {
-				It("return err.Error('failed to parse address. Expects 'ip:port' format') when only port is provided", func() {
-					_, err := NewNode(cfg, "40100", crypto.NewKeyFromIntSeed(1), log)
-					Expect(err).NotTo(BeNil())
-					Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
-				})
-
-				It("return err.Error('failed to parse address. Expects 'ip:port' format') when only ip is provided", func() {
-					_, err := NewNode(cfg, "127.0.0.1", crypto.NewKeyFromIntSeed(1), log)
-					Expect(err).NotTo(BeNil())
-					Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
-				})
-
-				It("return err.Error('failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0') when address is invalid and port is valid", func() {
-					_, err := NewNode(cfg, "127.0.0:40000", crypto.NewKeyFromIntSeed(1), log)
-					Expect(err).NotTo(BeNil())
-					Expect(err.Error()).To(Equal("failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0"))
-				})
-
-				It("return nil if address is ':40000'", func() {
-					_, err := NewNode(cfg, ":40000", crypto.NewKeyFromIntSeed(1), log)
-					Expect(err).To(BeNil())
-				})
-
-				It("return nil if address is '127.0.0.1:40000'", func() {
-					_, err := NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(1), log)
-					Expect(err).To(BeNil())
-				})
-			})
-		})
-
-		Describe(".ID", func() {
-			It("should return empty string when node has no address", func() {
-				p := Node{}
-				Expect(p.ID().Pretty()).To(Equal(""))
-			})
-
-			It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-				Expect(err).To(BeNil())
-				Expect(n.ID().Pretty()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-				closeNode(n)
-			})
-		})
-
-		Describe(".IDPretty", func() {
-			It("should return empty string when node has no address", func() {
-				p := Node{}
-				Expect(p.StringID()).To(Equal(""))
-			})
-
-			It("should return '12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-				Expect(n.StringID()).To(Equal("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-				closeNode(n)
-			})
-		})
-
-		Describe(".IDShort", func() {
-			It("should return empty string when node has no address", func() {
-				p := Node{}
-				Expect(p.ShortID()).To(Equal(""))
-			})
-
-			It("should return '12D3KooWL3XJ..JiXkSj7333Jw'", func() {
-				Expect(n.ShortID()).To(Equal("12D3KooWL3XJ..JiXkSj7333Jw"))
-				closeNode(n)
-			})
-		})
-
-		Describe(".PrivKey", func() {
-			It("should return private key", func() {
-				Expect(n.PrivKey()).NotTo(BeNil())
-				closeNode(n)
-			})
-		})
-
-		Describe(".GetMultiAddr", func() {
-			It("should return empty string when node has no host", func() {
-				n := Node{}
-				Expect(n.GetMultiAddr()).To(Equal(""))
-			})
-
-			It("should return '/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-				Expect(n.GetMultiAddr()).To(Equal("/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-				closeNode(n)
-			})
-		})
-
-		Describe(".GetAddr", func() {
-			It("should return '127.0.0.1:40000'", func() {
-				Expect(n.GetAddr()).To(Equal("127.0.0.1:40000"))
-				closeNode(n)
-			})
-		})
-
-		Describe(".NodeFromAddr", func() {
-			It("should return error if address is not valid", func() {
-				_, err = n.NodeFromAddr("/invalid", false)
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("invalid address provided"))
-			})
-		})
-
-		Describe(".IsBadTimestamp", func() {
-			It("should return false when time is zero", func() {
-				n.SetTimestamp(time.Time{})
-				Expect(err).To(BeNil())
-				Expect(n.IsBadTimestamp()).To(BeTrue())
-			})
-
-			It("should return false when time 10 minutes, 1 second in the future", func() {
-				n.SetTimestamp(time.Now().Add(10*time.Minute + 1*time.Second))
-				Expect(err).To(BeNil())
-				Expect(n.IsBadTimestamp()).To(BeTrue())
-			})
-
-			It("should return false when time 3 hours, 1 second in the past", func() {
-				n.SetTimestamp(time.Now().Add(-3 * time.Hour))
-				Expect(err).To(BeNil())
-				Expect(n.IsBadTimestamp()).To(BeTrue())
-			})
-		})
-
-		Describe(".GetIP4TCPAddr", func() {
-			It("should return '/ip4/127.0.0.1/tcp/40000'", func() {
-				Expect(n.GetIP4TCPAddr().String()).To(Equal("/ip4/127.0.0.1/tcp/40000"))
-				closeNode(n)
-			})
-		})
-
-		Describe(".AddBootstrapNodes", func() {
-			Context("with empty address", func() {
-				It("peer manager's bootstrap list should be empty", func() {
-					n.AddBootstrapNodes(nil, false)
-					Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
-					closeNode(n)
-				})
-			})
-
-			Context("with invalid address", func() {
-				It("peer manager's bootstrap list should not contain invalid address", func() {
-					n.AddBootstrapNodes([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
-					Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
-					closeNode(n)
-				})
-
-				It("peer manager's bootstrap list contain only one valid address", func() {
-					n.AddBootstrapNodes([]string{
-						"/ip4/127.0.0.1/tcp/40000",
-						"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
-					}, false)
-					Expect(n.PM().GetBootstrapNodes()).To(HaveLen(1))
-					Expect(n.PM().GetBootstrapPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).To(BeAssignableToTypeOf(&Node{}))
-					closeNode(n)
-				})
-			})
-		})
-
-		Describe(".PeersPublicAddrs", func() {
-
-			var host, host2, host3 host.Host
-			var n *Node
-			var err error
-
-			BeforeEach(func() {
-				n, err = NewNode(cfg, "127.0.0.1:40105", crypto.NewKeyFromIntSeed(5), log)
-				Expect(err).To(BeNil())
-				host = n.Host()
-				Expect(err).To(BeNil())
-				host2, err = testutil.RandomHost(6, 40106)
-				Expect(err).To(BeNil())
-				host3, err = testutil.RandomHost(7, 40107)
-				Expect(err).To(BeNil())
-
-				host.SetStreamHandler("/protocol/0.0.1", testutil.NoOpStreamHandler)
-				host.Peerstore().AddAddr(host2.ID(), host2.Addrs()[0], pstore.PermanentAddrTTL)
-				host.Peerstore().AddAddr(host3.ID(), host3.Addrs()[0], pstore.PermanentAddrTTL)
-
-				host.Connect(context.Background(), host.Peerstore().PeerInfo(host2.ID()))
-				host.Connect(context.Background(), host.Peerstore().PeerInfo(host3.ID()))
-			})
-
-			It("the peers (/ip4/127.0.0.1/tcp/40106, /ip4/127.0.0.1/tcp/40107) must be returned", func() {
-				peers := n.PeersPublicAddr(nil)
-				Expect(peers).To(HaveLen(2))
-				expected, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40106")
-				expected2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40107")
-				Expect(peers).To(ContainElement(expected))
-				Expect(peers).To(ContainElement(expected2))
-			})
-
-			It("only /ip4/127.0.0.1/tcp/40107 must be returned", func() {
-				peers := n.PeersPublicAddr([]string{host2.ID().Pretty()})
-				Expect(peers).To(HaveLen(1))
-				expected, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40107")
-				Expect(peers).To(ContainElement(expected))
-			})
-
-			AfterEach(func() {
-				host.Close()
-				host2.Close()
-				host3.Close()
-			})
-		})
-
-		Describe(".Connected", func() {
-
-			var n, n2 *Node
-			var err error
-
-			BeforeEach(func() {
-				n, err = NewNode(cfg, "127.0.0.1:40106", crypto.NewKeyFromIntSeed(6), log)
-				Expect(err).To(BeNil())
-				n2, err = NewNode(cfg, "127.0.0.1:40107", crypto.NewKeyFromIntSeed(7), log)
-				Expect(err).To(BeNil())
-				n2.SetLocalNode(n)
-			})
-
-			It("should return false when localPeer is nil", func() {
-				n.localNode = nil
-				Expect(n.Connected()).To(BeFalse())
-			})
-
-			It("should return true when peer is connected", func() {
-				n.host.Peerstore().AddAddr(n2.host.ID(), n2.host.Addrs()[0], pstore.PermanentAddrTTL)
-				n.host.Connect(context.Background(), n.host.Peerstore().PeerInfo(n2.host.ID()))
-				Expect(n2.Connected()).To(BeTrue())
-			})
-
-			AfterEach(func() {
-				closeNode(n)
-				closeNode(n2)
-			})
-		})
-
-		Describe(".ip", func() {
-			It("should return ip as 127.0.0.1", func() {
-				ip := n.ip()
-				Expect(ip).ToNot(BeNil())
-				Expect(ip.String()).To(Equal("127.0.0.1"))
-			})
-		})
-
-		Describe(".handleAbortedMinerBlockEvent", func() {
-
-			var block core.Block
-			var tx *objects.Transaction
-
-			// Create the test account
-			BeforeEach(func() {
-				err = lpBc.CreateAccount(1, lpBc.GetBestChain(), &objects.Account{
-					Type:    objects.AccountTypeBalance,
-					Address: util.String(sender.Addr()),
-					Balance: "100",
-				})
-				Expect(err).To(BeNil())
-			})
-
-			BeforeEach(func() {
-				// Create and sign test transaction
-				tx = objects.NewTransaction(objects.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
-				tx.From = util.String(sender.Addr())
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				Expect(err).To(BeNil())
-				tx.Sig = sig
-
-				block, err = lpBc.Generate(&core.GenerateBlockParams{
-					Transactions: []core.Transaction{tx},
-					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
-					Difficulty:   new(big.Int).SetInt64(131072),
-				})
-				Expect(err).To(BeNil())
-			})
-
-			It("should move transactions in the aborted block to the tx pool", func() {
-				go func() {
-					n.handleAbortedMinerBlockEvent()
-				}()
-				time.Sleep(1 * time.Millisecond)
-				<-n.event.Emit(core.EventMinerProposedBlockAborted, block)
-				time.Sleep(1 * time.Millisecond)
-				Expect(n.GetTxPool().Size()).To(Equal(int64(1)))
-				Expect(n.GetTxPool().Has(tx)).To(BeTrue())
-			})
-		})
+		// Create sender account on the local peer
+		Expect(lp.GetBlockchain().CreateAccount(1, lp.GetBlockchain().GetBestChain(), &objects.Account{
+			Type:    objects.AccountTypeBalance,
+			Address: util.String(sender.Addr()),
+			Balance: "100",
+		})).To(BeNil())
 	})
-}
+
+	AfterEach(func() {
+		closeNode(lp)
+		closeNode(rp)
+	})
+
+	Describe(".ProcessBlockHashes", func() {
+
+		var block2, block3 core.Block
+
+		// Target shape:
+		// Remote Peer
+		// [1]-[2]-[3]
+		//
+		// Local Peer
+		// [1]
+		Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
+
+			BeforeEach(func(done Done) {
+				block2 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix()-1)
+				_, err := rp.GetBlockchain().ProcessBlock(block2)
+				Expect(err).To(BeNil())
+
+				block3 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix())
+				_, err = rp.GetBlockchain().ProcessBlock(block3)
+				Expect(err).To(BeNil())
+
+				go func() {
+					defer GinkgoRecover()
+					err := lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
+					Expect(err).To(BeNil())
+				}()
+
+				<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
+				close(done)
+			})
+
+			Context("when block hash queue includes hashes of block [2] and [3] of remote peer", func() {
+				BeforeEach(func(done Done) {
+					lp.GetBlockHashQueue().Append(&node.BlockHash{Hash: block2.GetHash(), Broadcaster: rp})
+					lp.GetBlockHashQueue().Append(&node.BlockHash{Hash: block3.GetHash(), Broadcaster: rp})
+					go lp.ProcessBlockHashes()
+					<-lp.GetEventEmitter().Once(node.EventBlockBodiesProcessed)
+					close(done)
+				})
+
+				Specify("local peer blockchain height should equal remote peer blockchain height", func() {
+					lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
+					Expect(err).To(BeNil())
+					rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
+					Expect(err).To(BeNil())
+					Expect(lpCurBlock.GetNumber()).To(Equal(rpCurBlock.GetNumber()))
+					Expect(lpCurBlock.GetHash()).To(Equal(rpCurBlock.GetHash()))
+				})
+			})
+		})
+
+	})
+})
