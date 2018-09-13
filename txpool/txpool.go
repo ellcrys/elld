@@ -35,15 +35,19 @@ func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
 	go tp.handleNewBlockEvent()
 }
 
+func (tp *TxPool) removeTransactionsInBlock(block core.Block) {
+	tp.container.Remove(block.GetTransactions()...)
+}
+
 // handleNewBlockEvent removes transactions from
 // the pool if they are contained in the broadcast
 // block that was appended to the chain
 func (tp *TxPool) handleNewBlockEvent() {
+
 	// When a new block is added to the chain,
 	// remove any of its transactions from the pool
 	for evt := range tp.event.On(core.EventNewBlock) {
-		txs := evt.Args[0].(core.Block).GetTransactions()
-		tp.container.Remove(txs...)
+		tp.removeTransactionsInBlock(evt.Args[0].(core.Block))
 	}
 }
 
