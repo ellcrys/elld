@@ -87,8 +87,13 @@ func RandBytes(n int) []byte {
 func SetTestCfg() (*config.EngineConfig, error) {
 	var err error
 	dir, _ := homedir.Dir()
+<<<<<<< HEAD
 	cfgDir := path.Join(dir, util.RandString(5))
 	os.MkdirAll(cfgDir, 0700)
+=======
+	cfgDir := path.Join(dir, ".ellcrys_test")
+	os.MkdirAll(cfgDir, 0755)
+>>>>>>> fdc6fc451c286d0966d6415b11249774030d710a
 	cfg, err := config.LoadCfg(cfgDir)
 	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5

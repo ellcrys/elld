@@ -3,546 +3,329 @@ package miner
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
+	"path/filepath"
+	"time"
 
-	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/franela/goreq"
+
+	// "bytes"
+	// "io"
+	// "io/ioutil"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func delResources(bk *Analyzer) {
-	os.Remove(bk.ellFilePath)
-	os.RemoveAll(bk.mintDir)
-}
-
 var BanknoteAnalyzerTest = func() bool {
+
 	return Describe("BanknoteAnalyzer", func() {
 
+		var ba *BanknoteAnalyzer
+
 		BeforeEach(func() {
-			var err error
-			cfg, err = testutil.SetTestCfg()
-			Expect(err).To(BeNil())
+			ba = NewBanknoteAnalyzer(cfg, log)
+			goreq.SetConnectTimeout(5 * time.Second)
 		})
 
-		cfg, err = testutil.SetTestCfg()
+		Describe(".fetchModel", func() {
 
-		log := logger.NewLogrus()
-
-		Describe(".NewAnalyzer", func() {
-
-			Describe("NewAnalyzer with empty train path", func() {
-
-				log := logger.NewLogrus()
-				bk := NewAnalyzer("", cfg, log)
-
-				delResources(bk)
-
-				It("bankNote struct must not be  nil", func() {
-					Expect(bk).ToNot(BeNil())
-				})
-
+			It("should return err when url is invalid", func() {
+				err = ba.fetchRemoteModel("ht://storage.googleapis.com/somewhere/unkwn")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal(`failed to fetch training model: Get ht://storage.googleapis.com/somewhere/unkwn: unsupported protocol scheme "ht"`))
 			})
 
-			Describe("NewAnalyzer with file path to train data", func() {
+			It("should return err when unable to reach url", func() {
+				err = ba.fetchRemoteModel("https://storage.googleapis.com/somewhere/unkwn")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("failed to fetch training model. HttpStatus: 404"))
+			})
 
-				bk := NewAnalyzer("testDirResources/sample_train_file.ell", cfg, log)
+			It("should successfully fetch and save train data to expected directory", func() {
+				err = ba.fetchRemoteModel("http://" + server.address() + "/models.tar")
+				Expect(err).To(BeNil())
 
-				delResources(bk)
+				dirPath := filepath.Join(cfg.ConfigDir(), TrainDataDirName)
+				_, err = os.Stat(dirPath)
+				Expect(err).To(BeNil())
+			})
 
-				It("bankNote struct must not be  nil", func() {
-					Expect(bk).ToNot(BeNil())
+			Context("model already exist in training directory", func() {
+				It("should successfully fetch and replace it", func() {
+					err = ba.fetchRemoteModel("http://" + server.address() + "/models.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchRemoteModel("http://" + server.address() + "/models.tar")
+					Expect(err).To(BeNil())
 				})
 			})
 
-			Describe("NewAnalyzer with url path to train data", func() {
+			It("should return error when model is not a valid tar file", func() {
+				err = ba.fetchRemoteModel("http://" + server.address() + "/models.zip")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("failed to decompress model: gzip: invalid header"))
+			})
+		})
 
-				bk := NewAnalyzer("http://192.168.4.103/train_file.ell", cfg, log)
+		Describe(".SetTrainingModelURI", func() {
+			It("should return error when uri is not a valid path or url", func() {
+				err = ba.SetTrainingModelURI("invalid")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("invalid uri: expected a path or a URL"))
+			})
 
-				delResources(bk)
+			It("should return error when path does not exist", func() {
+				err = ba.SetTrainingModelURI("/something/unknown")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("invalid uri: file path does not exist"))
+			})
+		})
 
-				It("bankNote struct must not be  nil", func() {
-					Expect(bk).ToNot(BeNil())
+		Describe(".fetchLocalModel", func() {
+
+			var path string
+
+			BeforeEach(func() {
+				path, err = filepath.Abs("./testdata/models.tar")
+				Expect(err).To(BeNil())
+			})
+
+			It("should fetch and copy local file to target model path", func() {
+				err = ba.fetchLocalModel(path)
+				Expect(err).To(BeNil())
+
+				dirPath := filepath.Join(cfg.ConfigDir(), TrainDataDirName)
+				_, err = os.Stat(dirPath)
+				Expect(err).To(BeNil())
+			})
+
+			Context("model already exist in training directory", func() {
+				It("should successfully fetch and replace it", func() {
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+
+					dirPath := filepath.Join(cfg.ConfigDir(), TrainDataDirName)
+					_, err = os.Stat(dirPath)
+					Expect(err).To(BeNil())
 				})
+			})
 
+			It("should return error when model is not a valid tar file", func() {
+				path, err := filepath.Abs("./testdata/models.zip")
+				Expect(err).To(BeNil())
+				err = ba.fetchLocalModel(path)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("failed to decompress model: gzip: invalid header"))
 			})
 
 		})
 
 		Describe(".Prepare", func() {
 
-			Context("When a 404 url path is supplied for train file", func() {
-
-				bk := NewAnalyzer("http://192.168.4.103/x/image128.png", cfg, log)
-
-				delResources(bk)
-
-				It("Error must not be nil", func() {
-					err = bk.Prepare()
-					Expect(err).ToNot(BeNil())
-					delResources(bk)
-				})
-
+			BeforeEach(func() {
+				filePath := filepath.Join(cfg.ConfigDir(), TrainDataDirName)
+				_, err = os.Stat(filePath)
+				Expect(err).To(BeAssignableToTypeOf(&os.PathError{}))
 			})
 
-			Context("When empty train file is passed", func() {
-
-				bk := NewAnalyzer("", cfg, log)
-
-				delResources(bk)
-
-				err = bk.Prepare()
-
-				It("Error must be nil, becuase it uses the system train file", func() {
-					Expect(err).To(BeNil())
-					delResources(bk)
-				})
-
-			})
-
-			Context("When valid path is supplied for train file", func() {
-
-				bk := NewAnalyzer("miner/testDirResources/sample_train_file.ell", cfg, log)
-
-				delResources(bk)
-				err = bk.Prepare()
-
-				It("Error must be nil", func() {
-					Expect(err).To(BeNil())
-					delResources(bk)
-				})
-
-			})
-
-			Context("When Invalid path is supplied for train file", func() {
-
-				bk := NewAnalyzer("miner/testDirResources/x/image128.png", cfg, log)
-
-				delResources(bk)
-
-				It("Error must not be nil", func() {
-					err = bk.Prepare()
-					Expect(err).ToNot(BeNil())
-					delResources(bk)
-				})
-
-			})
-
-			Context("When Invalid url path is supplied for train file", func() {
-
-				bk := NewAnalyzer("http://192.168.4.103/image128.png", cfg, log)
-
-				delResources(bk)
-
-				It("Error must not be nil", func() {
-					err = bk.Prepare()
-					Expect(err).ToNot(BeNil())
-					delResources(bk)
-				})
-
-			})
-
-		})
-
-		Describe(".downloadEllToPath", func() {
-
-			bk := NewAnalyzer("", cfg, log)
-
-			It("When url is not valid, Error Must not be nil", func() {
-				err = bk.downloadEllToPath(bk.elldConfigDir, "xyzcommm")
-				Expect(err).ToNot(BeNil())
-			})
-
-			It("When url is empty, Error Must not be nil", func() {
-				err = bk.downloadEllToPath(bk.elldConfigDir, "")
-				Expect(err).ToNot(BeNil())
-			})
-
-			It("When url is valid, Error Must be nil", func() {
-				err = bk.downloadEllToPath(bk.elldConfigDir, bk.ellRemoteURL)
+			It("should fetch the model from the remote url when no model exists", func() {
+				DefaultTrainModelFetchURI = "http://" + server.address() + "/models.tar"
+				Expect(ba.trainingModelURI).To(BeEmpty())
+				err := ba.Prepare()
 				Expect(err).To(BeNil())
-				delResources(bk)
 			})
 
-		})
+			It("should use and fetch remote model explicitly set", func() {
+				err := ba.SetTrainingModelURI("http://" + server.address() + "/models.tar")
+				Expect(err).To(BeNil())
+				Expect(ba.trainingModelURI).ToNot(BeEmpty())
+				err = ba.Prepare()
+				Expect(err).To(BeNil())
+			})
 
-		Describe(".Predict", func() {
+			It("should use and fetch local mode explicitly", func() {
+				path, _ := filepath.Abs("./testdata/models.tar")
+				err := ba.SetTrainingModelURI(path)
+				Expect(err).To(BeNil())
+				Expect(ba.trainingModelURI).ToNot(BeEmpty())
+				err = ba.Prepare()
+				Expect(err).To(BeNil())
+			})
 
-			Context("When a valid image is supplied to predict", func() {
+			When("model had already been fetched", func() {
 
-				bk := NewAnalyzer("", cfg, log)
-				imagePath := "testDirResources/image128.png"
+				BeforeEach(func() {
+					err := ba.SetTrainingModelURI("http://" + server.address() + "/models.tar")
+					Expect(err).To(BeNil())
+					err = ba.Prepare()
+					Expect(err).To(BeNil())
+					ba.fetched = false
+				})
 
-				bk.Prepare()
+				It("should re-fetch the model if forced fetch is enabled", func() {
+					ba.ForceFetch()
+					Expect(ba.forceFetch).To(BeTrue())
+					Expect(ba.fetched).To(BeFalse())
 
-				note, err := bk.Predict(imagePath)
-
-				It("Expect only error to be nil", func() {
-
-					Expect(note).ToNot(BeNil())
+					err := ba.SetTrainingModelURI("http://" + server.address() + "/models.tar")
+					Expect(err).To(BeNil())
+					err = ba.Prepare()
 					Expect(err).To(BeNil())
 
-					Expect(note.Name()).ToNot(BeNil())
-					Expect(note.Country()).ToNot(BeNil())
-					Expect(note.Figure()).ToNot(BeNil())
-					Expect(note.Shortname()).ToNot(BeNil())
-					Expect(note.Text()).ToNot(BeNil())
-
-					Expect(note.Name()).ShouldNot(BeEmpty())
-					Expect(note.Country()).ShouldNot(BeEmpty())
-					Expect(note.Figure()).ShouldNot(BeEmpty())
-					Expect(note.Shortname()).ShouldNot(BeEmpty())
-					Expect(note.Text()).ShouldNot(BeEmpty())
-
+					Expect(ba.fetched).To(BeTrue())
 				})
-
 			})
-
-			Context("When an invalid path to image is supplied ", func() {
-
-				bk := NewAnalyzer("", cfg, log)
-				imagePath := "testDirResources/x/image128.png"
-
-				bk.Prepare()
-
-				note, err := bk.Predict(imagePath)
-
-				It("Expect error to not be nil", func() {
-					Expect(note).To(BeNil())
-					Expect(err).ToNot(BeNil())
-				})
-
-			})
-
-			Context("When an invalid image is supplied ", func() {
-
-				bk := NewAnalyzer("", cfg, log)
-				imagePath := "testDirResources/sample_train_file.ell"
-
-				bk.Prepare()
-
-				note, err := bk.Predict(imagePath)
-
-				It("Expect error to not be nil", func() {
-					Expect(note).To(BeNil())
-					Expect(err).ToNot(BeNil())
-				})
-
-			})
-
-			Context("When the path to the train file is invalid ", func() {
-
-				bk := NewAnalyzer("", cfg, log)
-				imagePath := "testDirResources/sample_train_file.ell"
-
-				bk.Prepare()
-
-				bk.kerasGoPath = ""
-				note, err := bk.Predict(imagePath)
-
-				It("Expect error to not be nil", func() {
-					Expect(note).To(BeNil())
-					Expect(err).ToNot(BeNil())
-				})
-
-			})
-
 		})
 
 		Describe(".PredictBytes", func() {
 
-			Context("When a valid byte is pass as input parameter ", func() {
-
-				bk := NewAnalyzer("", cfg, log)
-
-				It("Error Must be nil", func() {
-
-					imagePath := "testDirResources/image128.png"
-					byteImage, _ := ioutil.ReadFile(imagePath)
-					note, err := bk.PredictBytes(byteImage)
-
-					Expect(note).ToNot(BeNil())
+			Context("with valid model archive", func() {
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models.tar")
 					Expect(err).To(BeNil())
-
-					Expect(note.Name()).ToNot(BeNil())
-					Expect(note.Country()).ToNot(BeNil())
-					Expect(note.Figure()).ToNot(BeNil())
-					Expect(note.Shortname()).ToNot(BeNil())
-					Expect(note.Text()).ToNot(BeNil())
-
-					Expect(note.Name()).ShouldNot(BeEmpty())
-					Expect(note.Country()).ShouldNot(BeEmpty())
-					Expect(note.Figure()).ShouldNot(BeEmpty())
-					Expect(note.Shortname()).ShouldNot(BeEmpty())
-					Expect(note.Text()).ShouldNot(BeEmpty())
-
-				})
-
-			})
-
-			Context("When an invalid byte is pass as input parameter ", func() {
-
-				bk := NewAnalyzer("", cfg, log)
-
-				It("Error Must not be nil", func() {
-
-					bytedata := []byte("Here is a string image")
-
-					note, err := bk.PredictBytes(bytedata)
-					Expect(note).To(BeNil())
-					Expect(err).ToNot(BeNil())
-
-				})
-
-			})
-
-		})
-
-		Describe(".mintLoader", func() {
-
-			Context("When a valid data is pass as input parameter ", func() {
-
-				It("Error Must be nil", func() {
-
-					bk := NewAnalyzer("", cfg, log)
-
-					imageFile, _ := os.Open("testDirResources/image128.png")
-
-					var imgBuffer bytes.Buffer
-					io.Copy(&imgBuffer, imageFile)
-					tensor, _ := readImage(&imgBuffer, "png")
-
-					bnote, err := bk.mintLoader(tensor)
-
-					Expect(bnote).ToNot(BeNil())
+					err = ba.fetchLocalModel(path)
 					Expect(err).To(BeNil())
-
 				})
 
-			})
-
-			Context("When an invalid train path is supplied", func() {
-
-				It("Error Must not be nil", func() {
-
-					bk := NewAnalyzer("", cfg, log)
-
-					bk.kerasGoPath = ""
-
-					imageFile, _ := os.Open("testDirResources/image128.png")
-
-					var imgBuffer bytes.Buffer
-					io.Copy(&imgBuffer, imageFile)
-					tensor, _ := readImage(&imgBuffer, "png")
-
-					bnote, err := bk.mintLoader(tensor)
-
-					Expect(bnote).To(BeNil())
+				It("should return err when image could not be decoded", func() {
+					var img bytes.Buffer
+					img.Write([]byte("garbage"))
+					res, err := ba.PredictBytes(&img)
 					Expect(err).ToNot(BeNil())
-
-				})
-
-			})
-
-			Context("When an invalid mint path is supplied", func() {
-
-				It("Error Must not be nil", func() {
-
-					bk := NewAnalyzer("", cfg, log)
-
-					bk.mintDir = ""
-
-					imageFile, _ := os.Open("testDirResources/image128.png")
-
-					var imgBuffer bytes.Buffer
-					io.Copy(&imgBuffer, imageFile)
-					tensor, _ := readImage(&imgBuffer, "png")
-
-					bnote, err := bk.mintLoader(tensor)
-
-					Expect(bnote).To(BeNil())
-					Expect(err).ToNot(BeNil())
-
-				})
-
-			})
-
-		})
-
-		Describe(".unzip", func() {
-
-			It("Error Must not be nil", func() {
-				res := unzip("testDirResources/image128.png", cfg.ConfigDir())
-				Expect(res).ToNot(BeNil())
-			})
-
-			It("Error Must not be nil", func() {
-				res := unzip("testDirResources/sample_train_file.ell", "/Users/princesegzy01/elld_config_locked")
-				Expect(res).ToNot(BeNil())
-			})
-
-			It("Error Must not be nil", func() {
-				res := unzip("testDirResources/fake_train_file.ell", cfg.ConfigDir())
-				Expect(res).ToNot(BeNil())
-			})
-
-			It("Error Must be nil", func() {
-				res := unzip("testDirResources/sample_train_file.ell", cfg.ConfigDir())
-				Expect(res).To(BeNil())
-			})
-
-		})
-
-		Describe(".isValidUrl", func() {
-
-			It("Must return true", func() {
-				res := isValidUrl("http://www.example.com")
-				Expect(res).To(BeTrue())
-			})
-
-			It("Must return false", func() {
-				res := isValidUrl("document/golangcode/data")
-				Expect(res).To(BeFalse())
-			})
-
-		})
-
-		Describe(".readImage", func() {
-
-			Context("When Invalid buffer image and png format is supplied", func() {
-
-				var b bytes.Buffer
-				b.Write([]byte("Hello"))
-
-				res, err := readImage(&b, "png")
-
-				It("should reject invalid buffer & png as input ", func() {
+					Expect(err.Error()).To(Equal("failed to decode image: image: unknown format"))
 					Expect(res).To(BeNil())
-					Expect(err).ToNot(BeNil())
 				})
-			})
 
-			Context("When Invalid buffer image and ttif format is supplied", func() {
-
-				var b bytes.Buffer
-				b.Write([]byte("Hello"))
-
-				res, err := readImage(&b, "ttif")
-
-				It("should reject invalid buffer & ttif as input ", func() {
+				It("should return err when image is not png or jpg", func() {
+					f, _ := os.Open("./testdata/image.tiff")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("failed to decode image: image: unknown format"))
 					Expect(res).To(BeNil())
-					Expect(err).ToNot(BeNil())
 				})
-			})
 
-			Context("When empty buffer and invalid format is supplied", func() {
-
-				var b bytes.Buffer
-				b.Write([]byte(""))
-
-				res, err := readImage(&b, "ttif")
-
-				It("should reject empty buffer & invalid format as input ", func() {
+				It("should return err when image is a gif", func() {
+					f, _ := os.Open("./testdata/marshmellow.gif")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("failed to decode image: image: unknown format"))
 					Expect(res).To(BeNil())
-					Expect(err).ToNot(BeNil())
 				})
 			})
 
-			Context("When empty buffer and valid format is supplied", func() {
+			Context("with invalid model archive", func() {
 
-				var b bytes.Buffer
-				b.Write([]byte(""))
-
-				res, err := readImage(&b, "png")
-
-				It("should reject empty buffer & valid format as input ", func() {
-					Expect(res).To(BeNil())
-					Expect(err).ToNot(BeNil())
-				})
-			})
-
-			Context("When valid buffer and invalid format is supplied", func() {
-
-				imByte, _ := ioutil.ReadFile("testDirResources/image128.png")
-
-				var b bytes.Buffer
-				b.Write([]byte(imByte))
-
-				res, err := readImage(&b, "ttif")
-
-				It("should reject valid buffer & invalid format as input ", func() {
-					Expect(res).To(BeNil())
-					Expect(err).ToNot(BeNil())
-				})
-			})
-
-			Context("When valid buffer and valid format is supplied", func() {
-
-				imByte, _ := ioutil.ReadFile("testDirResources/image128.png")
-
-				var b bytes.Buffer
-				b.Write([]byte(imByte))
-
-				res, err := readImage(&b, "png")
-
-				It("should accept valid buffer & valid format as input ", func() {
-					Expect(res).ToNot(BeNil())
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models_invalid.tar")
 					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				It("should fail to predict", func() {
+					f, _ := os.Open("./testdata/image128.png")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(MatchRegexp("Can't parse.*as binary proto"))
+					Expect(res).To(BeNil())
+				})
+			})
+
+			Context("with missing manifest in model archive", func() {
+
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models_missing_manifest.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				It("should fail to predict", func() {
+					f, _ := os.Open("./testdata/image128.png")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(MatchRegexp("failed to load manifest file: open .* no such file or directory"))
+					Expect(res).To(BeNil())
+				})
+			})
+
+			Context("with malformed manifest in model archive", func() {
+
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models_malformed_manifest.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				It("should fail to predict", func() {
+					f, _ := os.Open("./testdata/image128.png")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(MatchRegexp("failed to decode manifest file: invalid character.*"))
+					Expect(res).To(BeNil())
+				})
+			})
+
+			Context("with valid model", func() {
+
+				BeforeEach(func() {
+					path, err := filepath.Abs("./testdata/models.tar")
+					Expect(err).To(BeNil())
+					err = ba.fetchLocalModel(path)
+					Expect(err).To(BeNil())
+				})
+
+				// It("should successfully return a predicted banknote", func() {
+				// 	f, _ := os.Open("./testdata/image128.png")
+				// 	defer f.Close()
+				// 	var img bytes.Buffer
+				// 	io.Copy(&img, f)
+				// 	res, err := ba.PredictBytes(&img)
+				// 	Expect(err).To(BeNil())
+				// 	Expect(res).To(Equal(&BankNote{
+				// 		currencyCode: "NGN",
+				// 		denomination: "500",
+				// 	}))
+				// })
+
+				It("should return nil result and nil error when a prediction cannot be made", func() {
+					f, _ := os.Open("./testdata/ball.jpg")
+					defer f.Close()
+					var img bytes.Buffer
+					io.Copy(&img, f)
+					res, err := ba.PredictBytes(&img)
+					Expect(err).To(BeNil())
+					Expect(res).To(BeNil())
 				})
 			})
 		})
 
-		Describe(".transformGraph", func() {
-
-			Context("When png file is supplied", func() {
-
-				graph, input, output, err := transformGraph("png")
-
-				It("should accepts png as input ", func() {
-					Expect(graph).ToNot(BeNil())
-					Expect(input).ToNot(BeNil())
-					Expect(output).ToNot(BeNil())
-					Expect(err).To(BeNil())
-				})
+		Describe(".Predict", func() {
+			It("should fail to predict when model is invalid", func() {
+				path, err := filepath.Abs("./testdata/unknown.tar")
+				Expect(err).To(BeNil())
+				err = ba.fetchLocalModel(path)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("failed to decompress model: invalid argument"))
 			})
-
-			Context("When jpg file is supplied", func() {
-
-				graph, input, output, err := transformGraph("jpg")
-
-				It("should accepts jpg as input ", func() {
-					Expect(graph).ToNot(BeNil())
-					Expect(input).ToNot(BeNil())
-					Expect(output).ToNot(BeNil())
-					Expect(err).To(BeNil())
-				})
-			})
-
-			Context("When jpeg file is supplied", func() {
-
-				graph, input, output, err := transformGraph("jpeg")
-
-				It("should accepts jpeg as input ", func() {
-					Expect(graph).ToNot(BeNil())
-					Expect(input).ToNot(BeNil())
-					Expect(output).ToNot(BeNil())
-					Expect(err).To(BeNil())
-				})
-			})
-
-			Context("When gif file is supplied", func() {
-
-				graph, input, output, err := transformGraph("gif")
-				It("should Not accepts gif as input ", func() {
-					Expect(graph).To(BeNil())
-					Expect(input).ToNot(BeNil())
-					Expect(output).ToNot(BeNil())
-					Expect(err).ToNot(BeNil())
-				})
-			})
-
 		})
-
 	})
 }

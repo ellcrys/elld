@@ -91,7 +91,7 @@ func initConfig() {
 
 	if devMode && cfgDirPath == "" {
 		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev"))
-		os.MkdirAll(cfgDirPath, 0700)
+		os.MkdirAll(cfgDirPath, 0755)
 	}
 
 	cfg, err = config.LoadCfg(cfgDirPath)

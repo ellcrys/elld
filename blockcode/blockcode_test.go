@@ -103,6 +103,7 @@ var _ = Describe("Blockcode", func() {
 		})
 	})
 
+<<<<<<< HEAD
 	// Describe(".Read", func() {
 	// 	It("should return err = 'destination path does not exist' if destination path does not exist", func() {
 	// 		bc, err := FromDir("./testdata/blockcode_example")
@@ -126,4 +127,29 @@ var _ = Describe("Blockcode", func() {
 	// 		Expect(err).To(BeNil())
 	// 	})
 	// })
+=======
+	Describe(".Read", func() {
+		It("should return err = 'destination path does not exist' if destination path does not exist", func() {
+			bc, err := FromDir("./testdata/blockcode_example")
+			Expect(err).To(BeNil())
+			err = bc.Read("./unknown/path")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("destination path does not exist"))
+		})
+
+		It("should successfully un-tar to destination", func() {
+
+			destination := "/tmp/blockcode_example_untar"
+			err := os.Mkdir(destination, 0755)
+			Expect(err).To(BeNil())
+			defer os.RemoveAll(destination)
+
+			bc, err := FromDir("./testdata/blockcode_example")
+			Expect(err).To(BeNil())
+
+			err = bc.Read(destination)
+			Expect(err).To(BeNil())
+		})
+	})
+>>>>>>> fdc6fc451c286d0966d6415b11249774030d710a
 })

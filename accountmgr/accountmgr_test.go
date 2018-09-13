@@ -34,7 +34,7 @@ var _ = Describe("Accountmgr", func() {
 	accountPath := filepath.Join(path, "accounts")
 
 	BeforeEach(func() {
-		err := os.MkdirAll(accountPath, 0700)
+		err := os.MkdirAll(accountPath, 0755)
 		Expect(err).To(BeNil())
 	})
 

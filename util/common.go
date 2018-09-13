@@ -1,11 +1,15 @@
 package util
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/big"
 	r "math/rand"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -280,4 +284,64 @@ func MapDecode(m interface{}, rawVal interface{}) error {
 	}
 
 	return decoder.Decode(m)
+}
+
+// Untar takes a destination path and a reader; a tar reader loops over the tarfile
+// creating the file structure at 'dst' along the way, and writing any files
+func Untar(dst string, r io.Reader) (root string, err error) {
+
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		return "", err
+	}
+	defer gzr.Close()
+
+	tr := tar.NewReader(gzr)
+
+	// set root to the destination
+	// if no root directory was unwrapped
+	defer func() {
+		if root == "" {
+			root = dst
+		}
+	}()
+
+	for {
+
+		header, err := tr.Next()
+		switch {
+		case err == io.EOF:
+			return root, nil
+		case err != nil:
+			return "", err
+		case header == nil:
+			continue
+		}
+
+		// check the file type
+		target := filepath.Join(dst, header.Name)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			// the first directory is the root
+			if root == "" {
+				root = target
+			}
+			if _, err := os.Stat(target); err != nil {
+				if err := os.MkdirAll(target, 0755); err != nil {
+					return "", err
+				}
+			}
+
+		// if it's a file create it
+		case tar.TypeReg:
+			f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+			if err != nil {
+				return "", err
+			}
+			if _, err := io.Copy(f, tr); err != nil {
+				return "", err
+			}
+			f.Close()
+		}
+	}
 }

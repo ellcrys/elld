@@ -30,7 +30,7 @@ var _ = Describe("Configdir", func() {
 		It("should return nil if the passed in directory exists", func() {
 			dirName := fmt.Sprintf("%s/%s", homeDir, util.RandString(10))
 			os.RemoveAll(dirName)
-			err := os.Mkdir(dirName, 0700)
+			err := os.Mkdir(dirName, 0755)
 			Expect(err).To(BeNil())
 			defer os.RemoveAll(dirName)
 
@@ -51,7 +51,7 @@ var _ = Describe("Configdir", func() {
 			It("should create a new one with default content", func() {
 				dirName := fmt.Sprintf("%s/%s", homeDir, util.RandString(10))
 				os.RemoveAll(dirName)
-				err := os.Mkdir(dirName, 0700)
+				err := os.Mkdir(dirName, 0755)
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
@@ -72,7 +72,7 @@ var _ = Describe("Configdir", func() {
 			It("should return true and nil if config file already exist", func() {
 				dirName := fmt.Sprintf("%s/%s", homeDir, util.RandString(10))
 				os.RemoveAll(dirName)
-				err := os.Mkdir(dirName, 0700)
+				err := os.Mkdir(dirName, 0755)
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
@@ -94,7 +94,7 @@ var _ = Describe("Configdir", func() {
 			It("should scan configuration into Config object", func() {
 				dirName := fmt.Sprintf("%s/%s", homeDir, util.RandString(10))
 				os.RemoveAll(dirName)
-				err := os.Mkdir(dirName, 0700)
+				err := os.Mkdir(dirName, 0755)
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
@@ -127,7 +127,7 @@ var _ = Describe("Configdir", func() {
 			It("should return error", func() {
 				dirName := fmt.Sprintf("%s/%s", homeDir, util.RandString(10))
 				os.RemoveAll(dirName)
-				err := os.Mkdir(dirName, 0700)
+				err := os.Mkdir(dirName, 0755)
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 

@@ -39,7 +39,7 @@ func NewConfig(dirPath string) (cfgDir *Config, err error) {
 	if len(cfgDir.path) == 0 {
 		hd, _ := homedir.Dir()
 		cfgDir.path = fmt.Sprintf("%s/.ellcrys", hd)
-		os.Mkdir(cfgDir.path, 0700)
+		os.Mkdir(cfgDir.path, 0755)
 	}
 
 	return
@@ -85,7 +85,7 @@ func (cd *Config) Init() error {
 	}
 
 	if fullAccountDir := path.Join(cd.path, AccountDirName); !util.IsPathOk(fullAccountDir) {
-		os.MkdirAll(fullAccountDir, 0700)
+		os.MkdirAll(fullAccountDir, 0755)
 	}
 
 	return nil

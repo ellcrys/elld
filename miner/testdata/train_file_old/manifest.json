@@ -1,0 +1,17 @@
+{  
+   "version":"0.0.1",
+   "currencies":{  
+      "100":{  
+         "currencyCode":"NGN",
+         "denomination":"1000"
+      },
+      "010":{  
+         "currencyCode":"NGN",
+         "denomination":"200"
+      },
+      "001":{  
+         "currencyCode":"NGN",
+         "denomination":"500"
+      }
+   }
+}

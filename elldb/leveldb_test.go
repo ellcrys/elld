@@ -18,9 +18,13 @@ var _ = Describe("Database", func() {
 	var err error
 
 	BeforeEach(func() {
+<<<<<<< HEAD
 		home, _ := homedir.Dir()
 		testCfgDir = filepath.Join(home, ".ellcrys_test")
 		err = os.Mkdir(testCfgDir, 0700)
+=======
+		err = os.Mkdir(testCfgDir, 0755)
+>>>>>>> fdc6fc451c286d0966d6415b11249774030d710a
 		Expect(err).To(BeNil())
 	})
 
