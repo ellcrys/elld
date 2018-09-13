@@ -8,6 +8,10 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
+// GenesisBlock is the first block of
+// the block chain from which all other future
+// blocks are rooted from. It contains the initial
+// state and takes the block number 1.
 var GenesisBlock core.Block = &objects.Block{
 	Header: &objects.Header{
 		Number: 0x0000000000000001,
