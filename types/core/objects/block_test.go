@@ -95,7 +95,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -130,7 +130,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -144,7 +144,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -159,7 +159,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -184,7 +184,7 @@ var _ = Describe("Block & Header", func() {
 
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
+					{Type: TxTypeBalance, SenderPubKey: util.String(key.PubKey().Base58()), To: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", Value: "100.30", Timestamp: 1529670647, Fee: "0.10"},
 				},
 				Header: header1,
 			}
@@ -212,7 +212,7 @@ var _ = Describe("Block & Header", func() {
 		It("should successfully return 32 bytes digest", func() {
 			b := Block{
 				Transactions: []*Transaction{
-					&Transaction{
+					{
 						Type:         TxTypeBalance,
 						SenderPubKey: "48qgD4WR71u2fMJJNdsXmfDKNqNmiFdVo3YfnGjTA915cArTUTw",
 						To:           "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
@@ -279,7 +279,7 @@ var _ = Describe("Block & Header", func() {
 					TotalDifficulty:  new(big.Int).SetInt64(40000),
 				},
 				Transactions: []*Transaction{
-					&Transaction{
+					{
 						Type:         1,
 						Nonce:        1,
 						To:           "some_address",
