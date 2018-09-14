@@ -76,9 +76,9 @@ var _ = Describe("Database", func() {
 	Describe(".DeleteByPrefix", func() {
 		It("should successfully delete objects", func() {
 			err := db.Put([]*KVObject{
-				&KVObject{Key: []byte("object_1"), Value: []byte("value1")},
-				&KVObject{Key: []byte("object_2"), Value: []byte("value2")},
-				&KVObject{Key: []byte("another_object_3"), Value: []byte("value3")},
+				{Key: []byte("object_1"), Value: []byte("value1")},
+				{Key: []byte("object_2"), Value: []byte("value2")},
+				{Key: []byte("another_object_3"), Value: []byte("value3")},
 			})
 			Expect(err).To(BeNil())
 
@@ -214,9 +214,9 @@ var _ = Describe("Database", func() {
 		Describe(".DeleteByPrefix", func() {
 			It("should successfully delete objects", func() {
 				err := dbTx.Put([]*KVObject{
-					&KVObject{Key: []byte("object_1"), Value: []byte("value1")},
-					&KVObject{Key: []byte("object_2"), Value: []byte("value2")},
-					&KVObject{Key: []byte("another_object_3"), Value: []byte("value3")},
+					{Key: []byte("object_1"), Value: []byte("value1")},
+					{Key: []byte("object_2"), Value: []byte("value2")},
+					{Key: []byte("another_object_3"), Value: []byte("value3")},
 				})
 				Expect(err).To(BeNil())
 
@@ -232,8 +232,8 @@ var _ = Describe("Database", func() {
 
 			It("should not successfully delete if rollback is called", func() {
 				err := dbTx.Put([]*KVObject{
-					&KVObject{Key: []byte("object_1"), Value: []byte("value1")},
-					&KVObject{Key: []byte("object_2"), Value: []byte("value2")},
+					{Key: []byte("object_1"), Value: []byte("value1")},
+					{Key: []byte("object_2"), Value: []byte("value2")},
 				})
 				Expect(err).To(BeNil())
 				dbTx.Commit()

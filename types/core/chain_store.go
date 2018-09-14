@@ -6,8 +6,8 @@ import (
 )
 
 // ChainStorer defines an interface that provides
-// every functionality need to mutate or query a 
-// chain. 
+// every functionality need to mutate or query a
+// chain.
 type ChainStorer interface {
 
 	// PutBlock adds a block to the store

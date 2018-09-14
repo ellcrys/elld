@@ -362,7 +362,7 @@ var _ = Describe("Jsonrpc", func() {
 	Describe(".AddAPI", func() {
 		It("should add API", func() {
 			apiSet1 := APISet(map[string]APIInfo{
-				"add": APIInfo{
+				"add": {
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) + m["y"].(float64))
@@ -370,13 +370,13 @@ var _ = Describe("Jsonrpc", func() {
 				},
 			})
 			apiSet2 := APISet(map[string]APIInfo{
-				"add": APIInfo{
+				"add": {
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
-				"div": APIInfo{
+				"div": {
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) / m["y"].(float64))
@@ -391,7 +391,7 @@ var _ = Describe("Jsonrpc", func() {
 	Describe(".Methods", func() {
 		It("should return all methods name", func() {
 			apiSet1 := APISet(map[string]APIInfo{
-				"add": APIInfo{
+				"add": {
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) + m["y"].(float64))
@@ -399,13 +399,13 @@ var _ = Describe("Jsonrpc", func() {
 				},
 			})
 			apiSet2 := APISet(map[string]APIInfo{
-				"add": APIInfo{
+				"add": {
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
-				"div": APIInfo{
+				"div": {
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) / m["y"].(float64))

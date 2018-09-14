@@ -273,62 +273,62 @@ func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
-		"getChains": jsonrpc.APIInfo{
+		"getChains": {
 			Namespace:   "node",
 			Description: "Get all chains",
 			Func:        b.apiGetChains,
 		},
-		"getBlock": jsonrpc.APIInfo{
+		"getBlock": {
 			Namespace:   "node",
 			Description: "Get a block by number",
 			Func:        b.apiGetBlock,
 		},
-		"getBlockByHash": jsonrpc.APIInfo{
+		"getBlockByHash": {
 			Namespace:   "node",
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
 		},
-		"getOrphans": jsonrpc.APIInfo{
+		"getOrphans": {
 			Namespace:   "node",
 			Description: "Get a list of orphans",
 			Func:        b.apiGetOrphans,
 		},
-		"getBestChain": jsonrpc.APIInfo{
+		"getBestChain": {
 			Namespace:   "node",
 			Description: "Get the best chain",
 			Func:        b.apiGetBestchain,
 		},
-		"getReOrgs": jsonrpc.APIInfo{
+		"getReOrgs": {
 			Namespace:   "node",
 			Description: "Get a list of re-organization events",
 			Func:        b.apiGetReOrgs,
 		},
-		"getAccount": jsonrpc.APIInfo{
+		"getAccount": {
 			Namespace:   "node",
 			Description: "Get an account",
 			Func:        b.apiGetAccount,
 		},
-		"getAccountNonce": jsonrpc.APIInfo{
+		"getAccountNonce": {
 			Namespace:   "node",
 			Description: "Get the nonce of an account",
 			Func:        b.apiGetNonce,
 		},
-		"getBalance": jsonrpc.APIInfo{
+		"getBalance": {
 			Namespace:   "ell",
 			Description: "Get account balance",
 			Func:        b.apiGetBalance,
 		},
-		"getTransaction": jsonrpc.APIInfo{
+		"getTransaction": {
 			Namespace:   "node",
 			Description: "Get a transaction by hash",
 			Func:        b.apiGetTransaction,
 		},
-		"getDifficulty": jsonrpc.APIInfo{
+		"getDifficulty": {
 			Namespace:   "node",
 			Description: "Get difficulty information",
 			Func:        b.apiGetDifficultyInfo,
 		},
-		"getTransactionStatus": jsonrpc.APIInfo{
+		"getTransactionStatus": {
 			Namespace:   "node",
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
