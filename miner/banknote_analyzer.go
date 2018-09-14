@@ -424,16 +424,8 @@ func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 	predictions := tensors[0].Value().([][]float32)
 	resultData := predictions[0]
 
+	// get the position, confidence level from the array of resultData
 	maxIntPosition, _ := argMax(resultData)
-
-	// Merge one hot encoder to construct
-	// a key that we can use to extract the result object
-	// from the manifest.
-	var resultKey string
-	for _, element := range resultData {
-		s := fmt.Sprintf("%d", int(element))
-		resultKey = resultKey + s
-	}
 
 	// load the result json file
 	manifestPath := filepath.Join(a.cfg.ConfigDir(), TrainDataDirName, "manifest.json")
@@ -451,10 +443,11 @@ func (a *BanknoteAnalyzer) predict(img *tf.Tensor) (*BankNote, error) {
 
 	var cMap = manifest["currencies"].(map[string]interface{})
 
+	// convert the max index from int to string
 	maxStrPosition := strconv.Itoa(maxIntPosition)
 
+	// get the indndex of the max position from the manifest file
 	if result, ok := cMap[maxStrPosition]; ok {
-		// if result, ok := cMap[resultKey]; ok {
 		return &BankNote{
 			currencyCode: result.(map[string]interface{})["currencyCode"].(string),
 			denomination: result.(map[string]interface{})["denomination"].(string),
