@@ -198,8 +198,8 @@ var _ = Describe("TxContainer", func() {
 		It("with 2 transactions by same sender; sort by nonce in ascending order", func() {
 			q := newTxContainer(2)
 			items := []*ContainerItem{
-				&ContainerItem{Tx: &objects.Transaction{From: "a", Nonce: 2, Value: "10"}},
-				&ContainerItem{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}},
+				{Tx: &objects.Transaction{From: "a", Nonce: 2, Value: "10"}},
+				{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}},
 			}
 			q.container = append(q.container, items...)
 			q.Sort()
@@ -209,8 +209,8 @@ var _ = Describe("TxContainer", func() {
 		It("with 2 transactions by same sender; same nonce; sort by fee rate in descending order", func() {
 			q := newTxContainer(2)
 			items := []*ContainerItem{
-				&ContainerItem{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
-				&ContainerItem{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.2"},
+				{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
+				{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.2"},
 			}
 			q.container = append(q.container, items...)
 			q.Sort()
@@ -224,9 +224,9 @@ var _ = Describe("TxContainer", func() {
 			sort by fee rate (descending) for others`, func() {
 			q := newTxContainer(2)
 			items := []*ContainerItem{
-				&ContainerItem{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
-				&ContainerItem{Tx: &objects.Transaction{From: "a", Nonce: 2, Value: "10"}, FeeRate: "0.2"},
-				&ContainerItem{Tx: &objects.Transaction{From: "b", Nonce: 4, Value: "10"}, FeeRate: "1.2"},
+				{Tx: &objects.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
+				{Tx: &objects.Transaction{From: "a", Nonce: 2, Value: "10"}, FeeRate: "0.2"},
+				{Tx: &objects.Transaction{From: "b", Nonce: 4, Value: "10"}, FeeRate: "1.2"},
 			}
 			q.container = append(q.container, items...)
 			q.Sort()

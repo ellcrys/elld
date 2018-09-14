@@ -83,7 +83,7 @@ func (co *Container) create() error {
 		},
 		HostConfig: &docker.HostConfig{
 			PortBindings: map[docker.Port][]docker.PortBinding{
-				"9900/tcp": []docker.PortBinding{{HostIP: "127.0.0.1", HostPort: strconv.Itoa(port)}},
+				"9900/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(port)}},
 			},
 		},
 	})

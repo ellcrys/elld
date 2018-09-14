@@ -19,14 +19,30 @@ import (
 )
 
 const (
-	EventReceivedBlockHashes  = "event.receivedBlockHashes"
+	// EventReceivedBlockHashes describes an event about
+	// a receiving block hashes
+	EventReceivedBlockHashes = "event.receivedBlockHashes"
+	// EventRequestedBlockHashes describes an event about
+	// sending a request for block hashes
 	EventRequestedBlockHashes = "event.requestedBlockHashes"
+	// EventTransactionProcessed describes an event about
+	// a processed transaction
 	EventTransactionProcessed = "event.transactionProcessed"
-	EventBlockProcessed       = "event.blockProcessed"
+	// EventBlockProcessed describes an event about
+	// a processed block
+	EventBlockProcessed = "event.blockProcessed"
+	// EventBlockBodiesProcessed describes an event about
+	// processed block bodies
 	EventBlockBodiesProcessed = "event.blockBodiesProcessed"
-	EventAddrProcessed        = "event.addrProcessed"
-	EventAddressesRelayed     = "event.addressesRelayed"
-	EventReceivedAddr         = "event.receivedAddr"
+	//EventAddrProcessed describes an event about
+	// a processed address
+	EventAddrProcessed = "event.addrProcessed"
+	// EventAddressesRelayed describes an event about
+	// relayed addresses
+	EventAddressesRelayed = "event.addressesRelayed"
+	// EventReceivedAddr describes an event about
+	// received addresses
+	EventReceivedAddr = "event.receivedAddr"
 )
 
 // Gossip represents the peer protocol

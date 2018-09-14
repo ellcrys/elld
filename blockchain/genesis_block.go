@@ -37,7 +37,7 @@ var GenesisBlock core.Block = &objects.Block{
 		Extra:           nil,
 	},
 	Transactions: []*objects.Transaction{
-		&objects.Transaction{
+		{
 			Type:         2,
 			Nonce:        0x0000000000000001,
 			To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",

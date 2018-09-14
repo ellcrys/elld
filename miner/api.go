@@ -6,7 +6,7 @@ import "github.com/ellcrys/elld/rpc/jsonrpc"
 func (m *Miner) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 
-		"minerStop": jsonrpc.APIInfo{
+		"minerStop": {
 			Namespace:   "node",
 			Description: "Start mining",
 			Private:     true,
@@ -16,7 +16,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			},
 		},
 
-		"minerStart": jsonrpc.APIInfo{
+		"minerStart": {
 			Namespace:   "node",
 			Description: "Stop mining",
 			Private:     true,
@@ -26,7 +26,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			},
 		},
 
-		"mining": jsonrpc.APIInfo{
+		"mining": {
 			Namespace:   "node",
 			Description: "Check mining status",
 			Func: func(params interface{}) *jsonrpc.Response {
@@ -34,7 +34,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			},
 		},
 
-		"minerHashrate": jsonrpc.APIInfo{
+		"minerHashrate": {
 			Namespace:   "node",
 			Description: "Get current hashrate",
 			Func: func(params interface{}) *jsonrpc.Response {

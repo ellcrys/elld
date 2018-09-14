@@ -21,7 +21,7 @@ func TestStringPayload(t *testing.T) {
 		output  string
 	}
 	var tests = []Test{
-		{"all in one", []packet{packet{OPEN, nil, true}, packet{MESSAGE, []byte("测试"), true}, packet{MESSAGE, []byte("测试"), false}}, "\x31\x3a\x30\x37\x3a\x34\xe6\xb5\x8b\xe8\xaf\x95\x31\x30\x3a\x62\x34\x35\x72\x57\x4c\x36\x4b\x2b\x56"},
+		{"all in one", []packet{{OPEN, nil, true}, {MESSAGE, []byte("测试"), true}, {MESSAGE, []byte("测试"), false}}, "\x31\x3a\x30\x37\x3a\x34\xe6\xb5\x8b\xe8\xaf\x95\x31\x30\x3a\x62\x34\x35\x72\x57\x4c\x36\x4b\x2b\x56"},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBuffer(nil)
@@ -102,7 +102,7 @@ func TestBinaryPayload(t *testing.T) {
 		output  string
 	}
 	var tests = []Test{
-		{"all in one", []packet{packet{OPEN, nil, true}, packet{MESSAGE, []byte("测试"), true}, packet{MESSAGE, []byte("测试"), false}}, "\x00\x01\xff\x30\x00\x07\xff\x34\xe6\xb5\x8b\xe8\xaf\x95\x01\x07\xff\x04\xe6\xb5\x8b\xe8\xaf\x95"},
+		{"all in one", []packet{{OPEN, nil, true}, {MESSAGE, []byte("测试"), true}, {MESSAGE, []byte("测试"), false}}, "\x00\x01\xff\x30\x00\x07\xff\x34\xe6\xb5\x8b\xe8\xaf\x95\x01\x07\xff\x04\xe6\xb5\x8b\xe8\xaf\x95"},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBuffer(nil)

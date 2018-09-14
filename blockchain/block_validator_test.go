@@ -29,7 +29,7 @@ var BlockValidatorTest = func() bool {
 			Context("Header", func() {
 
 				var txs = []*objects.Transaction{
-					&objects.Transaction{},
+					{},
 				}
 
 				It("should return error when no transaction is provided", func() {
@@ -229,7 +229,7 @@ var BlockValidatorTest = func() bool {
 			Context("Hash", func() {
 
 				var txs = []*objects.Transaction{
-					&objects.Transaction{},
+					{},
 				}
 
 				It("should return error when hash is not provided", func() {
@@ -277,7 +277,7 @@ var BlockValidatorTest = func() bool {
 			Context("Signature", func() {
 
 				var txs = []*objects.Transaction{
-					&objects.Transaction{},
+					{},
 				}
 
 				It("should return error when signature is not provided", func() {
