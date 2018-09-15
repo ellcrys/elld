@@ -231,11 +231,15 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		if err == nil {
 			fee := tx.GetFee().Decimal()
 			txSize := decimal.NewFromFloat(float64(tx.SizeNoFee()))
-			expectedMinimumFee := params.FeePerByte.Mul(txSize).Round(2)
+
+			// Calculate the expected fee
+			expectedMinimumFee := params.FeePerByte.Mul(txSize)
+
+			// Compare the expected fee with the provided fee
 			if expectedMinimumFee.GreaterThan(fee) {
 				errs = appendErr(errs, fieldErrorWithIndex(v.curIndex, "fee",
 					fmt.Sprintf("fee is too low. Minimum fee expected: %s (for %s bytes)",
-						expectedMinimumFee.Round(3), txSize.String())))
+						expectedMinimumFee.String(), txSize.String())))
 			}
 		}
 	}
@@ -325,7 +329,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// Get the nonce of the originator account
 	accountNonce := account.GetNonce()
 
-	// For transactions intended to the added into
+	// For transactions intended to be added into
 	// the transaction pool, their nonce must be greater than
 	// the account's current nonce value by at least 1
 	if v.ctx != ContextBlock && tx.GetNonce()-accountNonce < 1 {

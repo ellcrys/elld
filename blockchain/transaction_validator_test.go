@@ -40,7 +40,7 @@ var TransactionValidatorTest = func() bool {
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
 					&objects.Transaction{Type: objects.TxTypeBalance}:                                                                                                fmt.Errorf("index:0, field:fee, error:fee is required"),
 					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "1oo"}:                                                                                    fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
-					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.000001"}:                                                                               fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.44 (for 44 bytes)"),
+					&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.000001"}:                                                                               fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.440000000000000009 (for 44 bytes)"),
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:hash, error:hash is required"),
 					&objects.Transaction{Hash: util.StrToHash("incorrect")}:                                                                                          fmt.Errorf("index:0, field:hash, error:hash is not correct"),
 					&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:sig, error:signature is required"),
@@ -62,7 +62,7 @@ var TransactionValidatorTest = func() bool {
 					From:         util.String(receiver.Addr()),
 					Value:        "10",
 					SenderPubKey: util.String(sender.PubKey().Base58()),
-					Fee:          "2.37",
+					Fee:          "2.5",
 					Timestamp:    time.Now().Unix(),
 					Hash:         util.StrToHash("some_hash"),
 					Sig:          []byte("invalid"),
@@ -197,8 +197,8 @@ var TransactionValidatorTest = func() bool {
 				BeforeEach(func() {
 					block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730723),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730725),
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      core.EncodeNonce(1),

@@ -86,7 +86,7 @@ var ChainTest = func() bool {
 							Expect(err).To(BeNil())
 
 							Expect(tree.Root()).NotTo(Equal(initialRoot))
-							expected := util.Hash{86, 104, 252, 31, 15, 175, 110, 130, 124, 131, 17, 172, 0, 212, 95, 167, 13, 167, 123, 24, 83, 110, 253, 120, 174, 161, 5, 199, 64, 214, 148, 99}
+							expected := util.Hash{52, 30, 117, 201, 22, 55, 159, 68, 20, 187, 94, 245, 61, 222, 41, 233, 6, 200, 210, 149, 34, 141, 47, 14, 1, 218, 56, 1, 138, 221, 141, 57}
 							Expect(tree.Root()).To(Equal(expected))
 						})
 
@@ -113,7 +113,7 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),
@@ -220,8 +220,8 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 				block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730722),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.36", "0", 1532730722),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730722),
+						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      core.EncodeNonce(1),

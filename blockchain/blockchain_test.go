@@ -103,7 +103,6 @@ var BlockchainIntegrationTests = func() {
 						blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
 						block.SetSignature(blockSig)
 						bc.SetGenesisBlock(block)
-						block.SetChainReader(nil)
 					})
 
 					It("should return error if a transaction's sender does not exists", func() {

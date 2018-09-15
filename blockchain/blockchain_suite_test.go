@@ -64,7 +64,7 @@ var makeBlock = func(ch *Chain) core.Block {
 var makeBlockWithBalanceTx = func(ch *Chain) core.Block {
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:    sender,
 		Nonce:      core.EncodeNonce(1),
@@ -130,7 +130,7 @@ var _ = Describe("Blockchain", func() {
 	BeforeEach(func() {
 		genesisBlock = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
 			Transactions: []core.Transaction{
-				objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
+				objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "5", 1532730722),
 			},
 			Creator:           sender,
 			Nonce:             core.EncodeNonce(1),
