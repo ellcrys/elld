@@ -3,12 +3,40 @@ package node
 import (
 	"encoding/base64"
 
+	"github.com/ellcrys/elld/config"
+
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
+
+// apiBasicNodeInfo returns basic information
+// about the node.
+func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
+
+	var mode = "development"
+	if n.ProdMode() {
+		mode = "production"
+	} else if n.TestMode() {
+		mode = "test"
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"id":                n.ID().Pretty(),
+		"address":           n.GetMultiAddr(),
+		"mode":              mode,
+		"netVersion":        config.ProtocolVersion,
+		"syncing":           n.isSyncing(),
+		"coinbasePublicKey": n.signatory.PubKey().Base58(),
+		"coinbase":          n.signatory.Addr(),
+	})
+}
+
+func (n *Node) apiGetConfig(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.cfg)
+}
 
 // apiJoin attempts to establish connection with a node
 // at the specified address.
@@ -107,6 +135,17 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+		"config": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get node configurations",
+			Private:     true,
+			Func:        n.apiGetConfig,
+		},
+		"info": jsonrpc.APIInfo{
+			Namespace:   "node",
+			Description: "Get basic information of the node",
+			Func:        n.apiBasicNodeInfo,
+		},
 		"send": jsonrpc.APIInfo{
 			Namespace:   "ell",
 			Description: "Create a balance transaction",
