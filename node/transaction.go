@@ -66,6 +66,11 @@ func (g *Gossip) OnTx(s net.Stream) {
 		return
 	}
 
+	// Ignore the transaction if already in our transaction pool
+	if g.engine.transactionsPool.Has(msg) {
+		return
+	}
+
 	// Validate the transaction and check whether
 	// it already exists in the transaction pool,
 	// main chain and side chains. If so, reject it
