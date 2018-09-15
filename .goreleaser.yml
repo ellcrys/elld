@@ -5,6 +5,7 @@ builds:
   -
     env:
       - CGO_ENABLED=0
+      - GOVERSION=go1.10.4
     goos:
       - linux
       - darwin
@@ -14,6 +15,7 @@ builds:
     goarm:
       - "6"
     main: ./main.go
+    ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.goversion={{.Env.GOVERSION}}
     hooks:
       pre: packr
       post: packr clean
@@ -27,11 +29,12 @@ archive:
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ .Tag }}"
 changelog:
   sort: asc
   filters:
     exclude:
+    - '^data'
     - '^docs:'
     - '^test:'
     - '^play'

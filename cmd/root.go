@@ -43,6 +43,10 @@ var (
 	// BuildDate is the date the build
 	// was created. Its is set by goreleaser
 	BuildDate = ""
+
+	// GoVersion is the version of go
+	// used to build the client
+	GoVersion = "go1.10.4"
 )
 
 var (
