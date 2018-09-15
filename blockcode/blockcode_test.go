@@ -13,11 +13,11 @@ var _ = Describe("Blockcode", func() {
 	Describe(".validateManifest", func() {
 		It("should validate correctly", func() {
 			cases := map[*Manifest]error{
-				&Manifest{}:                                                             fmt.Errorf("manifest error: language is missing"),
-				&Manifest{Lang: "c++"}:                                                  fmt.Errorf("manifest error: language {c++} is not supported"),
-				&Manifest{Lang: "go", LangVersion: ""}:                                  fmt.Errorf("manifest error: language version is required"),
-				&Manifest{Lang: "go", LangVersion: "1.10.2"}:                            fmt.Errorf("manifest error: at least one public function is required"),
-				&Manifest{Lang: "go", LangVersion: "1.10.2", PublicFuncs: []string{""}}: fmt.Errorf("manifest error: at least one public function is required"),
+				{}:                                                             fmt.Errorf("manifest error: language is missing"),
+				{Lang: "c++"}:                                                  fmt.Errorf("manifest error: language {c++} is not supported"),
+				{Lang: "go", LangVersion: ""}:                                  fmt.Errorf("manifest error: language version is required"),
+				{Lang: "go", LangVersion: "1.10.2"}:                            fmt.Errorf("manifest error: at least one public function is required"),
+				{Lang: "go", LangVersion: "1.10.2", PublicFuncs: []string{""}}: fmt.Errorf("manifest error: at least one public function is required"),
 			}
 
 			for manifest, err := range cases {

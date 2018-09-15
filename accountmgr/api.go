@@ -22,7 +22,7 @@ func (am *AccountManager) apiListAccounts(interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (am *AccountManager) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
-		"listAccounts": jsonrpc.APIInfo{
+		"listAccounts": {
 			Namespace:   "personal",
 			Description: "List all accounts",
 			Func:        am.apiListAccounts,

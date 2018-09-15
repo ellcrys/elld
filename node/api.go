@@ -135,50 +135,50 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
-		"config": jsonrpc.APIInfo{
+		"config": {
 			Namespace:   "node",
 			Description: "Get node configurations",
 			Private:     true,
 			Func:        n.apiGetConfig,
 		},
-		"info": jsonrpc.APIInfo{
+		"info": {
 			Namespace:   "node",
 			Description: "Get basic information of the node",
 			Func:        n.apiBasicNodeInfo,
 		},
-		"send": jsonrpc.APIInfo{
+		"send": {
 			Namespace:   "ell",
 			Description: "Create a balance transaction",
 			Private:     true,
 			Func:        n.apiSend,
 		},
-		"join": jsonrpc.APIInfo{
+		"join": {
 			Namespace:   "net",
 			Description: "Connect to a peer",
 			Private:     true,
 			Func:        n.apiJoin,
 		},
-		"numConnections": jsonrpc.APIInfo{
+		"numConnections": {
 			Namespace:   "net",
 			Description: "Get number of active connections",
 			Func:        n.apiNumConnections,
 		},
-		"getActivePeers": jsonrpc.APIInfo{
+		"getActivePeers": {
 			Namespace:   "net",
 			Description: "Get a list of active peers",
 			Func:        n.apiGetActivePeers,
 		},
-		"isSyncing": jsonrpc.APIInfo{
+		"isSyncing": {
 			Namespace:   "node",
 			Description: "Check whether blockchain synchronization is active",
 			Func:        n.apiIsSyncing,
 		},
-		"getSyncState": jsonrpc.APIInfo{
+		"getSyncState": {
 			Namespace:   "node",
 			Description: "Get blockchain synchronization status",
 			Func:        n.apiGetSyncState,
 		},
-		"getPoolSize": jsonrpc.APIInfo{
+		"getPoolSize": {
 			Namespace:   "node",
 			Description: "Get size information of the transaction pool",
 			Func:        n.apiTxPoolSizeInfo,

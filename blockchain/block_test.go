@@ -229,8 +229,8 @@ var BlockTest = func() bool {
 
 			It("should validate params", func() {
 				var cases = map[*core.GenerateBlockParams]interface{}{
-					&core.GenerateBlockParams{Transactions: txs}:                  fmt.Errorf("creator's key is required"),
-					&core.GenerateBlockParams{Transactions: txs, Creator: sender}: fmt.Errorf("difficulty is required"),
+					{Transactions: txs}:                  fmt.Errorf("creator's key is required"),
+					{Transactions: txs, Creator: sender}: fmt.Errorf("difficulty is required"),
 				}
 
 				for m, r := range cases {

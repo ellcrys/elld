@@ -52,12 +52,48 @@ func MakeTestBlock(bc core.Blockchain, chain *Chain, gp *core.GenerateBlockParam
 var makeBlock = func(ch *Chain) core.Block {
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "0.1", time.Now().UnixNano()),
+			objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             core.EncodeNonce(1),
 		Difficulty:        new(big.Int).SetInt64(131072),
 		OverrideTimestamp: time.Now().Unix(),
+		AddFeeAlloc:       true,
+	})
+}
+
+var makeBlockWithOnlyAllocTx = func(ch *Chain) core.Block {
+	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
+		Transactions: []core.Transaction{
+			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+		},
+		Creator:           sender,
+		Nonce:             core.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: time.Now().Unix(),
+	})
+}
+
+var makeBlockWithNoTx = func(ch *Chain) core.Block {
+	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
+		Transactions:      []core.Transaction{},
+		Creator:           sender,
+		Nonce:             core.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: time.Now().Unix(),
+	})
+}
+
+var makeBlockWithSingleTx = func(ch *Chain, senderNonce uint64) core.Block {
+	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
+		Transactions: []core.Transaction{
+			objects.NewTx(objects.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+		},
+		Creator:           sender,
+		Nonce:             core.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: time.Now().Unix(),
+		AddFeeAlloc:       true,
 	})
 }
 

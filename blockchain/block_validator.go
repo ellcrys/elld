@@ -175,9 +175,11 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 		return
 	}
 
-	// Must have at least one transaction
-	if len(v.block.GetTransactions()) == 0 {
-		errs = append(errs, fieldError("transactions", "at least one transaction is required"))
+	txCount := 0
+	for _, tx := range v.block.GetTransactions() {
+		if tx.GetType() != objects.TxTypeAlloc {
+			txCount++
+		}
 	}
 
 	// Header is required
@@ -191,6 +193,11 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 	}
 	if len(errs) > 0 {
 		return
+	}
+
+	// Must have at least one transaction
+	if v.block.GetNumber() > 1 && txCount == 0 {
+		errs = append(errs, fieldError("transactions", "at least one transaction is required"))
 	}
 
 	// Hash must be provided

@@ -294,6 +294,12 @@ var ChainTest = func() bool {
 				parentChain2 = NewChain("p2", db, cfg, log)
 				err = parentChain2.save()
 				Expect(err).To(BeNil())
+
+				Expect(bc.CreateAccount(1, parentChain1, &objects.Account{
+					Type:    objects.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "1000",
+				})).To(BeNil())
 			})
 
 			It("should return nil chain and nil error", func() {
@@ -385,20 +391,20 @@ var ChainTest = func() bool {
 			BeforeEach(func() {
 
 				// main chain blocks
-				block2Main = makeBlock(genesisChain)
+				block2Main = makeBlockWithSingleTx(genesisChain, 1)
 				_, err = bc.ProcessBlock(block2Main)
 				Expect(err).To(BeNil())
 
-				block3Main := makeBlock(genesisChain)
-				block3ChainB := makeBlock(genesisChain)
+				block3Main := makeBlockWithSingleTx(genesisChain, 2)
+				block3ChainB := makeBlockWithSingleTx(genesisChain, 2)
 
 				_, err = bc.ProcessBlock(block3Main)
 				Expect(err).To(BeNil())
 
-				_, err = bc.ProcessBlock(makeBlock(genesisChain))
+				_, err = bc.ProcessBlock(makeBlockWithSingleTx(genesisChain, 3))
 				Expect(err).To(BeNil())
 
-				_, err = bc.ProcessBlock(makeBlock(genesisChain))
+				_, err = bc.ProcessBlock(makeBlockWithSingleTx(genesisChain, 4))
 				Expect(err).To(BeNil())
 
 				// start a fork (Chain B)
@@ -407,8 +413,8 @@ var ChainTest = func() bool {
 				Expect(len(bc.chains)).To(Equal(2))
 				chainB = bc.chains[chainBReader.GetID()]
 
-				block4ChainC := makeBlock(chainB)
-				block4ChainB := makeBlock(chainB)
+				block4ChainC := makeBlockWithSingleTx(chainB, 3)
+				block4ChainB := makeBlockWithSingleTx(chainB, 3)
 
 				_, err = bc.ProcessBlock(block4ChainB)
 				Expect(err).To(BeNil())

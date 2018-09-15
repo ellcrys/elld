@@ -135,20 +135,14 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		}
 	}
 
-	var validValueRule = func(err error) func(interface{}) error {
+	var validValueRule = func(field string) func(interface{}) error {
 		return func(val interface{}) error {
-			if _, _err := decimal.NewFromString(val.(util.String).String()); _err != nil {
-				return err
+			dVal, _err := decimal.NewFromString(val.(util.String).String())
+			if _err != nil {
+				return fieldErrorWithIndex(v.curIndex, field, "could not convert to decimal")
 			}
-			return nil
-		}
-	}
-
-	var isZeroLessRule = func(err error) func(interface{}) error {
-		return func(val interface{}) error {
-			dec, _ := decimal.NewFromString(val.(util.String).String())
-			if dec.LessThanOrEqual(decimal.Zero) {
-				return err
+			if dVal.LessThan(decimal.Zero) {
+				return fieldErrorWithIndex(v.curIndex, field, "negative value not allowed")
 			}
 			return nil
 		}
@@ -174,18 +168,11 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to", "recipient address is not valid"))),
 	))
 
-	// Value must be set and it must be valid number
+	// Value must be >= 0 and it must be valid number
 	errs = appendErr(errs, validation.Validate(tx.GetValue(),
 		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "value", "value is required").Error()),
-		validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "value", "could not convert to decimal"))),
+		validation.By(validValueRule("value")),
 	))
-
-	// For non-allocations, the value must be greater than 0
-	if tx.GetType() != objects.TxTypeAlloc {
-		errs = appendErr(errs, validation.Validate(tx.GetValue(),
-			validation.By(isZeroLessRule(fieldErrorWithIndex(v.curIndex, "value", "value must be greater than zero"))),
-		))
-	}
 
 	// Timestamp is required.
 	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
@@ -222,7 +209,7 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 	if tx.GetType() != objects.TxTypeAlloc {
 		err := validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
-			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),
+			validation.By(validValueRule("fee")),
 		)
 		errs = appendErr(errs, err)
 

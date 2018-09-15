@@ -67,15 +67,15 @@ var WorldReaderTest = func() bool {
 						Expect(bc.chains).To(HaveLen(1))
 
 						// genesis block 2
-						genesisB2 := makeBlock(genesisChain)
+						genesisB2 := makeBlockWithSingleTx(genesisChain, 1)
 						_, err = bc.ProcessBlock(genesisB2)
 						Expect(err).To(BeNil())
 
 						// sidechain1 block 3
-						sidechain1B3 := makeBlock(genesisChain)
+						sidechain1B3 := makeBlockWithSingleTx(genesisChain, 2)
 
 						// genesis block 3
-						genesisB3 := makeBlock(genesisChain)
+						genesisB3 := makeBlockWithSingleTx(genesisChain, 2)
 						_, err = bc.ProcessBlock(genesisB3)
 						Expect(err).To(BeNil())
 
@@ -86,15 +86,15 @@ var WorldReaderTest = func() bool {
 						sidechain1 = bc.chains[reader.GetID()]
 
 						// block 4
-						genesisB4 := makeBlock(genesisChain)
+						genesisB4 := makeBlockWithSingleTx(genesisChain, 3)
 						_, err = bc.ProcessBlock(genesisB4)
 						Expect(err).To(BeNil())
 
 						// sidechain2 block 4
-						sidechain2B4 := makeBlock(sidechain1)
+						sidechain2B4 := makeBlockWithSingleTx(sidechain1, 3)
 
 						// sidechain1 block 4
-						sidechain1B4 := makeBlock(sidechain1)
+						sidechain1B4 := makeBlockWithSingleTx(sidechain1, 3)
 						_, err = bc.ProcessBlock(sidechain1B4)
 						Expect(err).To(BeNil())
 

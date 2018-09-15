@@ -18,7 +18,7 @@ var BlockValidatorTest = func() bool {
 
 		Describe(".checkFields", func() {
 
-			When("block is nil", func() {
+			Context("when block is nil", func() {
 				It("should return error", func() {
 					errs := NewBlockValidator(nil, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(1))
@@ -29,15 +29,8 @@ var BlockValidatorTest = func() bool {
 			Context("Header", func() {
 
 				var txs = []*objects.Transaction{
-					&objects.Transaction{},
+					{},
 				}
-
-				It("should return error when no transaction is provided", func() {
-					b := &objects.Block{Header: &objects.Header{Number: 0}}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
-					Expect(errs).To(HaveLen(7))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:transactions, error:at least one transaction is required")))
-				})
 
 				It("should return nil when header is not provided", func() {
 					b := &objects.Block{Transactions: txs}
@@ -70,6 +63,7 @@ var BlockValidatorTest = func() bool {
 						Expect(errs[0].Error()).To(Equal("field:header.parentHash, error:parent hash is not expected in a genesis block"))
 					})
 				})
+
 				When("header number is equal to 1", func() {
 					It("should not return error about a missing parent hash", func() {
 						b := &objects.Block{Transactions: txs, Header: &objects.Header{Number: 1}}
@@ -226,101 +220,60 @@ var BlockValidatorTest = func() bool {
 
 			})
 
-			Context("Hash", func() {
+			Context("with valid header", func() {
 
-				var txs = []*objects.Transaction{
-					&objects.Transaction{},
-				}
+				var block core.Block
 
-				It("should return error when hash is not provided", func() {
-					var txs2 []core.Transaction
-					txs2 = append(txs2, txs[0])
-					b := &objects.Block{
-						Transactions: txs,
-						Header: &objects.Header{
-							Number:           2,
-							ParentHash:       util.StrToHash("parent_hash_abc"),
-							CreatorPubKey:    util.String(receiver.PubKey().Base58()),
-							TransactionsRoot: common.ComputeTxsRoot(txs2),
-							Difficulty:       new(big.Int).SetInt64(1),
-							StateRoot:        util.StrToHash("state_root_abc"),
-							Timestamp:        time.Now().Unix(),
-						},
-					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
-					Expect(errs).To(HaveLen(3))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:hash, error:hash is required")))
+				BeforeEach(func() {
+					block = makeBlock(genesisChain)
 				})
 
-				It("should return error when hash is not valid", func() {
-					var txs2 []core.Transaction
-					txs2 = append(txs2, txs[0])
-					b := &objects.Block{
-						Transactions: txs,
-						Header: &objects.Header{
-							Number:           2,
-							ParentHash:       util.StrToHash("parent_hash_abc"),
-							CreatorPubKey:    util.String(receiver.PubKey().Base58()),
-							TransactionsRoot: common.ComputeTxsRoot(txs2),
-							Difficulty:       new(big.Int).SetInt64(1),
-							StateRoot:        util.StrToHash("state_root_abc"),
-							Timestamp:        time.Now().Unix(),
-						},
-						Hash: util.StrToHash("invalid"),
-					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
-					Expect(errs).To(HaveLen(3))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:hash, error:hash is not correct")))
-				})
-			})
+				Context("Transactions", func() {
+					When("one allocation transactions are in the block", func() {
+						BeforeEach(func() {
+							block = makeBlockWithOnlyAllocTx(genesisChain)
+						})
 
-			Context("Signature", func() {
-
-				var txs = []*objects.Transaction{
-					&objects.Transaction{},
-				}
-
-				It("should return error when signature is not provided", func() {
-					var txs2 []core.Transaction
-					txs2 = append(txs2, txs[0])
-					b := &objects.Block{
-						Transactions: txs,
-						Header: &objects.Header{
-							Number:           2,
-							ParentHash:       util.StrToHash("parent_hash_abc"),
-							CreatorPubKey:    util.String(receiver.PubKey().Base58()),
-							TransactionsRoot: common.ComputeTxsRoot(txs2),
-							Difficulty:       new(big.Int).SetInt64(1),
-							StateRoot:        util.StrToHash("state_root_abc"),
-							Timestamp:        time.Now().Unix(),
-						},
-					}
-					b.Hash = b.ComputeHash()
-					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
-					Expect(errs).To(HaveLen(2))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:sig, error:signature is required")))
+						It("should return error when no transaction is provided", func() {
+							errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
+							Expect(errs).To(HaveLen(1))
+							Expect(errs).To(ContainElement(fmt.Errorf("field:transactions, error:at least one transaction is required")))
+						})
+					})
 				})
 
-				It("should return error when signature is not valid", func() {
-					var txs2 []core.Transaction
-					txs2 = append(txs2, txs[0])
-					b := &objects.Block{
-						Transactions: txs,
-						Header: &objects.Header{
-							Number:           2,
-							ParentHash:       util.StrToHash("parent_hash_abc"),
-							CreatorPubKey:    util.String(receiver.PubKey().Base58()),
-							TransactionsRoot: common.ComputeTxsRoot(txs2),
-							Difficulty:       new(big.Int).SetInt64(1),
-							StateRoot:        util.StrToHash("state_root_abc"),
-							Timestamp:        time.Now().Unix(),
-						},
-						Sig: []byte{0, 1, 2},
-					}
-					b.Hash = b.ComputeHash()
-					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
-					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:sig, error:signature is not valid")))
+				Context("Hash", func() {
+
+					It("should return error when hash is not provided", func() {
+						block.SetHash(util.Hash{})
+						errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
+						Expect(errs).To(HaveLen(1))
+						Expect(errs).To(ContainElement(fmt.Errorf("field:hash, error:hash is required")))
+					})
+
+					It("should return error when hash is not valid", func() {
+						block.SetHash(util.Hash{1, 2, 3})
+						errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
+						Expect(errs).To(HaveLen(1))
+						Expect(errs).To(ContainElement(fmt.Errorf("field:hash, error:hash is not correct")))
+					})
+				})
+
+				Context("Signature", func() {
+					It("should return error when signature is not provided", func() {
+						block.SetSignature(nil)
+						errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
+						Expect(errs).To(HaveLen(2))
+						Expect(errs).To(ContainElement(fmt.Errorf("field:sig, error:signature is required")))
+					})
+
+					It("should return error when signature is not valid", func() {
+						block.SetSignature([]byte{1, 2, 3})
+						block.SetHash(block.ComputeHash())
+						errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
+						Expect(errs).To(HaveLen(1))
+						Expect(errs).To(ContainElement(fmt.Errorf("field:sig, error:signature is not valid")))
+					})
 				})
 			})
 		})
