@@ -425,6 +425,28 @@ var BlockchainIntegrationTests = func() {
 var BlockchainUnitTests = func() {
 	Describe("UnitBlockchainTest", func() {
 
+		Describe(".LoadBlockFromFile", func() {
+			It("should return block", func() {
+				b, err := LoadBlockFromFile("genesis-small.json")
+				Expect(err).To(BeNil())
+				Expect(b).ToNot(BeNil())
+			})
+
+			It("should return err='block file not found' when file does not exist", func() {
+				b, err := LoadBlockFromFile("unknown.json")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("block file not found"))
+				Expect(b).To(BeNil())
+			})
+
+			It("should return err when file is malformed", func() {
+				b, err := LoadBlockFromFile("genesis-small.malformed.json")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("invalid character ',' looking for beginning of value"))
+				Expect(b).To(BeNil())
+			})
+		})
+
 		Describe(".IsMainChain", func() {
 			It("should return false when the given chain is not the main chain", func() {
 				ch := NewChain("c1", db, cfg, log)
