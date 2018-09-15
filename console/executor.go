@@ -69,13 +69,11 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	return e
 }
 
-func (e *Executor) login(args ...interface{}) interface{} {
+func (e *Executor) login(username, password string) interface{} {
 
-	// parse arguments.
-	// App RPC functions can have zero or one argument
-	var arg interface{}
-	if len(args) > 0 {
-		arg = args[0]
+	var arg = map[string]interface{}{
+		"username": username,
+		"password": password,
 	}
 
 	// Call the auth RPC method
@@ -315,8 +313,10 @@ func (e *Executor) exec(in string) {
 	}
 
 	vExp, _ := v.Export()
-	bs, err := prettyjson.Marshal(vExp)
-	fmt.Println(string(bs))
+	if vExp != nil {
+		bs, _ := prettyjson.Marshal(vExp)
+		fmt.Println(string(bs))
+	}
 }
 
 func (e *Executor) help() {
