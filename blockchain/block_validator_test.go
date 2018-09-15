@@ -20,7 +20,7 @@ var BlockValidatorTest = func() bool {
 
 			When("block is nil", func() {
 				It("should return error", func() {
-					errs := NewBlockValidator(nil, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(nil, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs[0].Error()).To(Equal("nil block"))
 				})
@@ -34,21 +34,21 @@ var BlockValidatorTest = func() bool {
 
 				It("should return error when no transaction is provided", func() {
 					b := &objects.Block{Header: &objects.Header{Number: 0}}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(7))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:transactions, error:at least one transaction is required")))
 				})
 
 				It("should return nil when header is not provided", func() {
 					b := &objects.Block{Transactions: txs}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:header is required")))
 				})
 
 				It("should return error when number is 0", func() {
 					b := &objects.Block{Transactions: txs, Header: &objects.Header{Number: 0}}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(7))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.number, error:number must be greater or equal to 1")))
 				})
@@ -56,7 +56,7 @@ var BlockValidatorTest = func() bool {
 				When("header number is not equal to 1", func() {
 					It("should return error when parent hash is missing", func() {
 						b := &objects.Block{Transactions: txs, Header: &objects.Header{Number: 2}}
-						errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+						errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 						Expect(errs).To(HaveLen(6))
 						Expect(errs).To(ContainElement(fmt.Errorf("field:header.parentHash, error:parent hash is required")))
 					})
@@ -65,7 +65,7 @@ var BlockValidatorTest = func() bool {
 				When("genesis block has a parent hash", func() {
 					It("should return error", func() {
 						genesisBlock.GetHeader().SetParentHash(util.StrToHash("unexpected_abc"))
-						errs := NewBlockValidator(genesisBlock, nil, nil, cfg, log).checkFields()
+						errs := NewBlockValidator(genesisBlock, nil, nil, cfg, log).CheckFields()
 						Expect(errs).To(HaveLen(1))
 						Expect(errs[0].Error()).To(Equal("field:header.parentHash, error:parent hash is not expected in a genesis block"))
 					})
@@ -73,7 +73,7 @@ var BlockValidatorTest = func() bool {
 				When("header number is equal to 1", func() {
 					It("should not return error about a missing parent hash", func() {
 						b := &objects.Block{Transactions: txs, Header: &objects.Header{Number: 1}}
-						errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+						errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 						Expect(errs).To(HaveLen(5))
 						Expect(errs).ToNot(ContainElement(fmt.Errorf("field:header.parentHash, error:parent hash is required")))
 					})
@@ -87,7 +87,7 @@ var BlockValidatorTest = func() bool {
 							ParentHash: util.StrToHash("parent_hash_abc"),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(6))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.creatorPubKey, error:creator's public key is required")))
 				})
@@ -101,7 +101,7 @@ var BlockValidatorTest = func() bool {
 							CreatorPubKey: "abc",
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(6))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing")))
 				})
@@ -115,7 +115,7 @@ var BlockValidatorTest = func() bool {
 							CreatorPubKey: util.String(receiver.PubKey().Base58()),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(5))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.transactionsRoot, error:transaction root is required")))
 				})
@@ -129,7 +129,7 @@ var BlockValidatorTest = func() bool {
 							CreatorPubKey: util.String(receiver.PubKey().Base58()),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(5))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.transactionsRoot, error:transaction root is required")))
 				})
@@ -144,7 +144,7 @@ var BlockValidatorTest = func() bool {
 							TransactionsRoot: util.StrToHash("invalid"),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(4))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.transactionsRoot, error:transactions root is not valid")))
 				})
@@ -161,7 +161,7 @@ var BlockValidatorTest = func() bool {
 							TransactionsRoot: common.ComputeTxsRoot(txs2),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(3))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.stateRoot, error:state root is required")))
 				})
@@ -180,7 +180,7 @@ var BlockValidatorTest = func() bool {
 							StateRoot:        util.StrToHash("state_root_abc"),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(2))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.difficulty, error:difficulty must be greater than zero")))
 				})
@@ -199,7 +199,7 @@ var BlockValidatorTest = func() bool {
 							StateRoot:        util.StrToHash("state_root_abc"),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.timestamp, error:timestamp is required")))
 				})
@@ -219,7 +219,7 @@ var BlockValidatorTest = func() bool {
 							Timestamp:        time.Now().Add(16 * time.Second).Unix(),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.timestamp, error:timestamp is too far in the future")))
 				})
@@ -247,7 +247,7 @@ var BlockValidatorTest = func() bool {
 							Timestamp:        time.Now().Unix(),
 						},
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(3))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:hash, error:hash is required")))
 				})
@@ -268,7 +268,7 @@ var BlockValidatorTest = func() bool {
 						},
 						Hash: util.StrToHash("invalid"),
 					}
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(3))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:hash, error:hash is not correct")))
 				})
@@ -296,7 +296,7 @@ var BlockValidatorTest = func() bool {
 						},
 					}
 					b.Hash = b.ComputeHash()
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(2))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:sig, error:signature is required")))
 				})
@@ -318,7 +318,7 @@ var BlockValidatorTest = func() bool {
 						Sig: []byte{0, 1, 2},
 					}
 					b.Hash = b.ComputeHash()
-					errs := NewBlockValidator(b, nil, nil, cfg, log).checkFields()
+					errs := NewBlockValidator(b, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:sig, error:signature is not valid")))
 				})
@@ -343,7 +343,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error when total difficulty is invalid", func() {
-					errs := NewBlockValidator(block, nil, bc, cfg, log).checkPoW()
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:block not found")))
 				})
@@ -363,7 +363,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error when total difficulty is invalid", func() {
-					errs := NewBlockValidator(block, nil, bc, cfg, log).checkPoW()
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid difficulty: have 131, want 131136")))
 				})
@@ -383,7 +383,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error when total difficulty is invalid", func() {
-					errs := NewBlockValidator(block, nil, bc, cfg, log).checkPoW()
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid total difficulty: have 0, want 131136")))
 				})
@@ -414,7 +414,7 @@ var BlockValidatorTest = func() bool {
 
 			When("block is a genesis block", func() {
 				It("should return no error", func() {
-					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).checkAllocs()
+					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).CheckAllocs()
 					Expect(errs).To(BeEmpty())
 				})
 			})
@@ -436,7 +436,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error when block does not include the fee allocation", func() {
-					errs := NewBlockValidator(block, nil, bc, cfg, log).checkAllocs()
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckAllocs()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs[0].Error()).To(Equal("field:transactions, error:block allocations and expected allocations do not match"))
 				})
@@ -460,7 +460,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return error when block does include a fee allocation with expected values", func() {
-					errs := NewBlockValidator(block, nil, bc, cfg, log).checkAllocs()
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckAllocs()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs[0].Error()).To(Equal("field:transactions, error:block allocations and expected allocations do not match"))
 				})
@@ -484,7 +484,7 @@ var BlockValidatorTest = func() bool {
 				})
 
 				It("should return no error", func() {
-					errs := NewBlockValidator(block, nil, bc, cfg, log).checkAllocs()
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckAllocs()
 					Expect(errs).To(HaveLen(0))
 				})
 			})

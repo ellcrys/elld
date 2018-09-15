@@ -147,10 +147,10 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 	return
 }
 
-// checkPoW checks the PoW and difficulty values in the header.
+// CheckPoW checks the PoW and difficulty values in the header.
 // If chain is set, the parent chain is search within the provided
 // chain, otherwise, the best chain is searched
-func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
+func (v *BlockValidator) CheckPoW(opts ...core.CallOp) (errs []error) {
 
 	// find the parent header
 	parentHeader, err := v.bchain.GetBlockByHash(v.block.GetHeader().GetParentHash(), opts...)
@@ -166,8 +166,8 @@ func (v *BlockValidator) checkPoW(opts ...core.CallOp) (errs []error) {
 	return
 }
 
-// checkFields checks the field and their values.
-func (v *BlockValidator) checkFields() (errs []error) {
+// CheckFields checks the field and their values.
+func (v *BlockValidator) CheckFields() (errs []error) {
 
 	// Block must not be nil
 	if v.block == nil {
@@ -213,9 +213,9 @@ func (v *BlockValidator) checkFields() (errs []error) {
 	return
 }
 
-// checkAllocs verifies allocation transactions
+// CheckAllocs verifies allocation transactions
 // such as transaction fees, mining rewards etc.
-func (v *BlockValidator) checkAllocs() (errs []error) {
+func (v *BlockValidator) CheckAllocs() (errs []error) {
 
 	// No need performing allocation checks
 	// for the genesis block
@@ -285,9 +285,9 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 	return
 }
 
-// checkTransactions validates all transactions in the
+// CheckTransactions validates all transactions in the
 // block in relation to the block's destined chain.
-func (v *BlockValidator) checkTransactions(opts ...core.CallOp) (errs []error) {
+func (v *BlockValidator) CheckTransactions(opts ...core.CallOp) (errs []error) {
 	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain, true)
 	txValidator.SetContext(v.ctx)
 	for _, err := range txValidator.Validate(opts...) {
