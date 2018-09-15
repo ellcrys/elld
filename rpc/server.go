@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"sync"
+
 	"github.com/ellcrys/elld/elldb"
 
 	"github.com/ellcrys/elld/config"
@@ -18,6 +20,7 @@ type Result struct {
 
 // Server represents a rpc server
 type Server struct {
+	sync.RWMutex
 
 	// db is the raw database
 	db elldb.DB
@@ -52,6 +55,8 @@ func NewServer(db elldb.DB, addr string, cfg *config.EngineConfig, log logger.Lo
 
 // GetAddr gets the address
 func (s *Server) GetAddr() string {
+	s.RLock()
+	defer s.RUnlock()
 	return s.addr
 }
 
@@ -65,16 +70,22 @@ func (s *Server) Serve() {
 
 // IsStarted returns the start state
 func (s *Server) IsStarted() bool {
+	s.RLock()
+	defer s.RUnlock()
 	return s.started
 }
 
 // Stop stops the server and frees resources
 func (s *Server) Stop() {
+	s.Lock()
+	defer s.Unlock()
 	s.rpc.Stop()
 	s.started = false
 }
 
 // AddAPI adds one or more API sets
 func (s *Server) AddAPI(apis ...jsonrpc.APISet) {
+	s.Lock()
+	defer s.Unlock()
 	s.rpc.MergeAPISet(apis...)
 }
