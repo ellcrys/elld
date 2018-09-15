@@ -59,17 +59,33 @@ func (o *TxBalanceBuilder) Send() map[string]interface{} {
 
 func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
 
+	var result map[string]interface{}
+	var err error
+
 	// If the nonce has not been sent at this point
 	// we must attempt to determine the current
 	// nonce of the account, increment it and set it
-	if o.data["nonce"] == nil {
-		result, err := o.e.callRPCMethod("getAccountNonce", o.data["from"])
-		if err != nil {
-			return nil, err
-		}
-		o.data["nonce"] = int64(result["result"].(float64)) + 1
+	if o.data["nonce"] != nil {
+		goto send
 	}
 
+	result, err = o.e.callRPCMethod("getAccountNonce", o.data["from"])
+	if err != nil {
+		return nil, err
+	}
+
+	if result["error"] != nil {
+		errMsg := fmt.Errorf(result["error"].(map[string]interface{})["message"].(string))
+		switch errMsg.Error() {
+		case "account not found":
+			errMsg = fmt.Errorf("sender account not found")
+		}
+		return nil, errMsg
+	}
+
+	o.data["nonce"] = int64(result["result"].(float64)) + 1
+
+send:
 	// Set the timestamp
 	o.data["timestamp"] = time.Now().Unix()
 
