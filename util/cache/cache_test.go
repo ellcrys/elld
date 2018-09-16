@@ -1,4 +1,4 @@
-package blockchain
+package cache
 
 import (
 	"time"
@@ -48,6 +48,69 @@ var _ = Describe("Cache", func() {
 			Expect(cache.container.Len()).To(Equal(1))
 			cache.AddWithExp("key", "val", time.Now().Add(time.Hour))
 			Expect(cache.container.Len()).To(Equal(2))
+		})
+	})
+
+	Describe(".NewActiveCache", func() {
+
+		Context("cache should remove expired item", func() {
+			CacheItemRemovalInterval = 50 * time.Millisecond
+			cache := NewActiveCache(1)
+
+			It("should successfully remove item", func() {
+				cache.AddWithExp("key1", "value1", time.Now().Add(10*time.Millisecond))
+				Expect(cache.Len()).To(Equal(1))
+				time.Sleep(100 * time.Millisecond)
+				Expect(cache.Len()).To(Equal(0))
+			})
+		})
+	})
+
+	Describe(".AddMulti", func() {
+
+		var cache *Cache
+		BeforeEach(func() {
+			cache = NewCache(10)
+		})
+
+		It("should successfully add multiple values", func() {
+			values := []interface{}{1, 2, "3"}
+			cache.AddMulti(time.Time{}, values)
+			Expect(cache.Len()).To(Equal(1))
+		})
+	})
+
+	Describe(".HasMulti", func() {
+
+		var cache *Cache
+		var values []interface{}
+
+		Context("when multi-value serialized key exist in the cache", func() {
+			BeforeEach(func() {
+				cache = NewCache(10)
+				values = []interface{}{1, 2, "3"}
+				cache.AddMulti(time.Time{}, values...)
+				Expect(cache.Len()).To(Equal(1))
+			})
+
+			It("should return true", func() {
+				has := cache.HasMulti(values...)
+				Expect(has).To(BeTrue())
+			})
+		})
+
+		Context("when multi-value serialized key does not exist in cache", func() {
+			BeforeEach(func() {
+				cache = NewCache(10)
+				values = []interface{}{1, 2, "3"}
+				cache.AddMulti(time.Time{}, values...)
+				Expect(cache.Len()).To(Equal(1))
+			})
+
+			It("should when multi-value serialized key exist in the cache", func() {
+				has := cache.HasMulti([]interface{}{1, 2, 3})
+				Expect(has).To(BeFalse())
+			})
 		})
 	})
 

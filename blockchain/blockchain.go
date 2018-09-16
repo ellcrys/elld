@@ -18,6 +18,7 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -61,11 +62,11 @@ type Blockchain struct {
 	chains map[util.String]*Chain
 
 	// orphanBlocks stores blocks whose parents are unknown
-	orphanBlocks *Cache
+	orphanBlocks *cache.Cache
 
 	// rejectedBlocks stores collection of blocks that have been deemed invalid.
 	// This allows us to quickly learn and discard blocks that are found here.
-	rejectedBlocks *Cache
+	rejectedBlocks *cache.Cache
 
 	// txPool contains all transactions awaiting inclusion in a block
 	txPool types.TxPool
@@ -87,8 +88,8 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.chainLock = &sync.RWMutex{}
 	bc.processLock = &sync.Mutex{}
 	bc.chains = make(map[util.String]*Chain)
-	bc.orphanBlocks = NewCache(MaxOrphanBlocksCacheSize)
-	bc.rejectedBlocks = NewCache(MaxRejectedBlocksCacheSize)
+	bc.orphanBlocks = cache.NewCache(MaxOrphanBlocksCacheSize)
+	bc.rejectedBlocks = cache.NewCache(MaxRejectedBlocksCacheSize)
 	bc.eventEmitter = &emitter.Emitter{}
 	return bc
 }
