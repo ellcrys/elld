@@ -14,6 +14,8 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 )
 
+// MakeTxHistoryKey creates an history cache key
+// for recording a received/sent transaction
 func MakeTxHistoryKey(tx core.Transaction, peer types.Engine) histcache.MultiKey {
 	return []interface{}{tx.ID(), peer.StringID()}
 }

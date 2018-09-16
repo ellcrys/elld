@@ -295,7 +295,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 // CheckTransactions validates all transactions in the
 // block in relation to the block's destined chain.
 func (v *BlockValidator) CheckTransactions(opts ...core.CallOp) (errs []error) {
-	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain, true)
+	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain)
 	txValidator.SetContext(v.ctx)
 	for _, err := range txValidator.Validate(opts...) {
 		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))

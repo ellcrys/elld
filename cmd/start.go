@@ -274,6 +274,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		// Create the console.
 		// Configure the RPC client if the server has started
 		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
+		cs.SetVersions(config.ProtocolVersion, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 
 		// Prepare the console

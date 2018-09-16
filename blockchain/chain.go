@@ -333,38 +333,37 @@ func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
 	return c.store.PutBlock(candidate, txOp)
 }
 
-// NewStateTree creates a new tree seeded with the state root of
-// the chain's tip block or the chain's parent block for side chains that have
-// no block but are children of a block in a parent block.
-//
-// When backLinked is set to false the tree is not seeded with the state root
-// of the previous tip block or chain parent block.
-func (c *Chain) NewStateTree(noBackLink bool, opts ...core.CallOp) (core.Tree, error) {
+// NewStateTree creates a new tree seeded with the
+// state root of the chain's tip block. For chains
+// with no block (new chains), the state root of
+// their parent block is used.
+func (c *Chain) NewStateTree(opts ...core.CallOp) (core.Tree, error) {
 
 	var prevRoot util.Hash
 
-	// Get the root of the block at the tip. If no block was found, it means the chain is empty.
-	// In this case, if the chain has a parent block, we use the parent block stateRoot.
-	if !noBackLink {
-		tipHeader, err := c.Current(opts...)
+	// Get the state root of the block at the tip.
+	// If no block was found, it means the chain is empty.
+	// In this case, if the chain has a parent block,
+	// we use the parent block stateRoot.
+	tipHeader, err := c.Current(opts...)
+	if err != nil {
+		if err != core.ErrBlockNotFound {
+			return nil, err
+		}
+		if c.parentBlock != nil {
+			prevRoot = c.parentBlock.GetHeader().GetStateRoot()
+		}
+	} else {
+		prevRoot = tipHeader.GetStateRoot()
 		if err != nil {
-			if err != core.ErrBlockNotFound {
-				return nil, err
-			}
-			if c.parentBlock != nil {
-				prevRoot = c.parentBlock.GetHeader().GetStateRoot()
-			}
-		} else {
-			prevRoot = tipHeader.GetStateRoot()
-			if err != nil {
-				return nil, fmt.Errorf("failed to decode chain tip state root")
-			}
+			return nil, fmt.Errorf("failed to decode chain tip state root")
 		}
 	}
 
-	// Create the new tree and seed it by adding the root
-	// of the previous state root. No need to do
-	// this if we have not determined the previous state root.
+	// Create the new tree and seed it by adding
+	// state root of the previous block. No need
+	// to do this if at this point we  have not
+	// determined the previous state root.
 	tree := common.NewTree()
 	if !prevRoot.IsEmpty() {
 		tree.Add(common.TreeItem(prevRoot.Bytes()))

@@ -2,8 +2,8 @@ package node_test
 
 import (
 	"math/big"
-	"time"
 
+	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
@@ -88,16 +88,7 @@ var _ = Describe("Handshake", func() {
 			var err error
 
 			BeforeEach(func() {
-				block2, err = rp.GetBlockchain().Generate(&core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().UnixNano()),
-					},
-					Creator:                 sender,
-					Nonce:                   core.EncodeNonce(1),
-					Difficulty:              new(big.Int).SetInt64(131072),
-					OverrideTotalDifficulty: new(big.Int).SetInt64(1000000),
-					AddFeeAlloc:             true,
-				})
+				block2 = MakeBlockWithTotalDifficulty(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
 				Expect(err).To(BeNil())
 				_, err = rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
@@ -125,16 +116,7 @@ var _ = Describe("Handshake", func() {
 			var err error
 
 			BeforeEach(func() {
-				block2, err = lp.GetBlockchain().Generate(&core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().UnixNano()),
-					},
-					Creator:                 sender,
-					Nonce:                   core.EncodeNonce(1),
-					Difficulty:              new(big.Int).SetInt64(131072),
-					OverrideTotalDifficulty: new(big.Int).SetInt64(1000000),
-					AddFeeAlloc:             true,
-				})
+				block2 = MakeBlockWithTotalDifficulty(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
 				Expect(err).To(BeNil())
 				_, err = lp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())

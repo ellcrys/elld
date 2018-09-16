@@ -551,7 +551,7 @@ func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...cor
 	}
 
 	// Get a new state tree. The tree is seeded with the state root of the parent block
-	tree, err := chain.NewStateTree(false, opts...)
+	tree, err := chain.NewStateTree(opts...)
 	if err != nil {
 		return util.EmptyHash, nil, fmt.Errorf("failed to create new state tree: %s", err)
 	}

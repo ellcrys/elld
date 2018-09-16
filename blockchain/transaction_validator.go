@@ -56,7 +56,7 @@ func appendErr(dest []error, err error) []error {
 
 // NewTxsValidator creates an instance of TxsValidator
 func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
-	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
+	bchain core.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    txs,
 		txpool: txPool,
@@ -290,6 +290,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	} else {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in main chain"))
+		return
 	}
 
 	// Get the sender account

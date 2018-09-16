@@ -50,7 +50,7 @@ var _ = Describe("Transaction", func() {
 	})
 
 	Describe(".RelayTx", func() {
-		tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "0.1", time.Now().Unix())
+		tx := objects.NewTransaction(objects.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "2.4", time.Now().Unix())
 		tx.From = util.String(sender.Addr())
 		tx.Hash = tx.ComputeHash()
 		sig, _ := objects.TxSign(tx, sender.PrivKey().Base58())

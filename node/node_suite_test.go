@@ -2,12 +2,11 @@ package node_test
 
 import (
 	"fmt"
-	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/phayes/freeport"
+	"github.com/shopspring/decimal"
 	"github.com/thoas/go-funk"
 
 	. "github.com/onsi/gomega"
@@ -18,10 +17,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/txpool"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"
@@ -29,21 +27,38 @@ import (
 
 var log = logger.NewLogrusNoOp()
 
-var makeBlock = func(bchain core.Blockchain, sender, receiver *crypto.Key, timestamp int64) core.Block {
-	block, err := bchain.Generate(&core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 123, util.String(sender.Addr()), sender, "0", "0", time.Now().UnixNano()),
-		},
-		Creator:           sender,
-		Nonce:             core.EncodeNonce(1),
-		Difficulty:        new(big.Int).SetInt64(131072),
-		OverrideTimestamp: timestamp,
-	})
-	if err != nil {
-		panic(err)
-	}
-	return block
-}
+// var makeBlock = func(bchain core.Blockchain, sender, receiver *crypto.Key, timestamp int64) core.Block {
+// 	block, err := bchain.Generate(&core.GenerateBlockParams{
+// 		Transactions: []core.Transaction{
+// 			objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+// 		},
+// 		Creator:           sender,
+// 		Nonce:             core.EncodeNonce(1),
+// 		Difficulty:        new(big.Int).SetInt64(131072),
+// 		OverrideTimestamp: timestamp,
+// 		AddFeeAlloc:       true,
+// 	})
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return block
+// }
+
+// var makeBlockWithSingleTx = func(bchain core.Blockchain, sender, receiver *crypto.Key, timestamp int64, senderNonce uint64) core.Block {
+// 	block, err := bchain.Generate(&core.GenerateBlockParams{
+// 		Transactions: []core.Transaction{
+// 			objects.NewTx(objects.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+// 		},
+// 		Creator:           sender,
+// 		Nonce:             core.EncodeNonce(1),
+// 		Difficulty:        new(big.Int).SetInt64(131072),
+// 		OverrideTimestamp: timestamp,
+// 		AddFeeAlloc:       true,
+// 	})
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// }
 
 func getPort() int {
 	port, err := freeport.GetFreePort()
@@ -76,7 +91,9 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	txPool := txpool.New(100)
 	bc := blockchain.New(txPool, cfg, log)
 	bc.SetDB(db)
-	bc.SetGenesisBlock(blockchain.GenesisBlock)
+	genesisBlock, err := blockchain.LoadBlockFromFile("genesis-test.json")
+	Expect(err).To(BeNil())
+	bc.SetGenesisBlock(genesisBlock)
 
 	if seed < 0 {
 		seed = funk.RandomInt(1, 5000000)
@@ -95,6 +112,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 }
 
 func TestNodeSuite(t *testing.T) {
+	params.FeePerByte = decimal.NewFromFloat(0.01)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Node Suite")
 }
