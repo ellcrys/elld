@@ -14,7 +14,7 @@ import (
 var log logger.Logger
 
 func TestBlockchain(t *testing.T) {
-	log = logger.NewLogrus()
+	log = logger.NewLogrusNoOp()
 	log.SetToDebug()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Miner Suite")
