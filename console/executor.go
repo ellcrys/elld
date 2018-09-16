@@ -69,13 +69,11 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	return e
 }
 
-func (e *Executor) login(args ...interface{}) interface{} {
+func (e *Executor) login(username, password string) interface{} {
 
-	// parse arguments.
-	// App RPC functions can have zero or one argument
-	var arg interface{}
-	if len(args) > 0 {
-		arg = args[0]
+	var arg = map[string]interface{}{
+		"username": username,
+		"password": password,
 	}
 
 	// Call the auth RPC method
@@ -136,6 +134,8 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	nsObj["admin"]["login"] = e.login
 	nsObj["personal"]["loadAccount"] = e.loadAccount
 	nsObj["personal"]["loadedAccount"] = e.loadedAccount
+	nsObj["personal"]["createAccount"] = e.createAccount
+	nsObj["personal"]["importAccount"] = e.importAccount
 	nsObj["ell"]["balance"] = func() *TxBalanceBuilder {
 		return NewTxBuilder(e).Balance()
 	}
@@ -153,6 +153,8 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.createAccount", Description: "Create an account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.importAccount", Description: "Import an account"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "ell.balance", Description: "Create and send a balance transaction"})
 
 	// If the console is not in attach mode and
@@ -234,28 +236,6 @@ func (e *Executor) runScript(file string) {
 	}
 }
 
-// loadAccount loads an account and
-// sets it as the default account
-func (e *Executor) loadAccount(address, password string) {
-
-	// Get the account from the account manager
-	sa, err := e.acctMgr.GetByAddress(address)
-	if err != nil {
-		panic(e.vm.MakeCustomError("AccountError", err.Error()))
-	}
-
-	if err := sa.Decrypt(password); err != nil {
-		panic(e.vm.MakeCustomError("AccountError", err.Error()))
-	}
-
-	e.coinbase = sa.GetKey()
-}
-
-// loadedAccount returns the currently loaded account
-func (e *Executor) loadedAccount() string {
-	return e.coinbase.Addr()
-}
-
 // pp pretty prints a slice of arbitrary objects
 func (e *Executor) pp(values ...interface{}) {
 	var v interface{} = values
@@ -315,8 +295,10 @@ func (e *Executor) exec(in string) {
 	}
 
 	vExp, _ := v.Export()
-	bs, err := prettyjson.Marshal(vExp)
-	fmt.Println(string(bs))
+	if vExp != nil {
+		bs, _ := prettyjson.Marshal(vExp)
+		fmt.Println(string(bs))
+	}
 }
 
 func (e *Executor) help() {

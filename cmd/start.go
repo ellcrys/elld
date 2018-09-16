@@ -85,43 +85,42 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 		}
 	}
 
+	if address != nil {
+		return address, nil
+	}
+
 	// if address is unset, decrypt the account using the password provided.
 	// if password is unset, request password from user
 	// if password is set and is a path to a file, read the file and use its content as the password
-	if address == nil {
-
-		if password == "" {
-			fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.", storedAccount.Address))
-			password, err = accountMgr.AskForPasswordOnce()
-			if err != nil {
-				log.Error(err.Error())
-				return nil, err
-			}
+	if password == "" {
+		fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.", storedAccount.Address))
+		password, err = accountMgr.AskForPasswordOnce()
+		if err != nil {
+			log.Error(err.Error())
+			return nil, err
 		}
-
-		if len(password) > 0 && (os.IsPathSeparator(password[0]) || password[:2] == "./") {
-			content, err := ioutil.ReadFile(password)
-			if err != nil {
-				if funk.Contains(err.Error(), "no such file") {
-					return nil, fmt.Errorf("password file {%s} not found", password)
-				}
-				if funk.Contains(err.Error(), "is a directory") {
-					return nil, fmt.Errorf("password file path {%s} is a directory. Expects a file", password)
-				}
-				return nil, err
-			}
-			password = string(content)
-			password = strings.TrimSpace(strings.Trim(password, "/n"))
-		}
-
-		if err = storedAccount.Decrypt(password); err != nil {
-			return nil, fmt.Errorf("account unlock failed. %s", err)
-		}
-
-		address = storedAccount.GetAddress()
 	}
 
-	return address, nil
+	if len(password) > 0 && (os.IsPathSeparator(password[0]) || password[:2] == "./") {
+		content, err := ioutil.ReadFile(password)
+		if err != nil {
+			if funk.Contains(err.Error(), "no such file") {
+				return nil, fmt.Errorf("password file {%s} not found", password)
+			}
+			if funk.Contains(err.Error(), "is a directory") {
+				return nil, fmt.Errorf("password file path {%s} is a directory. Expects a file", password)
+			}
+			return nil, err
+		}
+		password = string(content)
+		password = strings.TrimSpace(strings.Trim(password, "/n"))
+	}
+
+	if err = storedAccount.Decrypt(password); err != nil {
+		return nil, fmt.Errorf("account unlock failed. %s", err)
+	}
+
+	return storedAccount.GetAddress(), nil
 }
 
 // starts the node.
@@ -230,7 +229,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	bchain := blockchain.New(n.GetTxPool(), cfg, log)
 	bchain.SetDB(n.DB())
 	bchain.SetEventEmitter(event)
-	bchain.SetGenesisBlock(blockchain.GenesisBlock)
 	n.SetBlockchain(bchain)
 
 	// power up the blockchain manager
@@ -276,6 +274,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		// Create the console.
 		// Configure the RPC client if the server has started
 		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
+		cs.SetVersions(config.ProtocolVersion, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 
 		// Prepare the console

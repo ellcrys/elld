@@ -37,8 +37,8 @@ var accountCmd = &cobra.Command{
   directory or individual accounts to another node. 
 
   Always backup your keeps regularly.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
 	},
 }
 
@@ -59,7 +59,7 @@ var accountCreateCmd = &cobra.Command{
   password is fetched with leading and trailing newline character removed. 
 
   Always backup your keeps regularly.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		onTerminate = func() {
 			os.Exit(-1)
@@ -68,7 +68,8 @@ var accountCreateCmd = &cobra.Command{
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
-		am.CreateCmd(seed, pwd)
+		_, err := am.CreateCmd(seed, pwd)
+		return err
 	},
 }
 
@@ -81,9 +82,9 @@ var accountListCmd = &cobra.Command{
   Given that an account in the directory begins with a timestamp of its creation time and the 
   list is lexicographically ordered, the most recently created account will the last on the list.
 `,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
-		am.ListCmd()
+		return am.ListCmd()
 	},
 }
 
@@ -94,7 +95,7 @@ var accountUpdateCmd = &cobra.Command{
   This command allows you to update the password of an account and to
   convert an account encrypted in an old format to a new one.
 `,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		var address string
 		if len(args) >= 1 {
@@ -102,7 +103,7 @@ var accountUpdateCmd = &cobra.Command{
 		}
 
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
-		am.UpdateCmd(address)
+		return am.UpdateCmd(address)
 	},
 }
 
@@ -122,7 +123,7 @@ var accountImportCmd = &cobra.Command{
   You must not forget your password, otherwise you will not be able to unlock your
   account.
 `,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		var keyfile string
 		if len(args) >= 1 {
@@ -131,7 +132,7 @@ var accountImportCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
-		am.ImportCmd(keyfile, pwd)
+		return am.ImportCmd(keyfile, pwd)
 	},
 }
 
@@ -145,7 +146,7 @@ var accountRevealCmd = &cobra.Command{
   You can skip the interactive mode by providing your password via the '--pwd' flag. 
   Also, a path to a file containing a password can be provided to the flag.
 `,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 
 		var address string
 		if len(args) >= 1 {
@@ -154,7 +155,7 @@ var accountRevealCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
-		am.RevealCmd(address, pwd)
+		return am.RevealCmd(address, pwd)
 	},
 }
 
