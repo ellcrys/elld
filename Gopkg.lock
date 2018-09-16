@@ -259,6 +259,14 @@
   version = "v1.7.0"
 
 [[projects]]
+  digest = "1:f45caa3c5c4541c3a73b9fa2b38db97fcbda57618eaaaf45dd5c728362ad8f09"
+  name = "github.com/gobuffalo/packr"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "6c8156ee36301dd007342e79d81c99e7a7834337"
+  version = "v1.13.5"
+
+[[projects]]
   digest = "1:f3df613325a793ffb3d0ce7644a3bb6f62db45ac744dafe20172fe999c61cdbf"
   name = "github.com/gogo/protobuf"
   packages = [
@@ -469,6 +477,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
+
+[[projects]]
+  digest = "1:16dd6b893b78a50564cdde1d9f7ea67224dece11bb0886bd882f1dc3dc1d440d"
+  name = "github.com/k0kubun/pp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "027a6d1765d673d337e687394dbe780dd64e2a1e"
+  version = "v2.3.0"
 
 [[projects]]
   digest = "1:d38d6658922388905ca5d129ee4af7893efaa66f1f96e962dfed931acd8b3eb8"
@@ -1284,6 +1300,7 @@
     "github.com/franela/goreq",
     "github.com/fsouza/go-dockerclient",
     "github.com/go-ozzo/ozzo-validation",
+    "github.com/gobuffalo/packr",
     "github.com/gogo/protobuf/proto",
     "github.com/gorilla/mux",
     "github.com/gorilla/rpc/v2",
@@ -1294,6 +1311,7 @@
     "github.com/imdario/mergo",
     "github.com/jinzhu/configor",
     "github.com/jinzhu/copier",
+    "github.com/k0kubun/pp",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-crypto/pb",

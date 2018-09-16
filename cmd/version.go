@@ -13,9 +13,12 @@ var versionCmd = &cobra.Command{
 	Short: "Client, protocol and Go versions",
 	Long:  `Client, protocol and Go versions`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(fmt.Sprintf("Client Version: v%s", config.ClientVersion))
-		fmt.Println("Protocol Version: ", config.ProtocolVersion)
-		fmt.Println("Go Version: ", "go1.10")
+		fmt.Println(fmt.Sprintf(`Client Version:   %s
+Protocol Version: %s
+Go Version:       %s
+Commit Hash: 	  %s
+Build Date: 	  %s`,
+			BuildVersion, config.ProtocolVersion, GoVersion, BuildCommit, BuildDate))
 	},
 }
 

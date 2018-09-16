@@ -32,6 +32,24 @@ import (
 )
 
 var (
+	// BuildVersion is the build version
+	// set by goreleaser
+	BuildVersion = ""
+
+	// BuildCommit is the git hash of
+	// the build. It is set by goreleaser
+	BuildCommit = ""
+
+	// BuildDate is the date the build
+	// was created. Its is set by goreleaser
+	BuildDate = ""
+
+	// GoVersion is the version of go
+	// used to build the client
+	GoVersion = "go1.10.4"
+)
+
+var (
 	cfg                    *config.EngineConfig
 	consoleHistoryFilePath string
 	log                    logger.Logger

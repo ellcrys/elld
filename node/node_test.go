@@ -1,8 +1,7 @@
 package node_test
 
 import (
-	"time"
-
+	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
@@ -67,11 +66,11 @@ var _ = Describe("Node", func() {
 		Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
 
 			BeforeEach(func(done Done) {
-				block2 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix()-1)
+				block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
-				block3 = makeBlock(rp.GetBlockchain(), sender, receiver, time.Now().Unix())
+				block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
 				_, err = rp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 

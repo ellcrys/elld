@@ -146,13 +146,13 @@ var defaultConfig = EngineConfig{}
 func init() {
 
 	defaultConfig.Node = &PeerConfig{
-		GetAddrInterval:  1800,
-		PingInterval:     1800,
-		SelfAdvInterval:  1800,
+		GetAddrInterval:  60,
+		PingInterval:     60,
+		SelfAdvInterval:  120,
 		CleanUpInterval:  600,
 		MaxAddrsExpected: 1000,
 		MaxConnections:   100,
-		ConnEstInterval:  600,
+		ConnEstInterval:  10,
 		Mode:             ModeProd,
 	}
 
@@ -162,7 +162,7 @@ func init() {
 	}
 
 	defaultConfig.TxPool = &TxPoolConfig{
-		Capacity: 1000,
+		Capacity: 10000,
 	}
 
 	defaultConfig.Chain = &ChainConfig{

@@ -1,9 +1,14 @@
 package blockchain
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/ellcrys/elld/types/core/objects"
+
+	"github.com/gobuffalo/packr"
 
 	"github.com/olebedev/emitter"
 
@@ -93,6 +98,23 @@ func (b *Blockchain) SetGenesisBlock(block core.Block) {
 	b.genesisBlock = block
 }
 
+// LoadBlockFromFile loads a block from a file
+func LoadBlockFromFile(name string) (core.Block, error) {
+
+	box := packr.NewBox("./data")
+	data := box.Bytes(name)
+	if len(data) == 0 {
+		return nil, fmt.Errorf("block file not found")
+	}
+
+	var gBlock objects.Block
+	if err := json.Unmarshal(data, &gBlock); err != nil {
+		return nil, err
+	}
+
+	return &gBlock, nil
+}
+
 // Up opens the database, initializes the store and
 // creates the genesis block (if required)
 func (b *Blockchain) Up() error {
@@ -115,6 +137,16 @@ func (b *Blockchain) Up() error {
 	// in the cache, then we create a new chain and save it
 	if len(chains) == 0 {
 		b.log.Debug("No existing genesis block found. Creating genesis block")
+
+		// If at this point the genesis block has not
+		// been set, we attempt to load it from the
+		// genesis.json file.
+		if b.genesisBlock == nil {
+			b.genesisBlock, err = LoadBlockFromFile("genesis.json")
+			if err != nil {
+				return err
+			}
+		}
 
 		// Create the genesis chain and the genesis block.
 		gBlock := b.genesisBlock

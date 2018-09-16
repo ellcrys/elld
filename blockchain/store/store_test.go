@@ -28,6 +28,7 @@ var _ = Describe("Leveldb", func() {
 	})
 
 	AfterEach(func() {
+		db.Close()
 		err = os.RemoveAll(cfg.ConfigDir())
 		Expect(err).To(BeNil())
 	})

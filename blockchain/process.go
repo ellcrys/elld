@@ -269,7 +269,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 
 	// Sanity check. This should have been done
 	// in ProcessBlock
-	if errs := bValidator.checkFields(); len(errs) > 0 {
+	if errs := bValidator.CheckFields(); len(errs) > 0 {
 		return nil, errs[0]
 	}
 
@@ -339,7 +339,7 @@ process:
 	// Verify that the block's PoW for non-genesis blocks is valid.
 	// Only do this in production or development mode
 	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev && block.GetNumber() > 1 {
-		if errs := bValidator.checkPoW(opts...); len(errs) > 0 {
+		if errs := bValidator.CheckPoW(opts...); len(errs) > 0 {
 			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", errs[0])
 			return nil, errs[0]
 		}
@@ -378,7 +378,7 @@ process:
 
 	// validate transactions in the block
 	chainOp := &common.ChainerOp{Chain: chain}
-	if errs := bValidator.checkTransactions(txOp, chainOp); len(errs) > 0 {
+	if errs := bValidator.CheckTransactions(txOp, chainOp); len(errs) > 0 {
 		return nil, errs[0]
 	}
 
@@ -485,13 +485,13 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 
 	// Validate the block fields.
 	bValidator := b.getBlockValidator(block)
-	if errs := bValidator.checkFields(); len(errs) > 0 {
+	if errs := bValidator.CheckFields(); len(errs) > 0 {
 		return nil, errs[0]
 	}
 
 	// Validate allocations. We need to know whether
 	// the allocations in this block are as expected.
-	if errs := bValidator.checkAllocs(); len(errs) > 0 {
+	if errs := bValidator.CheckAllocs(); len(errs) > 0 {
 		return nil, errs[0]
 	}
 
@@ -551,7 +551,7 @@ func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...cor
 	}
 
 	// Get a new state tree. The tree is seeded with the state root of the parent block
-	tree, err := chain.NewStateTree(false, opts...)
+	tree, err := chain.NewStateTree(opts...)
 	if err != nil {
 		return util.EmptyHash, nil, fmt.Errorf("failed to create new state tree: %s", err)
 	}

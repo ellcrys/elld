@@ -14,7 +14,7 @@ type Chainer interface {
 	GetStore() ChainStorer
 
 	// NewStateTree returns a new tree
-	NewStateTree(noBackLink bool, opts ...CallOp) (Tree, error)
+	NewStateTree(opts ...CallOp) (Tree, error)
 
 	// Current gets the header of the tip block
 	Current(opts ...CallOp) (Header, error)

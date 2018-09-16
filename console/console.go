@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
-	"runtime"
+
+	"github.com/ellcrys/elld/util"
+
+	"github.com/fatih/color"
 
 	"github.com/ellcrys/elld/rpc"
 
@@ -50,6 +53,12 @@ type Console struct {
 
 	// cfg is the client config
 	cfg *config.EngineConfig
+
+	// Versions
+	protocol string
+	client   string
+	runtime  string
+	commit   string
 }
 
 // New creates a new Console instance.
@@ -156,12 +165,20 @@ func (c *Console) Exit() {
 	c.executor.exitProgram(true)
 }
 
+// SetVersions sets the versions of components
+func (c *Console) SetVersions(protocol, client, runtime, commit string) {
+	c.protocol = protocol
+	c.client = client
+	c.runtime = runtime
+	c.commit = commit
+}
+
 // about prints some information about
 // the version of the client and some
 // of its components.
 func (c *Console) about() {
-	fmt.Println("Welcome to Elld Javascript console!")
-	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s, Go:%s", config.ClientVersion, config.ProtocolVersion, runtime.Version()))
+	fmt.Println(color.CyanString("Welcome to Elld Javascript console!"))
+	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s, Commit:%s, Go:%s", c.client, c.protocol, util.String(c.commit).SS(), c.runtime))
 	fmt.Println(" type '.exit' to exit console")
 	fmt.Println("")
 }

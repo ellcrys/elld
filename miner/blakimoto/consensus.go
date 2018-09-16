@@ -60,7 +60,6 @@ func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 	if expected.Cmp(header.GetDifficulty()) != 0 {
 		return fmt.Errorf("invalid difficulty: have %v, want %v", header.GetDifficulty(), expected)
 	}
-
 	// Verify that the total difficulty is parent total difficulty + header total difficulty
 	expectedTd := new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty())
 	if headerTd := header.GetTotalDifficulty(); headerTd.Cmp(expectedTd) != 0 {

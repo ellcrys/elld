@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"time"
 
+	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
@@ -90,34 +91,27 @@ var _ = Describe("Ping", func() {
 			var err error
 
 			BeforeEach(func() {
-				block2, err = rp.GetBlockchain().Generate(&core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().UnixNano()),
-					},
-					Creator:                 sender,
-					Nonce:                   core.EncodeNonce(1),
-					Difficulty:              new(big.Int).SetInt64(131072),
-					OverrideTotalDifficulty: new(big.Int).SetInt64(1000000),
-					AddFeeAlloc:             true,
-				})
+				block2 = MakeBlockWithTotalDifficulty(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
 				Expect(err).To(BeNil())
 				_, err = rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 			})
 
 			Specify("local peer should send block hashes request with the current block as the locator", func(done Done) {
-				go func() {
-					defer GinkgoRecover()
-					err := lp.Gossip().SendPingToPeer(rp)
-					Expect(err).To(BeNil())
-				}()
 
 				lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
 				Expect(err).To(BeNil())
+				Expect(lpCurBlock.GetNumber()).To(Equal(uint64(1)))
 
-				evt := <-lp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
-				Expect(evt.Args[0].(util.Hash)).To(Equal(lpCurBlock.GetHash()))
-				close(done)
+				go func() {
+					defer GinkgoRecover()
+					evt := <-lp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
+					Expect(evt.Args[0].(util.Hash)).To(Equal(lpCurBlock.GetHash()))
+					close(done)
+				}()
+
+				err = lp.Gossip().SendPingToPeer(rp)
+				Expect(err).To(BeNil())
 			})
 		})
 
@@ -127,34 +121,26 @@ var _ = Describe("Ping", func() {
 			var err error
 
 			BeforeEach(func() {
-				block2, err = lp.GetBlockchain().Generate(&core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().UnixNano()),
-					},
-					Creator:                 sender,
-					Nonce:                   core.EncodeNonce(1),
-					Difficulty:              new(big.Int).SetInt64(131072),
-					OverrideTotalDifficulty: new(big.Int).SetInt64(1000000),
-					AddFeeAlloc:             true,
-				})
+				block2 = MakeBlockWithTotalDifficulty(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
 				Expect(err).To(BeNil())
 				_, err = lp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 			})
 
 			Specify("remote peer should send block hashes request with its current block as the locator", func(done Done) {
-				go func() {
-					defer GinkgoRecover()
-					err := lp.Gossip().SendPingToPeer(rp)
-					Expect(err).To(BeNil())
-				}()
-
 				rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
 				Expect(err).To(BeNil())
+				Expect(rpCurBlock.GetNumber()).To(Equal(uint64(1)))
 
-				evt := <-rp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
-				Expect(evt.Args[0].(util.Hash)).To(Equal(rpCurBlock.GetHash()))
-				close(done)
+				go func() {
+					defer GinkgoRecover()
+					evt := <-rp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
+					Expect(evt.Args[0].(util.Hash)).To(Equal(rpCurBlock.GetHash()))
+					close(done)
+				}()
+
+				err = rp.Gossip().SendPingToPeer(lp)
+				Expect(err).To(BeNil())
 			})
 		})
 	})

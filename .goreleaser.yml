@@ -2,23 +2,41 @@
 # Make sure to check the documentation at http://goreleaser.com
 project_name: elld
 builds:
-- env:
-  - CGO_ENABLED=0
+  -
+    env:
+      - CGO_ENABLED=0
+      - GOVERSION=go1.10.4
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+    goarm:
+      - "6"
+    main: ./main.go
+    ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.goversion={{.Env.GOVERSION}}
+    hooks:
+      pre: packr
+      post: packr clean
 archive:
   replacements:
-    darwin: Darwin
-    linux: Linux
-    windows: Windows
+    darwin: darwin
+    linux: linux
+    windows: windows
     386: i386
     amd64: x86_64
 checksum:
   name_template: 'checksums.txt'
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: "{{ .Tag }}"
 changelog:
   sort: asc
   filters:
     exclude:
+    - '^data'
     - '^docs:'
     - '^test:'
     - '^play'
+    - '^docker'
+    - '^scripts'

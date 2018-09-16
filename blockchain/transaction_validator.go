@@ -56,7 +56,7 @@ func appendErr(dest []error, err error) []error {
 
 // NewTxsValidator creates an instance of TxsValidator
 func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
-	bchain core.Blockchain, allowDupCheck bool) *TxsValidator {
+	bchain core.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    txs,
 		txpool: txPool,
@@ -135,20 +135,14 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		}
 	}
 
-	var validValueRule = func(err error) func(interface{}) error {
+	var validValueRule = func(field string) func(interface{}) error {
 		return func(val interface{}) error {
-			if _, _err := decimal.NewFromString(val.(util.String).String()); _err != nil {
-				return err
+			dVal, _err := decimal.NewFromString(val.(util.String).String())
+			if _err != nil {
+				return fieldErrorWithIndex(v.curIndex, field, "could not convert to decimal")
 			}
-			return nil
-		}
-	}
-
-	var isZeroLessRule = func(err error) func(interface{}) error {
-		return func(val interface{}) error {
-			dec, _ := decimal.NewFromString(val.(util.String).String())
-			if dec.LessThanOrEqual(decimal.Zero) {
-				return err
+			if dVal.LessThan(decimal.Zero) {
+				return fieldErrorWithIndex(v.curIndex, field, "negative value not allowed")
 			}
 			return nil
 		}
@@ -174,18 +168,11 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to", "recipient address is not valid"))),
 	))
 
-	// Value must be set and it must be valid number
+	// Value must be >= 0 and it must be valid number
 	errs = appendErr(errs, validation.Validate(tx.GetValue(),
 		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "value", "value is required").Error()),
-		validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "value", "could not convert to decimal"))),
+		validation.By(validValueRule("value")),
 	))
-
-	// For non-allocations, the value must be greater than 0
-	if tx.GetType() != objects.TxTypeAlloc {
-		errs = appendErr(errs, validation.Validate(tx.GetValue(),
-			validation.By(isZeroLessRule(fieldErrorWithIndex(v.curIndex, "value", "value must be greater than zero"))),
-		))
-	}
 
 	// Timestamp is required.
 	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
@@ -222,7 +209,7 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 	if tx.GetType() != objects.TxTypeAlloc {
 		err := validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
-			validation.By(validValueRule(fieldErrorWithIndex(v.curIndex, "fee", "could not convert to decimal"))),
+			validation.By(validValueRule("fee")),
 		)
 		errs = appendErr(errs, err)
 
@@ -231,11 +218,15 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		if err == nil {
 			fee := tx.GetFee().Decimal()
 			txSize := decimal.NewFromFloat(float64(tx.SizeNoFee()))
-			expectedMinimumFee := params.FeePerByte.Mul(txSize).Round(2)
+
+			// Calculate the expected fee
+			expectedMinimumFee := params.FeePerByte.Mul(txSize)
+
+			// Compare the expected fee with the provided fee
 			if expectedMinimumFee.GreaterThan(fee) {
 				errs = appendErr(errs, fieldErrorWithIndex(v.curIndex, "fee",
 					fmt.Sprintf("fee is too low. Minimum fee expected: %s (for %s bytes)",
-						expectedMinimumFee.Round(3), txSize.String())))
+						expectedMinimumFee.String(), txSize.String())))
 			}
 		}
 	}
@@ -299,6 +290,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	} else {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in main chain"))
+		return
 	}
 
 	// Get the sender account
@@ -325,7 +317,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// Get the nonce of the originator account
 	accountNonce := account.GetNonce()
 
-	// For transactions intended to the added into
+	// For transactions intended to be added into
 	// the transaction pool, their nonce must be greater than
 	// the account's current nonce value by at least 1
 	if v.ctx != ContextBlock && tx.GetNonce()-accountNonce < 1 {

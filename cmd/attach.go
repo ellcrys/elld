@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/console"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
@@ -50,6 +51,7 @@ account does not exist, the command will fail.`,
 
 		// Set up the console in attach mode
 		cs := console.NewAttached(coinbase, consoleHistoryFilePath, cfg, log)
+		cs.SetVersions(config.ProtocolVersion, BuildVersion, GoVersion, BuildCommit)
 
 		// Set the RPC server address to be dialled
 		cs.SetRPCServerAddr(rpcAddress, false)
