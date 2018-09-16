@@ -15,5 +15,8 @@ test:
 clean: 
 	go vet ./... && gofmt -s -w .
 	
+dep-ensure:
+	dep ensure -v
+	
 release:
 	bash release.sh
