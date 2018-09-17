@@ -71,8 +71,8 @@ var _ = Describe("Transaction", func() {
 
 			It("expects the history cache to have an item for the transaction", func() {
 				Expect(evt.Args).To(BeEmpty())
-				Expect(lp.HistoryCache().Len()).To(Equal(1))
-				Expect(lp.HistoryCache().Has(node.MakeTxHistoryKey(tx, rp))).To(BeTrue())
+				Expect(lp.GetHistory().Len()).To(Equal(1))
+				Expect(lp.GetHistory().HasMulti(node.MakeTxHistoryKey(tx, rp)...)).To(BeTrue())
 			})
 
 			Specify("remote peer's must have the transaction in its pool", func() {

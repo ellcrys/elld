@@ -17,7 +17,6 @@ import (
 
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/ellcrys/elld/txpool"
 
+	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/ellcrys/elld/config"
@@ -64,30 +64,30 @@ type SyncStateInfo struct {
 // Node represents a network node
 type Node struct {
 	mtx                 *sync.RWMutex
-	cfg                 *config.EngineConfig    // node config
-	address             ma.Multiaddr            // node multiaddr
-	IP                  net.IP                  // node ip
-	host                host.Host               // node libp2p host
-	wg                  sync.WaitGroup          // wait group for preventing the main thread from exiting
-	localNode           *Node                   // local node
-	peerManager         *Manager                // node manager for managing connections to other remote peers
-	gProtoc             *Gossip                 // gossip protocol instance
-	remote              bool                    // remote indicates the node represents a remote peer
-	Timestamp           time.Time               // the last time this node was seen/active
-	isHardcodedSeed     bool                    // whether the node was hardcoded as a seed
-	stopped             bool                    // flag to tell if node has stopped
-	log                 logger.Logger           // node logger
-	rSeed               []byte                  // random 256 bit seed to be used for seed random operations
-	db                  elldb.DB                // used to access and modify local database
-	signatory           *d_crypto.Key           // signatory address used to get node ID and for signing
-	historyCache        *histcache.HistoryCache // Used to track objects and behaviours
-	event               *emitter.Emitter        // Provides access event emitting service
-	transactionsPool    *txpool.TxPool          // the transaction pool for transactions
-	txsRelayQueue       *txpool.TxContainer     // stores transactions waiting to be relayed
-	bchain              core.Blockchain         // The blockchain manager
-	blockHashQueue      *lane.Deque             // Contains headers collected during block syncing
-	bestRemoteBlockInfo *BestBlockInfo          // Holds information about the best known block heard from peers
-	syncing             bool                    // Indicates the process of syncing the blockchain with peers
+	cfg                 *config.EngineConfig // node config
+	address             ma.Multiaddr         // node multiaddr
+	IP                  net.IP               // node ip
+	host                host.Host            // node libp2p host
+	wg                  sync.WaitGroup       // wait group for preventing the main thread from exiting
+	localNode           *Node                // local node
+	peerManager         *Manager             // node manager for managing connections to other remote peers
+	gProtoc             *Gossip              // gossip protocol instance
+	remote              bool                 // remote indicates the node represents a remote peer
+	Timestamp           time.Time            // the last time this node was seen/active
+	isHardcodedSeed     bool                 // whether the node was hardcoded as a seed
+	stopped             bool                 // flag to tell if node has stopped
+	log                 logger.Logger        // node logger
+	rSeed               []byte               // random 256 bit seed to be used for seed random operations
+	db                  elldb.DB             // used to access and modify local database
+	signatory           *d_crypto.Key        // signatory address used to get node ID and for signing
+	history             *cache.Cache         // Used to track things we want to remember
+	event               *emitter.Emitter     // Provides access event emitting service
+	transactionsPool    *txpool.TxPool       // the transaction pool for transactions
+	txsRelayQueue       *txpool.TxContainer  // stores transactions waiting to be relayed
+	bchain              core.Blockchain      // The blockchain manager
+	blockHashQueue      *lane.Deque          // Contains headers collected during block syncing
+	bestRemoteBlockInfo *BestBlockInfo       // Holds information about the best known block heard from peers
+	syncing             bool                 // Indicates the process of syncing the blockchain with peers
 }
 
 // NewNode creates a node instance at the specified port
@@ -138,18 +138,12 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 		transactionsPool: txpool.New(config.TxPool.Capacity),
 		txsRelayQueue:    txpool.NewQueueNoSort(config.TxPool.Capacity),
 		blockHashQueue:   lane.NewDeque(),
+		history:          cache.NewActiveCache(5000),
 	}
 
 	node.localNode = node
 	node.peerManager = NewManager(config, node, node.log)
 	node.IP = node.ip()
-
-	hc, err := histcache.NewHistoryCache(5000)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create history cache. %s", err)
-	}
-
-	node.historyCache = hc
 
 	log.Info("Opened local database", "Backend", "LevelDB")
 
@@ -318,10 +312,10 @@ func (n *Node) PM() *Manager {
 	return n.peerManager
 }
 
-// history return a cache for holding arbitrary
+// GetHistory return a cache for holding arbitrary
 // objects we want to keep track of
-func (n *Node) history() *histcache.HistoryCache {
-	return n.historyCache
+func (n *Node) GetHistory() *cache.Cache {
+	return n.history
 }
 
 // IsSame checks if p is the same as node
@@ -426,11 +420,6 @@ func (n *Node) addToPeerStore(remote types.Engine) *Node {
 // newStream creates a stream to a peer
 func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string) (inet.Stream, error) {
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
-}
-
-// HistoryCache gets the history cache
-func (n *Node) HistoryCache() *histcache.HistoryCache {
-	return n.historyCache
 }
 
 // SetTransactionPool sets the transaction pool

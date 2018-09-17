@@ -1,4 +1,4 @@
-package histcache_test
+package cache_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestHistoryCache(t *testing.T) {
+func TestCache(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "HistoryCache Suite")
+	RunSpecs(t, "Cache Suite")
 }

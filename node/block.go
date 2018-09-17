@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/util/cache"
 	"github.com/jinzhu/copier"
 
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
@@ -24,11 +24,11 @@ type BlockHash struct {
 	Broadcaster types.Engine
 }
 
-func makeBlockHistoryKey(hash string, peer types.Engine) histcache.MultiKey {
+func makeBlockHistoryKey(hash string, peer types.Engine) []interface{} {
 	return []interface{}{"b", hash, peer.StringID()}
 }
 
-func makeOrphanBlockHistoryKey(blockHash util.Hash, peer types.Engine) histcache.MultiKey {
+func makeOrphanBlockHistoryKey(blockHash util.Hash, peer types.Engine) []interface{} {
 	return []interface{}{"ob", blockHash.HexStr(), peer.StringID()}
 }
 
@@ -45,7 +45,7 @@ func (g *Gossip) RelayBlock(block core.Block, remotePeers []types.Engine) error 
 
 		// check if we have an history of sending or receiving this block
 		// from this remote peer. If yes, do not relay
-		if g.engine.history().Has(historyKey) {
+		if g.engine.history.HasMulti(historyKey...) {
 			continue
 		}
 
@@ -69,7 +69,7 @@ func (g *Gossip) RelayBlock(block core.Block, remotePeers []types.Engine) error 
 		}
 
 		// add new history
-		g.engine.history().Add(historyKey)
+		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++
 	}
@@ -107,7 +107,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 
 	// check if we have an history about this block
 	// with the remote peer, if no, process the block.
-	if !g.engine.history().Has(historyKey) {
+	if !g.engine.history.HasMulti(historyKey...) {
 
 		// Add the transaction to the transaction pool and wait for error response
 		if _, err := g.GetBlockchain().ProcessBlock(&block); err != nil {
@@ -118,7 +118,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 		g.engine.event.Emit(EventBlockProcessed, &block, nil)
 
 		// add transaction to the history cache using the key we created earlier
-		g.engine.history().Add(historyKey)
+		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 	}
 }
 
@@ -129,7 +129,7 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine, blockHash util.Hash) erro
 
 	// check if we have an history of sending or receiving this request
 	// from this remote peer. If yes, do not relay
-	if g.engine.history().Has(historyKey) {
+	if g.engine.history.HasMulti(historyKey...) {
 		return nil
 	}
 
@@ -151,7 +151,7 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine, blockHash util.Hash) erro
 	}
 
 	// add new history
-	g.engine.history().Add(historyKey)
+	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	return nil
 }
@@ -423,7 +423,7 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine, hashes []util.Hash)
 		// Add an history that prevents other routines from
 		// relaying this same block to the remote peer.
 		historyKey := makeBlockHistoryKey(block.HashToHex(), remotePeer)
-		g.engine.history().Add(historyKey)
+		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		// set the broadcaster and process the block
 		block.SetBroadcaster(remotePeer)
