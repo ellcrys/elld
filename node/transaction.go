@@ -6,17 +6,17 @@ import (
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/cache"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
 // MakeTxHistoryKey creates an history cache key
 // for recording a received/sent transaction
-func MakeTxHistoryKey(tx core.Transaction, peer types.Engine) histcache.MultiKey {
+func MakeTxHistoryKey(tx core.Transaction, peer types.Engine) []interface{} {
 	return []interface{}{tx.ID(), peer.StringID()}
 }
 
@@ -55,7 +55,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	// check if we have an history about this transaction with the remote peer,
 	// if no, add the transaction.
-	if g.engine.history().Has(historyKey) {
+	if g.engine.history.HasMulti(historyKey...) {
 		return
 	}
 
@@ -92,7 +92,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	}
 
 	// add transaction to the history cache using the key we created earlier
-	g.engine.history().Add(historyKey)
+	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	g.engine.event.Emit(EventTransactionProcessed)
 
@@ -111,7 +111,7 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 
 		// check if we have an history of sending or receiving this transaction
 		// from this remote peer. If yes, do not relay
-		if g.engine.history().Has(historyKey) {
+		if g.engine.history.HasMulti(historyKey...) {
 			continue
 		}
 
@@ -131,7 +131,7 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		}
 
 		// add new history
-		g.engine.history().Add(historyKey)
+		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++
 	}

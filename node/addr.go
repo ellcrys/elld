@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/node/histcache"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
@@ -174,7 +174,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 
 }
 
-func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) histcache.MultiKey {
+func makeAddrRelayHistoryKey(addr *wire.Addr, peer *Node) []interface{} {
 	return []interface{}{util.SerializeMsg(addr), peer.StringID()}
 }
 
@@ -257,7 +257,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		historyKey := makeAddrRelayHistoryKey(addrMsg, remotePeer)
 
 		// ensure we have not relayed same message to this peer before
-		if g.engine.history().Has(historyKey) {
+		if g.engine.history.HasMulti(historyKey...) {
 			errs = append(errs, fmt.Errorf("already sent same Addr to node"))
 			g.log.Debug("Already sent same Addr to node. Skipping.", "PeerID", remotePeer.ShortID())
 			continue
@@ -278,7 +278,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		}
 
 		// add new history
-		g.engine.history().Add(historyKey)
+		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		relayed++
 	}
