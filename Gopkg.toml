@@ -118,3 +118,7 @@
   name = "github.com/c-bata/go-prompt"
   revision = "15992ed45e46edd6168d7c8bfda14b700f6b756a"
 
+
+[[constraint]]
+  name = "github.com/tensorflow/tensorflow"
+  version = "1.10.1"
