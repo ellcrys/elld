@@ -338,7 +338,7 @@ process:
 
 	// Verify that the block's PoW for non-genesis blocks is valid.
 	// Only do this in production or development mode
-	if b.cfg.Node.Mode == config.ModeProd || b.cfg.Node.Mode == config.ModeDev && block.GetNumber() > 1 {
+	if (b.cfg.Node.Mode != config.ModeTest) && block.GetNumber() > 1 {
 		if errs := bValidator.CheckPoW(opts...); len(errs) > 0 {
 			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", errs[0])
 			return nil, errs[0]
