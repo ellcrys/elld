@@ -66,6 +66,11 @@ func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.peerManager.connMgr.connectionCount())
 }
 
+// apiGetSyncQueueSize returns the size of the block hash queue
+func (n *Node) apiGetSyncQueueSize(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.blockHashQueue.Size())
+}
+
 // apiGetActivePeers fetches active peers
 func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 	var peers = []map[string]interface{}{}
@@ -182,6 +187,11 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Namespace:   "node",
 			Description: "Get size information of the transaction pool",
 			Func:        n.apiTxPoolSizeInfo,
+		},
+		"getSyncQueueSize": {
+			Namespace:   "node",
+			Description: "Get number of block hashes in the sync queue",
+			Func:        n.apiGetSyncQueueSize,
 		},
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
@@ -69,7 +68,7 @@ type Blockchain struct {
 	rejectedBlocks *cache.Cache
 
 	// txPool contains all transactions awaiting inclusion in a block
-	txPool types.TxPool
+	txPool core.TxPool
 
 	// eventEmitter allows the manager to listen to specific
 	// events or broadcast events about its state
@@ -80,7 +79,7 @@ type Blockchain struct {
 }
 
 // New creates a Blockchain instance.
-func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
+func New(txPool core.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.txPool = txPool
 	bc.log = log
@@ -202,6 +201,11 @@ func (b *Blockchain) getBlockValidator(block core.Block) *BlockValidator {
 	v := NewBlockValidator(block, b.txPool, b, b.cfg, b.log)
 	v.setContext(ContextBlock)
 	return v
+}
+
+// GetTxPool gets the transaction pool
+func (b *Blockchain) GetTxPool() core.TxPool {
+	return b.txPool
 }
 
 // OrphanBlocks returns a cache reader for orphan blocks

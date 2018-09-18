@@ -14,7 +14,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -25,13 +24,16 @@ import (
 type ValidationContext int
 
 const (
-	// ContextTxPool represents validation of
-	// transactions destined for a transaction pool
-	ContextTxPool ValidationContext = iota
+	// ContextBlock represents validation
+	// context of which the intent is to validate
+	// a block that needs to be  appended to a chain
+	ContextBlock ValidationContext = iota + 1
 
-	// ContextBlock represents validation of
-	// transactions destined for a block
-	ContextBlock
+	// ContextTxPool represents validation context
+	// in which the intent is to validate a
+	// transaction that needs to be included in
+	// the transaction pool.
+	ContextTxPool
 )
 
 func fieldError(field, err string) error {
@@ -59,7 +61,7 @@ type BlockValidator struct {
 	block core.Block
 
 	// txpool refers to the transaction pool
-	txpool types.TxPool
+	txpool core.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
@@ -73,7 +75,7 @@ type BlockValidator struct {
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
-func NewBlockValidator(block core.Block, txPool types.TxPool,
+func NewBlockValidator(block core.Block, txPool core.TxPool,
 	bchain core.Blockchain, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:     block,

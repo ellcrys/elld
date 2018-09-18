@@ -319,6 +319,7 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine, hash util.Hash) err
 // and return hashes of subsequent blocks after the locator up
 // to the maximum block limit specified.
 func (g *Gossip) OnGetBlockHashes(s net.Stream) {
+	defer s.Close()
 	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.engine)
 	rpID := remotePeer.ShortID()
 
@@ -430,8 +431,6 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine, hashes []util.Hash)
 		_, err := g.GetBlockchain().ProcessBlock(&block)
 		if err != nil {
 			g.engine.event.Emit(EventBlockProcessed, &block, err)
-			g.log.Error("Attempt to append block failed", "Err", err,
-				"BlockNumber", block.GetNumber(), "BlockHash", block.GetHash().SS())
 		}
 
 		g.engine.event.Emit(EventBlockProcessed, &block, nil)

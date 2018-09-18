@@ -106,6 +106,9 @@ type Blockchain interface {
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
 
+	// GetTxPool gets the transaction pool
+	GetTxPool() TxPool
+
 	// CreateAccount creates an account that is associated with
 	// the given block number and chain.
 	CreateAccount(blockNo uint64, chain Chainer, account Account) error

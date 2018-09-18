@@ -15,14 +15,13 @@ import (
 
 	"github.com/olebedev/emitter"
 
+	"github.com/ellcrys/elld/blockchain/txpool"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
-
-	"github.com/ellcrys/elld/txpool"
 
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
@@ -836,6 +835,6 @@ func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
 }
 
 // GetTxPool returns the unsigned transaction pool
-func (n *Node) GetTxPool() types.TxPool {
+func (n *Node) GetTxPool() core.TxPool {
 	return n.transactionsPool
 }

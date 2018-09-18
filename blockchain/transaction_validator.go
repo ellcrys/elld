@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-ozzo/ozzo-validation"
 
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 
@@ -33,7 +32,7 @@ type TxsValidator struct {
 	txs []core.Transaction
 
 	// txpool refers to the transaction pool
-	txpool types.TxPool
+	txpool core.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
@@ -55,7 +54,7 @@ func appendErr(dest []error, err error) []error {
 }
 
 // NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
+func NewTxsValidator(txs []core.Transaction, txPool core.TxPool,
 	bchain core.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    txs,
@@ -65,7 +64,7 @@ func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
 }
 
 // NewTxValidator is like NewTxsValidator except it accepts a single transaction
-func NewTxValidator(tx core.Transaction, txPool types.TxPool,
+func NewTxValidator(tx core.Transaction, txPool core.TxPool,
 	bchain core.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    []core.Transaction{tx},
@@ -273,7 +272,10 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	if v.txpool.Has(tx) {
+	// If the callers intent is not validating a block
+	// then we must check that the transaction
+	// does not have a duplicate in the pool
+	if v.ctx != ContextBlock && v.txpool.Has(tx) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in the transactions pool"))
 		return
@@ -317,21 +319,23 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// Get the nonce of the originator account
 	accountNonce := account.GetNonce()
 
-	// For transactions intended to be added into
-	// the transaction pool, their nonce must be greater than
-	// the account's current nonce value by at least 1
+	// If the caller intends to added the transaction into
+	// the transaction pool, then the nonce must be greater
+	// than the account's current nonce by at least 1
 	if v.ctx != ContextBlock && tx.GetNonce()-accountNonce < 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
-			fmt.Sprintf("invalid nonce: has %d, wants from %d", tx.GetNonce(), accountNonce+1)))
+			fmt.Sprintf("invalid nonce: has %d, wants from %d",
+				tx.GetNonce(), accountNonce+1)))
 		return
 	}
 
-	// For transactions in blocks that will be appended to a
-	// a chain, their nonce must be greater than the account's
-	// current nonce value by a maximum of 1
+	// If the caller intends to add the transaction into a
+	// blocks then the nonce must be greater than the account's
+	// current nonce by 1
 	if v.ctx == ContextBlock && tx.GetNonce()-accountNonce != 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
-			fmt.Sprintf("invalid nonce: has %d, wants %d", tx.GetNonce(), accountNonce+1)))
+			fmt.Sprintf("invalid nonce: has %d, wants %d",
+				tx.GetNonce(), accountNonce+1)))
 		return
 	}
 
