@@ -122,3 +122,8 @@
 [[constraint]]
   name = "github.com/tensorflow/tensorflow"
   version = "1.10.1"
+
+[[prune.project]]
+ name = "github.com/tensorflow/tensorflow/tensorflow/go"
+ non-go = false
+ unused-packages = false
