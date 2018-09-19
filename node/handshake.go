@@ -151,7 +151,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	remotePeer.SetTimestamp(time.Now())
 	g.PM().AddOrUpdatePeer(remotePeer)
 
-	g.log.Info("Responded to handshake with current chain state", "PeerID",
+	g.log.Info("Responded to handshake with chain state", "PeerID",
 		remotePeerIDShort, "SubVersion",
 		engineHandshakeMsg.SubVersion, "TotalDifficulty",
 		engineHandshakeMsg.BestBlockTotalDifficulty)

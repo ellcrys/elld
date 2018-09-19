@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/vmihailenco/msgpack"
@@ -211,6 +213,11 @@ func MustFromHex(hexValue string) []byte {
 		panic(err)
 	}
 	return v
+}
+
+// LogAlert wraps pp.Println with a read [Alert] prefix.
+func LogAlert(format string, args ...interface{}) {
+	fmt.Println(color.RedString("[Alert] "+format, args...))
 }
 
 // StructToMap returns a map containing fields from the s.

@@ -102,11 +102,11 @@ func (g *Gossip) OnTx(s net.Stream) {
 // RelayTx relays transactions to peers
 func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error {
 
-	txID := tx.ID()
+	txID := util.String(tx.ID()).SS()
 	sent := 0
 	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
-	for _, peer := range remotePeers {
 
+	for _, peer := range remotePeers {
 		historyKey := MakeTxHistoryKey(tx, peer)
 
 		// check if we have an history of sending or receiving this transaction
