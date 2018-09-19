@@ -750,19 +750,32 @@ func (n *Node) Wait() {
 	n.wg.Wait()
 }
 
+// HasStopped checks whether the node has stopped
+func (n *Node) HasStopped() bool {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	return n.stopped
+}
+
 // Stop stops the node and releases any held resources.
 func (n *Node) Stop() {
 
+	n.mtx.Lock()
 	n.stopped = true
+	n.mtx.Unlock()
 
+	// stop the peer manager
+	// and its managed routines.
 	if pm := n.PM(); pm != nil {
 		pm.Stop()
 	}
 
+	// Shut down the host
 	if n.host != nil {
 		n.host.Close()
 	}
 
+	// Close the database
 	if n.db != nil {
 		err := n.db.Close()
 		if err == nil {
@@ -777,7 +790,6 @@ func (n *Node) Stop() {
 	if n.wg != (sync.WaitGroup{}) {
 		n.wg.Done()
 	}
-
 }
 
 // NodeFromAddr creates a Node from a multiaddr

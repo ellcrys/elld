@@ -96,8 +96,13 @@ func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
 }
 
 // OpenedStream is called when a stream is openned
-func (m *ConnectionManager) OpenedStream(net.Network, net.Stream) {
+func (m *ConnectionManager) OpenedStream(n net.Network, s net.Stream) {
 
+	// If the local node has stopped,
+	// close the stream on both ends.
+	if m.pm.localNode.HasStopped() {
+		s.Reset()
+	}
 }
 
 // ClosedStream is called when a stream is openned
