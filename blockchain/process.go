@@ -3,6 +3,8 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
@@ -283,7 +285,6 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// parent belongs to. This chain may be the main cain or
 	// a side chain (branch). We also need the tip of this chain.
 	parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
-
 	// If the block's parent does not belong to
 	// any known chain. This is a orphan block
 	if err != nil {
@@ -335,7 +336,6 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	}
 
 process:
-
 	// Verify that the block's PoW for non-genesis blocks is valid.
 	// Only do this in production or development mode
 	if (b.cfg.Node.Mode != config.ModeTest) && block.GetNumber() > 1 {
@@ -346,6 +346,10 @@ process:
 	}
 
 	txOp := common.GetTxOp(chain.store.DB(), opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
 	if len(opts) == 0 {
 		txOp.CanFinish = false
 	}

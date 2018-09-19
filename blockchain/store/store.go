@@ -3,6 +3,8 @@ package store
 import (
 	"fmt"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
@@ -52,6 +54,9 @@ func (s *ChainStore) hasBlock(number uint64, opts ...core.CallOp) (bool, error) 
 func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
 
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
 
 	// Since number is '0', we must fetch the last block
 	// which is the block with the highest number and the most recent
@@ -113,6 +118,9 @@ func (s *ChainStore) GetBlock(number uint64, opts ...core.CallOp) (core.Block, e
 // PutTransactions stores a collection of transactions
 func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	for i, tx := range txs {
 		txKey := common.MakeTxKey(s.chainID.Bytes(), blockNumber, tx.GetHash().Bytes())
@@ -132,7 +140,11 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 	var block objects.Block
 	var highestBlockNum uint64
 	var r *elldb.KVObject
+
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
 
 	// iterate over the blocks in the chain and locate the highest block
 
@@ -162,7 +174,11 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
 
 	var err error
+
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
 
 	// iterate over the blocks in the chain and locate the block
 	// matching the specified hash
@@ -211,7 +227,12 @@ func (s *ChainStore) GetBlockByNumberAndHash(number uint64, hash util.Hash, opts
 // PutBlock adds a block to the store.
 // Returns error if a block with same number exists.
 func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {
+
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
+
 	if err := s.putBlock(block, txOp); err != nil {
 		txOp.Rollback()
 		return err
@@ -225,6 +246,9 @@ func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {
 func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	// check if block already exists. return nil if block exists.
 	hasBlock, err := s.hasBlock(block.GetNumber(), &common.TxOp{Tx: txOp.Tx})
@@ -251,7 +275,12 @@ func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 
 // Delete deletes objects
 func (s *ChainStore) Delete(key []byte, opts ...core.CallOp) error {
+
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
+
 	if err := txOp.Tx.DeleteByPrefix(key); err != nil {
 		txOp.Rollback()
 		return fmt.Errorf("failed to remove object: %s", err)
@@ -262,7 +291,11 @@ func (s *ChainStore) Delete(key []byte, opts ...core.CallOp) error {
 
 // Put stores an object
 func (s *ChainStore) put(key []byte, value []byte, opts ...core.CallOp) error {
+
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	obj := elldb.NewKVObject(key, value)
 	if err := txOp.Tx.Put([]*elldb.KVObject{obj}); err != nil {
@@ -273,36 +306,47 @@ func (s *ChainStore) put(key []byte, value []byte, opts ...core.CallOp) error {
 	return txOp.Commit()
 }
 
-// Get an object by key (and optionally by prefixes)
-func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.CallOp) {
+// get an object by key (and optionally by prefixes)
+func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	r := txOp.Tx.GetByPrefix(key)
 	if r == nil {
-		txOp.Commit()
-		return
+		return txOp.Commit()
 	}
 
 	*result = append(*result, r...)
-	txOp.Commit()
+	return txOp.Commit()
 }
 
-// GetTransaction gets a transaction (by hash) belonging to a chain
-func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) core.Transaction {
-	var result []*elldb.KVObject
+// GetTransaction gets a transaction (by hash)
+// belonging to a chain
+func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
 	var tx objects.Transaction
-	var txOp = common.GetTxOp(s.db, opts...)
 
-	s.get(common.MakeTxQueryKey(s.chainID.Bytes(), hash.Bytes()), &result, txOp)
+	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
+	var result []*elldb.KVObject
+	err := s.get(common.MakeTxQueryKey(s.chainID.Bytes(), hash.Bytes()), &result, txOp)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(result) == 0 {
 		txOp.Rollback()
-		return nil
+		return nil, core.ErrTxNotFound
 	}
 
 	txOp.Commit()
 
 	result[0].Scan(&tx)
-	return &tx
+	return &tx, nil
 }
 
 // CreateAccount creates an account on a target block
@@ -319,6 +363,10 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
 	var blockRangeOp = common.GetBlockQueryRangeOp(opts...)
 	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
 		var bn = common.DecodeBlockNumber(kv.Key)

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/types/core"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -119,6 +121,9 @@ func (c *Chain) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error)
 func (c *Chain) save(opts ...core.CallOp) error {
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	chainKey := common.MakeChainKey(c.GetID().Bytes())
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(chainKey, util.ObjectToBytes(c.info))})
@@ -151,9 +156,13 @@ func (c *Chain) loadParent(opts ...core.CallOp) (*Chain, error) {
 		return nil, nil
 	}
 
+	var txOp = common.GetTxOp(c.store, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
 	// Fetch the chain info of the parent.
 	// If not found return ErrChainParentNotFound
-	var txOp = common.GetTxOp(c.store, opts...)
 	chainKey := common.MakeChainKey(c.info.ParentChainID.Bytes())
 	result := txOp.Tx.GetByPrefix(chainKey)
 	if len(result) == 0 {
@@ -304,6 +313,9 @@ func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
 
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
@@ -378,8 +390,12 @@ func (c *Chain) PutTransactions(txs []core.Transaction, blockNumber uint64, opts
 }
 
 // GetTransaction gets a transaction by hash
-func (c *Chain) GetTransaction(hash util.Hash, opts ...core.CallOp) core.Transaction {
-	return c.store.GetTransaction(hash, opts...)
+func (c *Chain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
+	tx, err := c.store.GetTransaction(hash, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return tx, nil
 }
 
 // removeBlock deletes a block and all objects
@@ -388,6 +404,9 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 
 	var err error
 	txOp := common.GetTxOp(c.store.DB(), opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 	txOp.CanFinish = false
 
 	// get the block.

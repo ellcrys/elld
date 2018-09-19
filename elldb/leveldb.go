@@ -145,12 +145,13 @@ func (db *LevelDB) Truncate() error {
 
 // NewTx creates a new transaction
 func (db *LevelDB) NewTx() (Tx, error) {
-	_tx, err := db.ldb.OpenTransaction()
+	tx, err := db.ldb.OpenTransaction()
 	if err != nil {
 		return nil, err
 	}
-	tx := Transaction{ldb: _tx}
-	return &tx, nil
+	return &Transaction{
+		ldb: tx,
+	}, nil
 }
 
 // Transaction defines interface for working with a database transaction

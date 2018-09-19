@@ -77,10 +77,13 @@ var _ = Describe("Leveldb", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			tx := store.GetTransaction(txs[0].GetHash())
+			tx, err := store.GetTransaction(txs[0].GetHash())
+			Expect(err).To(BeNil())
 			Expect(tx).ToNot(BeNil())
 			Expect(tx).To(Equal(txs[0]))
-			tx = store.GetTransaction(txs[1].GetHash())
+
+			tx, err = store.GetTransaction(txs[1].GetHash())
+			Expect(err).To(BeNil())
 			Expect(tx).ToNot(BeNil())
 			Expect(tx).To(Equal(txs[1]))
 		})
@@ -98,7 +101,8 @@ var _ = Describe("Leveldb", func() {
 			err := store.Delete(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
 			Expect(err).To(BeNil())
 
-			tx := store.GetTransaction(txs[0].GetHash())
+			tx, err := store.GetTransaction(txs[0].GetHash())
+			Expect(err).To(BeNil())
 			Expect(tx).To(BeNil())
 		})
 	})

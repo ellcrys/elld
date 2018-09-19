@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/gobuffalo/packr"
@@ -157,6 +159,7 @@ func (b *Blockchain) Up() error {
 		// The ID of the genesis chain is the hash of the genesis block hash.
 		gChainID := util.ToHex(util.Blake2b256(gBlock.GetHash().Bytes()))
 		gChain := NewChain(util.String(gChainID), b.db, b.cfg, b.log)
+
 		// Save the chain the chain (which also adds it to the chain cache)
 		if err := b.saveChain(gChain, "", 0); err != nil {
 			return fmt.Errorf("failed to save genesis chain: %s", err)
@@ -392,6 +395,9 @@ func (b *Blockchain) IsMainChain(cr core.ChainReader) bool {
 func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBlockNumber uint64, opts ...core.CallOp) error {
 
 	var txOp = common.GetTxOp(b.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	chain.info = &core.ChainInfo{
 		ID:                chain.GetID(),
@@ -493,9 +499,9 @@ func (b *Blockchain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 		return nil, core.ErrBestChainUnknown
 	}
 
-	tx := b.bestChain.GetTransaction(hash, opts...)
-	if tx == nil {
-		return nil, core.ErrTxNotFound
+	tx, err := b.bestChain.GetTransaction(hash, opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return tx, nil

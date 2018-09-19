@@ -41,7 +41,7 @@ type Chainer interface {
 	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
 	// GetTransaction gets a transaction by hash
-	GetTransaction(hash util.Hash, opts ...CallOp) Transaction
+	GetTransaction(hash util.Hash, opts ...CallOp) (Transaction, error)
 
 	// ChainReader gets a chain reader for this chain
 	ChainReader() ChainReader
