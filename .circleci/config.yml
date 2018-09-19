@@ -16,7 +16,16 @@ jobs:
           name: Install Dependencies
           command: |
             dep ensure -v 
+            
+            TF_TYPE="cpu"
+            TARGET_DIRECTORY='/usr/local'
+            curl -L \
+              "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-${TF_TYPE}-$(go env GOOS)-x86_64-1.10.1.tar.gz" |
+            sudo tar -C $TARGET_DIRECTORY -xz
+
+
             dep ensure -add github.com/tensorflow/tensorflow/tensorflow/go
+
       - save_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
           paths:
