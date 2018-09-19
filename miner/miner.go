@@ -2,6 +2,7 @@ package miner
 
 import (
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -20,6 +21,7 @@ import (
 // validation capabilities with respect to PoW. The miner
 // leverages Ethash to performing PoW computation.
 type Miner struct {
+	sync.RWMutex
 
 	// minerKey is the key associated with the loaded account (a.k.a coinbase)
 	minerKey *crypto.Key
@@ -45,9 +47,9 @@ type Miner struct {
 	// abort forces the current mining operations to stop
 	abort chan struct{}
 
-	// isMining indicates whether or not
+	// mining indicates whether or not
 	// mining is ongoing
-	isMining bool
+	mining bool
 
 	// aborted indicates whether or not mining has been
 	// aborted so we do not attempt to re-abort
@@ -75,7 +77,9 @@ func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter
 	// proposed block
 	go func() {
 		for event := range m.event.On(core.EventNewBlock) {
-			m.handleNewBlockEvt(event.Args[0].(*objects.Block))
+
+			m.handleNewBlockEvt(event.Args[0].(*objects.Block),
+				event.Args[1].(core.ChainReader))
 		}
 	}()
 
@@ -105,6 +109,8 @@ func (m *Miner) getProposedBlock(txs []core.Transaction) (core.Block, error) {
 
 // abortCurrent forces the currently running mining threads to
 // stop. This will cause a new proposed block to be created.
+//
+// Note: Must be called with the lock held
 func (m *Miner) abortCurrent() {
 	if m.aborted {
 		return
@@ -115,8 +121,16 @@ func (m *Miner) abortCurrent() {
 
 // Stop stops the miner completely
 func (m *Miner) Stop() {
+	m.Lock()
+	defer m.Unlock()
 	m.stop = true
 	m.abortCurrent()
+}
+
+func (m *Miner) setMiningStatus(s bool) {
+	m.Lock()
+	defer m.Unlock()
+	m.mining = s
 }
 
 // handleNewBlockEvt detects and processes event about
@@ -125,17 +139,20 @@ func (m *Miner) Stop() {
 // will cause the current proposed block to be dumped.
 // Additionally, it emits a core.EventMinerProposedBlockAborted event
 // to inform other processes about the aborted proposed block.
-func (m *Miner) handleNewBlockEvt(newBlock *objects.Block) {
-	if !m.isMining {
+func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReader) {
+	m.Lock()
+	defer m.Lock()
+	if !m.mining {
 		return
 	}
 	if m.proposedBlock != nil {
 		return
 	}
+
 	// If the new block was appended to the main chain
 	// and it is not the same with the proposed block,
 	// abort current proposed block and emit an event.
-	if m.blockMaker.IsMainChain(newBlock.ChainReader) &&
+	if m.blockMaker.IsMainChain(chain) &&
 		!m.proposedBlock.GetHash().Equal(newBlock.GetHash()) {
 		m.log.Debug("Aborting on-going miner session. Proposing a new block.", "Number", newBlock.Header.Number)
 		go m.event.Emit(core.EventMinerProposedBlockAborted, m.proposedBlock)
@@ -152,7 +169,9 @@ func (m *Miner) ValidateHeader(chain core.ChainReader, header, parent *objects.H
 // IsMining checks whether or not the miner is actively
 // performing PoW operation.
 func (m *Miner) IsMining() bool {
-	return m.isMining
+	m.RLock()
+	defer m.RUnlock()
+	return m.mining
 }
 
 // Mine begins the mining process
@@ -164,17 +183,21 @@ func (m *Miner) Mine() {
 	for !m.stop {
 
 		var err error
+
+		m.Lock()
 		m.aborted = false
 		m.abort = make(chan struct{})
-		m.isMining = true
+		m.mining = true
 
 		// Get a proposed block compatible with the
 		// main chain and the current block.
 		m.proposedBlock, err = m.getProposedBlock(nil)
 		if err != nil {
+			m.Unlock()
 			m.log.Error("Proposed block is not valid", "Error", err)
 			break
 		}
+		m.Unlock()
 
 		// if no transactions in the proposed block,
 		// do not mine the block, sleep for a few seconds
@@ -233,5 +256,5 @@ func (m *Miner) Mine() {
 		}
 	}
 
-	m.isMining = false
+	m.setMiningStatus(false)
 }

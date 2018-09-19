@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/vmihailenco/msgpack"
 
@@ -13,6 +14,8 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/math"
 )
+
+var mtx sync.RWMutex
 
 // Header represents the header of a block
 type Header struct {
@@ -180,33 +183,22 @@ type Block struct {
 	Hash         util.Hash      `json:"hash" msgpack:"hash"`
 	Sig          []byte         `json:"sig" msgpack:"sig"`
 
-	// ChainReader holds the chain on which
-	// this block was added.
-	ChainReader core.ChainReader `json:"-" msgpack:"-"`
-
 	// Broadcaster is the peer responsible
 	// for sending this block.
 	Broadcaster types.Engine `json:"-" msgpack:"-"`
 }
 
-// GetChainReader gets the chain reader
-func (b *Block) GetChainReader() core.ChainReader {
-	// b.RLock()
-	// defer b.RUnlock()
-	return b.ChainReader
-}
-
 // SetBroadcaster sets the originator
 func (b *Block) SetBroadcaster(o types.Engine) {
-	// b.Lock()
-	// defer b.Unlock()
+	mtx.Lock()
+	defer mtx.Unlock()
 	b.Broadcaster = o
 }
 
 // GetBroadcaster gets the originator
 func (b *Block) GetBroadcaster() types.Engine {
-	// b.RLock()
-	// defer b.RUnlock()
+	mtx.RLock()
+	defer mtx.RUnlock()
 	return b.Broadcaster
 }
 
@@ -287,13 +279,6 @@ func (b *Block) ComputeHash() util.Hash {
 // GetSignature gets the signature
 func (b *Block) GetSignature() []byte {
 	return b.Sig
-}
-
-// SetChainReader sets the chain reader
-func (b *Block) SetChainReader(cr core.ChainReader) {
-	// b.Lock()
-	// defer b.Unlock()
-	b.ChainReader = cr
 }
 
 // SetHash sets the hash

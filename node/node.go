@@ -87,6 +87,7 @@ type Node struct {
 	blockHashQueue      *lane.Deque          // Contains headers collected during block syncing
 	bestRemoteBlockInfo *BestBlockInfo       // Holds information about the best known block heard from peers
 	syncing             bool                 // Indicates the process of syncing the blockchain with peers
+	tickerDone          chan bool
 }
 
 // NewNode creates a node instance at the specified port
@@ -138,6 +139,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 		txsRelayQueue:    txpool.NewQueueNoSort(config.TxPool.Capacity),
 		blockHashQueue:   lane.NewDeque(),
 		history:          cache.NewActiveCache(5000),
+		tickerDone:       make(chan bool),
 	}
 
 	node.localNode = node
@@ -602,22 +604,27 @@ func (n *Node) PeersPublicAddr(peerIDsToIgnore []string) (peerAddrs []ma.Multiad
 // Then send GetAddr message if handshake is successful
 func (n *Node) connectToNode(remote types.Engine) error {
 	if n.gProtoc.SendHandshake(remote) == nil {
-		return n.gProtoc.SendGetAddr([]types.Engine{remote})
+		n.gProtoc.SendGetAddr([]types.Engine{remote})
 	}
 	return nil
 }
 
 // relayTx continuously relays transactions in the tx relay queue
 func (n *Node) relayTx() {
-	for !n.stopped {
-		q := n.GetTxRelayQueue()
-		if q.Size() == 0 {
-			time.Sleep(5 * time.Second)
-			continue
+	ticker := time.NewTicker(3 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			q := n.GetTxRelayQueue()
+			if q.Size() == 0 {
+				continue
+			}
+			tx := q.First()
+			n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+		case <-n.tickerDone:
+			ticker.Stop()
+			return
 		}
-
-		tx := q.First()
-		n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 	}
 }
 
@@ -704,42 +711,44 @@ func (n *Node) handleEvents() {
 // ProcessBlockHashes collects hashes and request for their
 // block bodies from the initial broadcaster if the headers.
 func (n *Node) ProcessBlockHashes() {
-	for !n.stopped {
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
 
-		if n.blockHashQueue.Empty() {
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		hashes := []util.Hash{}
-		var broadcaster types.Engine
-		otherBlockHashes := []interface{}{}
-
-		// Collect hash of headers sent by a particular broadcaster.
-		// Temporarily keep the others in a cache to be added back
-		// in the queue when we have collected some hashes
-		for !n.blockHashQueue.Empty() && int64(len(hashes)) < params.MaxGetBlockBodiesHashes {
-			bh := n.blockHashQueue.Shift().(*BlockHash)
-			if broadcaster != nil && bh.Broadcaster.StringID() != broadcaster.StringID() {
-				otherBlockHashes = append(otherBlockHashes, bh)
+			if n.blockHashQueue.Empty() {
 				continue
 			}
-			hashes = append(hashes, bh.Hash)
-			broadcaster = bh.Broadcaster
-		}
 
-		// append the others that were not selected
-		// back to the block hash queue
-		for _, bh := range otherBlockHashes {
-			n.blockHashQueue.Append(bh)
-		}
+			hashes := []util.Hash{}
+			var broadcaster types.Engine
+			otherBlockHashes := []interface{}{}
 
-		// send block body request
-		n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+			// Collect hash of headers sent by a particular broadcaster.
+			// Temporarily keep the others in a cache to be added back
+			// in the queue when we have collected some hashes
+			for !n.blockHashQueue.Empty() && int64(len(hashes)) < params.MaxGetBlockBodiesHashes {
+				bh := n.blockHashQueue.Shift().(*BlockHash)
+				if broadcaster != nil && bh.Broadcaster.StringID() != broadcaster.StringID() {
+					otherBlockHashes = append(otherBlockHashes, bh)
+					continue
+				}
+				hashes = append(hashes, bh.Hash)
+				broadcaster = bh.Broadcaster
+			}
 
-		// politely sleep for a while
-		if !n.TestMode() {
-			time.Sleep(5 * time.Second)
+			// append the others that were not selected
+			// back to the block hash queue
+			for _, bh := range otherBlockHashes {
+				n.blockHashQueue.Append(bh)
+			}
+
+			// send block body request
+			n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+
+		case <-n.tickerDone:
+			ticker.Stop()
+			return
 		}
 	}
 }
@@ -775,8 +784,13 @@ func (n *Node) Stop() {
 		n.host.Close()
 	}
 
-	// Close the database
+	// Close the database.
 	if n.db != nil {
+
+		// Wait a few seconds for active operations to
+		// complete before closing the database
+		time.Sleep(2 * time.Second)
+
 		err := n.db.Close()
 		if err == nil {
 			n.log.Info("Database has been closed")

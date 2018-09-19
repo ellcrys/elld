@@ -106,7 +106,6 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	var bestBlockInfo BestBlockInfo
 	copier.Copy(&bestBlockInfo, resp)
 	g.engine.updateSyncInfo(&bestBlockInfo)
-
 	return nil
 }
 

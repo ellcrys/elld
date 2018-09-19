@@ -82,7 +82,6 @@ func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, e
 // GetHeader gets the header of the current block in the chain
 func (s *ChainStore) GetHeader(number uint64, opts ...core.CallOp) (core.Header, error) {
 	var err error
-
 	block, err := s.getBlock(number, opts...)
 	if err != nil {
 		return nil, err

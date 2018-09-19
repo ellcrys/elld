@@ -63,7 +63,9 @@ func (s *Server) GetAddr() string {
 // Serve starts the server
 func (s *Server) Serve() {
 	s.AddAPI(s.APIs())
+	s.Lock()
 	s.started = true
+	s.Unlock()
 	s.log.Info("RPC service started", "Address", s.addr)
 	s.rpc.Serve()
 }

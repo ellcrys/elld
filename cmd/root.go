@@ -15,10 +15,10 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	path "path/filepath"
+	"sync"
 	"syscall"
 
 	"github.com/ellcrys/elld/accountmgr"
@@ -58,7 +58,14 @@ var (
 	done                   chan bool
 	accountMgr             *accountmgr.AccountManager
 	onTerminate            func()
+	mtx                    = &sync.Mutex{}
 )
+
+func setTerminateFunc(f func()) {
+	mtx.Lock()
+	defer mtx.Unlock()
+	onTerminate = f
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -74,22 +81,22 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
 func init() {
 	sigs = make(chan os.Signal, 1)
-	done = make(chan bool, 1)
+	signal.Reset()
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-sigs
+		mtx.Lock()
+		defer mtx.Unlock()
 		if onTerminate != nil {
 			onTerminate()
 		}
-		done <- true
 	}()
 
 	rootCmd.PersistentFlags().String("cfgdir", "", "Set configuration directory")

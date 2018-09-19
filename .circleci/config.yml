@@ -14,7 +14,9 @@ jobs:
             - vendor-{{ checksum "Gopkg.lock" }}
       - run:
           name: Install Dependencies
-          command: dep ensure -v
+          command: |
+            dep ensure -v 
+            dep ensure add github.com/tensorflow
       - save_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
           paths:

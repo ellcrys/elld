@@ -456,15 +456,12 @@ process:
 		}
 	}
 
-	// set the chain reader on the block
-	block.SetChainReader(chain.ChainReader())
-
 	// if the chain is the best chain, emit a new block
 	// event. This will cause the miner to abort and restart.
 	// It will also cause the peer manager to relay the block
 	// to other peers.
 	if b.bestChain.GetID() == chain.GetID() {
-		<-b.eventEmitter.Emit(core.EventNewBlock, block)
+		<-b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
 	b.log.Info("Block has been successfully processed", "BlockNo", block.GetNumber())
@@ -524,7 +521,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	}
 
 	// attempt to add the block to a chain
-	_, err = b.maybeAcceptBlock(block, nil)
+	chain, err := b.maybeAcceptBlock(block, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +530,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	// that may depend on this newly accepted block
 	b.processOrphanBlocks(block.GetHash().HexStr())
 
-	return block.GetChainReader(), nil
+	return chain.ChainReader(), nil
 }
 
 // execBlock execute the transactions of the blocks to

@@ -21,8 +21,6 @@ type Block interface {
 	SetHash(util.Hash)
 	GetTransactions() []Transaction
 	GetSignature() []byte
-	SetChainReader(cr ChainReader)
-	GetChainReader() ChainReader
 	SetSignature(sig []byte)
 	HashToHex() string
 }

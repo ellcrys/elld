@@ -3,13 +3,15 @@
 project_name: elld
 builds:
   -
+    flags:
+      -race
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
       - GOVERSION=go1.10.4
     goos:
-      - linux
+      # - linux
       - darwin
-      - windows
+      # - windows
     goarch:
       - amd64
     goarm:

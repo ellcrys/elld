@@ -149,7 +149,6 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 			Timestamp:        time.Now().Unix(),
 			TotalDifficulty:  new(big.Int).SetInt64(0),
 		},
-		ChainReader: chain.ChainReader(),
 	}
 
 	for _, tx := range params.Transactions {

@@ -472,7 +472,7 @@ var _ = Describe("GetAddr", func() {
 	Describe(".TimestampPunishment", func() {
 
 		It("return err.Error('nil passed') when nil is passed as peer", func() {
-			err := mgr.OnFailedConnection(nil)
+			err := mgr.HasDisconnected(nil)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("nil passed"))
 		})
@@ -483,7 +483,7 @@ var _ = Describe("GetAddr", func() {
 				"peer1": peer1,
 			})
 			currentTime := peer1.Timestamp.Unix()
-			err := mgr.OnFailedConnection(peer1)
+			err := mgr.HasDisconnected(peer1)
 			Expect(err).To(BeNil())
 			actual := peer1.Timestamp.Unix()
 			Expect(currentTime > actual).To(BeTrue())

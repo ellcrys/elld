@@ -22,18 +22,15 @@ import (
 // according to the current protocol and engine rules.
 type Manager struct {
 	knownPeerMtx   *sync.Mutex             // known peer mutex
-	generalMtx     *sync.Mutex             // general mutex
+	mtx            *sync.Mutex             // general mutex
 	localNode      *Node                   // local node
 	bootstrapNodes map[string]types.Engine // bootstrap peers
 	knownPeers     map[string]types.Engine // peers known to the peer manager
 	log            logger.Logger           // manager's logger
 	config         *config.EngineConfig    // manager's configuration
 	connMgr        *ConnectionManager      // connection manager
-	getAddrTicker  *time.Ticker            // ticker that sends "getaddr" messages
-	pingTicker     *time.Ticker            // ticker that sends "ping" messages
-	selfAdvTicker  *time.Ticker            // ticker that sends "addr" message for self advertisement
-	cleanUpTicker  *time.Ticker            // ticker that cleans up the peer
-	stop           bool                    // signifies the start of the manager
+	tickersDone    chan bool
+	stop           bool // signifies the start of the manager
 }
 
 // NewManager creates an instance of the peer manager
@@ -54,12 +51,13 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 
 	m := &Manager{
 		knownPeerMtx:   new(sync.Mutex),
-		generalMtx:     new(sync.Mutex),
+		mtx:            new(sync.Mutex),
 		localNode:      localPeer,
 		log:            log,
 		bootstrapNodes: make(map[string]types.Engine),
 		knownPeers:     make(map[string]types.Engine),
 		config:         cfg,
+		tickersDone:    make(chan bool),
 	}
 
 	m.connMgr = NewConnMrg(m, log)
@@ -95,14 +93,10 @@ func (m *Manager) GetKnownPeer(peerID string) types.Engine {
 // timestamp.
 // Eventually, it will be removed if it does not reconnect.
 func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
-
 	peerID := util.IDFromAddr(peerAddr).Pretty()
-
-	if peer := m.GetKnownPeer(peerID); peer != nil {
-		m.OnFailedConnection(peer)
-		m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
-	}
-
+	peer := m.GetKnownPeer(peerID)
+	m.HasDisconnected(peer)
+	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
 	m.CleanKnownPeers()
 }
 
@@ -155,52 +149,49 @@ func (m *Manager) Manage() {
 	}
 
 	go m.connMgr.Manage()
-	go m.periodicSelfAdvertisement()
-	go m.periodicCleanUp()
-	go m.periodicPingMsgs()
-	go m.sendPeriodicGetAddrMsg()
+	go m.periodicSelfAdvertisement(m.tickersDone)
+	go m.periodicCleanUp(m.tickersDone)
+	go m.periodicPingMsgs(m.tickersDone)
+	go m.sendPeriodicGetAddrMsg(m.tickersDone)
 }
 
 // sendPeriodicGetAddrMsg sends "getaddr"
 // message to all known active peers
-func (m *Manager) sendPeriodicGetAddrMsg() {
-	m.getAddrTicker = time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
+func (m *Manager) sendPeriodicGetAddrMsg(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
 	for {
-		if m.stop {
-			break
-		}
 		select {
-		case <-m.getAddrTicker.C:
+		case <-ticker.C:
 			m.localNode.gProtoc.SendGetAddr(m.GetActivePeers(0))
+		case <-done:
+			ticker.Stop()
+			return
 		}
 	}
 }
 
 // periodicPingMsgs sends "ping" messages to all peers
 // as a basic health check routine.
-func (m *Manager) periodicPingMsgs() {
-	m.pingTicker = time.NewTicker(time.Duration(m.config.Node.PingInterval) * time.Second)
+func (m *Manager) periodicPingMsgs(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.config.Node.PingInterval) * time.Second)
 	for {
-		if m.stop {
-			break
-		}
 		select {
-		case <-m.pingTicker.C:
+		case <-ticker.C:
 			m.localNode.gProtoc.SendPing(m.GetKnownPeers())
+		case <-done:
+			ticker.Stop()
+			return
 		}
 	}
 }
 
 // periodicSelfAdvertisement send an Addr message containing only the
 // local peer address to all connected peers
-func (m *Manager) periodicSelfAdvertisement() {
-	m.selfAdvTicker = time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
+func (m *Manager) periodicSelfAdvertisement(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
 	for {
-		if m.stop {
-			break
-		}
 		select {
-		case <-m.selfAdvTicker.C:
+		case <-ticker.C:
 			connectedPeers := []types.Engine{}
 			for _, p := range m.GetKnownPeers() {
 				if p.Connected() {
@@ -209,22 +200,25 @@ func (m *Manager) periodicSelfAdvertisement() {
 			}
 			m.localNode.gProtoc.SelfAdvertise(connectedPeers)
 			m.CleanKnownPeers()
+		case <-done:
+			ticker.Stop()
+			return
 		}
 	}
 }
 
 // periodicCleanUp performs peer clean up such as
 // removing old know peers.
-func (m *Manager) periodicCleanUp() {
-	m.cleanUpTicker = time.NewTicker(time.Duration(m.config.Node.CleanUpInterval) * time.Second)
+func (m *Manager) periodicCleanUp(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.config.Node.CleanUpInterval) * time.Second)
 	for {
-		if m.stop {
-			break
-		}
 		select {
-		case <-m.cleanUpTicker.C:
+		case <-ticker.C:
 			nCleaned := m.CleanKnownPeers()
 			m.log.Debug("Cleaned up old peers", "NumKnownPeers", len(m.knownPeers), "NumPeersCleaned", nCleaned)
+		case <-done:
+			ticker.Stop()
+			return
 		}
 	}
 }
@@ -352,11 +346,12 @@ func (m *Manager) IsActive(p types.Engine) bool {
 	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.GetTimestamp())
 }
 
-// OnFailedConnection sets a new timestamp on a peer by deducting a fixed
-// amount of time from its current timestamp.
-// It will also call CleanKnowPeer. The purpose is to expedite the removal
-// of disconnected
-func (m *Manager) OnFailedConnection(remotePeer types.Engine) error {
+// HasDisconnected reduces the timestamp of
+// a disconnected peer such that its time
+// of removal is expedited.
+// It also cleans up the known peers list
+// removing peers that are unconnected and old.
+func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
 	if remotePeer == nil {
 		return fmt.Errorf("nil passed")
 	}
@@ -553,14 +548,20 @@ func (m *Manager) LoadPeers() error {
 
 // Stop gracefully stops running routines managed by the manager
 func (m *Manager) Stop() {
-	m.stop = true
-
-	if m.getAddrTicker != nil {
-		m.getAddrTicker.Stop()
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	if m.stop {
+		return
 	}
 
-	if m.pingTicker != nil {
-		m.pingTicker.Stop()
+	m.stop = true
+
+	if m.tickersDone != nil {
+		close(m.tickersDone)
+	}
+
+	if m.connMgr.tickerDone != nil {
+		close(m.connMgr.tickerDone)
 	}
 
 	m.log.Info("Peer manager has stopped")

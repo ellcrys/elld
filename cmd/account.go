@@ -61,9 +61,9 @@ var accountCreateCmd = &cobra.Command{
   Always backup your keeps regularly.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		onTerminate = func() {
+		setTerminateFunc(func() {
 			os.Exit(-1)
-		}
+		})
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")

@@ -2,7 +2,6 @@ package console
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/ellcrys/elld/rpc"
@@ -33,9 +32,6 @@ type Executor struct {
 
 	// vm is an Otto instance for JS evaluation
 	vm *otto.Otto
-
-	// exit indicates a request to exit the executor
-	exit bool
 
 	// rpc holds rpc client and config
 	rpc *RPCConfig
@@ -251,27 +247,12 @@ func (e *Executor) pp(values ...interface{}) {
 
 // OnInput receives inputs and executes
 func (e *Executor) OnInput(in string) {
-
-	e.exit = false
-
 	switch in {
-	case ".exit":
-		e.exitProgram(true)
 	case ".help":
 		e.help()
 	default:
-
 		e.exec(in)
 	}
-}
-
-func (e *Executor) exitProgram(immediately bool) {
-	if !immediately && !e.exit {
-		fmt.Println("(To exit, press ^C again or type .exit)")
-		e.exit = true
-		return
-	}
-	os.Exit(0)
 }
 
 func (e *Executor) exec(in string) {

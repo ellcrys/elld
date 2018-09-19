@@ -57,7 +57,6 @@ func (g *Gossip) RelayBlock(block core.Block, remotePeers []types.Engine) error 
 		}
 		defer s.Close()
 
-		block.SetChainReader(nil)
 		var blockBody wire.BlockBody
 		copier.Copy(&blockBody, block)
 

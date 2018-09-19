@@ -56,9 +56,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 	}
 
 	for _, remotePeer := range remotePeers {
-		rp := remotePeer
-		go func() {
-
+		go func(rp types.Engine) {
 			// send GetAddr and receive a list of address
 			addressToRelay, err := g.SendGetAddrToPeer(rp)
 			if err != nil {
@@ -70,7 +68,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 			if len(addressToRelay) > 0 {
 				g.RelayAddresses(addressToRelay)
 			}
-		}()
+		}(remotePeer)
 	}
 
 	return nil

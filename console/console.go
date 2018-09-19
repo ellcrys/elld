@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"sync"
 
 	"github.com/ellcrys/elld/util"
 
@@ -15,7 +16,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/vmihailenco/msgpack"
 
 	prompt "github.com/c-bata/go-prompt"
 )
@@ -24,6 +24,7 @@ import (
 // an interactive Javascript console to perform and query
 // the system.
 type Console struct {
+	sync.RWMutex
 
 	// prompt is the prompt mechanism
 	// we are building the console on
@@ -54,6 +55,13 @@ type Console struct {
 	// cfg is the client config
 	cfg *config.EngineConfig
 
+	confirmedStop bool
+
+	// onStopFunc is called when the
+	// console exists. Console caller
+	// use this to perform clean up etc
+	onStopFunc func()
+
 	// Versions
 	protocol string
 	client   string
@@ -78,7 +86,7 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	var history []string
 	data, _ := ioutil.ReadFile(historyPath)
 	if len(data) > 0 {
-		msgpack.Unmarshal(data, &history)
+		util.BytesToObject(data, &history)
 	}
 
 	c.history = append(c.history, history...)
@@ -96,6 +104,8 @@ func NewAttached(coinbase *crypto.Key, historyPath string, cfg *config.EngineCon
 // SetRPCServerAddr sets the address of the
 // RPC server to be dialled
 func (c *Console) SetRPCServerAddr(addr string, secured bool) {
+	c.Lock()
+	defer c.Unlock()
 	c.executor.rpc = &RPCConfig{
 		Client: RPCClient{
 			Address: makeAddr(addr, secured),
@@ -108,25 +118,28 @@ func (c *Console) SetRPCServerAddr(addr string, secured bool) {
 // It will panic if this is called on
 // a console with attach mode enabled.
 func (c *Console) SetRPCServer(rpcServer *rpc.Server, secured bool) {
+	c.RLock()
 	if c.attached {
+		c.RUnlock()
 		panic("we don't need a server in attach mode")
 	}
+	c.RUnlock()
+	c.Lock()
 	c.executor.rpcServer = rpcServer
+	c.Unlock()
 	c.SetRPCServerAddr(rpcServer.GetAddr(), secured)
 }
 
 // Prepare sets up the console's prompt
 // colors, suggestions etc.
 func (c *Console) Prepare() error {
-
 	// Set some options
 	options := []prompt.Option{
 		prompt.OptionPrefixTextColor(prompt.White),
 		prompt.OptionAddKeyBind(prompt.KeyBind{
 			Key: prompt.ControlC,
-			Fn: func(*prompt.Buffer) {
-				c.saveHistory()
-				c.executor.exitProgram(false)
+			Fn: func(b *prompt.Buffer) {
+				c.Stop(false)
 			},
 		}),
 		prompt.OptionDescriptionBGColor(prompt.Black),
@@ -145,12 +158,35 @@ func (c *Console) Prepare() error {
 
 	// create new prompt and configure it
 	// with the options create above
-	c.prompt = prompt.New(func(in string) {
+	p := prompt.New(func(in string) {
 		c.history = append(c.history, in)
-		c.executor.OnInput(in)
+		switch in {
+
+		// handle exit command
+		case ".exit":
+			c.Stop(true)
+
+		// pass other expressions
+		// to the JS executor
+		default:
+			c.confirmedStop = false
+			c.executor.OnInput(in)
+		}
 	}, c.suggestMgr.completer, options...)
 
+	c.Lock()
+	c.prompt = p
+	c.Unlock()
+
 	return nil
+}
+
+// OnStop sets a function that is called
+// when the console is stopped
+func (c *Console) OnStop(f func()) {
+	c.Lock()
+	defer c.Unlock()
+	c.onStopFunc = f
 }
 
 // Run the console
@@ -159,14 +195,25 @@ func (c *Console) Run() {
 	c.prompt.Run()
 }
 
-// Exit stops console by killing the process
-func (c *Console) Exit() {
-	c.saveHistory()
-	c.executor.exitProgram(true)
+// Stop stops console. It saves command
+// history and calls the stop callback
+func (c *Console) Stop(immediately bool) {
+	c.Lock()
+	defer c.Unlock()
+	if c.confirmedStop || immediately {
+		c.saveHistory()
+		if c.onStopFunc != nil {
+			c.onStopFunc()
+		}
+	}
+	fmt.Println("(To exit, press ^C again or type .exit)")
+	c.confirmedStop = true
 }
 
 // SetVersions sets the versions of components
 func (c *Console) SetVersions(protocol, client, runtime, commit string) {
+	c.Lock()
+	defer c.Unlock()
 	c.protocol = protocol
 	c.client = client
 	c.runtime = runtime
@@ -177,19 +224,23 @@ func (c *Console) SetVersions(protocol, client, runtime, commit string) {
 // the version of the client and some
 // of its components.
 func (c *Console) about() {
+	c.RLock()
+	defer c.RUnlock()
 	fmt.Println(color.CyanString("Welcome to Elld Javascript console!"))
 	fmt.Println(fmt.Sprintf("Client:%s, Protocol:%s, Commit:%s, Go:%s", c.client, c.protocol, util.String(c.commit).SS(), c.runtime))
 	fmt.Println(" type '.exit' to exit console")
 	fmt.Println("")
 }
 
-// saveHistory stores the console history collected so far
+// saveHistory stores the commands
+// that have been cached in this session.
+// Note: Read lock must be called by the caller
 func (c *Console) saveHistory() {
 	if len(c.history) == 0 {
 		return
 	}
 
-	bs, _ := msgpack.Marshal(c.history)
+	bs := util.ObjectToBytes(c.history)
 	err := ioutil.WriteFile(c.historyFile, bs, 0644)
 	if err != nil {
 		panic(err)

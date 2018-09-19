@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
@@ -40,19 +42,15 @@ var consoleCmd = &cobra.Command{
   operations. Use '--pwd' flag to provide the account password non-interactively. '--pwd'
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
-
-		node, rpcServer, _, miner := start(cmd, args, true)
-
-		onTerminate = func() {
-
+		node, rpcServer, cs, miner := start(cmd, args, true)
+		cs.OnStop(func() {
 			if miner != nil {
 				miner.Stop()
 			}
-
-			node.Stop()
 			rpcServer.Stop()
-		}
-
+			node.Stop()
+			os.Exit(0)
+		})
 		node.Wait()
 	},
 }

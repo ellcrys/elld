@@ -248,7 +248,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if mine {
 		go miner.Mine()
 	}
-
 	// Initialize and start the RPCServer
 	// if enabled via the appropriate cli flag.
 	var rpcServer = rpc.NewServer(n.DB(), rpcAddress, cfg, log)
@@ -314,15 +313,17 @@ var startCmd = &cobra.Command{
 
 		n, rpcServer, _, miner := start(cmd, args, false)
 
-		onTerminate = func() {
-
+		setTerminateFunc(func() {
 			if miner != nil {
 				miner.Stop()
 			}
-
-			rpcServer.Stop()
-			n.Stop()
-		}
+			if rpcServer != nil {
+				rpcServer.Stop()
+			}
+			if n != nil {
+				n.Stop()
+			}
+		})
 
 		n.Wait()
 	},

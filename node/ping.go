@@ -97,7 +97,7 @@ func (g *Gossip) SendPing(remotePeers []types.Engine) {
 		_remotePeer := remotePeer
 		go func() {
 			if err := g.SendPingToPeer(_remotePeer); err != nil {
-				g.PM().OnFailedConnection(_remotePeer)
+				g.PM().HasDisconnected(_remotePeer)
 			}
 		}()
 	}
