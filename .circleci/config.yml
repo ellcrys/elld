@@ -16,6 +16,7 @@ jobs:
           name: Install Dependencies
           command: |
             dep ensure -v 
+            pip install tensorflow
             dep ensure -add github.com/tensorflow/tensorflow/tensorflow/go
 
       - save_cache:
