@@ -16,7 +16,8 @@ jobs:
           name: Install Dependencies
           command: |
             dep ensure -v 
-            apt-get install python-pip python-dev
+            apt-get install python
+            apt-get install python-pip
             pip install tensorflow
             dep ensure -add github.com/tensorflow/tensorflow/tensorflow/go
 
