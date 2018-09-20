@@ -533,3 +533,45 @@ func (b *Blockchain) GetChainsReader() (readers []core.ChainReader) {
 	}
 	return
 }
+
+// GetLocators fetches a list of blockhashes used to
+// compare and sync the local chain with a remote chain.
+// We collect the most recent 10 block hashes and
+// then exponentially fetch more hashes until there are
+// no more blocks.
+func (b *Blockchain) GetLocators() ([]util.Hash, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	if b.bestChain == nil {
+		return nil, core.ErrBestChainUnknown
+	}
+
+	curBlockHeader, err := b.bestChain.Current()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current block header: %s", err)
+	}
+
+	locators := []util.Hash{}
+	topHeight := curBlockHeader.GetNumber()
+
+	// first, we get the hashes of the last 10 blocks
+	// using step of 1 backwards. After the last 10 blocks
+	// are fetched, the step
+	step := uint64(1)
+	for i := topHeight; i > 0; i -= step {
+		block, err := b.bestChain.GetBlock(i)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return nil, err
+			}
+			break
+		}
+		locators = append(locators, block.GetHash())
+		if len(locators) >= 10 {
+			step *= 2
+		}
+	}
+
+	return locators, nil
+}

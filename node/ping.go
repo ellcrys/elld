@@ -78,7 +78,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 			"Height", pongMsg.BestBlockNumber,
 			"TotalDifficulty", pongMsg.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best
@@ -162,7 +162,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 			"Height", msg.BestBlockNumber,
 			"TotalDifficulty", msg.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best

@@ -98,7 +98,7 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 			"PeerChainHeight", resp.BestBlockNumber,
 			"PeerChainTotalDifficulty", resp.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best
@@ -166,7 +166,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 			"PeerID", remotePeerIDShort,
 			"PeerChainHeight", msg.BestBlockNumber,
 			"PeerChainTotalDifficulty", msg.BestBlockTotalDifficulty)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best

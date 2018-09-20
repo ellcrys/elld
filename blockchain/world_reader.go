@@ -1,8 +1,6 @@
 package blockchain
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -38,7 +36,7 @@ func (r *WorldReader) GetAccount(chain core.Chainer, address util.String, opts .
 
 		// If no best chain yet, we return an error
 		if r.bchain.bestChain == nil {
-			return nil, fmt.Errorf("no best chain yet")
+			return nil, core.ErrBestChainUnknown
 		}
 
 		result, err = r.bchain.bestChain.GetAccount(address, opts...)

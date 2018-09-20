@@ -76,21 +76,23 @@ var _ = Describe("Node", func() {
 
 				go func() {
 					defer GinkgoRecover()
-					err := lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
+					err := lp.Gossip().SendGetBlockHashes(rp, nil)
 					Expect(err).To(BeNil())
 				}()
 
 				<-lp.GetEventEmitter().On(node.EventReceivedBlockHashes)
+				Expect(lp.GetBlockHashQueue().Size()).To(Equal(2))
 				close(done)
 			})
 
 			Context("when block hash queue includes hashes of block [2] and [3] of remote peer", func() {
+
 				BeforeEach(func(done Done) {
-					lp.GetBlockHashQueue().Append(&node.BlockHash{Hash: block2.GetHash(), Broadcaster: rp})
-					lp.GetBlockHashQueue().Append(&node.BlockHash{Hash: block3.GetHash(), Broadcaster: rp})
-					go lp.ProcessBlockHashes()
-					<-lp.GetEventEmitter().Once(node.EventBlockBodiesProcessed)
-					close(done)
+					go func() {
+						<-lp.GetEventEmitter().Once(node.EventBlockBodiesProcessed)
+						close(done)
+					}()
+					lp.ProcessBlockHashes()
 				})
 
 				Specify("local peer blockchain height should equal remote peer blockchain height", func() {

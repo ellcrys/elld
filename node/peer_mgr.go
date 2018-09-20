@@ -95,6 +95,9 @@ func (m *Manager) GetKnownPeer(peerID string) types.Engine {
 func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
 	peerID := util.IDFromAddr(peerAddr).Pretty()
 	peer := m.GetKnownPeer(peerID)
+	if peer == nil {
+		return
+	}
 	m.HasDisconnected(peer)
 	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
 	m.CleanKnownPeers()
@@ -362,10 +365,9 @@ func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
 
 // CleanKnownPeers removes old peers from the list
 // of peers known by the local peer. Typically, we remove
-// peers based on the last time they were seen. At least 3 connections
-// must be active before we can clean.
+// peers based on the last time they were seen. At least
+// 3 connections must be active before we can clean.
 // It returns the number of peers removed
-// TODO: Also remove based on connection failure count?
 func (m *Manager) CleanKnownPeers() int {
 
 	if m.connMgr.connectionCount() < 3 {

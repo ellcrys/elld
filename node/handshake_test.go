@@ -105,7 +105,9 @@ var _ = Describe("Handshake", func() {
 				Expect(err).To(BeNil())
 
 				evt := <-lp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
-				Expect(evt.Args[0].(util.Hash)).To(Equal(lpCurBlock.GetHash()))
+				locators := evt.Args[0].([]util.Hash)
+				Expect(locators).To(HaveLen(1))
+				Expect(locators[0]).To(Equal(lpCurBlock.GetHash()))
 				close(done)
 			})
 		})
@@ -133,7 +135,9 @@ var _ = Describe("Handshake", func() {
 				Expect(err).To(BeNil())
 
 				evt := <-rp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
-				Expect(evt.Args[0].(util.Hash)).To(Equal(rpCurBlock.GetHash()))
+				locators := evt.Args[0].([]util.Hash)
+				Expect(locators).To(HaveLen(1))
+				Expect(locators[0]).To(Equal(rpCurBlock.GetHash()))
 				close(done)
 			})
 		})

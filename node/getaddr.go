@@ -66,7 +66,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 			// As per discovery protocol,
 			// relay the addresses received
 			if len(addressToRelay) > 0 {
-				g.RelayAddresses(addressToRelay)
+				go g.RelayAddresses(addressToRelay)
 			}
 		}(remotePeer)
 	}

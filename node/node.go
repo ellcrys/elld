@@ -711,7 +711,13 @@ func (n *Node) handleEvents() {
 // ProcessBlockHashes collects hashes and request for their
 // block bodies from the initial broadcaster if the headers.
 func (n *Node) ProcessBlockHashes() {
-	ticker := time.NewTicker(5 * time.Second)
+
+	ticketDur := 5 * time.Second
+	if n.TestMode() {
+		ticketDur = 1 * time.Nanosecond
+	}
+
+	ticker := time.NewTicker(ticketDur)
 	for {
 		select {
 		case <-ticker.C:

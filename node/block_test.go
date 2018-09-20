@@ -180,7 +180,7 @@ var _ = Describe("Block", func() {
 				_, err = rp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 
-				err = lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
+				err = lp.Gossip().SendGetBlockHashes(rp, nil)
 				Expect(err).To(BeNil())
 			})
 
@@ -213,7 +213,7 @@ var _ = Describe("Block", func() {
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
-				err = lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
+				err = lp.Gossip().SendGetBlockHashes(rp, nil)
 				Expect(err).To(BeNil())
 			})
 
@@ -237,7 +237,7 @@ var _ = Describe("Block", func() {
 		Context("when remote peer's blockchain shape is [1] and local peer's blockchain shape is [1]", func() {
 
 			BeforeEach(func() {
-				err := lp.Gossip().SendGetBlockHashes(rp, util.Hash{})
+				err := lp.Gossip().SendGetBlockHashes(rp, nil)
 				Expect(err).To(BeNil())
 			})
 
@@ -250,7 +250,7 @@ var _ = Describe("Block", func() {
 		// Remote Peer
 		// [1]-[2]-[3] 	ChainA
 		//  |__[2]		ChainB
-		Context("when remote peer's blockchain shape is: [1]-[2] and local peer's blockchain shape is: [1]", func() {
+		Context("when remote peer's blockchain shape is: [1]-[2]-[3] and local peer's blockchain shape is: [2]", func() {
 
 			var block2, block3, chainBBlock2 core.Block
 
@@ -274,7 +274,7 @@ var _ = Describe("Block", func() {
 			When("locator hash is block [2] of Chain B", func() {
 
 				BeforeEach(func() {
-					err := lp.Gossip().SendGetBlockHashes(rp, chainBBlock2.GetHash())
+					err := lp.Gossip().SendGetBlockHashes(rp, []util.Hash{chainBBlock2.GetHash()})
 					Expect(err).To(BeNil())
 				})
 
@@ -292,16 +292,10 @@ var _ = Describe("Block", func() {
 			})
 		})
 
-		// Target shape:
-		// Remote Peer
-		// [1]
-		//
-		// Local Peer
-		// [1]
-		Context("when remote peer's blockchain shape is [1] and local peer's blockchain shape is: [1]", func() {
+		Context("when no locator/block hash is shared with the remote peer", func() {
 
 			BeforeEach(func() {
-				err := lp.Gossip().SendGetBlockHashes(rp, util.StrToHash("unknown"))
+				err := lp.Gossip().SendGetBlockHashes(rp, []util.Hash{util.StrToHash("unknown")})
 				Expect(err).To(BeNil())
 			})
 

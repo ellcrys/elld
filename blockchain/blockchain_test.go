@@ -363,7 +363,95 @@ var _ = Describe("Blockchain.Up", func() {
 				Expect(reader).To(BeNil())
 			})
 		})
+
+		Describe(".GetLocators", func() {
+
+			Context("with ten blocks in the main chain", func() {
+
+				var blocks []core.Block
+				var locators []util.Hash
+
+				BeforeEach(func() {
+					blocks = []core.Block{}
+					locators = []util.Hash{}
+					blocks = append(blocks, genesisBlock)
+				})
+
+				BeforeEach(func() {
+					for i := uint64(1); i <= 9; i++ {
+						block := MakeBlockWithSingleTx(bc, genesisChain, sender, sender, i)
+						_, err := bc.ProcessBlock(block)
+						Expect(err).To(BeNil())
+						blocks = append(blocks, block)
+					}
+					var err error
+					locators, err = bc.GetLocators()
+					Expect(err).To(BeNil())
+				})
+
+				It("should return 10 locators", func() {
+					Expect(locators).To(HaveLen(10))
+				})
+
+				Specify("locators must match the initial blocks in reverse order", func() {
+					Expect(len(locators)).To(Equal(len(blocks)))
+					Expect(blocks[0].GetHash()).To(Equal(locators[9]))
+					Expect(blocks[1].GetHash()).To(Equal(locators[8]))
+					Expect(blocks[2].GetHash()).To(Equal(locators[7]))
+					Expect(blocks[3].GetHash()).To(Equal(locators[6]))
+					Expect(blocks[4].GetHash()).To(Equal(locators[5]))
+					Expect(blocks[5].GetHash()).To(Equal(locators[4]))
+					Expect(blocks[6].GetHash()).To(Equal(locators[3]))
+					Expect(blocks[7].GetHash()).To(Equal(locators[2]))
+					Expect(blocks[8].GetHash()).To(Equal(locators[1]))
+					Expect(blocks[9].GetHash()).To(Equal(locators[0]))
+				})
+			})
+
+			Context("with 20 blocks in the main chain", func() {
+				var blocks []core.Block
+				var locators []util.Hash
+
+				BeforeEach(func() {
+					blocks = []core.Block{}
+					locators = []util.Hash{}
+					blocks = append(blocks, genesisBlock)
+				})
+
+				BeforeEach(func() {
+					for i := uint64(1); i <= 19; i++ {
+						block := MakeBlockWithSingleTx(bc, genesisChain, sender, sender, i)
+						_, err := bc.ProcessBlock(block)
+						Expect(err).To(BeNil())
+						blocks = append(blocks, block)
+					}
+					var err error
+					locators, err = bc.GetLocators()
+					Expect(err).To(BeNil())
+				})
+
+				It("should return 12 locators", func() {
+					Expect(locators).To(HaveLen(12))
+				})
+
+				Specify("locators must have 2 b", func() {
+					Expect(blocks[4].GetHash()).To(Equal(locators[11]))
+					Expect(blocks[8].GetHash()).To(Equal(locators[10]))
+					Expect(blocks[10].GetHash()).To(Equal(locators[9]))
+					Expect(blocks[11].GetHash()).To(Equal(locators[8]))
+					Expect(blocks[12].GetHash()).To(Equal(locators[7]))
+					Expect(blocks[13].GetHash()).To(Equal(locators[6]))
+					Expect(blocks[14].GetHash()).To(Equal(locators[5]))
+					Expect(blocks[15].GetHash()).To(Equal(locators[4]))
+					Expect(blocks[16].GetHash()).To(Equal(locators[3]))
+					Expect(blocks[17].GetHash()).To(Equal(locators[2]))
+					Expect(blocks[18].GetHash()).To(Equal(locators[1]))
+					Expect(blocks[19].GetHash()).To(Equal(locators[0]))
+				})
+			})
+		})
 	})
+
 })
 
 var _ = Describe("Blockchain Unit Test", func() {

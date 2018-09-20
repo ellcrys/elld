@@ -66,7 +66,7 @@ var _ = Describe("Process", func() {
 				bc.bestChain = nil
 				_, err := wr.GetAccount(nil, util.String(sender.Addr()))
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("no best chain yet"))
+				Expect(err).To(Equal(core.ErrBestChainUnknown))
 			})
 
 			It("should successfully get account", func() {

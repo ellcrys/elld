@@ -118,6 +118,10 @@ type Blockchain interface {
 
 	// GetAccountNonce gets the nonce of an account
 	GetAccountNonce(address util.String, opts ...CallOp) (uint64, error)
+
+	// GetLocators fetches a list of blockhashes used to
+	// compare and sync the local chain with a remote chain.
+	GetLocators() ([]util.Hash, error)
 }
 
 // BlockMaker defines an interface providing the

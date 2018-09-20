@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Leveldb", func() {
+var _ = Describe("Store", func() {
 
 	var err error
 	var db elldb.DB
@@ -102,7 +102,8 @@ var _ = Describe("Leveldb", func() {
 			Expect(err).To(BeNil())
 
 			tx, err := store.GetTransaction(txs[0].GetHash())
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(core.ErrTxNotFound))
 			Expect(tx).To(BeNil())
 		})
 	})

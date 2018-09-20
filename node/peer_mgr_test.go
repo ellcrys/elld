@@ -102,15 +102,15 @@ var _ = Describe("GetAddr", func() {
 
 		It("should return 0 when no peer was removed", func() {
 			mgr.SetNumActiveConnections(3)
-			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
+			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := node.NewRemoteNode(addr, lp)
 			p2.Timestamp = time.Now()
-			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+			mgr.KnownPeers()[p2.StringID()] = p2
 
+			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
 			p3 := node.NewRemoteNode(addr2, lp)
 			p3.Timestamp = time.Now()
-			mgr.KnownPeers()[p2.StringID()] = p2
 			mgr.KnownPeers()[p3.StringID()] = p3
 
 			n := mgr.CleanKnownPeers()
@@ -119,22 +119,18 @@ var _ = Describe("GetAddr", func() {
 
 		It("should return 1 when a peer was removed", func() {
 			mgr.SetNumActiveConnections(3)
-			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
+			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := node.NewRemoteNode(addr, lp)
 			p2.Timestamp = time.Now()
-			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-
-			p3 := node.NewRemoteNode(addr2, lp)
 			mgr.KnownPeers()[p2.StringID()] = p2
+
+			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+			p3 := node.NewRemoteNode(addr2, lp)
 			mgr.KnownPeers()[p3.StringID()] = p3
 
 			n := mgr.CleanKnownPeers()
 			Expect(n).To(Equal(1))
-		})
-
-		AfterEach(func() {
-			lp.Stop()
 		})
 	})
 
