@@ -16,7 +16,12 @@ jobs:
           name: Install Dependencies
           command: |
             dep ensure -v 
-            apt-get install python
+            add-apt-repository main
+            add-apt-repository universe
+            add-apt-repository restricted
+            add-apt-repository multiverse
+            apt update
+
             apt-get install python-pip
             pip install tensorflow
             dep ensure -add github.com/tensorflow/tensorflow/tensorflow/go
