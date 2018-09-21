@@ -48,15 +48,15 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 	}
 
 	n.AddBootstrapNodes([]string{address}, true)
-	rn, err := n.NodeFromAddr(address, true)
+	rp, err := n.NodeFromAddr(address, true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}
-	rn.isHardcodedSeed = true
+	rp.isHardcodedSeed = true
 
-	if err := n.connectToNode(rn); err != nil {
-		return jsonrpc.Error(types.ErrCodeNodeConnectFailure, err.Error(), nil)
-	}
+	go func(rp *Node) {
+		n.connectToNode(rp)
+	}(rp)
 
 	return jsonrpc.Success(nil)
 }
