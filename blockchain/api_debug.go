@@ -3,6 +3,8 @@ package blockchain
 import (
 	"bytes"
 
+	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
 
@@ -12,8 +14,8 @@ import (
 	"github.com/ellcrys/elld/types"
 )
 
-// apiGetKVObjects queries raw KV objects
-func (b *Blockchain) apiGetKVObjects(arg interface{}) *jsonrpc.Response {
+// apiGetDBObjects queries raw KV objects
+func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 
 	if b.bestChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed,
@@ -114,6 +116,7 @@ func (b *Blockchain) apiGetKVObjects(arg interface{}) *jsonrpc.Response {
 			})
 
 	case "all":
+		var errResp *jsonrpc.Response
 		b.db.Iterate(nil, true,
 			func(kv *elldb.KVObject) bool {
 				m := map[string]interface{}{
@@ -121,16 +124,35 @@ func (b *Blockchain) apiGetKVObjects(arg interface{}) *jsonrpc.Response {
 					"key":    string(kv.GetKey()),
 				}
 
-				if bytes.Index(kv.GetKey(), []byte(elldb.KeyPrefixSeparator)) != -1 {
+				// Since by convention, Key usually hold
+				// block number, decode it and set to map
+				if kv.Key != nil {
 					m["blockNumber"] = common.DecodeBlockNumber(kv.Key)
 				}
 
-				var val map[string]interface{}
-				util.BytesToObject(kv.Value, &val)
-				m["value"] = val
+				// If object represents a block, decode
+				// the block and set to map
+				if bytes.Index(kv.Prefix, common.ObjectTypeBlock) != -1 {
+					var block objects.Block
+					util.BytesToObject(kv.Value, &block)
+					m["value"] = block
+				} else {
+					// Attempt to decode to map for other types
+					var val map[string]interface{}
+					err := util.BytesToObject(kv.Value, &val)
+					if err != nil {
+						errResp = jsonrpc.Error(types.ErrValueDecodeFailed, err.Error(), nil)
+						return true
+					}
+					m["value"] = val
+				}
+
 				result = append(result, m)
 				return false
 			})
+		if errResp != nil {
+			return errResp
+		}
 	}
 
 	return jsonrpc.Success(result)

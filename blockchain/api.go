@@ -360,8 +360,8 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 		},
 		"getObjects": {
 			Namespace:   "debug",
-			Description: "Get raw KV objects",
-			Func:        b.apiGetKVObjects,
+			Description: "Get raw database objects",
+			Func:        b.apiGetDBObjects,
 		},
 	}
 }
