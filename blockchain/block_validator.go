@@ -26,8 +26,13 @@ type ValidationContext int
 const (
 	// ContextBlock represents validation
 	// context of which the intent is to validate
-	// a block that needs to be  appended to a chain
+	// a block that needs to be appended to a chain
 	ContextBlock ValidationContext = iota + 1
+
+	// ContextBranch represents validation
+	// context of which the intent is to validate
+	// a block that needs to be appended to a branch chain
+	ContextBranch
 
 	// ContextTxPool represents validation context
 	// in which the intent is to validate a

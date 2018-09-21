@@ -94,11 +94,15 @@ var _ = Describe("TransactionValidator", func() {
 			}
 		})
 
-		Context("in block context", func() {
-			It("should not check transaction existence in the transaction pool", func() {
-				sender := crypto.NewKeyFromIntSeed(1)
-				receiver := crypto.NewKeyFromIntSeed(1)
-				tx := &objects.Transaction{
+		Context("context checks", func() {
+
+			var tx *objects.Transaction
+			var sender, receiver *crypto.Key
+
+			BeforeEach(func() {
+				sender = crypto.NewKeyFromIntSeed(1)
+				receiver = crypto.NewKeyFromIntSeed(1)
+				tx = &objects.Transaction{
 					Type:         objects.TxTypeBalance,
 					Nonce:        1,
 					To:           util.String(sender.Addr()),
@@ -108,18 +112,48 @@ var _ = Describe("TransactionValidator", func() {
 					Fee:          "2.5",
 					Timestamp:    time.Now().Unix(),
 					Hash:         util.StrToHash("some_hash"),
-					Sig:          []byte("invalid"),
+					Sig:          []byte("sig"),
 				}
-				tx.Hash = tx.ComputeHash()
-				sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-				Expect(err).To(BeNil())
-				tx.Sig = sig
+			})
 
-				txp := txpool.New(1)
-				validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-				validator.SetContext(ContextBlock)
-				errs := validator.Validate()
-				Expect(errs).To(HaveLen(0))
+			Context("when block context is set", func() {
+				It("should not check transaction existence in the transaction pool", func() {
+					tx.Hash = tx.ComputeHash()
+					sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+					Expect(err).To(BeNil())
+					tx.Sig = sig
+
+					txp := txpool.New(1)
+					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
+					validator.SetContext(ContextBlock)
+					errs := validator.Validate()
+					Expect(errs).To(HaveLen(0))
+				})
+			})
+
+			Context("when branch context is set", func() {
+
+				var block2 core.Block
+
+				BeforeEach(func() {
+					block2 = MakeBlockWithSingleTx(bc, genesisChain, sender, sender, 1)
+					_, err := bc.ProcessBlock(block2)
+					Expect(err).To(BeNil())
+				})
+
+				It("should not check transaction existence in the main chain", func() {
+					tx.Nonce = 2
+					tx.Hash = tx.ComputeHash()
+					sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+					Expect(err).To(BeNil())
+					tx.Sig = sig
+
+					txp := txpool.New(1)
+					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
+					validator.SetContext(ContextBranch)
+					errs := validator.Validate()
+					Expect(errs).To(HaveLen(0))
+				})
 			})
 		})
 

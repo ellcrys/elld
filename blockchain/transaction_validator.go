@@ -272,7 +272,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	// If the callers intent is not validating a block
+	// If the callers intent is not to validate a block
 	// then we must check that the transaction
 	// does not have a duplicate in the pool
 	if v.ctx != ContextBlock && v.txpool.Has(tx) {
@@ -281,18 +281,21 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	// Ensure the transaction does not exist
-	// on the main chain
-	_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
-	if err != nil {
-		if err != core.ErrTxNotFound {
-			errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
+	// If the callers intent is not to append a block
+	// to a branch chain, we must ensure the transaction
+	// does not exist on the main chain.
+	if v.ctx != ContextBranch {
+		_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
+		if err != nil {
+			if err != core.ErrTxNotFound {
+				errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
+				return
+			}
+		} else {
+			errs = append(errs, fieldErrorWithIndex(v.curIndex,
+				"", "transaction already exist in main chain"))
 			return
 		}
-	} else {
-		errs = append(errs, fieldErrorWithIndex(v.curIndex,
-			"", "transaction already exist in main chain"))
-		return
 	}
 
 	// Get the sender account
