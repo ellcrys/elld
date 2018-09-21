@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util/cache"
@@ -39,6 +40,7 @@ func (g *Gossip) RelayBlock(block core.Block, remotePeers []types.Engine) error 
 	g.log.Debug("Relaying block to peer(s)", "BlockNo", block.GetNumber(), "NumPeers", len(remotePeers))
 
 	sent := 0
+
 	for _, peer := range remotePeers {
 
 		historyKey := makeBlockHistoryKey(block.HashToHex(), peer)
@@ -50,17 +52,19 @@ func (g *Gossip) RelayBlock(block core.Block, remotePeers []types.Engine) error 
 		}
 
 		// create a stream to the remote peer
-		s, err := g.NewStream(context.Background(), peer, config.BlockBodyVersion)
+		ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+		ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+		defer cf()
+		s, err := g.NewStream(ctx, peer, config.BlockBodyVersion)
 		if err != nil {
 			g.log.Error("Block message failed. failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
 			continue
 		}
 		defer s.Close()
 
+		// write to the stream
 		var blockBody wire.BlockBody
 		copier.Copy(&blockBody, block)
-
-		// write to the stream
 		if err := WriteStream(s, blockBody); err != nil {
 			s.Reset()
 			g.log.Error("Block message failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
@@ -133,7 +137,10 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine, blockHash util.Hash) erro
 	}
 
 	// create a stream to the remote peer
-	s, err := g.NewStream(context.Background(), remotePeer, config.RequestBlockVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.RequestBlockVersion)
 	if err != nil {
 		g.log.Error("RequestBlock message failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.ShortID())
 		return err
@@ -265,7 +272,10 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine, locators []util.Has
 	rpID := remotePeer.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
 
-	s, err := g.NewStream(context.Background(), remotePeer, config.GetBlockHashesVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.GetBlockHashesVersion)
 	if err != nil {
 		g.log.Error("GetBlockHashes message failed. Failed to connect to peer", "Err", err, "PeerID", rpID)
 		return err
@@ -354,6 +364,9 @@ func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 	for _, hash := range msg.Locators {
 		locatorChain = g.GetBlockchain().GetChainReaderByHash(hash)
 		locatorHash = hash
+		if locatorChain != nil {
+			break
+		}
 	}
 
 	// Since we didn't find any common chain,
@@ -407,7 +420,10 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine, hashes []util.Hash)
 	g.log.Debug("Requesting block bodies", "PeerID", rpID, "NumHashes", len(hashes))
 
 	// create a stream to the remote peer
-	s, err := g.NewStream(context.Background(), remotePeer, config.GetBlockBodiesVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.GetBlockBodiesVersion)
 	if err != nil {
 		g.log.Error("GetBlockBodies message failed. Failed to connect to peer", "Err", err, "PeerID", rpID)
 		return fmt.Errorf("GetBlockBodies message failed. Failed to connect to peer: %s", err)
@@ -452,10 +468,11 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine, hashes []util.Hash)
 		block.SetBroadcaster(remotePeer)
 		_, err := g.GetBlockchain().ProcessBlock(&block)
 		if err != nil {
+			g.log.Debug("Unable to append block", "Err", err)
 			g.engine.event.Emit(EventBlockProcessed, &block, err)
+		} else {
+			g.engine.event.Emit(EventBlockProcessed, &block, nil)
 		}
-
-		g.engine.event.Emit(EventBlockProcessed, &block, nil)
 	}
 
 	// get sync status
