@@ -620,7 +620,7 @@ func (n *Node) relayTx() {
 				continue
 			}
 			tx := q.First()
-			n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+			go n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
 		case <-n.tickerDone:
 			ticker.Stop()
 			return
@@ -661,41 +661,53 @@ func (n *Node) relayBlock(block core.Block) {
 }
 
 func (n *Node) handleNewBlockEvent() {
-	for evt := range n.event.On(core.EventNewBlock) {
-		n.relayBlock(evt.Args[0].(core.Block))
+	for {
+		select {
+		case evt := <-n.event.Once(core.EventNewBlock):
+			n.relayBlock(evt.Args[0].(core.Block))
+		}
 	}
 }
 
 func (n *Node) handleNewTransactionEvent() {
-	for evt := range n.event.On(core.EventNewTransaction) {
-		if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
-			n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+	for {
+		select {
+		case evt := <-n.event.Once(core.EventNewTransaction):
+			if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
+				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+			}
 		}
 	}
 }
 
 func (n *Node) handleOrphanBlockEvent() {
-	for evt := range n.event.On(core.EventOrphanBlock) {
-		// We need to request the parent block from the
-		// peer who sent it to us (a.k.a broadcaster)
-		orphanBlock := evt.Args[0].(*objects.Block)
-		parentHash := orphanBlock.GetHeader().GetParentHash()
-		n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
-			orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
-		n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
+	for {
+		select {
+		case evt := <-n.event.Once(core.EventOrphanBlock):
+			// We need to request the parent block from the
+			// peer who sent it to us (a.k.a broadcaster)
+			orphanBlock := evt.Args[0].(*objects.Block)
+			parentHash := orphanBlock.GetHeader().GetParentHash()
+			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
+				orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
+			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
+		}
 	}
 }
 
 func (n *Node) handleAbortedMinerBlockEvent() {
-	// handle core.EventMinerProposedBlockAborted
-	// listens for aborted miner blocks and attempt
-	// to re-add the transactions to the pool.
-	for evt := range n.event.On(core.EventMinerProposedBlockAborted) {
-		abortedBlock := evt.Args[0].(*objects.Block)
-		n.log.Debug("Attempting to re-add transactions in aborted miner block", "NumTx", len(abortedBlock.Transactions))
-		for _, tx := range abortedBlock.Transactions {
-			if err := n.addTransaction(tx); err != nil {
-				n.log.Debug("failed to re-add transaction", "Err", err.Error())
+	for {
+		select {
+		case evt := <-n.event.Once(core.EventOrphanBlock):
+			// handle core.EventMinerProposedBlockAborted
+			// listens for aborted miner blocks and attempt
+			// to re-add the transactions to the pool.
+			abortedBlock := evt.Args[0].(*objects.Block)
+			n.log.Debug("Attempting to re-add transactions in aborted miner block", "NumTx", len(abortedBlock.Transactions))
+			for _, tx := range abortedBlock.Transactions {
+				if err := n.addTransaction(tx); err != nil {
+					n.log.Debug("failed to re-add transaction", "Err", err.Error())
+				}
 			}
 		}
 	}
@@ -750,7 +762,7 @@ func (n *Node) ProcessBlockHashes() {
 			}
 
 			// send block body request
-			n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+			go n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
 
 		case <-n.tickerDone:
 			ticker.Stop()

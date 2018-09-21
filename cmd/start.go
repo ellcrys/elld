@@ -154,10 +154,12 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Set hard coded configurations
 	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
+	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 15)
 	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
 
 	// set to dev mode if -dev is set
+	// and apply dev config values
 	if devMode {
 		cfg.Node.Mode = config.ModeDev
 		devDefaultConfig(cfg)

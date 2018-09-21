@@ -43,11 +43,11 @@ func (tp *TxPool) removeTransactionsInBlock(block core.Block) {
 // the pool if they are contained in the broadcast
 // block that was appended to the chain
 func (tp *TxPool) handleNewBlockEvent() {
-
-	// When a new block is added to the chain,
-	// remove any of its transactions from the pool
-	for evt := range tp.event.On(core.EventNewBlock) {
-		tp.removeTransactionsInBlock(evt.Args[0].(core.Block))
+	for {
+		select {
+		case evt := <-tp.event.Once(core.EventNewBlock):
+			tp.removeTransactionsInBlock(evt.Args[0].(core.Block))
+		}
 	}
 }
 
@@ -86,7 +86,7 @@ func (tp *TxPool) addTx(tx core.Transaction) error {
 
 	// Emit an event about the accepted
 	// transaction so it can be relayed etc.
-	<-tp.event.Emit(core.EventNewTransaction, tx)
+	tp.event.Emit(core.EventNewTransaction, tx)
 
 	return nil
 }

@@ -76,10 +76,12 @@ func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter
 	// about new blocks that may invalidate the currently
 	// proposed block
 	go func() {
-		for event := range m.event.On(core.EventNewBlock) {
-
-			m.handleNewBlockEvt(event.Args[0].(*objects.Block),
-				event.Args[1].(core.ChainReader))
+		for {
+			select {
+			case evt := <-m.event.Once(core.EventNewBlock):
+				m.handleNewBlockEvt(evt.Args[0].(*objects.Block),
+					evt.Args[1].(core.ChainReader))
+			}
 		}
 	}()
 
@@ -141,7 +143,7 @@ func (m *Miner) setMiningStatus(s bool) {
 // to inform other processes about the aborted proposed block.
 func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReader) {
 	m.Lock()
-	defer m.Lock()
+	defer m.Unlock()
 	if !m.mining {
 		return
 	}
