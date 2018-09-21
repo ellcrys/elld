@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
@@ -18,7 +19,10 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 
 	remotePeerIDShort := remotePeer.ShortID()
 
-	s, err := g.NewStream(context.Background(), remotePeer, config.GetAddrVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.GetAddrVersion)
 	if err != nil {
 		g.log.Debug("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)

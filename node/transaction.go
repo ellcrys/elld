@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
@@ -116,7 +117,10 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		}
 
 		// create a stream to the remote peer
-		s, err := g.NewStream(context.Background(), peer, config.TxVersion)
+		ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+		ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+		defer cf()
+		s, err := g.NewStream(ctx, peer, config.TxVersion)
 		if err != nil {
 			g.log.Debug("Tx message failed. failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
 			continue

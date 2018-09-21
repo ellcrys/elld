@@ -24,7 +24,10 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	remotePeerIDShort := remotePeer.ShortID()
 
 	// create stream to the remote peer
-	s, err := g.NewStream(context.Background(), remotePeer, config.PingVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.PingVersion)
 	if err != nil {
 		g.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to connect to peer. %s", err.Error())
