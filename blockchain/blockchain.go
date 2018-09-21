@@ -240,19 +240,21 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 		return fmt.Errorf("chain load failed: chain parent chain ID and block are required")
 	}
 
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
-
 	// construct a new chain
 	chain := NewChain(ci.ID, b.db, b.cfg, b.log)
 	chain.info = ci
 
 	// Load the chain's parent chain and block
-	// and cache it in the chain instance
+	b.chainLock.Lock()
 	_, err := chain.loadParent()
 	if err != nil {
+		b.chainLock.Unlock()
 		return fmt.Errorf("chain load failed: %s", err)
 	}
+	b.chainLock.Unlock()
+
+	// add chain to cache
+	b.addChain(chain)
 
 	return nil
 }
