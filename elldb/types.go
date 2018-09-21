@@ -7,7 +7,9 @@ import (
 )
 
 const (
-	keyPrefixSeparator = "_$$_"
+	// KeyPrefixSeparator is used to separate prefix and key
+	KeyPrefixSeparator = "/"
+	prefixSeparator    = ":"
 )
 
 // KVObject represents an item in the elldb
@@ -29,16 +31,13 @@ func (kv *KVObject) Scan(dest interface{}) error {
 
 // MakePrefix creates a prefix string
 func MakePrefix(prefixes ...[]byte) (result []byte) {
-	for _, p := range prefixes {
-		result = append(result, p...)
-	}
-	return
+	return bytes.Join(prefixes, []byte(prefixSeparator))
 }
 
 // MakeKey construct a key from the key and prefixes
 func MakeKey(key []byte, prefixes ...[]byte) []byte {
 	var prefix = MakePrefix(prefixes...)
-	var sep = []byte(keyPrefixSeparator)
+	var sep = []byte(KeyPrefixSeparator)
 	if len(key) == 0 || len(prefix) == 0 {
 		sep = []byte{}
 	}
@@ -67,7 +66,7 @@ func FromKeyValue(key []byte, value []byte) *KVObject {
 	var k, p []byte
 
 	// break down the key to determine the prefix and the original key.
-	parts := bytes.Split(key, []byte(keyPrefixSeparator))
+	parts := bytes.Split(key, []byte(KeyPrefixSeparator))
 
 	// If there are more than 2 parts, it is an invalid key.
 	// If there are only two parts, then the 0 index is the prefix

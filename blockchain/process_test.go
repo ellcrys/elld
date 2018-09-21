@@ -715,7 +715,8 @@ var _ = Describe("Process", func() {
 
 				Describe("all transactions must be persisted", func() {
 					for _, tx := range okStateRoot.GetTransactions() {
-						txKey := common.MakeTxQueryKey(genesisChain.GetID().Bytes(), tx.GetHash().Bytes())
+						txKey := common.MakeTxQueryKey(genesisChain.GetID().Bytes(),
+							[]byte(tx.GetHash().HexStr()))
 						var result = db.GetByPrefix(txKey)
 						Expect(result).To(HaveLen(1))
 					}

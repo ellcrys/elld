@@ -122,7 +122,8 @@ func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64,
 	}
 
 	for i, tx := range txs {
-		txKey := common.MakeTxKey(s.chainID.Bytes(), blockNumber, tx.GetHash().Bytes())
+		txID := []byte(tx.GetHash().HexStr())
+		txKey := common.MakeTxKey(s.chainID.Bytes(), blockNumber, txID)
 		if err := txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
 			txOp.Rollback()
 			return fmt.Errorf("index %d: %s", i, err)
@@ -332,7 +333,8 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 	}
 
 	var result []*elldb.KVObject
-	err := s.get(common.MakeTxQueryKey(s.chainID.Bytes(), hash.Bytes()), &result, txOp)
+	var txID = []byte(hash.HexStr())
+	err := s.get(common.MakeTxQueryKey(s.chainID.Bytes(), txID), &result, txOp)
 	if err != nil {
 		return nil, err
 	}
