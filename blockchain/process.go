@@ -3,6 +3,8 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/config"
@@ -285,6 +287,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// parent belongs to. This chain may be the main cain or
 	// a side chain (branch). We also need the tip of this chain.
 	parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
+
 	// If the block's parent does not belong to
 	// any known chain. This is a orphan block
 	if err != nil {
@@ -319,7 +322,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// result in new chain.
 	if block.GetHeader().GetNumber() < chainTip.GetNumber() {
 		createNewChain = true
-		b.log.Info("Stale block found. Child chain will be created",
+		b.log.Info("Stale block found. New branch required",
 			"BlockNo", block.GetNumber(),
 			"BestChainHeight", chainTip.GetNumber())
 		goto process
@@ -329,7 +332,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// are the same.A new chain must be created
 	if block.GetNumber() == chainTip.GetNumber() {
 		createNewChain = true
-		b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
+		b.log.Info("Block with same height exists. New branch required.",
 			"BlockNo", block.GetNumber(),
 			"ChainHeight", chainTip.GetNumber())
 		goto process
@@ -378,6 +381,10 @@ process:
 			"ChainID", chain.GetID(),
 			"BlockNo", block.GetNumber(),
 			"ParentBlockNo", parentBlock.GetNumber())
+
+		// Update the validator context to ContextBranch
+		// since we intend to add the block to a branch
+		bValidator.setContext(ContextBranch)
 	}
 
 	// validate transactions in the block
@@ -457,11 +464,9 @@ process:
 	}
 
 	// if the chain is the best chain, emit a new block
-	// event. This will cause the miner to abort and restart.
-	// It will also cause the peer manager to relay the block
-	// to other peers.
+	// event for other processes to act on the new block
 	if b.bestChain.GetID() == chain.GetID() {
-		<-b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
+		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader(), emitter.Sync)
 	}
 
 	b.log.Info("Block has been successfully processed", "BlockNo", block.GetNumber())
