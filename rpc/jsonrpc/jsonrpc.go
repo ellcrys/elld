@@ -17,6 +17,7 @@ import (
 
 const (
 	middlewareErrCode = -32000
+	serverErrCode     = -32001
 )
 
 // MethodInfo describe an RPC method info
@@ -281,14 +282,22 @@ func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) *Response {
 		}
 	}
 
-	resp := f.Func(newReq.Params)
+	var resp *Response
+
+	defer func() {
+		if rcv, ok := recover().(error); ok {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Error(serverErrCode, rcv.Error(), nil))
+		}
+	}()
+
+	resp = f.Func(newReq.Params)
 	if resp == nil {
 		w.WriteHeader(http.StatusOK)
 		return Success(nil)
 	}
 
 	if !resp.IsError() {
-
 		resp.ID = newReq.ID
 
 		// a notification. Send no response.
