@@ -114,19 +114,28 @@ func (s *ChainStore) GetBlock(number uint64, opts ...core.CallOp) (core.Block, e
 	return block, nil
 }
 
-// PutTransactions stores a collection of transactions
+// PutTransactions creates transaction pointers
+// that stores the block numbers where the transactions
+// can be found as opposed to storing the entire
+// transaction. This saves disk space when considering
+// that the block on disk already contains the transaction.
 func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
 		return leveldb.ErrClosed
 	}
 
-	for i, tx := range txs {
-		txKey := common.MakeKeyTransaction(s.chainID.Bytes(), blockNumber, tx.GetHash().Hex())
-		if err := txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
-			txOp.Rollback()
-			return fmt.Errorf("index %d: %s", i, err)
-		}
+	var kvObjs = []*elldb.KVObject{}
+	for _, tx := range txs {
+		txKey := common.MakeKeyTransaction(s.chainID.Bytes(),
+			blockNumber, tx.GetHash().Hex())
+		txObj := elldb.NewKVObject(txKey, util.EncodeNumber(blockNumber))
+		kvObjs = append(kvObjs, txObj)
+	}
+
+	if err := txOp.Tx.Put(kvObjs); err != nil {
+		txOp.Rollback()
+		return err
 	}
 
 	return txOp.Commit()
@@ -315,7 +324,6 @@ func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.Cal
 // GetTransaction gets a transaction (by hash)
 // belonging to a chain
 func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
-	var tx objects.Transaction
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -323,7 +331,8 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 	}
 
 	var result []*elldb.KVObject
-	err := s.get(common.MakeTxQueryKey(s.chainID.Bytes(), hash.Hex()), &result, txOp)
+	err := s.get(common.MakeQueryKeyTransaction(s.chainID.Bytes(),
+		hash.Hex()), &result, &common.TxOp{Tx: txOp.Tx})
 	if err != nil {
 		return nil, err
 	}
@@ -333,10 +342,27 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 		return nil, core.ErrTxNotFound
 	}
 
+	// Using the block number stored as the transaction
+	// key value, we must fetch the block and find
+	// the transaction in its list of transactions
+	blockNumber := util.DecodeNumber(result[0].Value)
+	block, err := s.getBlock(blockNumber, txOp)
+	if err != nil {
+		if err == core.ErrBlockNotFound {
+			return nil, fmt.Errorf("transaction's block not found")
+		}
+		return nil, err
+	}
+
+	for _, tx := range block.GetTransactions() {
+		if tx.GetHash().Equal(hash) {
+			return tx, nil
+		}
+	}
+
 	txOp.Commit()
 
-	result[0].Scan(&tx)
-	return &tx, nil
+	return nil, core.ErrTxNotFound
 }
 
 // CreateAccount creates an account on a target block

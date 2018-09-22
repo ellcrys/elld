@@ -78,7 +78,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeTxQueryKey", func() {
 		It("should return expected key", func() {
-			k := MakeTxQueryKey([]byte("chainA"), []byte("tx123"))
+			k := MakeQueryKeyTransaction([]byte("chainA"), []byte("tx123"))
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41, 0x3a, 0x74, 0x78, 0x3a,
 				0x74, 0x78, 0x31, 0x32, 0x33,

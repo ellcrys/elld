@@ -10,6 +10,7 @@ import (
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
+	"github.com/k0kubun/pp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -51,18 +52,17 @@ var _ = Describe("Store", func() {
 			&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
-		It("should successfully put transactions", func() {
+		It("should store 2 transaction block pointers", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Hex()))
-			var tx objects.Transaction
-			r[0].Scan(&tx)
-			Expect(&tx).To(Equal(txs[0]))
+			r := store.db.GetByPrefix(common.MakeQueryKeyTransactions(store.chainID.Bytes()))
+			Expect(r).To(HaveLen(2))
 
-			r = store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[1].GetHash().Hex()))
-			r[0].Scan(&tx)
-			Expect(&tx).To(Equal(txs[1]))
+			tx1Value := util.DecodeNumber(r[0].Value)
+			tx2Value := util.DecodeNumber(r[1].Value)
+			Expect(tx1Value).To(Equal(uint64(211)))
+			Expect(tx2Value).To(Equal(uint64(211)))
 		})
 	})
 
@@ -73,19 +73,51 @@ var _ = Describe("Store", func() {
 			&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
-		It("should successfully put transactions", func() {
-			err = store.PutTransactions(txs, 211)
-			Expect(err).To(BeNil())
+		Context("when the transaction's value holds an non-existing block number", func() {
+			It("should return err", func() {
+				err = store.PutTransactions(txs, 211)
+				Expect(err).To(BeNil())
 
-			tx, err := store.GetTransaction(txs[0].GetHash())
-			Expect(err).To(BeNil())
-			Expect(tx).ToNot(BeNil())
-			Expect(tx).To(Equal(txs[0]))
+				_, err := store.GetTransaction(txs[0].GetHash())
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("transaction's block not found"))
+			})
+		})
 
-			tx, err = store.GetTransaction(txs[1].GetHash())
-			Expect(err).To(BeNil())
-			Expect(tx).ToNot(BeNil())
-			Expect(tx).To(Equal(txs[1]))
+		Context("when the transaction's value holds an existing block number", func() {
+
+			var block core.Block
+
+			BeforeEach(func() {
+				block = &objects.Block{
+					Header: &objects.Header{Number: 211},
+					Transactions: []*objects.Transaction{
+						&objects.Transaction{Hash: util.StrToHash("hash1")},
+					},
+				}
+				err := store.PutBlock(block)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrTxNotFound when the transaction is not in the block", func() {
+				var txs = []core.Transaction{
+					&objects.Transaction{Hash: util.StrToHash("hash2")},
+				}
+				err = store.PutTransactions(txs, 211)
+				Expect(err).To(BeNil())
+				_, err := store.GetTransaction(util.StrToHash("hash2"))
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrTxNotFound))
+			})
+
+			It("should successfully get transaction when transaction exist in the block", func() {
+				err = store.PutTransactions(block.GetTransactions(), 211)
+				Expect(err).To(BeNil())
+				tx, err := store.GetTransaction(util.StrToHash("hash1"))
+				Expect(err).To(BeNil())
+				Expect(tx).To(Equal(block.GetTransactions()[0]))
+				pp.Println(tx)
+			})
 		})
 	})
 
@@ -98,7 +130,7 @@ var _ = Describe("Store", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			err := store.Delete(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Hex()))
+			err := store.Delete(common.MakeQueryKeyTransaction(store.chainID.Bytes(), txs[0].GetHash().Hex()))
 			Expect(err).To(BeNil())
 
 			tx, err := store.GetTransaction(txs[0].GetHash())

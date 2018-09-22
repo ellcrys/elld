@@ -111,7 +111,6 @@ func MakeKeyBlockHash(chainID []byte, hash []byte) []byte {
 	)
 }
 
-
 // MakeKeyChain constructs a key for storing chain
 // information.
 // Prefixes: tag_chain_info + chain ID
@@ -142,10 +141,10 @@ func MakeKeyTransaction(chainID []byte, blockNumber uint64, txHash []byte) []byt
 	)
 }
 
-// MakeTxQueryKey constructs a key for querying a transaction.
+// MakeQueryKeyTransaction constructs a key for querying a transaction.
 // Prefixes: tag_chain + chain ID + tag_transaction +
 // transaction hash
-func MakeTxQueryKey(chainID []byte, txHash []byte) []byte {
+func MakeQueryKeyTransaction(chainID []byte, txHash []byte) []byte {
 	return elldb.MakePrefix(
 		TagChain,
 		chainID,
