@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: tensorflow1.10.1-go1.10.4
+      - image: princesegzy01/tf-go:latest
     working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
       - checkout
