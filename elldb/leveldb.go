@@ -5,6 +5,7 @@ import (
 	path "path/filepath"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -39,7 +40,14 @@ func (db *LevelDB) Open(namespace string) error {
 		Filter: filter.NewBloomFilter(20),
 	}
 
-	ldb, err := leveldb.OpenFile(path.Join(db.cfgDir, fmt.Sprintf(dbfile, namespace)), o)
+	file := path.Join(db.cfgDir, fmt.Sprintf(dbfile, namespace))
+	ldb, err := leveldb.OpenFile(file, o)
+
+	// If database file is corrupted, attempt to recover
+	if _, corrupted := err.(*errors.ErrCorrupted); corrupted {
+		ldb, err = leveldb.RecoverFile(file, nil)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to create database. %s", err)
 	}
