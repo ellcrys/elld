@@ -225,16 +225,30 @@ var _ = Describe("Store", func() {
 			}
 		})
 
-		It("should put block without error", func() {
-			err = store.PutBlock(block)
-			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
-			Expect(result).To(HaveLen(1))
+		Context("on successful save", func() {
 
-			var storedBlock objects.Block
-			err = result[0].Scan(&storedBlock)
-			Expect(err).To(BeNil())
-			Expect(&storedBlock).To(Equal(block))
+			var result []*elldb.KVObject
+
+			BeforeEach(func() {
+				err := store.PutBlock(block)
+				Expect(err).To(BeNil())
+				result = store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
+				Expect(result).To(HaveLen(1))
+			})
+
+			Specify("the return block is same as the added saved block", func() {
+				var storedBlock objects.Block
+				err = result[0].Scan(&storedBlock)
+				Expect(err).To(BeNil())
+				Expect(&storedBlock).To(Equal(block))
+			})
+
+			Specify("a block number pointer should be added", func() {
+				pointerKey := common.MakeKeyBlockHash(store.chainID.Bytes(), block.GetHash().Hex())
+				result = store.db.GetByPrefix(pointerKey)
+				Expect(result).To(HaveLen(1))
+				Expect(util.DecodeNumber(result[0].Value)).To(Equal(block.GetNumber()))
+			})
 		})
 
 		It("should return nil and not add block when another block with same number exists", func() {

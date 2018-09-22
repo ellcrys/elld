@@ -144,7 +144,8 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 		return nil, leveldb.ErrClosed
 	}
 
-	txOp.Tx.Iterate(common.MakeQueryKeyBlocks(s.chainID.Bytes()), false, func(kv *elldb.KVObject) bool {
+	queryKey := common.MakeQueryKeyBlocks(s.chainID.Bytes())
+	txOp.Tx.Iterate(queryKey, false, func(kv *elldb.KVObject) bool {
 		r = kv
 		return true
 	})
@@ -165,35 +166,22 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 // GetBlockByHash fetches a block by its block hash.
 func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
 
-	var err error
-
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
 		return nil, leveldb.ErrClosed
 	}
 
-	// iterate over the blocks in the chain and locate the block
-	// matching the specified hash
-	var block objects.Block
-	var found = false
-	txOp.Tx.Iterate(common.MakeQueryKeyBlocks(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
-		if err = kv.Scan(&block); err != nil {
-			return true
-		}
-		found = block.Hash.Equal(hash)
-		return found
-	})
-	if err != nil {
-		txOp.Rollback()
-		return nil, err
-	}
-
-	if !found {
+	// First, we must get the block number stored
+	// as the value of the block hash key
+	queryKey := common.MakeKeyBlockHash(s.chainID.Bytes(), hash.Hex())
+	r := txOp.Tx.GetByPrefix(queryKey)
+	if len(r) == 0 {
 		txOp.Rollback()
 		return nil, core.ErrBlockNotFound
 	}
+	blockNum := util.DecodeNumber(r[0].Value)
 
-	return &block, txOp.Commit()
+	return s.GetBlock(blockNum, txOp)
 }
 
 // GetBlockByNumberAndHash finds by number and hash
@@ -253,13 +241,23 @@ func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 
 	value := util.ObjectToBytes(block)
 
-	// store the block with a key format that allows
-	// for query using the block number
+	// store the block
 	key := common.MakeKeyBlock(s.chainID.Bytes(), block.GetNumber())
 	blockObj := elldb.NewKVObject(key, value)
 	if err := txOp.Tx.Put([]*elldb.KVObject{blockObj}); err != nil {
 		txOp.Rollback()
 		return fmt.Errorf("failed to put block: %s", err)
+	}
+
+	// To allow query using the block hash,
+	// we need to add a key constructed with the
+	// the block's hash with the value set to the
+	// block number
+	pointerKey := common.MakeKeyBlockHash(s.chainID.Bytes(), block.GetHash().Hex())
+	pointerObj := elldb.NewKVObject(pointerKey, util.EncodeNumber(block.GetNumber()))
+	if err := txOp.Tx.Put([]*elldb.KVObject{pointerObj}); err != nil {
+		txOp.Rollback()
+		return fmt.Errorf("failed to put block number pointer: %s", err)
 	}
 
 	return txOp.Commit()
@@ -350,7 +348,6 @@ func (s *ChainStore) CreateAccount(targetBlockNum uint64, account core.Account, 
 // GetAccount fetches the account with highest block number prefix.
 func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
 
-	var key = common.MakeQueryKeyAccount(s.chainID.Bytes(), address.Bytes())
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -358,8 +355,9 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 		return nil, leveldb.ErrClosed
 	}
 
+	queryKey := common.MakeQueryKeyAccount(s.chainID.Bytes(), address.Bytes())
 	var blockRangeOp = common.GetBlockQueryRangeOp(opts...)
-	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
+	txOp.Tx.Iterate(queryKey, false, func(kv *elldb.KVObject) bool {
 		var bn = util.DecodeNumber(kv.Key)
 
 		// Check block range constraint.

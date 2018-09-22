@@ -26,6 +26,9 @@ var (
 	// TagBlock represents a block object
 	TagBlock = []byte("b")
 
+	// TagBlockNumber represents a block object
+	TagBlockNumber = []byte("n")
+
 	// TagChainInfo represents a chain information object
 	TagChainInfo = []byte("i")
 
@@ -95,6 +98,19 @@ func MakeQueryKeyBlocks(chainID []byte) []byte {
 		TagBlock,
 	)
 }
+
+// MakeKeyBlockHash constructs a key for storing the
+// number of a block with a matching hash.
+// Prefixes: tag_chain + chain ID + tag_block + block hash
+func MakeKeyBlockHash(chainID []byte, hash []byte) []byte {
+	return elldb.MakePrefix(
+		TagChain,
+		chainID,
+		TagBlockNumber,
+		hash,
+	)
+}
+
 
 // MakeKeyChain constructs a key for storing chain
 // information.
