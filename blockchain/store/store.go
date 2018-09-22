@@ -358,7 +358,6 @@ func (s *ChainStore) CreateAccount(targetBlockNum uint64, account core.Account, 
 func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
 
 	var key = common.MakeQueryKeyAccount(s.chainID.Bytes(), address.Bytes())
-	var highestBlockNum uint64
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -370,21 +369,18 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
 		var bn = util.DecodeNumber(kv.Key)
 
-		// check block range constraint.
-		// if the block number of the key is less that the minimum
-		// block number specified in the block range, skip object.
+		// Check block range constraint.
+		// if the block number is less that the minimum
+		// block number specified in the block range, skip to next.
 		// Likewise, if the block number of the key is greater than
 		// the maximum block number specified in the block range, skip object.
 		if (blockRangeOp.Min > 0 && bn < blockRangeOp.Min) || blockRangeOp.Max > 0 && bn > blockRangeOp.Max {
 			return false
 		}
 
-		if bn > highestBlockNum {
-			highestBlockNum = bn
-			r = kv
-		}
+		r = kv
 
-		return false
+		return true
 	})
 
 	if r == nil {

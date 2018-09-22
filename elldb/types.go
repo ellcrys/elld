@@ -8,7 +8,7 @@ import (
 
 const (
 	// KeyPrefixSeparator is used to separate prefix and key
-	KeyPrefixSeparator = "/"
+	KeyPrefixSeparator = "@@"
 	prefixSeparator    = ":"
 )
 
@@ -74,7 +74,7 @@ func FromKeyValue(key []byte, value []byte) *KVObject {
 	// It there are only one part, the 0 part is considered the key.
 	partsLen := len(parts)
 	if partsLen > 2 {
-		panic("invalid key format")
+		panic("invalid key format: " + string(key))
 	} else if partsLen == 2 {
 		k = parts[1]
 		p = parts[0]

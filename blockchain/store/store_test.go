@@ -55,12 +55,12 @@ var _ = Describe("Store", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
+			r := store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Hex()))
 			var tx objects.Transaction
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[0]))
 
-			r = store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[1].GetHash().Bytes()))
+			r = store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[1].GetHash().Hex()))
 			r[0].Scan(&tx)
 			Expect(&tx).To(Equal(txs[1]))
 		})
@@ -98,7 +98,7 @@ var _ = Describe("Store", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			err := store.Delete(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
+			err := store.Delete(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Hex()))
 			Expect(err).To(BeNil())
 
 			tx, err := store.GetTransaction(txs[0].GetHash())
@@ -119,6 +119,25 @@ var _ = Describe("Store", func() {
 			r[0].Scan(&found)
 			Expect(&found).To(Equal(acct))
 		})
+
+		Context("with two accounts created on different blocks", func() {
+			var accts []*objects.Account
+			BeforeEach(func() {
+				for i := uint64(1); i <= 2; i++ {
+					var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+					err = store.CreateAccount(i, acct)
+					Expect(err).To(BeNil())
+					accts = append(accts, acct)
+				}
+				Expect(accts).To(HaveLen(2))
+			})
+
+			Specify("when all account is fetched, the account with the highest block number (2) must be last", func() {
+				fetchedAccts := store.db.GetByPrefix(common.MakeQueryKeyAccounts(store.chainID.Bytes()))
+				Expect(fetchedAccts).To(HaveLen(2))
+				Expect(util.DecodeNumber(fetchedAccts[1].Key)).To(Equal(uint64(2)))
+			})
+		})
 	})
 
 	Describe(".GetAccount", func() {
@@ -135,18 +154,61 @@ var _ = Describe("Store", func() {
 		})
 
 		Context("with multiple account of same address", func() {
-			It("should contain account with the highest block number", func() {
-				var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+
+			var acct, acct2 *objects.Account
+
+			BeforeEach(func() {
+				acct = &objects.Account{Type: objects.AccountTypeBalance, Balance: "0.1", Address: "addr"}
 				err = store.CreateAccount(1, acct)
 				Expect(err).To(BeNil())
 
-				var acct2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr2"}
+				acct2 = &objects.Account{Type: objects.AccountTypeBalance, Balance: "1.2", Address: "addr"}
 				err = store.CreateAccount(2, acct2)
 				Expect(err).To(BeNil())
 
-				found, err := store.GetAccount((util.String(acct2.Address)))
+				addedAccts := store.db.GetByPrefix(common.MakeQueryKeyAccounts(store.chainID.Bytes()))
+				Expect(addedAccts).To(HaveLen(2))
+			})
+
+			It("should return account with the highest block number", func() {
+				latestAccount, err := store.GetAccount(acct2.Address)
 				Expect(err).To(BeNil())
-				Expect(found).To(Equal(acct2))
+				Expect(latestAccount).To(Equal(acct2))
+			})
+
+			Context("when latest account is at block 2 and block range option is provided", func() {
+				Context("with minimum block = 3", func() {
+					It("should return ErrAccountNotFound", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Min: 3})
+						Expect(err).ToNot(BeNil())
+						Expect(err).To(Equal(core.ErrAccountNotFound))
+						Expect(latestAccount).To(BeNil())
+					})
+				})
+
+				Context("with minimum block = 2", func() {
+					It("should return account with the highest block number", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Min: 2})
+						Expect(err).To(BeNil())
+						Expect(latestAccount).To(Equal(acct2))
+					})
+				})
+
+				Context("with maximum block = 2", func() {
+					It("should return the account with the highest block number less than or equal to the maximum block range", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Max: 2})
+						Expect(err).To(BeNil())
+						Expect(latestAccount).To(Equal(acct2))
+					})
+				})
+
+				Context("with maximum block = 1", func() {
+					It("should return the account with the highest block number less than or equal to the maximum block range", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Max: 1})
+						Expect(err).To(BeNil())
+						Expect(latestAccount).To(Equal(acct))
+					})
+				})
 			})
 		})
 	})
