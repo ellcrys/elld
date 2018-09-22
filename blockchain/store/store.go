@@ -137,7 +137,6 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 
 	var err error
 	var block objects.Block
-	var highestBlockNum uint64
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -145,15 +144,9 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 		return nil, leveldb.ErrClosed
 	}
 
-	// iterate over the blocks in the chain and locate the highest block
-
-	txOp.Tx.Iterate(common.MakeQueryKeyBlocks(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
-		var bn = util.DecodeNumber(kv.Key)
-		if bn > highestBlockNum {
-			highestBlockNum = bn
-			r = kv
-		}
-		return false
+	txOp.Tx.Iterate(common.MakeQueryKeyBlocks(s.chainID.Bytes()), false, func(kv *elldb.KVObject) bool {
+		r = kv
+		return true
 	})
 
 	if r == nil {
