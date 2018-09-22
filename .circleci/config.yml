@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: golang:1.10.4-stretch
+      - image: tensorflow1.10.1-go1.10.4
     working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
       - checkout
@@ -16,14 +16,6 @@ jobs:
           name: Install Dependencies
           command: |
             dep ensure -v 
-            add-apt-repository main
-            add-apt-repository universe
-            add-apt-repository restricted
-            add-apt-repository multiverse
-            apt update
-
-            apt-get install python-pip
-            pip install tensorflow
             dep ensure -add github.com/tensorflow/tensorflow/tensorflow/go
 
       - save_cache:
