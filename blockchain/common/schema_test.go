@@ -7,23 +7,9 @@ import (
 
 var _ = Describe("Schema", func() {
 
-	Describe(".EncodeBlockNumber", func() {
-		It("should encode numbers", func() {
-			Expect(EncodeBlockNumber(1)).To(Equal([]byte{0, 0, 0, 0, 0, 0, 0, 1}))
-			Expect(EncodeBlockNumber(100)).To(Equal([]byte{0, 0, 0, 0, 0, 0, 0, 100}))
-		})
-	})
-
-	Describe(".DecodeBlockNumber", func() {
-		It("should decode numbers", func() {
-			Expect(DecodeBlockNumber([]byte{0, 0, 0, 0, 0, 0, 0, 1})).To(Equal(uint64(1)))
-			Expect(DecodeBlockNumber([]byte{0, 0, 0, 0, 0, 0, 0, 100})).To(Equal(uint64(100)))
-		})
-	})
-
 	Describe(".MakeAccountKey", func() {
 		It("should return expected key", func() {
-			k := MakeAccountKey(10, []byte("chainA"), []byte("some_addr"))
+			k := MakeKeyAccount(10, []byte("chainA"), []byte("some_addr"))
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41, 0x3a, 0x61, 0x63, 0x63,
 				0x6f, 0x75, 0x6e, 0x74, 0x3a, 0x73, 0x6f, 0x6d, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72, 0x2f, 0x00,
@@ -34,7 +20,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".QueryAccountKey", func() {
 		It("should return expected key", func() {
-			k := QueryAccountKey([]byte("chainA"), []byte("some_addr"))
+			k := MakeQueryKeyAccount([]byte("chainA"), []byte("some_addr"))
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41, 0x3a, 0x61, 0x63, 0x63,
 				0x6f, 0x75, 0x6e, 0x74, 0x3a, 0x73, 0x6f, 0x6d, 0x65, 0x5f, 0x61, 0x64, 0x64, 0x72,
@@ -44,7 +30,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeBlockKey", func() {
 		It("should return expected key", func() {
-			k := MakeBlockKey([]byte("chainA"), 10)
+			k := MakeKeyBlock([]byte("chainA"), 10)
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41, 0x3a, 0x62, 0x6c, 0x6f,
 				0x63, 0x6b, 0x2f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a,
@@ -54,7 +40,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeBlocksQueryKey", func() {
 		It("should return expected key", func() {
-			k := MakeBlocksQueryKey([]byte("chainA"))
+			k := MakeQueryKeyBlocks([]byte("chainA"))
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41, 0x3a, 0x62, 0x6c, 0x6f,
 				0x63, 0x6b,
@@ -64,7 +50,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeChainKey", func() {
 		It("should return expected key", func() {
-			k := MakeChainKey([]byte("chainA"))
+			k := MakeKeyChain([]byte("chainA"))
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x49, 0x6e, 0x66, 0x6f, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41,
 			}))
@@ -73,7 +59,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeChainsQueryKey", func() {
 		It("should return expected key", func() {
-			k := MakeChainsQueryKey()
+			k := MakeQueryKeyChains()
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x49, 0x6e, 0x66, 0x6f,
 			}))
@@ -82,7 +68,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeTxKey", func() {
 		It("should return expected key", func() {
-			k := MakeTxKey([]byte("chainA"), 221, []byte("tx123"))
+			k := MakeKeyTransaction([]byte("chainA"), 221, []byte("tx123"))
 			Expect(k).To(Equal([]uint8{
 				0x63, 0x68, 0x61, 0x69, 0x6e, 0x3a, 0x63, 0x68, 0x61, 0x69, 0x6e, 0x41, 0x3a, 0x74, 0x78, 0x3a,
 				0x74, 0x78, 0x31, 0x32, 0x33, 0x2f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xdd,
@@ -102,7 +88,7 @@ var _ = Describe("Schema", func() {
 
 	Describe(".MakeTreeKey", func() {
 		It("should return expected key", func() {
-			k := MakeTreeKey(10, ObjectTypeAccount)
+			k := MakeTreeKey(10, TagAccount)
 			Expect(k).To(Equal([]uint8{
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x61, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74,
 			}))

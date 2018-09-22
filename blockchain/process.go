@@ -202,15 +202,15 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops
 
 		case *common.OpCreateAccount:
 			stateObjs = append(stateObjs, &common.StateObject{
-				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
-				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
+				TreeKey: common.MakeTreeKey(block.GetNumber(), common.TagAccount),
+				Key:     common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
 				Value:   util.ObjectToBytes(_op.Account),
 			})
 
 		case *common.OpNewAccountBalance:
 			stateObjs = append(stateObjs, &common.StateObject{
-				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
-				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
+				TreeKey: common.MakeTreeKey(block.GetNumber(), common.TagAccount),
+				Key:     common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
 				Value:   util.ObjectToBytes(_op.Account),
 			})
 

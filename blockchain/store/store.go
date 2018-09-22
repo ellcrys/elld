@@ -64,7 +64,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, e
 		return s.Current(txOp)
 	}
 
-	r := txOp.Tx.GetByPrefix(common.MakeBlockKey(s.chainID.Bytes(), number))
+	r := txOp.Tx.GetByPrefix(common.MakeKeyBlock(s.chainID.Bytes(), number))
 	if len(r) == 0 {
 		txOp.Rollback()
 		return nil, core.ErrBlockNotFound
@@ -123,7 +123,7 @@ func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64,
 
 	for i, tx := range txs {
 		txID := []byte(tx.GetHash().HexStr())
-		txKey := common.MakeTxKey(s.chainID.Bytes(), blockNumber, txID)
+		txKey := common.MakeKeyTransaction(s.chainID.Bytes(), blockNumber, txID)
 		if err := txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(txKey, util.ObjectToBytes(tx))}); err != nil {
 			txOp.Rollback()
 			return fmt.Errorf("index %d: %s", i, err)
@@ -148,8 +148,8 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 
 	// iterate over the blocks in the chain and locate the highest block
 
-	txOp.Tx.Iterate(common.MakeBlocksQueryKey(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
-		var bn = common.DecodeBlockNumber(kv.Key)
+	txOp.Tx.Iterate(common.MakeQueryKeyBlocks(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
+		var bn = util.DecodeNumber(kv.Key)
 		if bn > highestBlockNum {
 			highestBlockNum = bn
 			r = kv
@@ -184,7 +184,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 	// matching the specified hash
 	var block objects.Block
 	var found = false
-	txOp.Tx.Iterate(common.MakeBlocksQueryKey(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
+	txOp.Tx.Iterate(common.MakeQueryKeyBlocks(s.chainID.Bytes()), true, func(kv *elldb.KVObject) bool {
 		if err = kv.Scan(&block); err != nil {
 			return true
 		}
@@ -263,7 +263,7 @@ func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 
 	// store the block with a key format that allows
 	// for query using the block number
-	key := common.MakeBlockKey(s.chainID.Bytes(), block.GetNumber())
+	key := common.MakeKeyBlock(s.chainID.Bytes(), block.GetNumber())
 	blockObj := elldb.NewKVObject(key, value)
 	if err := txOp.Tx.Put([]*elldb.KVObject{blockObj}); err != nil {
 		txOp.Rollback()
@@ -352,14 +352,14 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 
 // CreateAccount creates an account on a target block
 func (s *ChainStore) CreateAccount(targetBlockNum uint64, account core.Account, opts ...core.CallOp) error {
-	key := common.MakeAccountKey(targetBlockNum, s.chainID.Bytes(), account.GetAddress().Bytes())
+	key := common.MakeKeyAccount(targetBlockNum, s.chainID.Bytes(), account.GetAddress().Bytes())
 	return s.put(key, util.ObjectToBytes(account), opts...)
 }
 
 // GetAccount fetches the account with highest block number prefix.
 func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
 
-	var key = common.QueryAccountKey(s.chainID.Bytes(), address.Bytes())
+	var key = common.MakeQueryKeyAccount(s.chainID.Bytes(), address.Bytes())
 	var highestBlockNum uint64
 	var r *elldb.KVObject
 
@@ -370,7 +370,7 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 
 	var blockRangeOp = common.GetBlockQueryRangeOp(opts...)
 	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
-		var bn = common.DecodeBlockNumber(kv.Key)
+		var bn = util.DecodeNumber(kv.Key)
 
 		// check block range constraint.
 		// if the block number of the key is less that the minimum

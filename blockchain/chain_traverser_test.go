@@ -31,6 +31,12 @@ var _ = Describe("ChainTraverser", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+	})
+
+	BeforeEach(func() {
+		genesisBlock, err := LoadBlockFromFile("genesis-test.json")
+		Expect(err).To(BeNil())
+		bc.SetGenesisBlock(genesisBlock)
 		err = bc.Up()
 		Expect(err).To(BeNil())
 	})

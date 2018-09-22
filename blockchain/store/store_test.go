@@ -114,7 +114,7 @@ var _ = Describe("Store", func() {
 			err = store.CreateAccount(1, acct)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeAccountKey(1, store.chainID.Bytes(), []byte("addr")))
+			r := store.db.GetByPrefix(common.MakeKeyAccount(1, store.chainID.Bytes(), []byte("addr")))
 			var found objects.Account
 			r[0].Scan(&found)
 			Expect(&found).To(Equal(acct))
@@ -166,7 +166,7 @@ var _ = Describe("Store", func() {
 		It("should put block without error", func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock objects.Block
@@ -178,7 +178,7 @@ var _ = Describe("Store", func() {
 		It("should return nil and not add block when another block with same number exists", func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock objects.Block
@@ -193,7 +193,7 @@ var _ = Describe("Store", func() {
 
 			err = store.PutBlock(block2)
 			Expect(err).To(BeNil())
-			result = store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result = store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			err = result[0].Scan(&storedBlock)
@@ -240,7 +240,7 @@ var _ = Describe("Store", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -273,7 +273,7 @@ var _ = Describe("Store", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -328,7 +328,7 @@ var _ = Describe("Store", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -349,7 +349,7 @@ var _ = Describe("Store", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 

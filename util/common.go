@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -45,7 +46,7 @@ func (s String) Bytes() []byte {
 
 // Equal check whether s and o are the same
 func (s String) Equal(o String) bool {
-	return string(s) == string(o)
+	return s.String() == o.String()
 }
 
 func (s String) String() string {
@@ -67,13 +68,25 @@ func (s String) Decimal() decimal.Decimal {
 	return StrToDec(s.String())
 }
 
-// ObjectToBytes returns json encoded representation of an object
+// IsDecimal checks whether the string
+// can be converted to decimal
+func (s String) IsDecimal() bool {
+	defer func() {
+		recover()
+	}()
+	s.Decimal()
+	return true
+}
+
+// ObjectToBytes returns msgpack encoded
+// representation of an object
 func ObjectToBytes(s interface{}) []byte {
 	b, _ := msgpack.Marshal(s)
 	return b
 }
 
-// BytesToObject converts byte slice to an object
+// BytesToObject decodes bytes produced
+// by BytesToObject to the given dest object
 func BytesToObject(bs []byte, dest interface{}) error {
 	return msgpack.Unmarshal(bs, dest)
 }
@@ -201,14 +214,7 @@ func FromHex(hexValue string) ([]byte, error) {
 
 // MustFromHex is like FromHex except it panics if an error occurs
 func MustFromHex(hexValue string) []byte {
-	var _hexValue string
-	parts := strings.Split(hexValue, "0x")
-	if len(parts) == 1 {
-		_hexValue = parts[0]
-	} else {
-		_hexValue = parts[1]
-	}
-	v, err := hex.DecodeString(_hexValue)
+	v, err := FromHex(hexValue)
 	if err != nil {
 		panic(err)
 	}
@@ -228,14 +234,6 @@ func StructToMap(s interface{}) map[string]interface{} {
 	return _s.Map()
 }
 
-// StrToDecimal returns decimal representation of a numeric string value
-func StrToDecimal(v string) (decimal.Decimal, error) {
-	if v == "" {
-		v = "0"
-	}
-	return decimal.NewFromString(v)
-}
-
 // GetPtrAddr takes a pointer and returns the address
 func GetPtrAddr(ptrAddr interface{}) *big.Int {
 	ptrAddrInt, ok := new(big.Int).SetString(fmt.Sprintf("%d", &ptrAddr), 10)
@@ -249,16 +247,38 @@ func GetPtrAddr(ptrAddr interface{}) *big.Int {
 // It uses mapstructure.Decode internally but
 // with 'json' TagName.
 func MapDecode(m interface{}, rawVal interface{}) error {
-	config := &mapstructure.DecoderConfig{
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
 		Metadata: nil,
 		Result:   rawVal,
 		TagName:  "json",
-	}
-
-	decoder, err := mapstructure.NewDecoder(config)
+	})
 	if err != nil {
 		return err
 	}
 
 	return decoder.Decode(m)
+}
+
+// EncodeNumber serializes a number to BigEndian
+func EncodeNumber(n uint64) []byte {
+	var b = make([]byte, 8)
+	binary.BigEndian.PutUint64(b, n)
+	return b
+}
+
+// DecodeNumber deserialize a number from BigEndian
+func DecodeNumber(encNum []byte) uint64 {
+	return binary.BigEndian.Uint64(encNum)
+}
+
+// MayDecodeNumber is like DecodeNumber but returns
+// an error instead of panicking
+func MayDecodeNumber(encNum []byte) (r uint64, err error) {
+	defer func() {
+		if rcv, ok := recover().(error); ok {
+			err = rcv
+		}
+	}()
+	r = DecodeNumber(encNum)
+	return
 }

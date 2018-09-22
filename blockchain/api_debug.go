@@ -58,10 +58,10 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 
 		// find accounts by chain id only
 		if chainID != nil && blockNum == 0 {
-			b.db.Iterate(common.MakeAccountsKey(chainID), true,
+			b.db.Iterate(common.MakeQueryKeyAccounts(chainID), true,
 				func(kv *elldb.KVObject) bool {
 					m := map[string]interface{}{
-						"blockNumber": common.DecodeBlockNumber(kv.Key),
+						"blockNumber": util.DecodeNumber(kv.Key),
 						"prefix":      string(kv.Prefix),
 					}
 					var val map[string]interface{}
@@ -74,10 +74,10 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 
 		// find accounts by chain id, block number and address
 		if chainID != nil && blockNum != 0 {
-			b.db.Iterate(common.MakeAccountKey(blockNum, chainID, address), true,
+			b.db.Iterate(common.MakeKeyAccount(blockNum, chainID, address), true,
 				func(kv *elldb.KVObject) bool {
 					m := map[string]interface{}{
-						"blockNumber": common.DecodeBlockNumber(kv.Key),
+						"blockNumber": util.DecodeNumber(kv.Key),
 						"prefix":      string(kv.Prefix),
 					}
 					var val map[string]interface{}
@@ -92,11 +92,11 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 
 		// find transactions in only chain id
 		if chainID != nil && blockNum == 0 {
-			b.db.Iterate(common.MakeTxsQueryKey(chainID), true,
+			b.db.Iterate(common.MakeQueryKeyTransactions(chainID), true,
 				func(kv *elldb.KVObject) bool {
 					m := map[string]interface{}{
 						"prefix":      string(kv.Prefix),
-						"blockNumber": common.DecodeBlockNumber(kv.Key),
+						"blockNumber": util.DecodeNumber(kv.Key),
 					}
 					var val map[string]interface{}
 					util.BytesToObject(kv.Value, &val)
@@ -107,7 +107,7 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 		}
 
 	case "chains":
-		b.db.Iterate(common.MakeChainsQueryKey(), true,
+		b.db.Iterate(common.MakeQueryKeyChains(), true,
 			func(kv *elldb.KVObject) bool {
 				var m map[string]interface{}
 				util.BytesToObject(kv.Value, &m)
@@ -127,12 +127,12 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 				// Since by convention, Key usually hold
 				// block number, decode it and set to map
 				if kv.Key != nil {
-					m["blockNumber"] = common.DecodeBlockNumber(kv.Key)
+					m["blockNumber"] = util.DecodeNumber(kv.Key)
 				}
 
 				// If object represents a block, decode
 				// the block and set to map
-				if bytes.Index(kv.Prefix, common.ObjectTypeBlock) != -1 {
+				if bytes.Index(kv.Prefix, common.TagBlock) != -1 {
 					var block objects.Block
 					util.BytesToObject(kv.Value, &block)
 					m["value"] = block

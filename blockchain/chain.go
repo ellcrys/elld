@@ -125,7 +125,7 @@ func (c *Chain) save(opts ...core.CallOp) error {
 		return leveldb.ErrClosed
 	}
 
-	chainKey := common.MakeChainKey(c.GetID().Bytes())
+	chainKey := common.MakeKeyChain(c.GetID().Bytes())
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(chainKey, util.ObjectToBytes(c.info))})
 	if err != nil {
 		txOp.Rollback()
@@ -163,7 +163,7 @@ func (c *Chain) loadParent(opts ...core.CallOp) (*Chain, error) {
 
 	// Fetch the chain info of the parent.
 	// If not found return ErrChainParentNotFound
-	chainKey := common.MakeChainKey(c.info.ParentChainID.Bytes())
+	chainKey := common.MakeKeyChain(c.info.ParentChainID.Bytes())
 	result := txOp.Tx.GetByPrefix(chainKey)
 	if len(result) == 0 {
 		txOp.Rollback()
@@ -420,7 +420,7 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 	}
 
 	// delete the block
-	blockKey := common.MakeBlockKey(c.id.Bytes(), number)
+	blockKey := common.MakeKeyBlock(c.id.Bytes(), number)
 	if err = c.store.Delete(blockKey, txOp); err != nil {
 		if len(opts) == 0 {
 			txOp.AllowFinish().Rollback()
@@ -431,9 +431,9 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 	// find account objects associated to this block
 	// in the chain and and delete them
 	err = nil
-	accountsKey := common.MakeAccountsKey(c.id.Bytes())
+	accountsKey := common.MakeQueryKeyAccounts(c.id.Bytes())
 	txOp.Tx.Iterate(accountsKey, false, func(kv *elldb.KVObject) bool {
-		var bn = common.DecodeBlockNumber(kv.Key)
+		var bn = util.DecodeNumber(kv.Key)
 		if bn == number {
 			if err = txOp.Tx.DeleteByPrefix(kv.GetKey()); err != nil {
 				return true
@@ -451,9 +451,9 @@ func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
 	// find transactions objects associated to this block
 	// in the chain and delete them
 	err = nil
-	txsKey := common.MakeTxsQueryKey(c.id.Bytes())
+	txsKey := common.MakeQueryKeyTransactions(c.id.Bytes())
 	txOp.Tx.Iterate(txsKey, false, func(kv *elldb.KVObject) bool {
-		var bn = common.DecodeBlockNumber(kv.Key)
+		var bn = util.DecodeNumber(kv.Key)
 		if bn == number {
 			if err = txOp.Tx.DeleteByPrefix(kv.GetKey()); err != nil {
 				return true

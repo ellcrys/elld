@@ -372,7 +372,7 @@ func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error)
 
 	// At this point, we did not find the chain in
 	// the cache. We search the database instead.
-	var chainKey = common.MakeChainKey(chainID.Bytes())
+	var chainKey = common.MakeKeyChain(chainID.Bytes())
 	result := b.db.GetByPrefix(chainKey)
 	if len(result) == 0 {
 		return nil, core.ErrChainNotFound
@@ -418,7 +418,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBl
 
 // getChains gets all known chains
 func (b *Blockchain) getChains() (chainsInfo []*core.ChainInfo, err error) {
-	chainsKey := common.MakeChainsQueryKey()
+	chainsKey := common.MakeQueryKeyChains()
 	result := b.db.GetByPrefix(chainsKey)
 	for _, r := range result {
 		var ci core.ChainInfo

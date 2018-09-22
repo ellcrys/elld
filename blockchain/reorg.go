@@ -184,7 +184,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core
 	reOrgInfo.SideChainLen = sideTip.GetNumber() - sidechain.parentBlock.GetNumber()
 	reOrgInfo.ReOrgLen = mainTip.GetNumber() - sidechain.parentBlock.GetNumber()
 
-	key := common.MakeReOrgKey(timestamp)
+	key := common.MakeKeyReOrg(timestamp)
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(key, util.ObjectToBytes(reOrgInfo))})
 	if err != nil {
 		txOp.AllowFinish().Rollback()
@@ -200,7 +200,7 @@ func (b *Blockchain) getReOrgs(opts ...core.CallOp) []*ReOrgInfo {
 	defer b.chainLock.RUnlock()
 
 	var reOrgs = []*ReOrgInfo{}
-	key := common.MakeReOrgQueryKey()
+	key := common.MakeQueryKeyReOrg()
 	result := b.db.GetByPrefix(key)
 	for _, r := range result {
 		var reOrg ReOrgInfo
