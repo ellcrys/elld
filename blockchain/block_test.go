@@ -296,7 +296,7 @@ var _ = Describe("Block", func() {
 			BeforeEach(func() {
 				tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix())
 				tx.SetHash(tx.ComputeHash())
-				tx2 = objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix()+100)
+				tx2 = objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix()+100)
 				tx2.SetHash(tx2.ComputeHash())
 				err = bc.txPool.Put(tx)
 				Expect(err).To(BeNil())

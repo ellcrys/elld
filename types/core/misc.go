@@ -30,16 +30,32 @@ type ChainInfo struct {
 	Timestamp         int64       `json:"timestamp" msgpack:"timestamp"`
 }
 
+// TxContainer represents a container
+// a container responsible for holding
+// and sorting transactions
+type TxContainer interface {
+	ByteSize() int64
+	Add(tx Transaction) bool
+	Has(tx Transaction) bool
+	Size() int64
+	First() Transaction
+	Last() Transaction
+	Sort()
+	IFind(predicate func(Transaction) bool) Transaction
+	Remove(txs ...Transaction)
+}
+
 // TxPool represents a transactions pool
 type TxPool interface {
 	SetEventEmitter(ee *emitter.Emitter)
 	Put(tx Transaction) error
+	PutSilently(tx Transaction) error
 	Has(tx Transaction) bool
 	HasByHash(hash string) bool
 	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
-	Select(maxSize int64) (txs []Transaction)
 	ByteSize() int64
 	Size() int64
+	Container() TxContainer
 }
 
 // GenerateBlockParams represents parameters

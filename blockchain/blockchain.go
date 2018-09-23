@@ -577,3 +577,76 @@ func (b *Blockchain) GetLocators() ([]util.Hash, error) {
 
 	return locators, nil
 }
+
+// SelectTransactions collects transactions from the head
+// of the pool up to the specified maxSize.
+func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Transaction, err error) {
+	b.chainLock.RLock()
+	b.chainLock.RUnlock()
+
+	totalSelectedTxsSize := int64(0)
+	unSelected := []core.Transaction{}
+	nonces := make(map[util.String]uint64)
+	for b.txPool.Size() > 0 {
+
+		// Get a transaction from the top of
+		// the pool
+		tx := b.txPool.Container().First()
+
+		// Check whether the addition of this
+		// transaction will push us over the
+		// size limit
+		if totalSelectedTxsSize+tx.SizeNoFee() > maxSize {
+			unSelected = append(unSelected, tx)
+			continue
+		}
+
+		// Check the current nonce value from
+		// the cache and ensure the transaction's
+		// nonce matches the expected/next nonce value.
+		if nonce, ok := nonces[tx.GetFrom()]; ok {
+			if (nonce + 1) != tx.GetNonce() {
+				unSelected = append(unSelected, tx)
+				continue
+			}
+			nonces[tx.GetFrom()] = tx.GetNonce()
+		} else {
+			// At this point, the nonce was not cached,
+			// so we need to fetch it from the database,
+			// add to the cache and ensure the
+			// transaction's nonce matches the expected/next value
+			nonces[tx.GetFrom()], err = b.GetAccountNonce(tx.GetFrom())
+			if err != nil {
+				return nil, err
+			}
+			if (nonce + 1) != tx.GetNonce() {
+				unSelected = append(unSelected, tx)
+				continue
+			}
+			nonces[tx.GetFrom()] = tx.GetNonce()
+		}
+
+		// Add the transaction to the
+		// selected tx slice and update the
+		// total selected transactions size
+		selectedTxs = append(selectedTxs, tx)
+		totalSelectedTxsSize += tx.SizeNoFee()
+
+		// If the amount of space left for new
+		// transactions is less that the minimum
+		// transaction size, then we exit immediately
+		if maxSize-totalSelectedTxsSize < 230 {
+			unSelected = append(unSelected, tx)
+			break
+		}
+	}
+
+	// put the unselected transactions
+	// back to the pool. But this time,
+	// we do it silently (no events, etc)
+	for _, tx := range unSelected {
+		b.txPool.PutSilently(tx)
+	}
+
+	return
+}

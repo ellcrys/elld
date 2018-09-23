@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"os"
+	"time"
 
 	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -450,6 +451,191 @@ var _ = Describe("Blockchain.Up", func() {
 				})
 			})
 		})
+
+		Describe(".Select", func() {
+
+			var tp core.TxPool
+			var tx, tx2, tx3 *objects.Transaction
+			var txs []core.Transaction
+
+			Context("pool has 1 transaction and account nonce = 0", func() {
+				Context("transaction nonce is 2", func() {
+					BeforeEach(func() {
+						tp = bc.txPool
+						tx = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx.Hash = tx.ComputeHash()
+						tp.Put(tx)
+						maxSize := tx.SizeNoFee() + 100
+						txs, err = bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return no transaction", func() {
+						Expect(txs).To(HaveLen(0))
+					})
+
+					Specify("container should contain 1 transaction", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(1)))
+					})
+				})
+			})
+
+			Context("pool has 2 transactions and account nonce = 0", func() {
+				Context("tx(1) nonce = 1 and tx(2) nonce = 2", func() {
+					BeforeEach(func() {
+						tp = bc.txPool
+						tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx.Hash = tx.ComputeHash()
+						err := tp.Put(tx)
+						Expect(err).To(BeNil())
+
+						tx2 = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+						tx2.Hash = tx2.ComputeHash()
+						err = tp.Put(tx2)
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
+						Expect(err).To(BeNil())
+
+						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+						txs, err = bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 2 transactions", func() {
+						Expect(txs).To(HaveLen(2))
+					})
+
+					Specify("container should contain 0 transactions", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					})
+				})
+			})
+
+			Context("pool has 2 transactions and account nonce = 0", func() {
+				Context("tx(1) nonce = 2 and tx(2) nonce = 1", func() {
+					BeforeEach(func() {
+						tp = bc.txPool
+						tx = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx.Hash = tx.ComputeHash()
+						err := tp.Put(tx)
+						Expect(err).To(BeNil())
+
+						tx2 = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+						tx2.Hash = tx2.ComputeHash()
+						err = tp.Put(tx2)
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
+						Expect(err).To(BeNil())
+
+						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+						txs, err = bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 2 transaction with tx(2) selected before tx(1)", func() {
+						Expect(txs).To(HaveLen(2))
+						Expect(txs[0]).To(Equal(tx2))
+						Expect(txs[1]).To(Equal(tx))
+					})
+
+					Specify("container should contain 0 transaction", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					})
+				})
+			})
+
+			Context("pool has 2 transactions and account nonce = 0", func() {
+				Context("tx(1) nonce = 1 and tx(2) nonce = 3", func() {
+					BeforeEach(func() {
+						tp = bc.txPool
+						tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx.Hash = tx.ComputeHash()
+						err := tp.Put(tx)
+						Expect(err).To(BeNil())
+
+						tx2 = objects.NewTx(objects.TxTypeBalance, 3, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+						tx2.Hash = tx2.ComputeHash()
+						err = tp.Put(tx2)
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
+						Expect(err).To(BeNil())
+
+						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+						txs, err = bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 1 transaction", func() {
+						Expect(txs).To(HaveLen(1))
+						Expect(txs[0]).To(Equal(tx))
+					})
+
+					Specify("container should contain 1 transaction", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(1)))
+					})
+				})
+			})
+
+			Context("pool has 1 transaction and account nonce = 0", func() {
+				Context("transaction nonce is 1", func() {
+					BeforeEach(func() {
+						tp = bc.txPool
+						tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx.Hash = tx.ComputeHash()
+						tp.Put(tx)
+						maxSize := tx.SizeNoFee() + 100
+						txs, err = bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 1 transaction", func() {
+						Expect(txs).To(HaveLen(1))
+					})
+
+					Specify("container should contain 0 transactions", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					})
+				})
+			})
+
+			Context("test size validations", func() {
+				BeforeEach(func() {
+					tp = bc.txPool
+					tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+					tx.Hash = tx.ComputeHash()
+					tp.Put(tx)
+
+					tx2 = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+					tx2.Hash = tx2.ComputeHash()
+					tp.Put(tx2)
+
+					tx3 = objects.NewTx(objects.TxTypeBalance, 3, util.String(sender.Addr()), sender, "0.3", "0.001", time.Now().Unix())
+					tx3.Hash = tx3.ComputeHash()
+					tp.Put(tx3)
+				})
+
+				It("should only include transactions up to the given max size", func() {
+					maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+					txs, err := bc.SelectTransactions(maxSize)
+					Expect(err).To(BeNil())
+					Expect(txs).To(HaveLen(2))
+				})
+
+				It("should only include all transactions when max size exceeds pool size", func() {
+					maxSize := tx.SizeNoFee() + tx2.SizeNoFee() + tx3.SizeNoFee() + 100
+					txs, err := bc.SelectTransactions(maxSize)
+					Expect(err).To(BeNil())
+					Expect(txs).To(HaveLen(3))
+				})
+
+				When("max size is too small", func() {
+					It("should select nothing and put back all transactions back in the pool", func() {
+						maxSize := int64(1)
+						txs, err := bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+						Expect(txs).To(HaveLen(0))
+						Expect(tp.Container().Size()).To(Equal(int64(3)))
+					})
+				})
+			})
+		})
 	})
 
 })
@@ -585,4 +771,5 @@ var _ = Describe("Blockchain Unit Test", func() {
 			Expect(bc.hasChain(chain)).To(BeTrue())
 		})
 	})
+
 })
