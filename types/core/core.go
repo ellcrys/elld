@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/olebedev/emitter"
 )
@@ -127,7 +126,7 @@ type Blockchain interface {
 	// SelectTransactions sets transactions from
 	// the transaction pool. These transactions must
 	// be suitable for inclusion in blocks.
-	SelectTransactions(maxSize int64) ([]core.Transaction, error)
+	SelectTransactions(maxSize int64) ([]Transaction, error)
 }
 
 // BlockMaker defines an interface providing the

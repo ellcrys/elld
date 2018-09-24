@@ -54,7 +54,8 @@ func main() {
 	// generate some allocation transactions
 	var txs = []core.Transaction{}
 	var addrsPrivateKey = make(map[string]string)
-	var maxTx = 1
+	var maxTx = 1000
+	var difficulty = int64(100000)
 
 	for i := 1; i < maxTx+1; i++ {
 		recipient := crypto.NewKeyFromIntSeed(i)
@@ -67,8 +68,8 @@ func main() {
 		Transactions:            txs,
 		Creator:                 creator,
 		Nonce:                   core.EncodeNonce(1),
-		Difficulty:              new(big.Int).SetInt64(10000000000),
-		OverrideTotalDifficulty: new(big.Int).SetInt64(10000000000),
+		Difficulty:              new(big.Int).SetInt64(difficulty),
+		OverrideTotalDifficulty: new(big.Int).SetInt64(difficulty),
 		OverrideTimestamp:       time.Now().Unix(),
 	}
 

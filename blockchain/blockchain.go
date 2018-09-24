@@ -156,11 +156,9 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("genesis block error: expected block number 1")
 		}
 
-		// The ID of the genesis chain is the hash of the genesis block hash.
+		// Create and save the genesis chain
 		gChainID := util.ToHex(util.Blake2b256(gBlock.GetHash().Bytes()))
 		gChain := NewChain(util.String(gChainID), b.db, b.cfg, b.log)
-
-		// Save the chain the chain (which also adds it to the chain cache)
 		if err := b.saveChain(gChain, "", 0); err != nil {
 			return fmt.Errorf("failed to save genesis chain: %s", err)
 		}
