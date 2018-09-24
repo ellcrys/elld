@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/ellcrys/elld/rpc"
+	"github.com/gobuffalo/packr"
 
 	"github.com/ellcrys/elld/accountmgr"
 
@@ -19,12 +20,6 @@ import (
 	prettyjson "github.com/ncodes/go-prettyjson"
 	"github.com/robertkrimen/otto"
 )
-
-// FuncCallError creates an error describing
-// an issue with the way a function was called.
-func FuncCallError(msg string) error {
-	return fmt.Errorf("function call error: %s", msg)
-}
 
 // Executor is responsible for executing operations inside a
 // javascript VM.
@@ -54,6 +49,9 @@ type Executor struct {
 
 	// console is the console instance
 	console *Console
+
+	// scripts provides access to packed JS scripts
+	scripts packr.Box
 }
 
 // NewExecutor creates a new executor
@@ -62,6 +60,7 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	e.vm = otto.New()
 	e.log = l
 	e.coinbase = coinbase
+	e.scripts = packr.NewBox("./scripts")
 	return e
 }
 
@@ -121,6 +120,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 		"personal": {},
 		"ell":      {},
 		"rpc":      {},
+		"_system":  {},
 	}
 
 	// Add some methods to namespaces
@@ -132,14 +132,17 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	nsObj["personal"]["loadedAccount"] = e.loadedAccount
 	nsObj["personal"]["createAccount"] = e.createAccount
 	nsObj["personal"]["importAccount"] = e.importAccount
-	nsObj["ell"]["balance"] = func() *TxBalanceBuilder {
-		return NewTxBuilder(e).Balance()
-	}
+
+	// "private" functions used by system scripts
+	nsObj["_system"]["balance"] = NewTxBuilder(e).Balance()
 
 	defer func() {
 		for ns, objs := range nsObj {
 			e.vm.Set(ns, objs)
 		}
+
+		// Add system scripts
+		e.runRaw(e.scripts.Bytes("transaction_builder.js"))
 	}()
 
 	// Add some methods to the suggestions
@@ -222,6 +225,18 @@ func (e *Executor) runScript(file string) {
 	}
 
 	script, err := e.vm.Compile(fullPath, nil)
+	if err != nil {
+		panic(e.vm.MakeCustomError("ExecError", err.Error()))
+	}
+
+	_, err = e.vm.Run(script)
+	if err != nil {
+		panic(e.vm.MakeCustomError("ExecError", err.Error()))
+	}
+}
+
+func (e *Executor) runRaw(src interface{}) {
+	script, err := e.vm.Compile("", src)
 	if err != nil {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
