@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: princesegzy01/tf-go:latest
+      - image: ellcrys/tf-go:latest
     working_directory: '/go/src/github.com/ellcrys/elld'
     steps:
       - checkout
