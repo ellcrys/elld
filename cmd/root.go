@@ -115,7 +115,7 @@ func initConfig() {
 	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
 
 	if devMode && cfgDirPath == "" {
-		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcry_dev"))
+		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcrys_dev"))
 		os.MkdirAll(cfgDirPath, 0700)
 	}
 

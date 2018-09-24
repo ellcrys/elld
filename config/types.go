@@ -158,7 +158,7 @@ func init() {
 		MaxConnections:   100,
 		ConnEstInterval:  10,
 		Mode:             ModeProd,
-		MessageTimeout:   15,
+		MessageTimeout:   60,
 	}
 
 	defaultConfig.Consensus = &ConsensusConfig{

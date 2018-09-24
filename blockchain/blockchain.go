@@ -180,7 +180,7 @@ func (b *Blockchain) Up() error {
 	}
 
 	if numChains := len(chains); numChains > 0 {
-		b.log.Info("Chain load completed", "NumChains", numChains)
+		b.log.Info("All known chains have been loaded", "NumChains", numChains)
 	}
 
 	// Using the best chain rule, we mush select the best chain

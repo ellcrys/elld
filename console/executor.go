@@ -110,6 +110,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 
 	// Add some methods to the global namespace
 	e.vm.Set("pp", e.pp)
+	e.vm.Set("exec", e.runRaw)
 	e.vm.Set("runScript", e.runScript)
 	e.vm.Set("rs", e.runScript)
 
@@ -134,7 +135,9 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	nsObj["personal"]["importAccount"] = e.importAccount
 
 	// "private" functions used by system scripts
-	nsObj["_system"]["balance"] = NewTxBuilder(e).Balance()
+	nsObj["_system"]["balance"] = func() *TxBalanceBuilder {
+		return NewTxBuilder(e).Balance()
+	}
 
 	defer func() {
 		for ns, objs := range nsObj {
