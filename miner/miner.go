@@ -129,6 +129,21 @@ func (m *Miner) Stop() {
 	m.abortCurrent()
 }
 
+func (m *Miner) reset() {
+	m.Lock()
+	defer m.Unlock()
+	m.mining = false
+	m.stop = false
+	m.aborted = false
+	m.proposedBlock = nil
+}
+
+func (m *Miner) hasStopped() bool {
+	m.RLock()
+	defer m.RUnlock()
+	return m.stop
+}
+
 func (m *Miner) setMiningStatus(s bool) {
 	m.Lock()
 	defer m.Unlock()
@@ -180,9 +195,9 @@ func (m *Miner) IsMining() bool {
 func (m *Miner) Mine() {
 
 	m.log.Info("Beginning mining protocol")
-	m.stop = false
+	m.reset()
 
-	for !m.stop {
+	for !m.hasStopped() {
 
 		var err error
 
