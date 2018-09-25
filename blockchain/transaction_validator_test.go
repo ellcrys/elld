@@ -277,7 +277,7 @@ var _ = Describe("TransactionValidator", func() {
 						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 					},
 					Creator:    sender,
-					Nonce:      core.EncodeNonce(1),
+					Nonce:      util.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 				_, err = bc.ProcessBlock(block2)

@@ -27,7 +27,7 @@ func MakeBlock(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key
 			objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
-		Nonce:             core.EncodeNonce(1),
+		Nonce:             util.EncodeNonce(1),
 		Difficulty:        new(big.Int).SetInt64(131072),
 		OverrideTimestamp: time.Now().Unix(),
 		AddFeeAlloc:       true,
@@ -42,7 +42,7 @@ func MakeBlockWithOnlyAllocTx(bc core.Blockchain, ch core.Chainer, sender, recei
 			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
-		Nonce:             core.EncodeNonce(1),
+		Nonce:             util.EncodeNonce(1),
 		Difficulty:        new(big.Int).SetInt64(131072),
 		OverrideTimestamp: time.Now().Unix(),
 	})
@@ -54,7 +54,7 @@ func MakeBlockWithNoTx(bc core.Blockchain, ch core.Chainer, sender, receiver *cr
 	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
 		Transactions:      []core.Transaction{},
 		Creator:           sender,
-		Nonce:             core.EncodeNonce(1),
+		Nonce:             util.EncodeNonce(1),
 		Difficulty:        new(big.Int).SetInt64(131072),
 		OverrideTimestamp: time.Now().Unix(),
 	})
@@ -69,7 +69,7 @@ func MakeBlockWithSingleTx(bc core.Blockchain, ch core.Chainer, sender, receiver
 			objects.NewTx(objects.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
-		Nonce:             core.EncodeNonce(1),
+		Nonce:             util.EncodeNonce(1),
 		Difficulty:        new(big.Int).SetInt64(131072),
 		OverrideTimestamp: time.Now().Unix(),
 		AddFeeAlloc:       true,
@@ -84,7 +84,7 @@ func MakeBlockWithBalanceTx(bc core.Blockchain, ch core.Chainer, sender, receive
 			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:     sender,
-		Nonce:       core.EncodeNonce(1),
+		Nonce:       util.EncodeNonce(1),
 		Difficulty:  new(big.Int).SetInt64(131072),
 		AddFeeAlloc: true,
 	})
@@ -98,7 +98,7 @@ func MakeBlockWithParentHash(bc core.Blockchain, ch core.Chainer, sender, receiv
 			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:            sender,
-		Nonce:              core.EncodeNonce(1),
+		Nonce:              util.EncodeNonce(1),
 		Difficulty:         new(big.Int).SetInt64(131072),
 		OverrideParentHash: parentHash,
 	})
@@ -112,7 +112,7 @@ func MakeBlockWithTotalDifficulty(bc core.Blockchain, ch core.Chainer, sender, r
 			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:                 sender,
-		Nonce:                   core.EncodeNonce(1),
+		Nonce:                   util.EncodeNonce(1),
 		Difficulty:              new(big.Int).SetInt64(131072),
 		OverrideTotalDifficulty: td,
 		AddFeeAlloc:             true,

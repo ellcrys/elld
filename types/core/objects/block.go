@@ -20,7 +20,7 @@ var mtx sync.RWMutex
 // Header represents the header of a block
 type Header struct {
 	Number           uint64          `json:"number" msgpack:"number"`
-	Nonce            core.BlockNonce `json:"nonce" msgpack:"nonce"`
+	Nonce            util.BlockNonce `json:"nonce" msgpack:"nonce"`
 	Timestamp        int64           `json:"timestamp" msgpack:"timestamp"`
 	CreatorPubKey    util.String     `json:"creatorPubKey" msgpack:"creatorPubKey"`
 	ParentHash       util.Hash       `json:"parentHash" msgpack:"parentHash"`
@@ -67,7 +67,7 @@ func (h *Header) SetNumber(n uint64) {
 }
 
 // SetNonce sets the nonce
-func (h *Header) SetNonce(nonce core.BlockNonce) {
+func (h *Header) SetNonce(nonce util.BlockNonce) {
 	h.Nonce = nonce
 }
 
@@ -87,7 +87,7 @@ func (h *Header) GetParentHash() util.Hash {
 }
 
 // GetNonce gets the nonce
-func (h *Header) GetNonce() core.BlockNonce {
+func (h *Header) GetNonce() util.BlockNonce {
 	return h.Nonce
 }
 
