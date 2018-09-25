@@ -344,7 +344,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// transaction into a block, then the nonce
 	// must be greater than the account's current
 	// nonce by at least 1
-	if !v.has(ContextBlock) && tx.GetNonce()-accountNonce < 1 {
+	if !v.has(ContextBlock) && (tx.GetNonce() <= accountNonce) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants from %d",
 				tx.GetNonce(), accountNonce+1)))
@@ -354,7 +354,8 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// If the caller intends to process a block of which
 	// this transaction is part of, then the nonce must
 	// be greater than the account's current nonce by 1
-	if v.has(ContextBlock) && tx.GetNonce()-accountNonce != 1 {
+	if v.has(ContextBlock) && tx.GetNonce() > accountNonce &&
+		tx.GetNonce()-accountNonce != 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants %d",
 				tx.GetNonce(), accountNonce+1)))

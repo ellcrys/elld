@@ -162,7 +162,7 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 	}
 
 	// pwd is set and is a valid file, read it and use as password
-	if len(pwd) > 0 && (os.IsPathSeparator(pwd[0]) || pwd[:2] == "./") {
+	if len(pwd) > 0 && (os.IsPathSeparator(pwd[0]) || (len(pwd) >= 2 && pwd[:2] == "./")) {
 		content, err := ioutil.ReadFile(pwd)
 		if err != nil {
 			if funk.Contains(err.Error(), "no such file") {

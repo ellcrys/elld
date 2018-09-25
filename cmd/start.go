@@ -101,7 +101,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 		}
 	}
 
-	if len(password) > 0 && (os.IsPathSeparator(password[0]) || password[:2] == "./") {
+	if len(password) > 1 && (os.IsPathSeparator(password[0]) || (len(password) >= 2 && password[:2] == "./")) {
 		content, err := ioutil.ReadFile(password)
 		if err != nil {
 			if funk.Contains(err.Error(), "no such file") {
