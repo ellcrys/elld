@@ -282,3 +282,69 @@ func MayDecodeNumber(encNum []byte) (r uint64, err error) {
 	r = DecodeNumber(encNum)
 	return
 }
+
+// BlockNonce is a 64-bit hash which proves (combined with the
+// mix-hash) that a sufficient amount of computation has been carried
+// out on a block.
+type BlockNonce [8]byte
+
+// EmptyBlockNonce is a BlockNonce with no values
+var EmptyBlockNonce = BlockNonce([8]byte{})
+
+// EncodeNonce converts the given integer to a block nonce.
+func EncodeNonce(i uint64) BlockNonce {
+	var n BlockNonce
+	binary.BigEndian.PutUint64(n[:], i)
+	return n
+}
+
+// Uint64 returns the integer value of a block nonce.
+func (n BlockNonce) Uint64() uint64 {
+	return binary.BigEndian.Uint64(n[:])
+}
+
+// MarshalText encodes n as a hex string with 0x prefix.
+func (n BlockNonce) MarshalText() string {
+	return ToHex(n[:])
+}
+
+// ToJSFriendlyMap takes a struct and converts
+// selected types to values that are compatible in the
+// JS environment. It returns a map and will panic
+// if obj is not a map/struct.
+func ToJSFriendlyMap(obj interface{}) interface{} {
+
+	if obj == nil {
+		return obj
+	}
+
+	var m map[string]interface{}
+
+	// if not struct, we assume it is a map
+	if structs.IsStruct(obj) {
+		s := structs.New(obj)
+		s.TagName = "json"
+		m = s.Map()
+	} else {
+		m = obj.(map[string]interface{})
+	}
+
+	for k, v := range m {
+		switch _v := v.(type) {
+		case BlockNonce:
+			m[k] = ToHex(_v[:])
+		case Hash:
+			m[k] = _v.HexStr()
+		case *big.Int, int8, int, int64, uint64, []byte:
+			m[k] = fmt.Sprintf("0x%x", _v)
+		case map[string]interface{}:
+			m[k] = ToJSFriendlyMap(_v)
+		case []interface{}:
+			for i, item := range _v {
+				_v[i] = ToJSFriendlyMap(item)
+			}
+		}
+	}
+
+	return m
+}

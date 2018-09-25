@@ -154,7 +154,7 @@ func (b *Blockchain) decideBestChain() error {
 
 // recordReOrg stores a record of a reorganization
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core.CallOp) error {
+func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...core.CallOp) error {
 
 	var txOp = common.GetTxOp(b.db, opts...)
 	if txOp.Closed() {
@@ -165,7 +165,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core
 
 	var reOrgInfo = &ReOrgInfo{
 		MainChainID: b.bestChain.id.String(),
-		SideChainID: sidechain.id.String(),
+		SideChainID: branch.id.String(),
 		Timestamp:   timestamp,
 	}
 
@@ -175,14 +175,14 @@ func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core
 		return err
 	}
 
-	sideTip, err := sidechain.Current(txOp)
+	sideTip, err := branch.Current(txOp)
 	if err != nil {
 		txOp.AllowFinish().Rollback()
 		return err
 	}
 
-	reOrgInfo.SideChainLen = sideTip.GetNumber() - sidechain.parentBlock.GetNumber()
-	reOrgInfo.ReOrgLen = mainTip.GetNumber() - sidechain.parentBlock.GetNumber()
+	reOrgInfo.SideChainLen = sideTip.GetNumber() - branch.parentBlock.GetNumber()
+	reOrgInfo.ReOrgLen = mainTip.GetNumber() - branch.parentBlock.GetNumber()
 
 	key := common.MakeKeyReOrg(timestamp)
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(key, util.ObjectToBytes(reOrgInfo))})
@@ -217,11 +217,11 @@ func (b *Blockchain) getReOrgs(opts ...core.CallOp) []*ReOrgInfo {
 }
 
 // reOrg overwrites the main chain with the blocks of
-// the sidechain beginning from sidechain parent block + 1.
+// the branch beginning from branch parent block + 1.
 // Returns the re-organized chain or error.
 //
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
+func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
 
 	now := time.Now()
 
@@ -245,22 +245,22 @@ func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 		return nil, fmt.Errorf("failed to get best chain tip: %s", err)
 	}
 
-	// get the side chain tip
-	sideTip, err := sidechain.Current(txOp)
+	// get the branch chain tip
+	sideTip, err := branch.Current(txOp)
 	if err != nil {
 		txOp.AllowFinish().Rollback()
-		return nil, fmt.Errorf("failed to get side chain tip: %s", err)
+		return nil, fmt.Errorf("failed to get branch chain tip: %s", err)
 	}
 
-	// get the parent block of the side chain
-	parentBlock := sidechain.GetParentBlock()
+	// get the parent block of the branch chain
+	parentBlock := branch.GetParentBlock()
 	if parentBlock == nil {
 		txOp.AllowFinish().Rollback()
-		return nil, fmt.Errorf("parent block not set on sidechain")
+		return nil, fmt.Errorf("parent block not set on branch")
 	}
 
 	// delete blocks from the current best chain,
-	// starting from side chain parent block + 1
+	// starting from branch chain's parent block + 1
 	nextBlockNumber := parentBlock.GetNumber() + 1
 	for nextBlockNumber <= tip.GetNumber() {
 		b.bestChain.removeBlock(nextBlockNumber, txOp)
@@ -268,14 +268,14 @@ func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 	}
 
 	// At this point the blocks that are not in the
-	// side chain have been removed from the main chain.
-	// Now, we will re-process the blocks in the sidechain
+	// branch chain have been removed from the main chain.
+	// Now, we will re-process the blocks in the branch
 	// targeted for addition in the current best chain
 	nextBlockNumber = parentBlock.GetNumber() + 1
 	for nextBlockNumber <= sideTip.GetNumber() {
 
-		// get the side chain block
-		proposedBlock, err := sidechain.GetBlock(nextBlockNumber, txOp)
+		// get the branch chain block
+		proposedBlock, err := branch.GetBlock(nextBlockNumber, txOp)
 		if err != nil {
 			txOp.AllowFinish().Rollback()
 			return nil, fmt.Errorf("failed to get proposed block: %s", err)
@@ -292,7 +292,7 @@ func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 	}
 
 	// store a record of this re-org
-	if err := b.recordReOrg(now.UnixNano(), sidechain, txOp); err != nil {
+	if err := b.recordReOrg(now.Unix(), branch, txOp); err != nil {
 		return nil, fmt.Errorf("failed to store re-org record")
 	}
 

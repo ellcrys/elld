@@ -272,7 +272,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			g.log.Debug("Addr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.ShortID())
 			continue
 		}
-		defer s.Reset()
+		defer s.Close()
 
 		if err := WriteStream(s, addrMsg); err != nil {
 			errs = append(errs, fmt.Errorf("Addr failed. failed to write to stream to peer {%s}", remotePeer.ShortID()))

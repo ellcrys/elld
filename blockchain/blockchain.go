@@ -117,6 +117,17 @@ func LoadBlockFromFile(name string) (core.Block, error) {
 	return &gBlock, nil
 }
 
+// makeChainID creates a chain id
+// Combination: blake2b(current nano time + initial block hash
+// + pointer address of initial block)
+func makeChainID(initialBlock core.Block) util.String {
+	now := time.Now().Unix()
+	blockHash := initialBlock.HashToHex()
+	id := fmt.Sprintf("%s %d %d", blockHash, now, util.GetPtrAddr(initialBlock))
+	hash := util.BytesToHash(util.Blake2b256([]byte(id)))
+	return util.String(hash.HexStr())
+}
+
 // Up opens the database, initializes the store and
 // creates the genesis block (if required)
 func (b *Blockchain) Up() error {
@@ -157,8 +168,8 @@ func (b *Blockchain) Up() error {
 		}
 
 		// Create and save the genesis chain
-		gChainID := util.ToHex(util.Blake2b256(gBlock.GetHash().Bytes()))
-		gChain := NewChain(util.String(gChainID), b.db, b.cfg, b.log)
+		gChainID := makeChainID(gBlock)
+		gChain := NewChain(gChainID, b.db, b.cfg, b.log)
 		if err := b.saveChain(gChain, "", 0); err != nil {
 			return fmt.Errorf("failed to save genesis chain: %s", err)
 		}
@@ -223,11 +234,15 @@ func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
 // can be used to find both standalone chain and child chains.
 func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 
+	if ci == nil {
+		return fmt.Errorf("chain info is required")
+	}
+
 	// Check whether the chain information is a genesis chain.
 	// A genesis chain info does not include a parent chain id
 	// and a parent block number since it has no parent.
 	if ci.ParentChainID == "" && ci.ParentBlockNumber == 0 {
-		b.addChain(NewChain(ci.ID, b.db, b.cfg, b.log))
+		b.addChain(NewChainFromChainInfo(ci, b.db, b.cfg, b.log))
 		return nil
 	}
 
@@ -239,8 +254,7 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 	}
 
 	// construct a new chain
-	chain := NewChain(ci.ID, b.db, b.cfg, b.log)
-	chain.info = ci
+	chain := NewChainFromChainInfo(ci, b.db, b.cfg, b.log)
 
 	// Load the chain's parent chain and block
 	b.chainLock.Lock()
@@ -447,12 +461,12 @@ func (b *Blockchain) addChain(chain *Chain) {
 // newChain creates a new chain which may represent a fork.
 //
 // 'initialBlock' i block that will be added to this chain.
-// It can be the genesis block or forked block.
+// It can be the genesis block or branch block.
 //
 // 'parentBlock' is the block that is the parent of the
 // initialBlock. The parentBlock will be a block in another
-// chain if this chain is being created win response
-// to a fork.
+// chain if this chain is being created in response
+// to a new branch.
 //
 // While parentChain is the chain on which the parent block
 // belongs to.
@@ -474,10 +488,8 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock 
 		return nil, fmt.Errorf("parent chain cannot be nil")
 	}
 
-	// Create a new chain. Construct and assign a
-	// deterministic id to it. This is the blake2b
-	// 256 hash of the initial block hash.
-	chainID := util.ToHex(util.Blake2b256(append([]byte{}, initialBlock.GetHash().Bytes()...)))
+	// Create a new chain.
+	chainID := makeChainID(initialBlock)
 	chain := NewChain(util.String(chainID), b.db, b.cfg, b.log)
 
 	// Set the parent block and parent chain on the
@@ -485,7 +497,9 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock 
 	chain.parentBlock = parentBlock
 
 	// store a record of this chain in the store
-	b.saveChain(chain, parentChain.GetID(), parentBlock.GetNumber(), &common.TxOp{Tx: tx, CanFinish: false})
+	b.saveChain(chain, parentChain.GetID(),
+		parentBlock.GetNumber(),
+		&common.TxOp{Tx: tx, CanFinish: false})
 
 	return chain, nil
 }

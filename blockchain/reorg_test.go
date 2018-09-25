@@ -68,7 +68,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
 				},
 				Creator:                 sender,
-				Nonce:                   core.EncodeNonce(1),
+				Nonce:                   util.EncodeNonce(1),
 				Difficulty:              new(big.Int).SetInt64(1),
 				OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 			})
@@ -90,7 +90,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(100),
 					})
@@ -119,7 +119,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730726),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(5),
 					})
@@ -152,7 +152,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 					})
@@ -186,7 +186,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 					})
@@ -224,7 +224,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 
@@ -234,7 +234,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(genesisB2)
@@ -253,7 +253,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 2, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(genesisB3)
@@ -266,7 +266,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(genesisB4)
@@ -284,26 +284,26 @@ var _ = Describe("ReOrg", func() {
 			Expect(genesisChain.GetParent()).To(BeNil())
 		})
 
-		It("should return error if side chain is empty", func() {
-			sidechain := NewChain("empty_chain", db, cfg, log)
-			_, err := bc.reOrg(sidechain)
+		It("should return error if branch chain is empty", func() {
+			branch := NewChain("empty_chain", db, cfg, log)
+			_, err := bc.reOrg(branch)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("failed to get side chain tip: block not found"))
+			Expect(err.Error()).To(Equal("failed to get branch chain tip: block not found"))
 		})
 
 		It("should return error if best chain is empty", func() {
-			sidechain := NewChain("empty_chain", db, cfg, log)
-			bc.bestChain = sidechain
-			_, err := bc.reOrg(sidechain)
+			branch := NewChain("empty_chain", db, cfg, log)
+			bc.bestChain = branch
+			_, err := bc.reOrg(branch)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to get best chain tip: block not found"))
 		})
 
-		It("should return error if side chain does not have a parent block set", func() {
+		It("should return error if branch chain does not have a parent block set", func() {
 			forkedChain.parentBlock = nil
 			_, err := bc.reOrg(bc.chains[forkedChain.GetID()])
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("parent block not set on sidechain"))
+			Expect(err.Error()).To(Equal("parent block not set on branch"))
 		})
 
 		It("should be successful; return nil", func() {
@@ -344,7 +344,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 
@@ -355,7 +355,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 
@@ -375,7 +375,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 0, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(forkChainB3)
@@ -388,7 +388,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(forkedChainB4)
@@ -430,37 +430,37 @@ var _ = Describe("ReOrg", func() {
 
 	Describe(".recordReOrg", func() {
 
-		var sidechain *Chain
+		var branch *Chain
 
 		BeforeEach(func() {
-			sidechain = NewChain("s1", db, cfg, log)
-			err := sidechain.append(genesisBlock)
-			sidechain.parentBlock = genesisBlock
+			branch = NewChain("s1", db, cfg, log)
+			err := branch.append(genesisBlock)
+			branch.parentBlock = genesisBlock
 			Expect(err).To(BeNil())
 		})
 
 		It("should successfully store re-org info", func() {
 			now := time.Now()
-			err := bc.recordReOrg(now.UnixNano(), sidechain)
+			err := bc.recordReOrg(now.UnixNano(), branch)
 			Expect(err).To(BeNil())
 		})
 	})
 
 	Describe(".getReOrgs", func() {
-		var sidechain *Chain
+		var branch *Chain
 
 		BeforeEach(func() {
-			sidechain = NewChain("s1", db, cfg, log)
-			err := sidechain.append(genesisBlock)
-			sidechain.parentBlock = genesisBlock
+			branch = NewChain("s1", db, cfg, log)
+			err := branch.append(genesisBlock)
+			branch.parentBlock = genesisBlock
 			Expect(err).To(BeNil())
 		})
 
 		It("should get two re-orgs sorted by timestamp in decending order", func() {
-			err := bc.recordReOrg(time.Now().UnixNano(), sidechain)
+			err := bc.recordReOrg(time.Now().UnixNano(), branch)
 			Expect(err).To(BeNil())
 
-			bc.recordReOrg(time.Now().UnixNano(), sidechain)
+			bc.recordReOrg(time.Now().UnixNano(), branch)
 			Expect(err).To(BeNil())
 
 			reOrgs := bc.getReOrgs()

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
 )
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
@@ -35,7 +36,7 @@ func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, er
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if b.config.PowMode == ModeTest {
 		header := block.GetHeader()
-		header.SetNonce(core.EncodeNonce(0))
+		header.SetNonce(util.EncodeNonce(0))
 		block.SetHeader(header)
 
 		// delay for the specified time
@@ -136,7 +137,7 @@ search:
 
 				// Correct nonce found, create a new header with it
 				header = header.Copy()
-				header.SetNonce(core.EncodeNonce(nonce))
+				header.SetNonce(util.EncodeNonce(nonce))
 
 				// Seal and return a block (if still needed)
 				select {

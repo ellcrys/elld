@@ -133,7 +133,7 @@ var _ = Describe("Block", func() {
 						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
-					Nonce:      core.EncodeNonce(2),
+					Nonce:      util.EncodeNonce(2),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
@@ -158,7 +158,7 @@ var _ = Describe("Block", func() {
 					objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			err = genesisChain.append(block)
@@ -193,7 +193,7 @@ var _ = Describe("Block", func() {
 						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
-					Nonce:      core.EncodeNonce(2),
+					Nonce:      util.EncodeNonce(2),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
@@ -218,7 +218,7 @@ var _ = Describe("Block", func() {
 					objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 		})
@@ -279,7 +279,7 @@ var _ = Describe("Block", func() {
 			blk, err := bc.Generate(&core.GenerateBlockParams{
 				Transactions: txs,
 				Creator:      sender,
-				Nonce:        core.EncodeNonce(1),
+				Nonce:        util.EncodeNonce(1),
 				Difficulty:   new(big.Int).SetInt64(131072),
 			})
 			Expect(err).To(BeNil())
@@ -305,7 +305,7 @@ var _ = Describe("Block", func() {
 			})
 
 			It("should successfully create a new and valid block with transactions from the transaction pool", func() {
-				blk, err := bc.Generate(&core.GenerateBlockParams{Creator: sender, Nonce: core.EncodeNonce(1), Difficulty: new(big.Int).SetInt64(131072)})
+				blk, err := bc.Generate(&core.GenerateBlockParams{Creator: sender, Nonce: util.EncodeNonce(1), Difficulty: new(big.Int).SetInt64(131072)})
 				Expect(err).To(BeNil())
 				Expect(blk).ToNot(BeNil())
 				Expect(blk.GetHeader().GetStateRoot()).ToNot(BeEmpty())
@@ -322,7 +322,7 @@ var _ = Describe("Block", func() {
 				blk, err := bc.Generate(&core.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
+					Nonce:        util.EncodeNonce(1),
 					Difficulty:   new(big.Int).SetInt64(131072),
 				}, &common.ChainerOp{Chain: genesisChain})
 				Expect(err).To(BeNil())
@@ -343,7 +343,7 @@ var _ = Describe("Block", func() {
 				blk, err := bc.Generate(&core.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
+					Nonce:        util.EncodeNonce(1),
 					Difficulty:   new(big.Int).SetInt64(131072),
 				})
 				Expect(err).ToNot(BeNil())
@@ -365,7 +365,7 @@ var _ = Describe("Block", func() {
 				blk, err := bc.Generate(&core.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
+					Nonce:        util.EncodeNonce(1),
 					Difficulty:   new(big.Int).SetInt64(131072),
 				}, &common.ChainerOp{Chain: targetChain})
 				Expect(err).ToNot(BeNil())
@@ -396,7 +396,7 @@ var _ = Describe("Block", func() {
 				blk, err := bc.Generate(&core.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
+					Nonce:        util.EncodeNonce(1),
 					Difficulty:   new(big.Int).SetInt64(131072),
 				}, &common.ChainerOp{Chain: targetChain})
 				Expect(err).To(BeNil())
@@ -428,7 +428,7 @@ var _ = Describe("Block", func() {
 				blk, err := bc.Generate(&core.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
+					Nonce:        util.EncodeNonce(1),
 					Difficulty:   new(big.Int).SetInt64(131072),
 				}, &common.ChainerOp{Chain: targetChain})
 				Expect(err).To(BeNil())
@@ -444,7 +444,7 @@ var _ = Describe("Block", func() {
 				blk, err := bc.Generate(&core.GenerateBlockParams{
 					Transactions: txs,
 					Creator:      sender,
-					Nonce:        core.EncodeNonce(1),
+					Nonce:        util.EncodeNonce(1),
 					Difficulty:   new(big.Int).SetInt64(131072),
 					AddFeeAlloc:  true,
 				})

@@ -59,7 +59,7 @@ func main() {
 
 	for i := 1; i < maxTx+1; i++ {
 		recipient := crypto.NewKeyFromIntSeed(i)
-		allocTx := objects.NewTx(objects.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().UnixNano())
+		allocTx := objects.NewTx(objects.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().Unix())
 		txs = append(txs, allocTx)
 		addrsPrivateKey[recipient.Addr()] = recipient.PrivKey().Base58()
 	}
@@ -67,7 +67,7 @@ func main() {
 	params := &core.GenerateBlockParams{
 		Transactions:            txs,
 		Creator:                 creator,
-		Nonce:                   core.EncodeNonce(1),
+		Nonce:                   util.EncodeNonce(1),
 		Difficulty:              new(big.Int).SetInt64(difficulty),
 		OverrideTotalDifficulty: new(big.Int).SetInt64(difficulty),
 		OverrideTimestamp:       time.Now().Unix(),
