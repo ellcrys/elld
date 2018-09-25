@@ -20,7 +20,8 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 )
 
-// ValidationContext is used to represent a validation behaviour
+// ValidationContext is used to
+// represent a validation behaviour
 type ValidationContext int
 
 const (
@@ -40,6 +41,31 @@ const (
 	// the transaction pool.
 	ContextTxPool
 )
+
+// VContexts manages validation contexts
+type VContexts struct {
+	contexts []ValidationContext
+}
+
+// Has checks whether a context exists
+func (c *VContexts) has(ctx ValidationContext) bool {
+	for _, c := range c.contexts {
+		if c == ctx {
+			return true
+		}
+	}
+	return false
+}
+
+// clearContexts clears removes all validation contexts
+func (c *VContexts) clearContexts() {
+	c.contexts = []ValidationContext{}
+}
+
+// addContext adds a validation context
+func (c *VContexts) addContext(contexts ...ValidationContext) {
+	c.contexts = append(c.contexts, contexts...)
+}
 
 func fieldError(field, err string) error {
 	var fieldArg = "field:%s, "
@@ -61,6 +87,7 @@ func fieldErrorWithIndex(index int, field, err string) error {
 // syntactic, contextual and state correctness of a block
 // in relation to various parts of the system.
 type BlockValidator struct {
+	VContexts
 
 	// block is the block to be validated
 	block core.Block
@@ -74,9 +101,6 @@ type BlockValidator struct {
 
 	// blakimoto is an instance of PoW implementation
 	blakimoto *blakimoto.Blakimoto
-
-	// ctx is the current validation context
-	ctx ValidationContext
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
@@ -92,7 +116,7 @@ func NewBlockValidator(block core.Block, txPool core.TxPool,
 
 // setContext sets the validation context
 func (v *BlockValidator) setContext(ctx ValidationContext) {
-	v.ctx = ctx
+	v.contexts = append(v.contexts, ctx)
 }
 
 // validateHeader checks that an header fields and
@@ -259,7 +283,6 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 	// Compute the expected allocations we
 	// expect the block to include.
 	// 1. Accumulated fee addressed to the block creator.
-
 	minerPubKey, _ := crypto.PubKeyFromBase58(v.block.GetHeader().GetCreatorPubKey().String())
 	expectedAllocs = append(expectedAllocs, []interface{}{
 		util.String(minerPubKey.Addr()),
@@ -283,17 +306,21 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 // signature to be set.
 func (v *BlockValidator) checkSignature() (errs []error) {
 
-	pubKey, err := crypto.PubKeyFromBase58(v.block.GetHeader().GetCreatorPubKey().String())
+	pubKey, err := crypto.PubKeyFromBase58(v.block.GetHeader().
+		GetCreatorPubKey().String())
 	if err != nil {
-		errs = append(errs, fieldError("header.creatorPubKey", err.Error()))
+		errs = append(errs, fieldError("header.creatorPubKey",
+			err.Error()))
 		return
 	}
 
-	valid, err := pubKey.Verify(v.block.Bytes(), v.block.GetSignature())
+	valid, err := pubKey.Verify(v.block.Bytes(),
+		v.block.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldError("sig", err.Error()))
 	} else if !valid {
-		errs = append(errs, fieldError("sig", "signature is not valid"))
+		errs = append(errs, fieldError("sig",
+			"signature is not valid"))
 	}
 
 	return
@@ -303,9 +330,10 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 // block in relation to the block's destined chain.
 func (v *BlockValidator) CheckTransactions(opts ...core.CallOp) (errs []error) {
 	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain)
-	txValidator.SetContext(v.ctx)
+	txValidator.addContext(v.contexts...)
 	for _, err := range txValidator.Validate(opts...) {
-		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))
+		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(),
+			"index:", "tx:", -1)))
 	}
 	return
 }

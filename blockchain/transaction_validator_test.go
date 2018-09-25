@@ -125,7 +125,7 @@ var _ = Describe("TransactionValidator", func() {
 
 					txp := txpool.New(1)
 					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-					validator.SetContext(ContextBlock)
+					validator.addContext(ContextBlock)
 					errs := validator.Validate()
 					Expect(errs).To(HaveLen(0))
 				})
@@ -150,7 +150,7 @@ var _ = Describe("TransactionValidator", func() {
 
 					txp := txpool.New(1)
 					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-					validator.SetContext(ContextBranch)
+					validator.addContext(ContextBranch)
 					errs := validator.Validate()
 					Expect(errs).To(HaveLen(0))
 				})
@@ -388,7 +388,7 @@ var _ = Describe("TransactionValidator", func() {
 			It("should return err='index:0, error:invalid nonce: has 2, wants 1'", func() {
 				txp := txpool.New(1)
 				validator := NewTxValidator(nil, txp, bc)
-				validator.SetContext(ContextBlock)
+				validator.addContext(ContextBlock)
 				errs := validator.consistencyCheck(tx2)
 				Expect(errs).ToNot(BeEmpty())
 				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:invalid nonce: has 2, wants 1")))

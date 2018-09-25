@@ -212,6 +212,33 @@ var _ = Describe("BlockValidator", func() {
 		})
 	})
 
+	Describe(".CheckTransactions", func() {
+		Context("when a sender X's current nonce is 1", func() {
+			Context("and X has two transactions with nonce 2 and 3", func() {
+				var block core.Block
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
+							objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             core.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131136),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+					})
+				})
+
+				It("should return error no error", func() {
+					validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
+					validator.setContext(ContextBlock)
+					errs := validator.CheckTransactions()
+					Expect(errs).To(HaveLen(0))
+				})
+			})
+		})
+	})
+
 	Describe(".checkPow", func() {
 		var block core.Block
 
@@ -285,7 +312,7 @@ var _ = Describe("BlockValidator", func() {
 			})
 		})
 
-		When("block has not fee allocation", func() {
+		When("block has no fee allocation", func() {
 			var block core.Block
 			BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{

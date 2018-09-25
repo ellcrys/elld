@@ -482,6 +482,8 @@ var _ = Describe("Blockchain.Up", func() {
 
 			Context("pool has 2 transactions and account nonce = 0", func() {
 				Context("tx(1) nonce = 1 and tx(2) nonce = 2", func() {
+					var tp core.TxPool
+
 					BeforeEach(func() {
 						tp = bc.txPool
 						tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
@@ -495,6 +497,7 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(tp.Container().Size()).To(Equal(int64(2)))
 						Expect(err).To(BeNil())
 
+						Expect(tp.Size()).To(Equal(int64(2)))
 						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
 						txs, err = bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
@@ -505,7 +508,7 @@ var _ = Describe("Blockchain.Up", func() {
 					})
 
 					Specify("container should contain 0 transactions", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(0)))
+						Expect(tp.Size()).To(Equal(int64(0)))
 					})
 				})
 			})
@@ -631,7 +634,7 @@ var _ = Describe("Blockchain.Up", func() {
 						txs, err := bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
 						Expect(txs).To(HaveLen(0))
-						Expect(tp.Container().Size()).To(Equal(int64(3)))
+						Expect(tp.Size()).To(Equal(int64(3)))
 					})
 				})
 			})

@@ -596,6 +596,13 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// size limit
 		if totalSelectedTxsSize+tx.SizeNoFee() > maxSize {
 			unSelected = append(unSelected, tx)
+
+			// And also, if the amount of space left for new
+			// transactions is less that the minimum
+			// transaction size, then we exit immediately
+			if maxSize-totalSelectedTxsSize < 230 {
+				break
+			}
 			continue
 		}
 
@@ -617,7 +624,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 			if err != nil {
 				return nil, err
 			}
-			if (nonce + 1) != tx.GetNonce() {
+			if (nonces[tx.GetFrom()] + 1) != tx.GetNonce() {
 				unSelected = append(unSelected, tx)
 				continue
 			}
@@ -629,14 +636,6 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// total selected transactions size
 		selectedTxs = append(selectedTxs, tx)
 		totalSelectedTxsSize += tx.SizeNoFee()
-
-		// If the amount of space left for new
-		// transactions is less that the minimum
-		// transaction size, then we exit immediately
-		if maxSize-totalSelectedTxsSize < 230 {
-			unSelected = append(unSelected, tx)
-			break
-		}
 	}
 
 	// put the unselected transactions
