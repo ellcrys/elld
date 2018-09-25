@@ -284,26 +284,26 @@ var _ = Describe("ReOrg", func() {
 			Expect(genesisChain.GetParent()).To(BeNil())
 		})
 
-		It("should return error if side chain is empty", func() {
-			sidechain := NewChain("empty_chain", db, cfg, log)
-			_, err := bc.reOrg(sidechain)
+		It("should return error if branch chain is empty", func() {
+			branch := NewChain("empty_chain", db, cfg, log)
+			_, err := bc.reOrg(branch)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("failed to get side chain tip: block not found"))
+			Expect(err.Error()).To(Equal("failed to get branch chain tip: block not found"))
 		})
 
 		It("should return error if best chain is empty", func() {
-			sidechain := NewChain("empty_chain", db, cfg, log)
-			bc.bestChain = sidechain
-			_, err := bc.reOrg(sidechain)
+			branch := NewChain("empty_chain", db, cfg, log)
+			bc.bestChain = branch
+			_, err := bc.reOrg(branch)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to get best chain tip: block not found"))
 		})
 
-		It("should return error if side chain does not have a parent block set", func() {
+		It("should return error if branch chain does not have a parent block set", func() {
 			forkedChain.parentBlock = nil
 			_, err := bc.reOrg(bc.chains[forkedChain.GetID()])
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("parent block not set on sidechain"))
+			Expect(err.Error()).To(Equal("parent block not set on branch"))
 		})
 
 		It("should be successful; return nil", func() {
@@ -430,37 +430,37 @@ var _ = Describe("ReOrg", func() {
 
 	Describe(".recordReOrg", func() {
 
-		var sidechain *Chain
+		var branch *Chain
 
 		BeforeEach(func() {
-			sidechain = NewChain("s1", db, cfg, log)
-			err := sidechain.append(genesisBlock)
-			sidechain.parentBlock = genesisBlock
+			branch = NewChain("s1", db, cfg, log)
+			err := branch.append(genesisBlock)
+			branch.parentBlock = genesisBlock
 			Expect(err).To(BeNil())
 		})
 
 		It("should successfully store re-org info", func() {
 			now := time.Now()
-			err := bc.recordReOrg(now.UnixNano(), sidechain)
+			err := bc.recordReOrg(now.UnixNano(), branch)
 			Expect(err).To(BeNil())
 		})
 	})
 
 	Describe(".getReOrgs", func() {
-		var sidechain *Chain
+		var branch *Chain
 
 		BeforeEach(func() {
-			sidechain = NewChain("s1", db, cfg, log)
-			err := sidechain.append(genesisBlock)
-			sidechain.parentBlock = genesisBlock
+			branch = NewChain("s1", db, cfg, log)
+			err := branch.append(genesisBlock)
+			branch.parentBlock = genesisBlock
 			Expect(err).To(BeNil())
 		})
 
 		It("should get two re-orgs sorted by timestamp in decending order", func() {
-			err := bc.recordReOrg(time.Now().UnixNano(), sidechain)
+			err := bc.recordReOrg(time.Now().UnixNano(), branch)
 			Expect(err).To(BeNil())
 
-			bc.recordReOrg(time.Now().UnixNano(), sidechain)
+			bc.recordReOrg(time.Now().UnixNano(), branch)
 			Expect(err).To(BeNil())
 
 			reOrgs := bc.getReOrgs()
