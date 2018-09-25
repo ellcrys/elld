@@ -31,7 +31,7 @@ type ChainStorer interface {
 	GetHeaderByHash(hash util.Hash, opts ...CallOp) (Header, error)
 
 	// GetTransaction gets a transaction (by hash) belonging to the chain
-	GetTransaction(hash util.Hash, opts ...CallOp) Transaction
+	GetTransaction(hash util.Hash, opts ...CallOp) (Transaction, error)
 
 	// CreateAccount creates an account on a target block
 	CreateAccount(targetBlockNum uint64, account Account, opts ...CallOp) error

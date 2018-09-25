@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/gobuffalo/packr"
@@ -15,7 +17,6 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
@@ -69,7 +70,7 @@ type Blockchain struct {
 	rejectedBlocks *cache.Cache
 
 	// txPool contains all transactions awaiting inclusion in a block
-	txPool types.TxPool
+	txPool core.TxPool
 
 	// eventEmitter allows the manager to listen to specific
 	// events or broadcast events about its state
@@ -80,7 +81,7 @@ type Blockchain struct {
 }
 
 // New creates a Blockchain instance.
-func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
+func New(txPool core.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.txPool = txPool
 	bc.log = log
@@ -155,10 +156,9 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("genesis block error: expected block number 1")
 		}
 
-		// The ID of the genesis chain is the hash of the genesis block hash.
+		// Create and save the genesis chain
 		gChainID := util.ToHex(util.Blake2b256(gBlock.GetHash().Bytes()))
 		gChain := NewChain(util.String(gChainID), b.db, b.cfg, b.log)
-		// Save the chain the chain (which also adds it to the chain cache)
 		if err := b.saveChain(gChain, "", 0); err != nil {
 			return fmt.Errorf("failed to save genesis chain: %s", err)
 		}
@@ -180,7 +180,7 @@ func (b *Blockchain) Up() error {
 	}
 
 	if numChains := len(chains); numChains > 0 {
-		b.log.Info("Chain load completed", "NumChains", numChains)
+		b.log.Info("All known chains have been loaded", "NumChains", numChains)
 	}
 
 	// Using the best chain rule, we mush select the best chain
@@ -202,6 +202,11 @@ func (b *Blockchain) getBlockValidator(block core.Block) *BlockValidator {
 	v := NewBlockValidator(block, b.txPool, b, b.cfg, b.log)
 	v.setContext(ContextBlock)
 	return v
+}
+
+// GetTxPool gets the transaction pool
+func (b *Blockchain) GetTxPool() core.TxPool {
+	return b.txPool
 }
 
 // OrphanBlocks returns a cache reader for orphan blocks
@@ -233,19 +238,21 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 		return fmt.Errorf("chain load failed: chain parent chain ID and block are required")
 	}
 
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
-
 	// construct a new chain
 	chain := NewChain(ci.ID, b.db, b.cfg, b.log)
 	chain.info = ci
 
 	// Load the chain's parent chain and block
-	// and cache it in the chain instance
+	b.chainLock.Lock()
 	_, err := chain.loadParent()
 	if err != nil {
+		b.chainLock.Unlock()
 		return fmt.Errorf("chain load failed: %s", err)
 	}
+	b.chainLock.Unlock()
+
+	// add chain to cache
+	b.addChain(chain)
 
 	return nil
 }
@@ -363,7 +370,7 @@ func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error)
 
 	// At this point, we did not find the chain in
 	// the cache. We search the database instead.
-	var chainKey = common.MakeChainKey(chainID.Bytes())
+	var chainKey = common.MakeKeyChain(chainID.Bytes())
 	result := b.db.GetByPrefix(chainKey)
 	if len(result) == 0 {
 		return nil, core.ErrChainNotFound
@@ -388,6 +395,9 @@ func (b *Blockchain) IsMainChain(cr core.ChainReader) bool {
 func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBlockNumber uint64, opts ...core.CallOp) error {
 
 	var txOp = common.GetTxOp(b.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
 
 	chain.info = &core.ChainInfo{
 		ID:                chain.GetID(),
@@ -406,7 +416,7 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBl
 
 // getChains gets all known chains
 func (b *Blockchain) getChains() (chainsInfo []*core.ChainInfo, err error) {
-	chainsKey := common.MakeChainsQueryKey()
+	chainsKey := common.MakeQueryKeyChains()
 	result := b.db.GetByPrefix(chainsKey)
 	for _, r := range result {
 		var ci core.ChainInfo
@@ -489,9 +499,9 @@ func (b *Blockchain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 		return nil, core.ErrBestChainUnknown
 	}
 
-	tx := b.bestChain.GetTransaction(hash, opts...)
-	if tx == nil {
-		return nil, core.ErrTxNotFound
+	tx, err := b.bestChain.GetTransaction(hash, opts...)
+	if err != nil {
+		return nil, err
 	}
 
 	return tx, nil
@@ -521,5 +531,119 @@ func (b *Blockchain) GetChainsReader() (readers []core.ChainReader) {
 	for _, c := range b.chains {
 		readers = append(readers, NewChainReader(c))
 	}
+	return
+}
+
+// GetLocators fetches a list of blockhashes used to
+// compare and sync the local chain with a remote chain.
+// We collect the most recent 10 block hashes and
+// then exponentially fetch more hashes until there are
+// no more blocks.
+func (b *Blockchain) GetLocators() ([]util.Hash, error) {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	if b.bestChain == nil {
+		return nil, core.ErrBestChainUnknown
+	}
+
+	curBlockHeader, err := b.bestChain.Current()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current block header: %s", err)
+	}
+
+	locators := []util.Hash{}
+	topHeight := curBlockHeader.GetNumber()
+
+	// first, we get the hashes of the last 10 blocks
+	// using step of 1 backwards. After the last 10 blocks
+	// are fetched, the step
+	step := uint64(1)
+	for i := topHeight; i > 0; i -= step {
+		block, err := b.bestChain.GetBlock(i)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return nil, err
+			}
+			break
+		}
+		locators = append(locators, block.GetHash())
+		if len(locators) >= 10 {
+			step *= 2
+		}
+	}
+
+	return locators, nil
+}
+
+// SelectTransactions collects transactions from the head
+// of the pool up to the specified maxSize.
+func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Transaction, err error) {
+	b.chainLock.RLock()
+	b.chainLock.RUnlock()
+
+	totalSelectedTxsSize := int64(0)
+	unSelected := []core.Transaction{}
+	nonces := make(map[util.String]uint64)
+	for b.txPool.Size() > 0 {
+
+		// Get a transaction from the top of
+		// the pool
+		tx := b.txPool.Container().First()
+
+		// Check whether the addition of this
+		// transaction will push us over the
+		// size limit
+		if totalSelectedTxsSize+tx.SizeNoFee() > maxSize {
+			unSelected = append(unSelected, tx)
+
+			// And also, if the amount of space left for new
+			// transactions is less that the minimum
+			// transaction size, then we exit immediately
+			if maxSize-totalSelectedTxsSize < 230 {
+				break
+			}
+			continue
+		}
+
+		// Check the current nonce value from
+		// the cache and ensure the transaction's
+		// nonce matches the expected/next nonce value.
+		if nonce, ok := nonces[tx.GetFrom()]; ok {
+			if (nonce + 1) != tx.GetNonce() {
+				unSelected = append(unSelected, tx)
+				continue
+			}
+			nonces[tx.GetFrom()] = tx.GetNonce()
+		} else {
+			// At this point, the nonce was not cached,
+			// so we need to fetch it from the database,
+			// add to the cache and ensure the
+			// transaction's nonce matches the expected/next value
+			nonces[tx.GetFrom()], err = b.GetAccountNonce(tx.GetFrom())
+			if err != nil {
+				return nil, err
+			}
+			if (nonces[tx.GetFrom()] + 1) != tx.GetNonce() {
+				unSelected = append(unSelected, tx)
+				continue
+			}
+			nonces[tx.GetFrom()] = tx.GetNonce()
+		}
+
+		// Add the transaction to the
+		// selected tx slice and update the
+		// total selected transactions size
+		selectedTxs = append(selectedTxs, tx)
+		totalSelectedTxsSize += tx.SizeNoFee()
+	}
+
+	// put the unselected transactions
+	// back to the pool. But this time,
+	// we do it silently (no events, etc)
+	for _, tx := range unSelected {
+		b.txPool.PutSilently(tx)
+	}
+
 	return
 }

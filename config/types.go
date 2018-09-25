@@ -43,6 +43,10 @@ type PeerConfig struct {
 
 	// ConnEstInterval is the time interval when the node
 	ConnEstInterval int64 `json:"conEstInt"`
+
+	// MessageTimeout is the number of seconds to attempt to
+	// connect to or read from a peer.
+	MessageTimeout int64
 }
 
 // RPCConfig defines configuration for the RPC component
@@ -154,6 +158,7 @@ func init() {
 		MaxConnections:   100,
 		ConnEstInterval:  10,
 		Mode:             ModeProd,
+		MessageTimeout:   60,
 	}
 
 	defaultConfig.Consensus = &ConsensusConfig{

@@ -64,16 +64,16 @@ func (c *Cache) Add(key, val interface{}) {
 // and used as the key.
 func (c *Cache) AddMulti(exp time.Time, values ...interface{}) {
 	c.removeExpired()
-	valueHash := util.BytesToHash(util.ObjectToBytes(values))
-	c.AddWithExp(valueHash.HexStr(), values, exp)
+	valueHex := util.ToHex(util.ObjectToBytes(values))
+	c.AddWithExp(valueHex, values, exp)
 }
 
 // HasMulti checks whether a multiple
 // valued serialized key exist in the cache..
 func (c *Cache) HasMulti(values ...interface{}) bool {
 	c.removeExpired()
-	valueHash := util.BytesToHash(util.ObjectToBytes(values))
-	return c.Has(valueHash.HexStr())
+	valueHex := util.ToHex(util.ObjectToBytes(values))
+	return c.Has(valueHex)
 }
 
 func (c *Cache) add(key, val interface{}, expTime time.Time) {

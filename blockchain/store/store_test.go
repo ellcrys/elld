@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Leveldb", func() {
+var _ = Describe("Store", func() {
 
 	var err error
 	var db elldb.DB
@@ -51,18 +51,17 @@ var _ = Describe("Leveldb", func() {
 			&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
-		It("should successfully put transactions", func() {
+		It("should store 2 transaction block pointers", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
-			var tx objects.Transaction
-			r[0].Scan(&tx)
-			Expect(&tx).To(Equal(txs[0]))
+			r := store.db.GetByPrefix(common.MakeQueryKeyTransactions(store.chainID.Bytes()))
+			Expect(r).To(HaveLen(2))
 
-			r = store.db.GetByPrefix(common.MakeTxQueryKey(store.chainID.Bytes(), txs[1].GetHash().Bytes()))
-			r[0].Scan(&tx)
-			Expect(&tx).To(Equal(txs[1]))
+			tx1Value := util.DecodeNumber(r[0].Value)
+			tx2Value := util.DecodeNumber(r[1].Value)
+			Expect(tx1Value).To(Equal(uint64(211)))
+			Expect(tx2Value).To(Equal(uint64(211)))
 		})
 	})
 
@@ -73,16 +72,50 @@ var _ = Describe("Leveldb", func() {
 			&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 		}
 
-		It("should successfully put transactions", func() {
-			err = store.PutTransactions(txs, 211)
-			Expect(err).To(BeNil())
+		Context("when the transaction's value holds an non-existing block number", func() {
+			It("should return err", func() {
+				err = store.PutTransactions(txs, 211)
+				Expect(err).To(BeNil())
 
-			tx := store.GetTransaction(txs[0].GetHash())
-			Expect(tx).ToNot(BeNil())
-			Expect(tx).To(Equal(txs[0]))
-			tx = store.GetTransaction(txs[1].GetHash())
-			Expect(tx).ToNot(BeNil())
-			Expect(tx).To(Equal(txs[1]))
+				_, err := store.GetTransaction(txs[0].GetHash())
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("transaction's block not found"))
+			})
+		})
+
+		Context("when the transaction's value holds an existing block number", func() {
+
+			var block core.Block
+
+			BeforeEach(func() {
+				block = &objects.Block{
+					Header: &objects.Header{Number: 211},
+					Transactions: []*objects.Transaction{
+						{Hash: util.StrToHash("hash1")},
+					},
+				}
+				err := store.PutBlock(block)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return ErrTxNotFound when the transaction is not in the block", func() {
+				var txs = []core.Transaction{
+					&objects.Transaction{Hash: util.StrToHash("hash2")},
+				}
+				err = store.PutTransactions(txs, 211)
+				Expect(err).To(BeNil())
+				_, err := store.GetTransaction(util.StrToHash("hash2"))
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(core.ErrTxNotFound))
+			})
+
+			It("should successfully get transaction when transaction exist in the block", func() {
+				err = store.PutTransactions(block.GetTransactions(), 211)
+				Expect(err).To(BeNil())
+				tx, err := store.GetTransaction(util.StrToHash("hash1"))
+				Expect(err).To(BeNil())
+				Expect(tx).To(Equal(block.GetTransactions()[0]))
+			})
 		})
 	})
 
@@ -95,10 +128,12 @@ var _ = Describe("Leveldb", func() {
 			err = store.PutTransactions(txs, 211)
 			Expect(err).To(BeNil())
 
-			err := store.Delete(common.MakeTxQueryKey(store.chainID.Bytes(), txs[0].GetHash().Bytes()))
+			err := store.Delete(common.MakeQueryKeyTransaction(store.chainID.Bytes(), txs[0].GetHash().Hex()))
 			Expect(err).To(BeNil())
 
-			tx := store.GetTransaction(txs[0].GetHash())
+			tx, err := store.GetTransaction(txs[0].GetHash())
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(core.ErrTxNotFound))
 			Expect(tx).To(BeNil())
 		})
 	})
@@ -109,10 +144,29 @@ var _ = Describe("Leveldb", func() {
 			err = store.CreateAccount(1, acct)
 			Expect(err).To(BeNil())
 
-			r := store.db.GetByPrefix(common.MakeAccountKey(1, store.chainID.Bytes(), []byte("addr")))
+			r := store.db.GetByPrefix(common.MakeKeyAccount(1, store.chainID.Bytes(), []byte("addr")))
 			var found objects.Account
 			r[0].Scan(&found)
 			Expect(&found).To(Equal(acct))
+		})
+
+		Context("with two accounts created on different blocks", func() {
+			var accts []*objects.Account
+			BeforeEach(func() {
+				for i := uint64(1); i <= 2; i++ {
+					var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+					err = store.CreateAccount(i, acct)
+					Expect(err).To(BeNil())
+					accts = append(accts, acct)
+				}
+				Expect(accts).To(HaveLen(2))
+			})
+
+			Specify("when all account is fetched, the account with the highest block number (2) must be last", func() {
+				fetchedAccts := store.db.GetByPrefix(common.MakeQueryKeyAccounts(store.chainID.Bytes()))
+				Expect(fetchedAccts).To(HaveLen(2))
+				Expect(util.DecodeNumber(fetchedAccts[1].Key)).To(Equal(uint64(2)))
+			})
 		})
 	})
 
@@ -130,18 +184,61 @@ var _ = Describe("Leveldb", func() {
 		})
 
 		Context("with multiple account of same address", func() {
-			It("should contain account with the highest block number", func() {
-				var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+
+			var acct, acct2 *objects.Account
+
+			BeforeEach(func() {
+				acct = &objects.Account{Type: objects.AccountTypeBalance, Balance: "0.1", Address: "addr"}
 				err = store.CreateAccount(1, acct)
 				Expect(err).To(BeNil())
 
-				var acct2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr2"}
+				acct2 = &objects.Account{Type: objects.AccountTypeBalance, Balance: "1.2", Address: "addr"}
 				err = store.CreateAccount(2, acct2)
 				Expect(err).To(BeNil())
 
-				found, err := store.GetAccount((util.String(acct2.Address)))
+				addedAccts := store.db.GetByPrefix(common.MakeQueryKeyAccounts(store.chainID.Bytes()))
+				Expect(addedAccts).To(HaveLen(2))
+			})
+
+			It("should return account with the highest block number", func() {
+				latestAccount, err := store.GetAccount(acct2.Address)
 				Expect(err).To(BeNil())
-				Expect(found).To(Equal(acct2))
+				Expect(latestAccount).To(Equal(acct2))
+			})
+
+			Context("when latest account is at block 2 and block range option is provided", func() {
+				Context("with minimum block = 3", func() {
+					It("should return ErrAccountNotFound", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Min: 3})
+						Expect(err).ToNot(BeNil())
+						Expect(err).To(Equal(core.ErrAccountNotFound))
+						Expect(latestAccount).To(BeNil())
+					})
+				})
+
+				Context("with minimum block = 2", func() {
+					It("should return account with the highest block number", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Min: 2})
+						Expect(err).To(BeNil())
+						Expect(latestAccount).To(Equal(acct2))
+					})
+				})
+
+				Context("with maximum block = 2", func() {
+					It("should return the account with the highest block number less than or equal to the maximum block range", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Max: 2})
+						Expect(err).To(BeNil())
+						Expect(latestAccount).To(Equal(acct2))
+					})
+				})
+
+				Context("with maximum block = 1", func() {
+					It("should return the account with the highest block number less than or equal to the maximum block range", func() {
+						latestAccount, err := store.GetAccount(acct2.Address, &common.BlockQueryRange{Max: 1})
+						Expect(err).To(BeNil())
+						Expect(latestAccount).To(Equal(acct))
+					})
+				})
 			})
 		})
 	})
@@ -158,22 +255,36 @@ var _ = Describe("Leveldb", func() {
 			}
 		})
 
-		It("should put block without error", func() {
-			err = store.PutBlock(block)
-			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
-			Expect(result).To(HaveLen(1))
+		Context("on successful save", func() {
 
-			var storedBlock objects.Block
-			err = result[0].Scan(&storedBlock)
-			Expect(err).To(BeNil())
-			Expect(&storedBlock).To(Equal(block))
+			var result []*elldb.KVObject
+
+			BeforeEach(func() {
+				err := store.PutBlock(block)
+				Expect(err).To(BeNil())
+				result = store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
+				Expect(result).To(HaveLen(1))
+			})
+
+			Specify("the return block is same as the added saved block", func() {
+				var storedBlock objects.Block
+				err = result[0].Scan(&storedBlock)
+				Expect(err).To(BeNil())
+				Expect(&storedBlock).To(Equal(block))
+			})
+
+			Specify("a block number pointer should be added", func() {
+				pointerKey := common.MakeKeyBlockHash(store.chainID.Bytes(), block.GetHash().Hex())
+				result = store.db.GetByPrefix(pointerKey)
+				Expect(result).To(HaveLen(1))
+				Expect(util.DecodeNumber(result[0].Value)).To(Equal(block.GetNumber()))
+			})
 		})
 
 		It("should return nil and not add block when another block with same number exists", func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			var storedBlock objects.Block
@@ -188,7 +299,7 @@ var _ = Describe("Leveldb", func() {
 
 			err = store.PutBlock(block2)
 			Expect(err).To(BeNil())
-			result = store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result = store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 
 			err = result[0].Scan(&storedBlock)
@@ -235,7 +346,7 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -268,7 +379,7 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -323,7 +434,7 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 
@@ -344,7 +455,7 @@ var _ = Describe("Leveldb", func() {
 		BeforeEach(func() {
 			err = store.PutBlock(block)
 			Expect(err).To(BeNil())
-			result := store.db.GetByPrefix(common.MakeBlocksQueryKey(chainID.Bytes()))
+			result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 			Expect(result).To(HaveLen(1))
 		})
 

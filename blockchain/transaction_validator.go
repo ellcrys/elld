@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-ozzo/ozzo-validation"
 
-	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 
@@ -28,12 +27,13 @@ var KnownTransactionTypes = []int64{
 // syntactic, contextual and state correctness of transactions
 // in relation to various parts of the system.
 type TxsValidator struct {
+	VContexts
 
 	// txs are the transactions to be validated
 	txs []core.Transaction
 
 	// txpool refers to the transaction pool
-	txpool types.TxPool
+	txpool core.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
@@ -43,8 +43,8 @@ type TxsValidator struct {
 	// transaction being validated.
 	curIndex int
 
-	// ctx is the current validation context
-	ctx ValidationContext
+	// nonces caches valid nonces
+	nonces map[string]uint64
 }
 
 func appendErr(dest []error, err error) []error {
@@ -55,36 +55,47 @@ func appendErr(dest []error, err error) []error {
 }
 
 // NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []core.Transaction, txPool types.TxPool,
+func NewTxsValidator(txs []core.Transaction, txPool core.TxPool,
 	bchain core.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    txs,
 		txpool: txPool,
 		bchain: bchain,
+		nonces: make(map[string]uint64),
 	}
 }
 
-// NewTxValidator is like NewTxsValidator except it accepts a single transaction
-func NewTxValidator(tx core.Transaction, txPool types.TxPool,
+// NewTxValidator is like NewTxsValidator
+// except it accepts a single transaction
+func NewTxValidator(tx core.Transaction, txPool core.TxPool,
 	bchain core.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    []core.Transaction{tx},
 		txpool: txPool,
 		bchain: bchain,
+		nonces: make(map[string]uint64),
 	}
 }
 
-// SetContext sets the validation context
-func (v *TxsValidator) SetContext(ctx ValidationContext) {
-	v.ctx = ctx
-}
-
-// Validate execute validation checks on the
-// transactions, returning all the errors encountered. This
+// Validate execute validation checks
+// against each transactions
 func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
 	for i, tx := range v.txs {
 		v.curIndex = i
-		errs = append(errs, v.ValidateTx(tx, opts...)...)
+
+		txErrs := v.ValidateTx(tx, opts...)
+		if len(txErrs) > 0 {
+			errs = append(errs, txErrs...)
+			continue
+		}
+
+		// At this point, the transaction is valid.
+		// We should cache the nonce so subsequent
+		// transactions of the sender retrieve the
+		// latest nonce from cache instead of querying
+		// the account which has not been updated with
+		// the lastest nonce.
+		v.nonces[tx.GetFrom().String()] = tx.GetNonce()
 	}
 	return
 }
@@ -273,24 +284,32 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	if v.txpool.Has(tx) {
+	// If the callers intent is not to validate a block
+	// for inclusion in a chain, then we must
+	// check that the transaction does not have a
+	// duplicate in the pool
+	if !v.has(ContextBlock) && v.txpool.Has(tx) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in the transactions pool"))
 		return
 	}
 
-	// Ensure the transaction does not exist
-	// on the main chain
-	_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
-	if err != nil {
-		if err != core.ErrTxNotFound {
-			errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
+	// If the callers intent is not to append a block
+	// to a branch chain but the main chain, we must
+	// ensure the transaction does not exist on the
+	// main chain.
+	if !v.has(ContextBranch) {
+		_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
+		if err != nil {
+			if err != core.ErrTxNotFound {
+				errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
+				return
+			}
+		} else {
+			errs = append(errs, fieldErrorWithIndex(v.curIndex,
+				"", "transaction already exist in main chain"))
 			return
 		}
-	} else {
-		errs = append(errs, fieldErrorWithIndex(v.curIndex,
-			"", "transaction already exist in main chain"))
-		return
 	}
 
 	// Get the sender account
@@ -314,24 +333,32 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	// Get the nonce of the originator account
-	accountNonce := account.GetNonce()
+	// Get the nonce of the cache, otherwise use
+	// the nonce on the sender account
+	accountNonce, ok := v.nonces[tx.GetFrom().String()]
+	if !ok {
+		accountNonce = account.GetNonce()
+	}
 
-	// For transactions intended to be added into
-	// the transaction pool, their nonce must be greater than
-	// the account's current nonce value by at least 1
-	if v.ctx != ContextBlock && tx.GetNonce()-accountNonce < 1 {
+	// If the caller does not intend to add the
+	// transaction into a block, then the nonce
+	// must be greater than the account's current
+	// nonce by at least 1
+	if !v.has(ContextBlock) && (tx.GetNonce() <= accountNonce) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
-			fmt.Sprintf("invalid nonce: has %d, wants from %d", tx.GetNonce(), accountNonce+1)))
+			fmt.Sprintf("invalid nonce: has %d, wants from %d",
+				tx.GetNonce(), accountNonce+1)))
 		return
 	}
 
-	// For transactions in blocks that will be appended to a
-	// a chain, their nonce must be greater than the account's
-	// current nonce value by a maximum of 1
-	if v.ctx == ContextBlock && tx.GetNonce()-accountNonce != 1 {
+	// If the caller intends to process a block of which
+	// this transaction is part of, then the nonce must
+	// be greater than the account's current nonce by 1
+	if v.has(ContextBlock) && tx.GetNonce() > accountNonce &&
+		tx.GetNonce()-accountNonce != 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
-			fmt.Sprintf("invalid nonce: has %d, wants %d", tx.GetNonce(), accountNonce+1)))
+			fmt.Sprintf("invalid nonce: has %d, wants %d",
+				tx.GetNonce(), accountNonce+1)))
 		return
 	}
 

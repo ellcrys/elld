@@ -3,6 +3,8 @@ package common
 import (
 	"fmt"
 
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -31,14 +33,24 @@ func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
 			}
 		}
 	}
-	tx, err := db.NewTx()
-	if err != nil {
-		panic(fmt.Errorf("failed to create transaction: %s", err))
-	}
-	return &TxOp{
-		Tx:        tx,
+
+	txOp := &TxOp{
 		CanFinish: true,
 	}
+
+	// Create new transaction and wrap
+	// it within a TxOp. Set the TxOp
+	// to finished, if db is closed.
+	tx, err := db.NewTx()
+	if err != nil {
+		if err != leveldb.ErrClosed {
+			panic(fmt.Errorf("failed to create transaction: %s", err))
+		}
+		txOp.finished = true
+	}
+	txOp.Tx = tx
+
+	return txOp
 }
 
 // GetBlockQueryRangeOp is a convenience method to get QueryBlockRange

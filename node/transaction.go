@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
@@ -102,11 +103,11 @@ func (g *Gossip) OnTx(s net.Stream) {
 // RelayTx relays transactions to peers
 func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error {
 
-	txID := tx.ID()
+	txID := util.String(tx.ID()).SS()
 	sent := 0
 	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers", len(remotePeers))
-	for _, peer := range remotePeers {
 
+	for _, peer := range remotePeers {
 		historyKey := MakeTxHistoryKey(tx, peer)
 
 		// check if we have an history of sending or receiving this transaction
@@ -116,7 +117,10 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		}
 
 		// create a stream to the remote peer
-		s, err := g.NewStream(context.Background(), peer, config.TxVersion)
+		ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+		ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+		defer cf()
+		s, err := g.NewStream(ctx, peer, config.TxVersion)
 		if err != nil {
 			g.log.Debug("Tx message failed. failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
 			continue

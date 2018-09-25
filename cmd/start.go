@@ -101,7 +101,7 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 		}
 	}
 
-	if len(password) > 0 && (os.IsPathSeparator(password[0]) || password[:2] == "./") {
+	if len(password) > 1 && (os.IsPathSeparator(password[0]) || (len(password) >= 2 && password[:2] == "./")) {
 		content, err := ioutil.ReadFile(password)
 		if err != nil {
 			if funk.Contains(err.Error(), "no such file") {
@@ -154,10 +154,12 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Set hard coded configurations
 	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
+	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 60)
 	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
 
 	// set to dev mode if -dev is set
+	// and apply dev config values
 	if devMode {
 		cfg.Node.Mode = config.ModeDev
 		devDefaultConfig(cfg)
@@ -248,7 +250,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if mine {
 		go miner.Mine()
 	}
-
 	// Initialize and start the RPCServer
 	// if enabled via the appropriate cli flag.
 	var rpcServer = rpc.NewServer(n.DB(), rpcAddress, cfg, log)
@@ -314,15 +315,17 @@ var startCmd = &cobra.Command{
 
 		n, rpcServer, _, miner := start(cmd, args, false)
 
-		onTerminate = func() {
-
+		setTerminateFunc(func() {
 			if miner != nil {
 				miner.Stop()
 			}
-
-			rpcServer.Stop()
-			n.Stop()
-		}
+			if rpcServer != nil {
+				rpcServer.Stop()
+			}
+			if n != nil {
+				n.Stop()
+			}
+		})
 
 		n.Wait()
 	},

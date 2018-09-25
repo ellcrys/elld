@@ -8,11 +8,11 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	. "github.com/ellcrys/elld/blockchain/testutil"
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -715,7 +715,8 @@ var _ = Describe("Process", func() {
 
 				Describe("all transactions must be persisted", func() {
 					for _, tx := range okStateRoot.GetTransactions() {
-						txKey := common.MakeTxQueryKey(genesisChain.GetID().Bytes(), tx.GetHash().Bytes())
+						txKey := common.MakeQueryKeyTransaction(genesisChain.GetID().Bytes(),
+							tx.GetHash().Hex())
 						var result = db.GetByPrefix(txKey)
 						Expect(result).To(HaveLen(1))
 					}

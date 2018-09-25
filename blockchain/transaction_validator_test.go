@@ -7,11 +7,11 @@ import (
 	"time"
 
 	. "github.com/ellcrys/elld/blockchain/testutil"
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -94,34 +94,67 @@ var _ = Describe("TransactionValidator", func() {
 			}
 		})
 
-		It("should check if transaction exists in the txpool supplied", func() {
-			sender := crypto.NewKeyFromIntSeed(1)
-			receiver := crypto.NewKeyFromIntSeed(1)
-			tx := &objects.Transaction{
-				Type:         objects.TxTypeBalance,
-				Nonce:        1,
-				To:           util.String(sender.Addr()),
-				From:         util.String(receiver.Addr()),
-				Value:        "10",
-				SenderPubKey: util.String(sender.PubKey().Base58()),
-				Fee:          "2.5",
-				Timestamp:    time.Now().Unix(),
-				Hash:         util.StrToHash("some_hash"),
-				Sig:          []byte("invalid"),
-			}
-			tx.Hash = tx.ComputeHash()
-			sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-			Expect(err).To(BeNil())
-			tx.Sig = sig
+		Context("context checks", func() {
 
-			txp := txpool.New(1)
-			err = txp.Put(tx)
-			Expect(err).To(BeNil())
+			var tx *objects.Transaction
+			var sender, receiver *crypto.Key
 
-			validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-			errs := validator.Validate()
-			Expect(errs).To(HaveLen(1))
-			Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in the transactions pool")))
+			BeforeEach(func() {
+				sender = crypto.NewKeyFromIntSeed(1)
+				receiver = crypto.NewKeyFromIntSeed(1)
+				tx = &objects.Transaction{
+					Type:         objects.TxTypeBalance,
+					Nonce:        1,
+					To:           util.String(sender.Addr()),
+					From:         util.String(receiver.Addr()),
+					Value:        "10",
+					SenderPubKey: util.String(sender.PubKey().Base58()),
+					Fee:          "2.5",
+					Timestamp:    time.Now().Unix(),
+					Hash:         util.StrToHash("some_hash"),
+					Sig:          []byte("sig"),
+				}
+			})
+
+			Context("when block context is set", func() {
+				It("should not check transaction existence in the transaction pool", func() {
+					tx.Hash = tx.ComputeHash()
+					sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+					Expect(err).To(BeNil())
+					tx.Sig = sig
+
+					txp := txpool.New(1)
+					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
+					validator.addContext(ContextBlock)
+					errs := validator.Validate()
+					Expect(errs).To(HaveLen(0))
+				})
+			})
+
+			Context("when branch context is set", func() {
+
+				var block2 core.Block
+
+				BeforeEach(func() {
+					block2 = MakeBlockWithSingleTx(bc, genesisChain, sender, sender, 1)
+					_, err := bc.ProcessBlock(block2)
+					Expect(err).To(BeNil())
+				})
+
+				It("should not check transaction existence in the main chain", func() {
+					tx.Nonce = 2
+					tx.Hash = tx.ComputeHash()
+					sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+					Expect(err).To(BeNil())
+					tx.Sig = sig
+
+					txp := txpool.New(1)
+					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
+					validator.addContext(ContextBranch)
+					errs := validator.Validate()
+					Expect(errs).To(HaveLen(0))
+				})
+			})
 		})
 
 		Context("when a transaction is already on the main chain", func() {
@@ -224,7 +257,7 @@ var _ = Describe("TransactionValidator", func() {
 			tx.SetHash(tx.ComputeHash())
 		})
 
-		It("should return err='index:0, error:transaction already exist in the transactions pool' when exact transaction exist in pool", func() {
+		It("should return error when exact transaction exist in the pool", func() {
 			txp := txpool.New(1)
 			Expect(txp.Put(tx)).To(BeNil())
 			validator := NewTxValidator(nil, txp, bc)
@@ -355,7 +388,7 @@ var _ = Describe("TransactionValidator", func() {
 			It("should return err='index:0, error:invalid nonce: has 2, wants 1'", func() {
 				txp := txpool.New(1)
 				validator := NewTxValidator(nil, txp, bc)
-				validator.SetContext(ContextBlock)
+				validator.addContext(ContextBlock)
 				errs := validator.consistencyCheck(tx2)
 				Expect(errs).ToNot(BeEmpty())
 				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:invalid nonce: has 2, wants 1")))

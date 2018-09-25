@@ -5,10 +5,10 @@ import (
 
 	"github.com/olebedev/emitter"
 
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"

@@ -41,7 +41,7 @@ var _ = Describe("Primitives", func() {
 			}
 			result := MapFieldsToHex(t1)
 			Expect(result).To(Equal(map[string]interface{}{"Name": "fred",
-				"Desc": "0x69206c6f76652067616d65730000000000000000000000000000000000000000",
+				"Desc": "0x69206c6f76652067616d6573",
 			}))
 
 			t2 := test2{
@@ -51,7 +51,7 @@ var _ = Describe("Primitives", func() {
 			result = MapFieldsToHex(t2)
 			Expect(result.(map[string]interface{})["Others"]).To(Equal(map[string]interface{}{
 				"Name": "fred",
-				"Desc": "0x69206c6f76652067616d65730000000000000000000000000000000000000000",
+				"Desc": "0x69206c6f76652067616d6573",
 			}))
 
 			t3 := test2{
@@ -62,7 +62,7 @@ var _ = Describe("Primitives", func() {
 			result = MapFieldsToHex(t3)
 			Expect(result.(map[string]interface{})["More"]).To(Equal([]interface{}{
 				map[string]interface{}{"Name": "fred",
-					"Desc": "0x69206c6f76652067616d65730000000000000000000000000000000000000000",
+					"Desc": "0x69206c6f76652067616d6573",
 				},
 			}))
 
@@ -82,7 +82,7 @@ var _ = Describe("Primitives", func() {
 				Num: EncodeNonce(10),
 			}
 			result = MapFieldsToHex(t6)
-			Expect(result).To(Equal(map[string]interface{}{"Num": "0x000000000000000a000000000000000000000000000000000000000000000000"}))
+			Expect(result).To(Equal(map[string]interface{}{"Num": "0x000000000000000a"}))
 		})
 	})
 })

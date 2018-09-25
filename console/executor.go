@@ -2,10 +2,10 @@ package console
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/ellcrys/elld/rpc"
+	"github.com/gobuffalo/packr"
 
 	"github.com/ellcrys/elld/accountmgr"
 
@@ -21,21 +21,12 @@ import (
 	"github.com/robertkrimen/otto"
 )
 
-// FuncCallError creates an error describing
-// an issue with the way a function was called.
-func FuncCallError(msg string) error {
-	return fmt.Errorf("function call error: %s", msg)
-}
-
 // Executor is responsible for executing operations inside a
 // javascript VM.
 type Executor struct {
 
 	// vm is an Otto instance for JS evaluation
 	vm *otto.Otto
-
-	// exit indicates a request to exit the executor
-	exit bool
 
 	// rpc holds rpc client and config
 	rpc *RPCConfig
@@ -58,6 +49,9 @@ type Executor struct {
 
 	// console is the console instance
 	console *Console
+
+	// scripts provides access to packed JS scripts
+	scripts packr.Box
 }
 
 // NewExecutor creates a new executor
@@ -66,6 +60,7 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	e.vm = otto.New()
 	e.log = l
 	e.coinbase = coinbase
+	e.scripts = packr.NewBox("./scripts")
 	return e
 }
 
@@ -115,6 +110,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 
 	// Add some methods to the global namespace
 	e.vm.Set("pp", e.pp)
+	e.vm.Set("exec", e.runRaw)
 	e.vm.Set("runScript", e.runScript)
 	e.vm.Set("rs", e.runScript)
 
@@ -125,6 +121,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 		"personal": {},
 		"ell":      {},
 		"rpc":      {},
+		"_system":  {},
 	}
 
 	// Add some methods to namespaces
@@ -136,7 +133,9 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	nsObj["personal"]["loadedAccount"] = e.loadedAccount
 	nsObj["personal"]["createAccount"] = e.createAccount
 	nsObj["personal"]["importAccount"] = e.importAccount
-	nsObj["ell"]["balance"] = func() *TxBalanceBuilder {
+
+	// "private" functions used by system scripts
+	nsObj["_system"]["balance"] = func() *TxBalanceBuilder {
 		return NewTxBuilder(e).Balance()
 	}
 
@@ -144,6 +143,9 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 		for ns, objs := range nsObj {
 			e.vm.Set(ns, objs)
 		}
+
+		// Add system scripts
+		e.runRaw(e.scripts.Bytes("transaction_builder.js"))
 	}()
 
 	// Add some methods to the suggestions
@@ -236,6 +238,18 @@ func (e *Executor) runScript(file string) {
 	}
 }
 
+func (e *Executor) runRaw(src interface{}) {
+	script, err := e.vm.Compile("", src)
+	if err != nil {
+		panic(e.vm.MakeCustomError("ExecError", err.Error()))
+	}
+
+	_, err = e.vm.Run(script)
+	if err != nil {
+		panic(e.vm.MakeCustomError("ExecError", err.Error()))
+	}
+}
+
 // pp pretty prints a slice of arbitrary objects
 func (e *Executor) pp(values ...interface{}) {
 	var v interface{} = values
@@ -251,27 +265,12 @@ func (e *Executor) pp(values ...interface{}) {
 
 // OnInput receives inputs and executes
 func (e *Executor) OnInput(in string) {
-
-	e.exit = false
-
 	switch in {
-	case ".exit":
-		e.exitProgram(true)
 	case ".help":
 		e.help()
 	default:
-
 		e.exec(in)
 	}
-}
-
-func (e *Executor) exitProgram(immediately bool) {
-	if !immediately && !e.exit {
-		fmt.Println("(To exit, press ^C again or type .exit)")
-		e.exit = true
-		return
-	}
-	os.Exit(0)
 }
 
 func (e *Executor) exec(in string) {

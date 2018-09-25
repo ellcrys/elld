@@ -59,9 +59,10 @@ var _ = Describe("Common", func() {
 			result.AllowFinish().Rollback()
 		})
 
-		It("should panic when unable to create new transaction", func() {
+		It("should a finished TxOp when database is closed", func() {
 			db.Close()
-			Expect(func() { GetTxOp(db) }).To(Panic())
+			txOp := GetTxOp(db)
+			Expect(txOp.finished).To(BeTrue())
 		})
 	})
 

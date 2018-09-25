@@ -43,21 +43,40 @@ func (tp *TxPool) removeTransactionsInBlock(block core.Block) {
 // the pool if they are contained in the broadcast
 // block that was appended to the chain
 func (tp *TxPool) handleNewBlockEvent() {
-
-	// When a new block is added to the chain,
-	// remove any of its transactions from the pool
-	for evt := range tp.event.On(core.EventNewBlock) {
-		tp.removeTransactionsInBlock(evt.Args[0].(core.Block))
+	for {
+		select {
+		case evt := <-tp.event.Once(core.EventNewBlock):
+			tp.removeTransactionsInBlock(evt.Args[0].(core.Block))
+		}
 	}
 }
 
-// Put adds a transaction to the transaction pool queue.
-// Perform signature validation.
-// Timestamp validation.
+// Put adds a transaction
 func (tp *TxPool) Put(tx core.Transaction) error {
 	tp.Lock()
 	defer tp.Unlock()
-	return tp.addTx(tx)
+
+	if err := tp.addTx(tx); err != nil {
+		return err
+	}
+
+	// Emit an event about the accepted transaction
+	tp.event.Emit(core.EventNewTransaction, tx)
+
+	return nil
+}
+
+// PutSilently is like Put but it does not
+// emit an event on success.
+func (tp *TxPool) PutSilently(tx core.Transaction) error {
+	tp.Lock()
+	defer tp.Unlock()
+
+	if err := tp.addTx(tx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // addTx adds a transaction to the queue
@@ -84,10 +103,6 @@ func (tp *TxPool) addTx(tx core.Transaction) error {
 		return ErrContainerFull
 	}
 
-	// Emit an event about the accepted
-	// transaction so it can be relayed etc.
-	<-tp.event.Emit(core.EventNewTransaction, tx)
-
 	return nil
 }
 
@@ -110,30 +125,10 @@ func (tp *TxPool) SenderHasTxWithSameNonce(address util.String, nonce uint64) bo
 	}) != nil
 }
 
-// Select collects transactions from the head
-// of the pool up to the specified maxSize.
-func (tp *TxPool) Select(maxSize int64) (txs []core.Transaction) {
-	tp.Lock()
-	defer tp.Unlock()
-
-	curTxSize := int64(0)
-	unSelected := []core.Transaction{}
-	for tp.Size() > 0 {
-		tx := tp.container.First()
-		if curTxSize+tx.SizeNoFee() <= maxSize {
-			txs = append(txs, tx)
-			curTxSize += tx.SizeNoFee()
-			continue
-		}
-		unSelected = append(unSelected, tx)
-	}
-
-	// put the unfit transactions back
-	for _, tx := range unSelected {
-		tp.addTx(tx)
-	}
-
-	return
+// Container gets the underlying
+// transaction container
+func (tp *TxPool) Container() core.TxContainer {
+	return tp.container
 }
 
 // ByteSize gets the total byte size of

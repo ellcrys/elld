@@ -1,157 +1,190 @@
+// This file provides methods for constructing database
+// objects describing various state values like accounts,
+// chains, transactions etc.
+//
+// When defining a new method to store a new object type,
+// ensure to store the block number as the 'key' and every
+// other identifiers as prefixes. We can also store any
+// numeric value that might be relied upon for ordering
+// in the 'key' field (e.g timestamp). The 'key' value must
+// be encoded as a big-endian.
+
 package common
 
 import (
-	"encoding/binary"
-	"strconv"
-
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/util"
 )
 
 var (
-	// ObjectTypeAccount represents an account object
-	ObjectTypeAccount = []byte("account")
+	// TagAccount represents an account object
+	TagAccount = []byte("a")
 
-	// ObjectTypeChain represents a chain object
-	ObjectTypeChain = []byte("chain")
+	// TagChain represents a chain object
+	TagChain = []byte("c")
 
-	// ObjectTypeBlock represents a block object
-	ObjectTypeBlock = []byte("block")
+	// TagBlock represents a block object
+	TagBlock = []byte("b")
 
-	// ObjectTypeChainInfo represents a chain information object
-	ObjectTypeChainInfo = []byte("chainInfo")
+	// TagBlockNumber represents a block object
+	TagBlockNumber = []byte("n")
 
-	// ObjectTypeTransaction represents a transaction object
-	ObjectTypeTransaction = []byte("tx")
+	// TagChainInfo represents a chain information object
+	TagChainInfo = []byte("i")
 
-	// ObjectTypeBlockchainMeta represents a meta object
-	ObjectTypeBlockchainMeta = []byte("blockchain-meta")
+	// TagTransaction represents a transaction object
+	TagTransaction = []byte("t")
 
-	// ObjectTypeReOrg represents a meta object
-	ObjectTypeReOrg = []byte("re-org")
+	// TagReOrg represents a meta object
+	TagReOrg = []byte("r")
 )
 
-// EncodeBlockNumber serializes a block number to BigEndian
-func EncodeBlockNumber(n uint64) []byte {
-	var b = make([]byte, 8)
-	binary.BigEndian.PutUint64(b, n)
-	return b
-}
-
-// DecodeBlockNumber deserialize a block number from BigEndian
-func DecodeBlockNumber(encNum []byte) uint64 {
-	return binary.BigEndian.Uint64(encNum)
-}
-
-// MakeAccountKey constructs a key for storing/querying an account
-func MakeAccountKey(blockNum uint64, chainID, address []byte) []byte {
+// MakeKeyAccount constructs a key for storing an account.
+// Prefixes: tag_chain + chain ID + tag_account + address +
+// block number (big endian)
+func MakeKeyAccount(blockNum uint64, chainID, address []byte) []byte {
 	return elldb.MakeKey(
-		EncodeBlockNumber(blockNum),
-		ObjectTypeChain,
+		util.EncodeNumber(blockNum),
+		TagChain,
 		chainID,
-		ObjectTypeAccount,
+		TagAccount,
 		address,
 	)
 }
 
-// MakeAccountsKey constructs a key for querying all accounts
-func MakeAccountsKey(chainID []byte) []byte {
+// MakeQueryKeyAccounts constructs a key for querying all
+// accounts in a given chain.
+// Prefixes: tag_chain + chain ID + tag_account
+func MakeQueryKeyAccounts(chainID []byte) []byte {
 	return elldb.MakePrefix(
-		ObjectTypeChain,
+		TagChain,
 		chainID,
-		ObjectTypeAccount,
+		TagAccount,
 	)
 }
 
-// QueryAccountKey constructs a key for finding account data in the store and hash tree.
-func QueryAccountKey(chainID, address []byte) []byte {
+// MakeQueryKeyAccount constructs a key for
+// finding account data in the store and
+// hash tree.
+// Prefixes: tag_chain + chain ID + tag_account + address
+func MakeQueryKeyAccount(chainID, address []byte) []byte {
 	return elldb.MakePrefix(
-		ObjectTypeChain,
+		TagChain,
 		chainID,
-		ObjectTypeAccount,
+		TagAccount,
 		address,
 	)
 }
 
-// MakeBlockchainMetadataKey constructs a key for storing blockchain-wide metadata
-func MakeBlockchainMetadataKey() []byte {
-	return elldb.MakeKey(ObjectTypeBlockchainMeta)
-}
-
-// MakeBlockKey constructs a key for storing a block
-func MakeBlockKey(chainID []byte, blockNumber uint64) []byte {
+// MakeKeyBlock constructs a key for storing a block.
+// Prefixes: tag_chain + chain ID + tag_block +
+// block number (big endian)
+func MakeKeyBlock(chainID []byte, blockNumber uint64) []byte {
 	return elldb.MakeKey(
-		EncodeBlockNumber(blockNumber),
-		ObjectTypeChain,
+		util.EncodeNumber(blockNumber),
+		TagChain,
 		chainID,
-		ObjectTypeBlock,
+		TagBlock,
 	)
 }
 
-// MakeBlocksQueryKey constructs a key for querying all blocks
-func MakeBlocksQueryKey(chainID []byte) []byte {
-	return elldb.MakeKey(nil,
-		ObjectTypeChain,
+// MakeQueryKeyBlocks constructs a key for querying
+// all blocks in given chain.
+// Prefixes: tag_chain + chain ID + tag_block
+func MakeQueryKeyBlocks(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		TagChain,
 		chainID,
-		ObjectTypeBlock,
+		TagBlock,
 	)
 }
 
-// MakeChainKey constructs a key for storingchain information
-func MakeChainKey(chainID []byte) []byte {
-	return elldb.MakeKey(chainID, ObjectTypeChainInfo)
-}
-
-// MakeChainsQueryKey constructs a key for find all chain items
-func MakeChainsQueryKey() []byte {
-	return elldb.MakePrefix(ObjectTypeChainInfo)
-}
-
-// MakeTxKey constructs a key for storing a transaction
-func MakeTxKey(chainID []byte, blockNumber uint64, txHash []byte) []byte {
-	return elldb.MakeKey(
-		EncodeBlockNumber(blockNumber),
-		ObjectTypeChain,
+// MakeKeyBlockHash constructs a key for storing the
+// number of a block with a matching hash.
+// Prefixes: tag_chain + chain ID + tag_block + block hash
+func MakeKeyBlockHash(chainID []byte, hash []byte) []byte {
+	return elldb.MakePrefix(
+		TagChain,
 		chainID,
-		ObjectTypeTransaction,
+		TagBlockNumber,
+		hash,
+	)
+}
+
+// MakeKeyChain constructs a key for storing chain
+// information.
+// Prefixes: tag_chain_info + chain ID
+func MakeKeyChain(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		TagChainInfo,
+		chainID,
+	)
+}
+
+// MakeQueryKeyChains constructs a key to
+// find all chain information.
+// Prefixes: tag_chain_info
+func MakeQueryKeyChains() []byte {
+	return elldb.MakePrefix(TagChainInfo)
+}
+
+// MakeKeyTransaction constructs a key for storing a transaction.
+// Prefixes: tag_chain + chain ID + tag_transaction +
+// transaction hash + block number (big endian)
+func MakeKeyTransaction(chainID []byte, blockNumber uint64, txHash []byte) []byte {
+	return elldb.MakeKey(
+		util.EncodeNumber(blockNumber),
+		TagChain,
+		chainID,
+		TagTransaction,
 		txHash,
 	)
 }
 
-// MakeTxQueryKey constructs a key for querying a transaction
-func MakeTxQueryKey(chainID []byte, txHash []byte) []byte {
+// MakeQueryKeyTransaction constructs a key for querying a transaction.
+// Prefixes: tag_chain + chain ID + tag_transaction +
+// transaction hash
+func MakeQueryKeyTransaction(chainID []byte, txHash []byte) []byte {
 	return elldb.MakePrefix(
-		ObjectTypeChain,
+		TagChain,
 		chainID,
-		ObjectTypeTransaction,
+		TagTransaction,
 		txHash,
 	)
 }
 
-// MakeTxsQueryKey constructs a key for querying all transactions in a chain
-func MakeTxsQueryKey(chainID []byte) []byte {
+// MakeQueryKeyTransactions constructs a key for
+// querying all transactions in a chain.
+// Prefixes: tag_chain + chain ID + tag_transaction
+func MakeQueryKeyTransactions(chainID []byte) []byte {
 	return elldb.MakePrefix(
-		ObjectTypeChain,
+		TagChain,
 		chainID,
-		ObjectTypeTransaction,
+		TagTransaction,
 	)
 }
 
-// MakeTreeKey constructs a key for recording state objects in a tree
+// MakeTreeKey constructs a key for
+// recording state objects in a tree.
+// Combination: block number (big endian) + object type
 func MakeTreeKey(blockNumber uint64, objectType []byte) []byte {
-	return append(EncodeBlockNumber(blockNumber), objectType...)
+	return append(util.EncodeNumber(blockNumber), objectType...)
 }
 
-// MakeReOrgKey constructs a key for storing reorganization info
-func MakeReOrgKey(timestamp int64) []byte {
-	return elldb.MakeKey(
-		[]byte(strconv.FormatInt(timestamp, 10)),
-		ObjectTypeReOrg,
+// MakeKeyReOrg constructs a key for storing
+// reorganization info.
+// Prefixes: tag_reOrg + timestamp (big endian)
+func MakeKeyReOrg(timestamp int64) []byte {
+	return elldb.MakeKey(util.EncodeNumber(uint64(timestamp)),
+		TagReOrg,
 	)
 }
 
-// MakeReOrgQueryKey constructs a key for querying reorganization objects
-func MakeReOrgQueryKey() []byte {
+// MakeQueryKeyReOrg constructs a key for
+// querying reorganization objects.
+// Prefixes: tag_reOrg
+func MakeQueryKeyReOrg() []byte {
 	return elldb.MakePrefix(
-		ObjectTypeReOrg,
+		TagReOrg,
 	)
 }

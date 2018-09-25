@@ -32,6 +32,8 @@ const (
 	ErrCodeUnexpectedArgType = 60000
 	// ErrCodeQueryParamError for when a query parameter is invalid
 	ErrCodeQueryParamError = 60001
+	// ErrValueDecodeFailed for when decoding a value failed
+	ErrValueDecodeFailed = 600
 )
 
 // Engine package error codes

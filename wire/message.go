@@ -109,10 +109,12 @@ type RequestBlock struct {
 }
 
 // GetBlockHashes represents a message requesting
-// for headers of blocks after the provided hash
+// for headers of blocks. The locator is used to
+// compare with a remote node to determine which
+// blocks to send back.
 type GetBlockHashes struct {
-	Hash      util.Hash `json:"hash" msgpack:"hash"`
-	MaxBlocks int64     `json:"maxBlocks" msgpack:"maxBlocks"`
+	Locators  []util.Hash `json:"hash" msgpack:"hash"`
+	MaxBlocks int64       `json:"maxBlocks" msgpack:"maxBlocks"`
 }
 
 // BlockHashes represents a message containing

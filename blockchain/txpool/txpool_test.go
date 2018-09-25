@@ -180,48 +180,6 @@ var _ = Describe("TxPool", func() {
 		})
 	})
 
-	Describe(".Select", func() {
-
-		var tp *TxPool
-		var tx, tx2, tx3 *objects.Transaction
-
-		BeforeEach(func() {
-			tp = New(100)
-			tx = objects.NewTransaction(objects.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
-			tx.Hash = tx.ComputeHash()
-			tp.Put(tx)
-
-			tx2 = objects.NewTransaction(objects.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
-			tx2.Hash = tx2.ComputeHash()
-			tp.Put(tx2)
-
-			tx3 = objects.NewTransaction(objects.TxTypeBalance, 100, "something3", util.String("abc3"), "0", "0", time.Now().Unix())
-			tx3.Hash = tx3.ComputeHash()
-			tp.Put(tx3)
-		})
-
-		It("should only include transactions up to the given max size", func() {
-			maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
-			txs := tp.Select(maxSize)
-			Expect(txs).To(HaveLen(2))
-		})
-
-		It("should only include all transactions when max size exceeds pool size", func() {
-			maxSize := tx.SizeNoFee() + tx2.SizeNoFee() + tx3.SizeNoFee() + 100
-			txs := tp.Select(maxSize)
-			Expect(txs).To(HaveLen(3))
-		})
-
-		When("max size is too small", func() {
-			It("should select nothing and put back all transactions back in the pool", func() {
-				maxSize := int64(1)
-				txs := tp.Select(maxSize)
-				Expect(txs).To(HaveLen(0))
-				Expect(tp.container.container).To(HaveLen(3))
-			})
-		})
-	})
-
 	Describe(".removeTransactionsInBlock", func() {
 
 		var tp *TxPool

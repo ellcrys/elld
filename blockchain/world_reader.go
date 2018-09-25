@@ -1,8 +1,6 @@
 package blockchain
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -35,10 +33,9 @@ func (r *WorldReader) GetAccount(chain core.Chainer, address util.String, opts .
 	// If a start chain is not given,
 	// We will use whatever the main chain
 	if chain == nil {
-
 		// If no best chain yet, we return an error
 		if r.bchain.bestChain == nil {
-			return nil, fmt.Errorf("no best chain yet")
+			return nil, core.ErrBestChainUnknown
 		}
 
 		result, err = r.bchain.bestChain.GetAccount(address, opts...)
@@ -63,7 +60,6 @@ func (r *WorldReader) GetAccount(chain core.Chainer, address util.String, opts .
 
 	// Transverse the chain and its ancestors.
 	err = r.bchain.NewChainTraverser().Start(chain).Query(func(ch core.Chainer) (bool, error) {
-
 		// make a copy of the call options
 		optsCopy := append([]core.CallOp{}, opts...)
 
@@ -95,6 +91,7 @@ func (r *WorldReader) GetAccount(chain core.Chainer, address util.String, opts .
 
 		return true, nil
 	})
+
 	if err != nil {
 		return nil, err
 	}

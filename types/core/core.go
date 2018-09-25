@@ -41,7 +41,7 @@ type Chainer interface {
 	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
 	// GetTransaction gets a transaction by hash
-	GetTransaction(hash util.Hash, opts ...CallOp) Transaction
+	GetTransaction(hash util.Hash, opts ...CallOp) (Transaction, error)
 
 	// ChainReader gets a chain reader for this chain
 	ChainReader() ChainReader
@@ -106,6 +106,9 @@ type Blockchain interface {
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
 
+	// GetTxPool gets the transaction pool
+	GetTxPool() TxPool
+
 	// CreateAccount creates an account that is associated with
 	// the given block number and chain.
 	CreateAccount(blockNo uint64, chain Chainer, account Account) error
@@ -115,6 +118,15 @@ type Blockchain interface {
 
 	// GetAccountNonce gets the nonce of an account
 	GetAccountNonce(address util.String, opts ...CallOp) (uint64, error)
+
+	// GetLocators fetches a list of blockhashes used to
+	// compare and sync the local chain with a remote chain.
+	GetLocators() ([]util.Hash, error)
+
+	// SelectTransactions sets transactions from
+	// the transaction pool. These transactions must
+	// be suitable for inclusion in blocks.
+	SelectTransactions(maxSize int64) ([]Transaction, error)
 }
 
 // BlockMaker defines an interface providing the

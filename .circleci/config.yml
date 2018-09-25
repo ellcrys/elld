@@ -14,7 +14,8 @@ jobs:
             - vendor-{{ checksum "Gopkg.lock" }}
       - run:
           name: Install Dependencies
-          command: dep ensure -v
+          command: |
+            dep ensure -v 
       - save_cache:
           key: vendor-{{ checksum "Gopkg.lock" }}
           paths:

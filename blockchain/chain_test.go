@@ -5,11 +5,11 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	. "github.com/ellcrys/elld/blockchain/testutil"
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -280,25 +280,25 @@ var _ = Describe("Chain", func() {
 			})
 
 			Specify("no block with the deleted block number must exist", func() {
-				blockKey := common.MakeBlockKey(genesisChain.id.Bytes(), block2.GetNumber())
+				blockKey := common.MakeKeyBlock(genesisChain.id.Bytes(), block2.GetNumber())
 				result := db.GetByPrefix(blockKey)
 				Expect(result).To(HaveLen(0))
 			})
 
 			Specify("accounts associated to the block must be deleted", func() {
-				acctKeys := common.MakeAccountsKey(genesisChain.id.Bytes())
+				acctKeys := common.MakeQueryKeyAccounts(genesisChain.id.Bytes())
 				result := db.GetByPrefix(acctKeys)
 				for _, r := range result {
-					bn := common.DecodeBlockNumber(r.Key)
+					bn := util.DecodeNumber(r.Key)
 					Expect(bn).ToNot(Equal(block2.GetNumber()))
 				}
 			})
 
 			Specify("transactions associated to the block must be deleted", func() {
-				txsKeys := common.MakeTxsQueryKey(genesisChain.id.Bytes())
+				txsKeys := common.MakeQueryKeyTransactions(genesisChain.id.Bytes())
 				result := db.GetByPrefix(txsKeys)
 				for _, r := range result {
-					bn := common.DecodeBlockNumber(r.Key)
+					bn := util.DecodeNumber(r.Key)
 					Expect(bn).ToNot(Equal(block2.GetNumber()))
 				}
 			})
@@ -317,7 +317,7 @@ var _ = Describe("Chain", func() {
 			})
 
 			It("should exist in database", func() {
-				result := chain.store.DB().GetByPrefix(common.MakeChainKey(chain.id.Bytes()))
+				result := chain.store.DB().GetByPrefix(common.MakeKeyChain(chain.id.Bytes()))
 				Expect(result).To(HaveLen(1))
 			})
 		})

@@ -6,6 +6,7 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/merkletree"
+	"github.com/olebedev/emitter"
 )
 
 // CallOp describes an interface to be used to define store method options
@@ -27,6 +28,34 @@ type ChainInfo struct {
 	ParentChainID     util.String `json:"parentChainID" msgpack:"parentChainID"`
 	ParentBlockNumber uint64      `json:"parentBlockNumber" msgpack:"parentBlockNumber"`
 	Timestamp         int64       `json:"timestamp" msgpack:"timestamp"`
+}
+
+// TxContainer represents a container
+// a container responsible for holding
+// and sorting transactions
+type TxContainer interface {
+	ByteSize() int64
+	Add(tx Transaction) bool
+	Has(tx Transaction) bool
+	Size() int64
+	First() Transaction
+	Last() Transaction
+	Sort()
+	IFind(predicate func(Transaction) bool) Transaction
+	Remove(txs ...Transaction)
+}
+
+// TxPool represents a transactions pool
+type TxPool interface {
+	SetEventEmitter(ee *emitter.Emitter)
+	Put(tx Transaction) error
+	PutSilently(tx Transaction) error
+	Has(tx Transaction) bool
+	HasByHash(hash string) bool
+	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
+	ByteSize() int64
+	Size() int64
+	Container() TxContainer
 }
 
 // GenerateBlockParams represents parameters

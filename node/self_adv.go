@@ -21,7 +21,10 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 	for _, peer := range connectedPeers {
 
 		// create stream
-		s, err := g.NewStream(context.Background(), peer, config.AddrVersion)
+		ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+		ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+		defer cf()
+		s, err := g.NewStream(ctx, peer, config.AddrVersion)
 		if err != nil {
 			g.log.Error("selfAdvertise failed. Failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
 			continue

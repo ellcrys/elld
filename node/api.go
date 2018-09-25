@@ -8,6 +8,7 @@ import (
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
@@ -48,15 +49,15 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 	}
 
 	n.AddBootstrapNodes([]string{address}, true)
-	rn, err := n.NodeFromAddr(address, true)
+	rp, err := n.NodeFromAddr(address, true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}
-	rn.isHardcodedSeed = true
+	rp.isHardcodedSeed = true
 
-	if err := n.connectToNode(rn); err != nil {
-		return jsonrpc.Error(types.ErrCodeNodeConnectFailure, err.Error(), nil)
-	}
+	go func(rp *Node) {
+		n.connectToNode(rp)
+	}(rp)
 
 	return jsonrpc.Success(nil)
 }
@@ -64,6 +65,11 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 // apiNumConnections returns the number of peers connected to
 func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.peerManager.connMgr.connectionCount())
+}
+
+// apiGetSyncQueueSize returns the size of the block hash queue
+func (n *Node) apiGetSyncQueueSize(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.blockHashQueue.Size())
 }
 
 // apiGetActivePeers fetches active peers
@@ -132,6 +138,16 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	})
 }
 
+// apiFetchPool fetches transactions currently in the pool
+func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
+	var txs []core.Transaction
+	n.GetTxPool().Container().IFind(func(tx core.Transaction) bool {
+		txs = append(txs, tx)
+		return false
+	})
+	return jsonrpc.Success(txs)
+}
+
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -182,6 +198,16 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Namespace:   "node",
 			Description: "Get size information of the transaction pool",
 			Func:        n.apiTxPoolSizeInfo,
+		},
+		"getSyncQueueSize": {
+			Namespace:   "node",
+			Description: "Get number of block hashes in the sync queue",
+			Func:        n.apiGetSyncQueueSize,
+		},
+		"fetchPool": {
+			Namespace:   "node",
+			Description: "Get the transactions in the pool",
+			Func:        n.apiFetchPool,
 		},
 	}
 }

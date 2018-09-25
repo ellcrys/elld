@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
@@ -31,6 +31,12 @@ var _ = Describe("ChainTraverser", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+	})
+
+	BeforeEach(func() {
+		genesisBlock, err := LoadBlockFromFile("genesis-test.json")
+		Expect(err).To(BeNil())
+		bc.SetGenesisBlock(genesisBlock)
 		err = bc.Up()
 		Expect(err).To(BeNil())
 	})

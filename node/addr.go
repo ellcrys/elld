@@ -263,7 +263,10 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			continue
 		}
 
-		s, err := g.NewStream(context.Background(), remotePeer, config.AddrVersion)
+		ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+		ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+		defer cf()
+		s, err := g.NewStream(ctx, remotePeer, config.AddrVersion)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("Addr message failed. failed to connect to peer {%s}", remotePeer.ShortID()))
 			g.log.Debug("Addr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeer.ShortID())

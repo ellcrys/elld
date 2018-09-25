@@ -149,7 +149,6 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 			Timestamp:        time.Now().Unix(),
 			TotalDifficulty:  new(big.Int).SetInt64(0),
 		},
-		ChainReader: chain.ChainReader(),
 	}
 
 	for _, tx := range params.Transactions {
@@ -197,7 +196,11 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// select transactions and compute transaction root
 	if len(params.Transactions) == 0 {
-		for _, tx := range b.txPool.Select(p.MaxBlockTransactionsSize) {
+		selectedTxs, err := b.SelectTransactions(p.MaxBlockTransactionsSize)
+		if err != nil {
+			return nil, err
+		}
+		for _, tx := range selectedTxs {
 			block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
 		}
 	}

@@ -45,7 +45,10 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 
 	g.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
 
-	s, err := g.NewStream(context.Background(), remotePeer, config.HandshakeVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.HandshakeVersion)
 	if err != nil {
 		g.log.Debug("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err.Error())
@@ -98,7 +101,7 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 			"PeerChainHeight", resp.BestBlockNumber,
 			"PeerChainTotalDifficulty", resp.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best
@@ -106,7 +109,6 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	var bestBlockInfo BestBlockInfo
 	copier.Copy(&bestBlockInfo, resp)
 	g.engine.updateSyncInfo(&bestBlockInfo)
-
 	return nil
 }
 
@@ -151,7 +153,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	remotePeer.SetTimestamp(time.Now())
 	g.PM().AddOrUpdatePeer(remotePeer)
 
-	g.log.Info("Responded to handshake with current chain state", "PeerID",
+	g.log.Info("Responded to handshake with chain state", "PeerID",
 		remotePeerIDShort, "SubVersion",
 		engineHandshakeMsg.SubVersion, "TotalDifficulty",
 		engineHandshakeMsg.BestBlockTotalDifficulty)
@@ -167,7 +169,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 			"PeerID", remotePeerIDShort,
 			"PeerChainHeight", msg.BestBlockNumber,
 			"PeerChainTotalDifficulty", msg.BestBlockTotalDifficulty)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best

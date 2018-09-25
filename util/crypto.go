@@ -39,6 +39,11 @@ func (h Hash) HexStr() string {
 	return ToHex(h[:])
 }
 
+// Hex is like HexStr but returns bytes
+func (h Hash) Hex() []byte {
+	return []byte(h.HexStr())
+}
+
 // SS returns a short version of HexStr with the middle
 // characters truncated when length is at least 32
 func (h Hash) SS() string {

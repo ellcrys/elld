@@ -4,11 +4,11 @@ import (
 	"os"
 
 	. "github.com/ellcrys/elld/blockchain/testutil"
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -66,7 +66,7 @@ var _ = Describe("Process", func() {
 				bc.bestChain = nil
 				_, err := wr.GetAccount(nil, util.String(sender.Addr()))
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("no best chain yet"))
+				Expect(err).To(Equal(core.ErrBestChainUnknown))
 			})
 
 			It("should successfully get account", func() {

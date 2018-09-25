@@ -10,6 +10,7 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 // ReOrgInfo describes a re-organization event
@@ -156,6 +157,10 @@ func (b *Blockchain) decideBestChain() error {
 func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core.CallOp) error {
 
 	var txOp = common.GetTxOp(b.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
+
 	txOp.CanFinish = false
 
 	var reOrgInfo = &ReOrgInfo{
@@ -179,7 +184,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, sidechain *Chain, opts ...core
 	reOrgInfo.SideChainLen = sideTip.GetNumber() - sidechain.parentBlock.GetNumber()
 	reOrgInfo.ReOrgLen = mainTip.GetNumber() - sidechain.parentBlock.GetNumber()
 
-	key := common.MakeReOrgKey(timestamp)
+	key := common.MakeKeyReOrg(timestamp)
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(key, util.ObjectToBytes(reOrgInfo))})
 	if err != nil {
 		txOp.AllowFinish().Rollback()
@@ -195,7 +200,7 @@ func (b *Blockchain) getReOrgs(opts ...core.CallOp) []*ReOrgInfo {
 	defer b.chainLock.RUnlock()
 
 	var reOrgs = []*ReOrgInfo{}
-	key := common.MakeReOrgQueryKey()
+	key := common.MakeQueryKeyReOrg()
 	result := b.db.GetByPrefix(key)
 	for _, r := range result {
 		var reOrg ReOrgInfo
@@ -226,7 +231,11 @@ func (b *Blockchain) reOrg(sidechain *Chain) (*Chain, error) {
 		b.reOrgActive = false
 	}()
 
-	tx, _ := b.db.NewTx()
+	tx, err := b.db.NewTx()
+	if err != nil {
+		return nil, err
+	}
+
 	txOp := &common.TxOp{Tx: tx, CanFinish: false}
 
 	// get the tip of the current best chain

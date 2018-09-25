@@ -30,7 +30,7 @@ func (t *ChainTraverser) Start(chain core.Chainer) *ChainTraverser {
 	return t
 }
 
-// Query begins a chain transverse session. If false is returned,
+// Query begins a chain traversal session. If false is returned,
 // the chain's parent is searched next and so on, until a chain
 // with no parent is encountered. If true is returned, the query
 // ends. If error is returned, the query ends with the error from

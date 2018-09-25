@@ -19,7 +19,7 @@ type ConnectionManager struct {
 	pm         *Manager
 	activeConn int64
 	log        logger.Logger
-	connEstInt *time.Ticker
+	tickerDone chan bool
 }
 
 // NewConnMrg creates a new connection manager
@@ -33,7 +33,7 @@ func NewConnMrg(m *Manager, log logger.Logger) *ConnectionManager {
 
 // Manage starts connection management
 func (m *ConnectionManager) Manage() {
-	go m.establishConnections()
+	go m.makeConnections(m.tickerDone)
 }
 
 // connectionCount returns the number of active connections
@@ -48,14 +48,14 @@ func (m *ConnectionManager) needMoreConnections() bool {
 	return m.connectionCount() < m.pm.config.Node.MaxConnections
 }
 
-// establishConnections will attempt to send a handshake to
+// makeConnections will attempt to send a handshake to
 // addresses that have not been connected to as long as the max
 // connection limit has not been reached
-func (m *ConnectionManager) establishConnections() {
-	m.connEstInt = time.NewTicker(time.Duration(m.pm.config.Node.ConnEstInterval) * time.Second)
+func (m *ConnectionManager) makeConnections(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.pm.config.Node.ConnEstInterval) * time.Second)
 	for {
 		select {
-		case <-m.connEstInt.C:
+		case <-ticker.C:
 			unconnectedPeers := m.pm.GetUnconnectedPeers()
 			if !m.pm.NeedMorePeers() || len(unconnectedPeers) == 0 {
 				continue
@@ -64,6 +64,9 @@ func (m *ConnectionManager) establishConnections() {
 			for _, p := range unconnectedPeers {
 				m.pm.ConnectToPeer(p.StringID())
 			}
+		case <-done:
+			ticker.Stop()
+			return
 		}
 	}
 }
@@ -88,7 +91,7 @@ func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
 // Disconnected is called when a connection is closed
 func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
 	fullAddr := util.FullRemoteAddressFromConn(conn)
-	go m.pm.OnPeerDisconnect(fullAddr)
+	m.pm.OnPeerDisconnect(fullAddr)
 
 	m.gmx.Lock()
 	defer m.gmx.Unlock()
@@ -96,8 +99,13 @@ func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
 }
 
 // OpenedStream is called when a stream is openned
-func (m *ConnectionManager) OpenedStream(net.Network, net.Stream) {
+func (m *ConnectionManager) OpenedStream(n net.Network, s net.Stream) {
 
+	// If the local node has stopped,
+	// close the stream on both ends.
+	if m.pm.localNode.HasStopped() {
+		s.Reset()
+	}
 }
 
 // ClosedStream is called when a stream is openned

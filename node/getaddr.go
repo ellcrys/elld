@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
@@ -18,7 +19,10 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 
 	remotePeerIDShort := remotePeer.ShortID()
 
-	s, err := g.NewStream(context.Background(), remotePeer, config.GetAddrVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.GetAddrVersion)
 	if err != nil {
 		g.log.Debug("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)
@@ -56,9 +60,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 	}
 
 	for _, remotePeer := range remotePeers {
-		rp := remotePeer
-		go func() {
-
+		go func(rp types.Engine) {
 			// send GetAddr and receive a list of address
 			addressToRelay, err := g.SendGetAddrToPeer(rp)
 			if err != nil {
@@ -68,9 +70,9 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 			// As per discovery protocol,
 			// relay the addresses received
 			if len(addressToRelay) > 0 {
-				g.RelayAddresses(addressToRelay)
+				go g.RelayAddresses(addressToRelay)
 			}
-		}()
+		}(remotePeer)
 	}
 
 	return nil

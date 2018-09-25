@@ -3,6 +3,10 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/olebedev/emitter"
+
+	"github.com/syndtr/goleveldb/leveldb"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
@@ -198,15 +202,15 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops
 
 		case *common.OpCreateAccount:
 			stateObjs = append(stateObjs, &common.StateObject{
-				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
-				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
+				TreeKey: common.MakeTreeKey(block.GetNumber(), common.TagAccount),
+				Key:     common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
 				Value:   util.ObjectToBytes(_op.Account),
 			})
 
 		case *common.OpNewAccountBalance:
 			stateObjs = append(stateObjs, &common.StateObject{
-				TreeKey: common.MakeTreeKey(block.GetNumber(), common.ObjectTypeAccount),
-				Key:     common.MakeAccountKey(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
+				TreeKey: common.MakeTreeKey(block.GetNumber(), common.TagAccount),
+				Key:     common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
 				Value:   util.ObjectToBytes(_op.Account),
 			})
 
@@ -318,7 +322,7 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// result in new chain.
 	if block.GetHeader().GetNumber() < chainTip.GetNumber() {
 		createNewChain = true
-		b.log.Info("Stale block found. Child chain will be created",
+		b.log.Info("Stale block found. New branch required",
 			"BlockNo", block.GetNumber(),
 			"BestChainHeight", chainTip.GetNumber())
 		goto process
@@ -328,14 +332,13 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// are the same.A new chain must be created
 	if block.GetNumber() == chainTip.GetNumber() {
 		createNewChain = true
-		b.log.Info("Fork block found. Chain already has a block at that height. Child chain will be created",
+		b.log.Info("Block with same height exists. New branch required.",
 			"BlockNo", block.GetNumber(),
 			"ChainHeight", chainTip.GetNumber())
 		goto process
 	}
 
 process:
-
 	// Verify that the block's PoW for non-genesis blocks is valid.
 	// Only do this in production or development mode
 	if (b.cfg.Node.Mode != config.ModeTest) && block.GetNumber() > 1 {
@@ -346,6 +349,10 @@ process:
 	}
 
 	txOp := common.GetTxOp(chain.store.DB(), opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
 	if len(opts) == 0 {
 		txOp.CanFinish = false
 	}
@@ -374,6 +381,10 @@ process:
 			"ChainID", chain.GetID(),
 			"BlockNo", block.GetNumber(),
 			"ParentBlockNo", parentBlock.GetNumber())
+
+		// Update the validator context to ContextBranch
+		// since we intend to add the block to a branch
+		bValidator.setContext(ContextBranch)
 	}
 
 	// validate transactions in the block
@@ -452,15 +463,10 @@ process:
 		}
 	}
 
-	// set the chain reader on the block
-	block.SetChainReader(chain.ChainReader())
-
 	// if the chain is the best chain, emit a new block
-	// event. This will cause the miner to abort and restart.
-	// It will also cause the peer manager to relay the block
-	// to other peers.
+	// event for other processes to act on the new block
 	if b.bestChain.GetID() == chain.GetID() {
-		<-b.eventEmitter.Emit(core.EventNewBlock, block)
+		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader(), emitter.Sync)
 	}
 
 	b.log.Info("Block has been successfully processed", "BlockNo", block.GetNumber())
@@ -520,7 +526,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	}
 
 	// attempt to add the block to a chain
-	_, err = b.maybeAcceptBlock(block, nil)
+	chain, err := b.maybeAcceptBlock(block, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +535,7 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	// that may depend on this newly accepted block
 	b.processOrphanBlocks(block.GetHash().HexStr())
 
-	return block.GetChainReader(), nil
+	return chain.ChainReader(), nil
 }
 
 // execBlock execute the transactions of the blocks to

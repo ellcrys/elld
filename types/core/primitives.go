@@ -21,8 +21,6 @@ type Block interface {
 	SetHash(util.Hash)
 	GetTransactions() []Transaction
 	GetSignature() []byte
-	SetChainReader(cr ChainReader)
-	GetChainReader() ChainReader
 	SetSignature(sig []byte)
 	HashToHex() string
 }
@@ -135,13 +133,13 @@ func MapFieldsToHex(obj interface{}) interface{} {
 	for k, v := range m {
 		switch _v := v.(type) {
 		case BlockNonce:
-			m[k] = util.BytesToHash(_v[:]).HexStr()
+			m[k] = util.ToHex(_v[:])
 		case util.Hash:
 			m[k] = _v.HexStr()
 		case *big.Int:
 			m[k] = fmt.Sprintf("0x%x", _v)
 		case []byte:
-			m[k] = util.BytesToHash(_v).HexStr()
+			m[k] = util.ToHex(_v)
 		case map[string]interface{}:
 			m[k] = MapFieldsToHex(_v)
 		case []interface{}:

@@ -24,7 +24,10 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	remotePeerIDShort := remotePeer.ShortID()
 
 	// create stream to the remote peer
-	s, err := g.NewStream(context.Background(), remotePeer, config.PingVersion)
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	defer cf()
+	s, err := g.NewStream(ctx, remotePeer, config.PingVersion)
 	if err != nil {
 		g.log.Debug("Ping failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("ping failed. failed to connect to peer. %s", err.Error())
@@ -78,7 +81,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 			"Height", pongMsg.BestBlockNumber,
 			"TotalDifficulty", pongMsg.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best
@@ -97,7 +100,7 @@ func (g *Gossip) SendPing(remotePeers []types.Engine) {
 		_remotePeer := remotePeer
 		go func() {
 			if err := g.SendPingToPeer(_remotePeer); err != nil {
-				g.PM().OnFailedConnection(_remotePeer)
+				g.PM().HasDisconnected(_remotePeer)
 			}
 		}()
 	}
@@ -162,7 +165,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 			"Height", msg.BestBlockNumber,
 			"TotalDifficulty", msg.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, util.Hash{})
+		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
 	// Update the current known best

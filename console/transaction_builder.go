@@ -135,3 +135,8 @@ func (o *TxBalanceBuilder) Fee(amount string) *TxBalanceBuilder {
 	o.data["fee"] = amount
 	return o
 }
+
+// Reset the builder
+func (o *TxBalanceBuilder) Reset() {
+	o.data = make(map[string]interface{})
+}

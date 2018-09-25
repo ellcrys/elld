@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/console"
 	"github.com/ellcrys/elld/crypto"
@@ -60,6 +62,10 @@ account does not exist, the command will fail.`,
 		if err := cs.Prepare(); err != nil {
 			log.Fatal("failed to prepare console VM", "Err", err)
 		}
+
+		cs.OnStop(func() {
+			os.Exit(0)
+		})
 
 		cs.Run()
 	},

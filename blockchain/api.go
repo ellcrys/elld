@@ -50,20 +50,24 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			"best chain not set", nil)
 	}
 
 	num, ok := arg.(float64)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("Integer").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("Integer").Error(), nil)
 	}
 
 	block, err := b.bestChain.GetBlock(uint64(num))
 	if err != nil {
 		if err != core.ErrBlockNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed,
+				err.Error(), nil)
 		}
-		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeBlockNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(core.MapFieldsToHex(block))
@@ -75,24 +79,29 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			"best chain not set", nil)
 	}
 
 	hash, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 	blockHash, err := util.HexToHash(hash)
 	if err != nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed, "invalid block hash", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			"invalid block hash", nil)
 	}
 
 	block, err := b.bestChain.getBlockByHash(blockHash)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed,
+				err.Error(), nil)
 		}
-		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeBlockNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(core.MapFieldsToHex(block))
@@ -104,7 +113,8 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 	var orphans = []interface{}{}
 	for _, k := range b.orphanBlocks.Keys() {
-		orphans = append(orphans, core.MapFieldsToHex(b.orphanBlocks.Peek(k)))
+		orphans = append(orphans,
+			core.MapFieldsToHex(b.orphanBlocks.Peek(k)))
 	}
 	return jsonrpc.Success(orphans)
 }
@@ -112,12 +122,14 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 // apiGetBestchain fetches the best chain
 func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			"best chain not set", nil)
 	}
 
 	tip, err := b.bestChain.Current()
 	if err != nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(core.MapFieldsToHex(map[string]interface{}{
@@ -137,12 +149,14 @@ func (b *Blockchain) apiGetReOrgs(arg interface{}) *jsonrpc.Response {
 func (b *Blockchain) apiGetAccount(arg interface{}) *jsonrpc.Response {
 	address, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
 	account, err := b.GetAccount(util.String(address))
 	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeAccountNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(account)
@@ -153,12 +167,14 @@ func (b *Blockchain) apiGetNonce(arg interface{}) *jsonrpc.Response {
 
 	address, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
 	account, err := b.GetAccount(util.String(address))
 	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeAccountNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(account.GetNonce())
@@ -169,12 +185,14 @@ func (b *Blockchain) apiGetBalance(arg interface{}) *jsonrpc.Response {
 
 	address, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
 	account, err := b.GetAccount(util.String(address))
 	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAccountNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeAccountNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(account.GetBalance())
@@ -185,7 +203,8 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 
 	txHash, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
 	hash, err := util.HexToHash(txHash)
@@ -199,7 +218,8 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 
 	tx, err := b.GetTransaction(hash)
 	if err != nil {
-		return jsonrpc.Error(types.ErrCodeTransactionNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeTransactionNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(core.MapFieldsToHex(tx))
@@ -213,7 +233,8 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 
 	txHash, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
 	var status = "unknown"
@@ -234,7 +255,8 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 	tx, err := b.GetTransaction(hash)
 	if err != nil {
 		if err != core.ErrTxNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed,
+				err.Error(), nil)
 		}
 	}
 
@@ -253,15 +275,18 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			"best chain not set", nil)
 	}
 
 	tip, err := b.bestChain.Current()
 	if err != nil {
 		if err != core.ErrBlockNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed,
+				err.Error(), nil)
 		}
-		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeBlockNotFound,
+			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(core.MapFieldsToHex(map[string]interface{}{
@@ -332,6 +357,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   "node",
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
+		},
+		"getObjects": {
+			Namespace:   "debug",
+			Description: "Get raw database objects",
+			Func:        b.apiGetDBObjects,
 		},
 	}
 }

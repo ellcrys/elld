@@ -14,12 +14,12 @@ import (
 	. "github.com/onsi/ginkgo"
 
 	"github.com/ellcrys/elld/blockchain"
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"

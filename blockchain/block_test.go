@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/crypto"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -13,7 +14,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/txpool"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -296,7 +296,7 @@ var _ = Describe("Block", func() {
 			BeforeEach(func() {
 				tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix())
 				tx.SetHash(tx.ComputeHash())
-				tx2 = objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix()+100)
+				tx2 = objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix()+100)
 				tx2.SetHash(tx2.ComputeHash())
 				err = bc.txPool.Put(tx)
 				Expect(err).To(BeNil())
