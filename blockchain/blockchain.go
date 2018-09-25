@@ -121,7 +121,7 @@ func LoadBlockFromFile(name string) (core.Block, error) {
 // Combination: blake2b(current nano time + initial block hash
 // + pointer address of initial block)
 func makeChainID(initialBlock core.Block) util.String {
-	now := time.Now().UnixNano()
+	now := time.Now().Unix()
 	blockHash := initialBlock.HashToHex()
 	id := fmt.Sprintf("%s %d %d", blockHash, now, util.GetPtrAddr(initialBlock))
 	hash := util.BytesToHash(util.Blake2b256([]byte(id)))
@@ -234,11 +234,15 @@ func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
 // can be used to find both standalone chain and child chains.
 func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 
+	if ci == nil {
+		return fmt.Errorf("chain info is required")
+	}
+
 	// Check whether the chain information is a genesis chain.
 	// A genesis chain info does not include a parent chain id
 	// and a parent block number since it has no parent.
 	if ci.ParentChainID == "" && ci.ParentBlockNumber == 0 {
-		b.addChain(NewChain(ci.ID, b.db, b.cfg, b.log))
+		b.addChain(NewChainFromChainInfo(ci, b.db, b.cfg, b.log))
 		return nil
 	}
 
@@ -250,8 +254,7 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 	}
 
 	// construct a new chain
-	chain := NewChain(ci.ID, b.db, b.cfg, b.log)
-	chain.info = ci
+	chain := NewChainFromChainInfo(ci, b.db, b.cfg, b.log)
 
 	// Load the chain's parent chain and block
 	b.chainLock.Lock()

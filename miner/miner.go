@@ -14,6 +14,7 @@ import (
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -93,13 +94,14 @@ func (m *Miner) setFakeDelay(d time.Duration) {
 	m.blakimoto.SetFakeDelay(d)
 }
 
-// getProposedBlock creates a full valid block compatible with the
+// getProposedBlock creates a full
+// valid block compatible with the
 // main chain.
 func (m *Miner) getProposedBlock(txs []core.Transaction) (core.Block, error) {
 	proposedBlock, err := m.blockMaker.Generate(&core.GenerateBlockParams{
 		Transactions: txs,
 		Creator:      m.minerKey,
-		Nonce:        core.EncodeNonce(1),
+		Nonce:        util.EncodeNonce(1),
 		Difficulty:   new(big.Int).SetInt64(1),
 		AddFeeAlloc:  true,
 	})
@@ -109,9 +111,9 @@ func (m *Miner) getProposedBlock(txs []core.Transaction) (core.Block, error) {
 	return proposedBlock, nil
 }
 
-// abortCurrent forces the currently running mining threads to
-// stop. This will cause a new proposed block to be created.
-//
+// abortCurrent forces the currently
+// running mining threads to stop.
+// This will cause a new proposed block to be created.
 // Note: Must be called with the lock held
 func (m *Miner) abortCurrent() {
 	if m.aborted {

@@ -51,7 +51,8 @@ type Chain struct {
 
 // NewChain creates an instance of a chain. It will create metadata object for the
 // chain if not exists. It will return error if it is unable to do so.
-func NewChain(id util.String, db elldb.DB, cfg *config.EngineConfig, log logger.Logger) *Chain {
+func NewChain(id util.String, db elldb.DB,
+	cfg *config.EngineConfig, log logger.Logger) *Chain {
 	chain := new(Chain)
 	chain.id = id
 	chain.cfg = cfg
@@ -64,6 +65,15 @@ func NewChain(id util.String, db elldb.DB, cfg *config.EngineConfig, log logger.
 		Timestamp: time.Now().UnixNano(),
 	}
 	return chain
+}
+
+// NewChainFromChainInfo creates a
+// chain with a given chain info
+func NewChainFromChainInfo(ci *core.ChainInfo, db elldb.DB,
+	cfg *config.EngineConfig, log logger.Logger) *Chain {
+	ch := NewChain(ci.ID, db, cfg, log)
+	ch.info = ci
+	return ch
 }
 
 // GetStore gets the store

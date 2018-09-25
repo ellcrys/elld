@@ -292,7 +292,7 @@ func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
 	}
 
 	// store a record of this re-org
-	if err := b.recordReOrg(now.UnixNano(), branch, txOp); err != nil {
+	if err := b.recordReOrg(now.Unix(), branch, txOp); err != nil {
 		return nil, fmt.Errorf("failed to store re-org record")
 	}
 

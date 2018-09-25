@@ -6,7 +6,6 @@ import (
 	"github.com/vmihailenco/msgpack"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,7 +22,7 @@ var _ = Describe("Block & Header", func() {
 				Number:           1,
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
-				Nonce:            core.EncodeNonce(1),
+				Nonce:            util.EncodeNonce(1),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
@@ -39,7 +38,7 @@ var _ = Describe("Block & Header", func() {
 				Number:           1,
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
-				Nonce:            core.EncodeNonce(1),
+				Nonce:            util.EncodeNonce(1),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
@@ -56,7 +55,7 @@ var _ = Describe("Block & Header", func() {
 			h2.SetTransactionsRoot(util.StrToHash("abc"))
 			Expect(h.TransactionsRoot).ToNot(Equal(h2.GetTransactionsRoot()))
 
-			h2.SetNonce(core.EncodeNonce(10))
+			h2.SetNonce(util.EncodeNonce(10))
 			Expect(h.Nonce).ToNot(Equal(h2.GetNonce()))
 		})
 	})
@@ -68,7 +67,7 @@ var _ = Describe("Block & Header", func() {
 				Number:           1,
 				TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 				StateRoot:        util.BytesToHash([]byte("tx_hash")),
-				Nonce:            core.EncodeNonce(1),
+				Nonce:            util.EncodeNonce(1),
 				Difficulty:       new(big.Int).SetUint64(100),
 				Timestamp:        1500000,
 			}
@@ -86,7 +85,7 @@ var _ = Describe("Block & Header", func() {
 			Number:           1,
 			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 			StateRoot:        util.BytesToHash([]byte("tx_hash")),
-			Nonce:            core.EncodeNonce(1),
+			Nonce:            util.EncodeNonce(1),
 			Difficulty:       new(big.Int).SetUint64(100),
 			Timestamp:        1500000,
 		}
@@ -121,7 +120,7 @@ var _ = Describe("Block & Header", func() {
 			Number:           1,
 			TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 			StateRoot:        util.BytesToHash([]byte("tx_hash")),
-			Nonce:            core.EncodeNonce(1),
+			Nonce:            util.EncodeNonce(1),
 			Difficulty:       new(big.Int).SetUint64(100),
 			Timestamp:        1500000,
 		}
@@ -226,7 +225,7 @@ var _ = Describe("Block & Header", func() {
 					Number:           1,
 					TransactionsRoot: util.BytesToHash([]byte("state_root_hash")),
 					StateRoot:        util.BytesToHash([]byte("tx_hash")),
-					Nonce:            core.EncodeNonce(1),
+					Nonce:            util.EncodeNonce(1),
 					Difficulty:       new(big.Int).SetUint64(100),
 					Timestamp:        1500000,
 				},
@@ -242,7 +241,7 @@ var _ = Describe("Block & Header", func() {
 		It("should serialize and deserialize as expected", func() {
 			h := &Header{
 				Number:           10,
-				Nonce:            core.EncodeNonce(10),
+				Nonce:            util.EncodeNonce(10),
 				Timestamp:        100,
 				CreatorPubKey:    "abc",
 				ParentHash:       util.StrToHash("xyz"),
@@ -268,7 +267,7 @@ var _ = Describe("Block & Header", func() {
 			b := &Block{
 				Header: &Header{
 					Number:           10,
-					Nonce:            core.EncodeNonce(10),
+					Nonce:            util.EncodeNonce(10),
 					Timestamp:        100,
 					CreatorPubKey:    "abc",
 					ParentHash:       util.StrToHash("xyz"),

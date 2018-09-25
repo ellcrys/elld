@@ -38,7 +38,7 @@ func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
 			ch["length"] = tip.GetNumber() - parent.GetNumber()
 		}
 
-		result = append(result, core.MapFieldsToHex(ch))
+		result = append(result, util.ToJSFriendlyMap(ch))
 	}
 
 	return jsonrpc.Success(result)
@@ -70,7 +70,7 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(core.MapFieldsToHex(block))
+	return jsonrpc.Success(util.ToJSFriendlyMap(block))
 }
 
 // apiGetBlockByHash fetches a block by hash
@@ -104,7 +104,7 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(core.MapFieldsToHex(block))
+	return jsonrpc.Success(util.ToJSFriendlyMap(block))
 }
 
 // apiGetOrphans fetches all orphan blocks
@@ -114,7 +114,7 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 	var orphans = []interface{}{}
 	for _, k := range b.orphanBlocks.Keys() {
 		orphans = append(orphans,
-			core.MapFieldsToHex(b.orphanBlocks.Peek(k)))
+			util.ToJSFriendlyMap(b.orphanBlocks.Peek(k)))
 	}
 	return jsonrpc.Success(orphans)
 }
@@ -132,7 +132,7 @@ func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(core.MapFieldsToHex(map[string]interface{}{
+	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
 		"id":              b.bestChain.id,
 		"timestamp":       b.bestChain.info.Timestamp,
 		"height":          tip.GetNumber(),
@@ -222,7 +222,7 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(core.MapFieldsToHex(tx))
+	return jsonrpc.Success(util.ToJSFriendlyMap(tx))
 }
 
 // apiGetTransactionStatus gets the status of
@@ -289,7 +289,7 @@ func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(core.MapFieldsToHex(map[string]interface{}{
+	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
 		"difficulty":      tip.GetDifficulty(),
 		"totalDifficulty": tip.GetTotalDifficulty(),
 	}))

@@ -77,7 +77,7 @@ type GenerateBlockParams struct {
 
 	// Nonce is the special number that
 	// indicates the completion of PoW
-	Nonce BlockNonce
+	Nonce util.BlockNonce
 
 	// Difficulty represents the target
 	// difficulty that the nonce satisfied

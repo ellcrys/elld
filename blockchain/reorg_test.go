@@ -68,7 +68,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
 				},
 				Creator:                 sender,
-				Nonce:                   core.EncodeNonce(1),
+				Nonce:                   util.EncodeNonce(1),
 				Difficulty:              new(big.Int).SetInt64(1),
 				OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 			})
@@ -90,7 +90,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(100),
 					})
@@ -119,7 +119,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730726),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(5),
 					})
@@ -152,7 +152,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 					})
@@ -186,7 +186,7 @@ var _ = Describe("ReOrg", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:                 sender,
-						Nonce:                   core.EncodeNonce(1),
+						Nonce:                   util.EncodeNonce(1),
 						Difficulty:              new(big.Int).SetInt64(1),
 						OverrideTotalDifficulty: new(big.Int).SetInt64(10),
 					})
@@ -224,7 +224,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 
@@ -234,7 +234,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(genesisB2)
@@ -253,7 +253,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 2, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(genesisB3)
@@ -266,7 +266,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(genesisB4)
@@ -344,7 +344,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 
@@ -355,7 +355,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 
@@ -375,7 +375,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 0, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(forkChainB3)
@@ -388,7 +388,7 @@ var _ = Describe("ReOrg", func() {
 					objects.NewTx(objects.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 			_, err = bc.ProcessBlock(forkedChainB4)

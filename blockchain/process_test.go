@@ -415,7 +415,7 @@ var _ = Describe("Process", func() {
 						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 					},
 					Creator:    sender,
-					Nonce:      core.EncodeNonce(1),
+					Nonce:      util.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
@@ -439,7 +439,7 @@ var _ = Describe("Process", func() {
 						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 					},
 					Creator:     sender,
-					Nonce:       core.EncodeNonce(1),
+					Nonce:       util.EncodeNonce(1),
 					Difficulty:  new(big.Int).SetInt64(131072),
 					AddFeeAlloc: true,
 				})
@@ -468,7 +468,7 @@ var _ = Describe("Process", func() {
 					objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730722),
 				},
 				Creator:    sender,
-				Nonce:      core.EncodeNonce(1),
+				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
 		})
@@ -524,7 +524,7 @@ var _ = Describe("Process", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 						},
 						Creator:           sender,
-						Nonce:             core.EncodeNonce(1),
+						Nonce:             util.EncodeNonce(1),
 						Difficulty:        new(big.Int).SetInt64(131072),
 						OverrideTimestamp: genesisBlock.GetHeader().GetTimestamp() - 1,
 					})
@@ -549,7 +549,7 @@ var _ = Describe("Process", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 						},
 						Creator:           sender,
-						Nonce:             core.EncodeNonce(1),
+						Nonce:             util.EncodeNonce(1),
 						Difficulty:        new(big.Int).SetInt64(131072),
 						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 					})
@@ -562,7 +562,7 @@ var _ = Describe("Process", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:           sender,
-						Nonce:             core.EncodeNonce(2),
+						Nonce:             util.EncodeNonce(2),
 						Difficulty:        new(big.Int).SetInt64(131072),
 						OverrideTimestamp: time.Now().Add(3 * time.Second).Unix(),
 					})
@@ -571,7 +571,7 @@ var _ = Describe("Process", func() {
 
 					copier.Copy(&staleBlock2, block2)
 					staleBlock2.GetHeader().SetNumber(2)
-					staleBlock2.GetHeader().SetNonce(core.EncodeNonce(3))
+					staleBlock2.GetHeader().SetNonce(util.EncodeNonce(3))
 					staleBlock2.Hash = staleBlock2.ComputeHash()
 					staleBlock2.Sig, _ = objects.BlockSign(&staleBlock2, sender.PrivKey().Base58())
 				})
@@ -593,7 +593,7 @@ var _ = Describe("Process", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
+						Nonce:      util.EncodeNonce(1),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
@@ -603,7 +603,7 @@ var _ = Describe("Process", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:    sender,
-						Nonce:      core.EncodeNonce(4),
+						Nonce:      util.EncodeNonce(4),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
@@ -634,7 +634,7 @@ var _ = Describe("Process", func() {
 							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:    sender,
-						Nonce:      core.EncodeNonce(1),
+						Nonce:      util.EncodeNonce(1),
 						Difficulty: new(big.Int).SetInt64(131072),
 					})
 
@@ -667,7 +667,7 @@ var _ = Describe("Process", func() {
 						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 					},
 					Creator:    sender,
-					Nonce:      core.EncodeNonce(1),
+					Nonce:      util.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
@@ -682,7 +682,7 @@ var _ = Describe("Process", func() {
 						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 					},
 					Creator:    sender,
-					Nonce:      core.EncodeNonce(1),
+					Nonce:      util.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 			})
