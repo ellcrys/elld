@@ -91,7 +91,7 @@ var _ = Describe("Store", func() {
 				block = &objects.Block{
 					Header: &objects.Header{Number: 211},
 					Transactions: []*objects.Transaction{
-						&objects.Transaction{Hash: util.StrToHash("hash1")},
+						{Hash: util.StrToHash("hash1")},
 					},
 				}
 				err := store.PutBlock(block)
