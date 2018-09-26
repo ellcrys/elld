@@ -87,7 +87,7 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 		return jsonrpc.Error(types.ErrCodeAddress, "can't add self as a peer", nil)
 	}
 
-	n.PM().addPeer(rp)
+	n.PM().AddPeer(rp)
 
 	return jsonrpc.Success(nil)
 }

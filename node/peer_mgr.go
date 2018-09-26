@@ -92,8 +92,8 @@ func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
 	m.CleanPeers()
 }
 
-// addPeer adds a peer
-func (m *Manager) addPeer(peer *Node) {
+// AddPeer adds a peer
+func (m *Manager) AddPeer(peer *Node) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	m.peers[peer.StringID()] = peer
@@ -207,7 +207,7 @@ func (m *Manager) periodicCleanUp(done chan bool) {
 	}
 }
 
-// AddOrUpdatePeer adds a peer to the
+// UpdatePeerTime adds a peer to the
 // list of peers if it has not been
 // added. If it has, then the following
 // steps are taken:
@@ -219,50 +219,30 @@ func (m *Manager) periodicCleanUp(done chan bool) {
 //	 24 hours and its current timestamp is
 //	 over 24 hours, then update the timestamp
 // 	 to 24 hours ago.
-// - else use whatever timestamp is returned
+//	 - else set time to current time
 // - clean old addresses
-func (m *Manager) AddOrUpdatePeer(p types.Engine) error {
-
-	defer m.CleanPeers()
-
-	if p == nil {
-		return fmt.Errorf("nil received")
-	}
-
-	if p.IsSame(m.localNode) {
-		return fmt.Errorf("peer is the local peer")
-	}
-
-	if !util.IsValidAddr(p.GetMultiAddr()) {
-		return fmt.Errorf("peer address is not valid")
-	}
-
-	// In production mode, it must be a routable address
-	if m.localNode.ProdMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
-		return fmt.Errorf("peer address is not routable")
-	}
-
-	// Save the known peers.
-	// don't do this in test environment
-	// (we will test savePeer independently)
-	if !m.localNode.TestMode() {
-		defer m.SavePeers()
-	}
+func (m *Manager) UpdatePeerTime(p types.Engine) error {
 
 	m.mtx.Lock()
-	defer m.mtx.Unlock()
 
-	// Update the timestamp only if
-	// not already set by caller or elsewhere
-	if p.GetTimestamp().IsZero() {
-		p.SetTimestamp(time.Now().UTC())
-	}
+	defer func() {
+		m.mtx.Unlock()
+		m.SavePeers()
+		m.CleanPeers()
+	}()
 
 	// Get a peer matching the ID from the
 	// list of peers. if it does not
 	// exist, we add it immediately
 	existingPeer, exist := m.peers[p.StringID()]
 	if !exist {
+
+		// Update the timestamp only if
+		// the address
+		if p.GetTimestamp().IsZero() {
+			p.SetTimestamp(time.Now().UTC())
+		}
+
 		m.peers[p.StringID()] = p
 		return nil
 	}
@@ -287,7 +267,7 @@ func (m *Manager) AddOrUpdatePeer(p types.Engine) error {
 
 	// At this point, we simple update
 	// the existing peer's timestamp
-	existingPeer.SetTimestamp(p.GetTimestamp())
+	existingPeer.SetTimestamp(time.Now().UTC())
 
 	return nil
 }
@@ -457,7 +437,7 @@ func (m *Manager) CreatePeerFromAddress(addr string) error {
 	}
 
 	remotePeer.Timestamp = time.Now().UTC()
-	err = m.AddOrUpdatePeer(remotePeer)
+	err = m.UpdatePeerTime(remotePeer)
 	m.log.Info("Added a peer", "PeerAddr", mAddr.String())
 
 	return err
@@ -534,7 +514,7 @@ func (m *Manager) LoadPeers() error {
 		addr, _ := ma.NewMultiaddr(addrData["addr"].(string))
 		peer := NewRemoteNode(addr, m.localNode)
 		peer.Timestamp = time.Unix(int64(addrData["ts"].(uint32)), 0)
-		m.AddOrUpdatePeer(peer)
+		m.UpdatePeerTime(peer)
 	}
 
 	return nil

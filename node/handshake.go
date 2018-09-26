@@ -86,7 +86,7 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	}
 
 	// Update the timestamp of the peer
-	g.PM().AddOrUpdatePeer(remotePeer)
+	g.PM().UpdatePeerTime(remotePeer)
 
 	// Set the remote peer's acquainted status to
 	// true, which will allow some unsolicited
@@ -169,7 +169,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 
 	// update the remote peer's timestamp
 	// and add it to the peer manager's list
-	g.PM().AddOrUpdatePeer(remotePeer)
+	g.PM().UpdatePeerTime(remotePeer)
 
 	// Set the remote peer's acquainted status to
 	// true, which will allow some unsolicited

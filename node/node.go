@@ -583,7 +583,7 @@ func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
 		rp := NewRemoteNode(pAddr, n)
 		rp.isHardcodedSeed = hardcoded
 		rp.gProtoc = n.gProtoc
-		n.peerManager.addPeer(rp)
+		n.peerManager.AddPeer(rp)
 	}
 	return nil
 }

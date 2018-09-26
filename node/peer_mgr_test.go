@@ -53,43 +53,14 @@ var _ = Describe("GetAddr", func() {
 		closeNode(lp)
 	})
 
-	Describe(".AddOrUpdatePeer", func() {
-
-		It("return err='nil received' when nil is passed", func() {
-			err := mgr.AddOrUpdatePeer(nil)
-			Expect(err).NotTo(BeNil())
-			Expect(err.Error()).To(Equal("nil received"))
-		})
+	Describe(".UpdatePeerTime", func() {
 
 		It("return nil when peer is successfully added and peers list increases to 1", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			defer closeNode(p2)
-			err = mgr.AddOrUpdatePeer(p2)
+			err = mgr.UpdatePeerTime(p2)
 			Expect(err).To(BeNil())
 			Expect(mgr.Peers()).To(HaveLen(1))
-		})
-
-		It("when peer exist but has a different address, return error", func() {
-			p2, err := node.NewNode(cfg, "127.0.0.1:40003", crypto.NewKeyFromIntSeed(3), log)
-			Expect(err).To(BeNil())
-			defer closeNode(p2)
-
-			err = mgr.AddOrUpdatePeer(p2)
-			Expect(err).To(BeNil())
-
-			p3, err := node.NewNode(cfg, "127.0.0.1:40004", crypto.NewKeyFromIntSeed(3), log)
-			Expect(err).To(BeNil())
-			defer closeNode(p2)
-
-			err = mgr.AddOrUpdatePeer(p3)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("existing peer address do not match"))
-		})
-
-		It("should return err='peer is the local peer' when the local peer is passed", func() {
-			err := mgr.AddOrUpdatePeer(lp)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("peer is the local peer"))
 		})
 	})
 
@@ -210,7 +181,7 @@ var _ = Describe("GetAddr", func() {
 
 		It("should return peer when peer is in known peer list", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40003", crypto.NewKeyFromIntSeed(3), log)
-			mgr.AddOrUpdatePeer(p2)
+			mgr.UpdatePeerTime(p2)
 			Expect(err).To(BeNil())
 			actual := mgr.GetPeer(p2.StringID())
 			Expect(actual).NotTo(BeNil())
@@ -232,7 +203,7 @@ var _ = Describe("GetAddr", func() {
 		It("peer exists, must return true", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			defer closeNode(p2)
-			mgr.AddOrUpdatePeer(p2)
+			mgr.UpdatePeerTime(p2)
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p2.StringID())).To(BeTrue())
 			p2.GetHost().Close()
@@ -245,7 +216,7 @@ var _ = Describe("GetAddr", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 
-			mgr.AddOrUpdatePeer(p2)
+			mgr.UpdatePeerTime(p2)
 			currentTimestamp := p2.Timestamp.Unix()
 
 			addr, _ := ma.NewMultiaddr(p2.GetMultiAddr())
@@ -261,7 +232,7 @@ var _ = Describe("GetAddr", func() {
 		It("should return peer1 as the only known peer", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
-			mgr.AddOrUpdatePeer(p2)
+			mgr.UpdatePeerTime(p2)
 			actual := mgr.GetPeers()
 			Expect(actual).To(HaveLen(1))
 			Expect(actual).To(ContainElement(p2))
@@ -554,9 +525,10 @@ var _ = Describe("GetAddr", func() {
 
 		It("should return p3 in slice when only 1 peer is not connected", func() {
 			p3, err := node.NewNode(cfg, "127.0.0.1:40108", crypto.NewKeyFromIntSeed(8), log)
+			p3.Timestamp = time.Now().UTC()
 			Expect(err).To(BeNil())
 			defer p3.Host().Close()
-			p.PM().AddOrUpdatePeer(p3)
+			p.PM().AddPeer(p3)
 			peers := p.PM().GetUnconnectedPeers()
 			Expect(peers).To(HaveLen(1))
 			Expect(peers[0]).To(Equal(p3))

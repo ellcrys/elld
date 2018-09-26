@@ -52,7 +52,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		}
 
 		// Add the remote peer to the peer manager's list
-		if g.PM().AddOrUpdatePeer(p) != nil {
+		if g.PM().UpdatePeerTime(p) != nil {
 			invalidAddrs++
 			continue
 		}

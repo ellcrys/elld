@@ -73,7 +73,7 @@ var _ = Describe("Ping", func() {
 			var rpBeforePingTime int64
 
 			BeforeEach(func() {
-				lp.PM().AddOrUpdatePeer(rp)
+				lp.PM().UpdatePeerTime(rp)
 				rp.SetTimestamp(time.Now().Add(-2 * time.Hour))
 				rpBeforePingTime = rp.GetTimestamp().Unix()
 			})
