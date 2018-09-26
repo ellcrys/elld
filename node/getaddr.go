@@ -55,7 +55,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 
 	// we need to know if wee need more peers before we requests
 	// more addresses from other peers.
-	if !g.PM().NeedMorePeers() {
+	if !g.PM().RequirePeers() {
 		return nil
 	}
 

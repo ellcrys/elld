@@ -66,7 +66,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 
 	// update the remote peer's timestamp
 	// and add the remote peer to the peer manager's list
-	remotePeer.SetTimestamp(time.Now())
+	remotePeer.SetTimestamp(time.Now().UTC())
 	g.PM().AddOrUpdatePeer(remotePeer)
 
 	g.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
@@ -95,15 +95,20 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 
 // SendPing sends a ping message
 func (g *Gossip) SendPing(remotePeers []types.Engine) {
-	g.log.Info("Sending ping to peer(s)", "NumPeers", len(remotePeers))
+	sent := 0
 	for _, remotePeer := range remotePeers {
 		_remotePeer := remotePeer
+		if !_remotePeer.IsAcquainted() {
+			continue
+		}
+		sent++
 		go func() {
 			if err := g.SendPingToPeer(_remotePeer); err != nil {
 				g.PM().HasDisconnected(_remotePeer)
 			}
 		}()
 	}
+	g.log.Info("Sent ping to peer(s)", "NumPeers", len(remotePeers), "NumSentTo", sent)
 }
 
 // OnPing processes a Ping message sent by a remote peer.
@@ -150,7 +155,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	}
 
 	// update the remote peer's timestamp in the peer manager's list
-	remotePeer.SetTimestamp(time.Now())
+	remotePeer.SetTimestamp(time.Now().UTC())
 	g.PM().AddOrUpdatePeer(remotePeer)
 
 	g.log.Info("Sent pong response to peer", "PeerID", remotePeerIDShort)

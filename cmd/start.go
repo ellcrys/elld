@@ -193,13 +193,13 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	}
 
 	// Add hardcoded bootstrap addresses
-	if err := n.AddBootstrapNodes(boostrapAddresses, true); err != nil {
+	if err := n.AddAddresses(boostrapAddresses, true); err != nil {
 		log.Fatal("%s", err)
 	}
 
 	// Add bootstrap addresses supplied
 	// in the config file
-	if err := n.AddBootstrapNodes(cfg.Node.BootstrapNodes, false); err != nil {
+	if err := n.AddAddresses(cfg.Node.BootstrapNodes, false); err != nil {
 		log.Fatal("%s", err)
 	}
 

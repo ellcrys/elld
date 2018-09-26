@@ -66,7 +66,7 @@ var _ = Describe("GetAddr", func() {
 			defer closeNode(p2)
 			err = mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
-			Expect(mgr.KnownPeers()).To(HaveLen(1))
+			Expect(mgr.Peers()).To(HaveLen(1))
 		})
 
 		It("when peer exist but has a different address, return error", func() {
@@ -96,7 +96,7 @@ var _ = Describe("GetAddr", func() {
 	Describe(".CleanKnownPeers", func() {
 
 		It("should return 0 when number of connected peers is less than 3", func() {
-			n := mgr.CleanKnownPeers()
+			n := mgr.CleanPeers()
 			Expect(n).To(BeZero())
 		})
 
@@ -106,14 +106,14 @@ var _ = Describe("GetAddr", func() {
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := node.NewRemoteNode(addr, lp)
 			p2.Timestamp = time.Now()
-			mgr.KnownPeers()[p2.StringID()] = p2
+			mgr.Peers()[p2.StringID()] = p2
 
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
 			p3 := node.NewRemoteNode(addr2, lp)
 			p3.Timestamp = time.Now()
-			mgr.KnownPeers()[p3.StringID()] = p3
+			mgr.Peers()[p3.StringID()] = p3
 
-			n := mgr.CleanKnownPeers()
+			n := mgr.CleanPeers()
 			Expect(n).To(BeZero())
 		})
 
@@ -123,13 +123,13 @@ var _ = Describe("GetAddr", func() {
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := node.NewRemoteNode(addr, lp)
 			p2.Timestamp = time.Now()
-			mgr.KnownPeers()[p2.StringID()] = p2
+			mgr.Peers()[p2.StringID()] = p2
 
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
 			p3 := node.NewRemoteNode(addr2, lp)
-			mgr.KnownPeers()[p3.StringID()] = p3
+			mgr.Peers()[p3.StringID()] = p3
 
-			n := mgr.CleanKnownPeers()
+			n := mgr.CleanPeers()
 			Expect(n).To(Equal(1))
 		})
 	})
@@ -142,7 +142,7 @@ var _ = Describe("GetAddr", func() {
 			rp.Timestamp = time.Now()
 
 			mgr = lp.PM()
-			mgr.KnownPeers()[rp.StringID()] = rp
+			mgr.Peers()[rp.StringID()] = rp
 
 			err := mgr.SavePeers()
 			Expect(err).To(BeNil())
@@ -164,8 +164,8 @@ var _ = Describe("GetAddr", func() {
 			p3 := node.NewRemoteNode(addr2, lp)
 			p3.Timestamp = time.Now().Add(21 * time.Minute)
 
-			mgr.KnownPeers()[p2.StringID()] = p2
-			mgr.KnownPeers()[p3.StringID()] = p3
+			mgr.Peers()[p2.StringID()] = p2
+			mgr.Peers()[p3.StringID()] = p3
 
 			err := mgr.SavePeers()
 			Expect(err).To(BeNil())
@@ -184,18 +184,18 @@ var _ = Describe("GetAddr", func() {
 			p2.Timestamp = time.Now().Add(21 * time.Minute)
 			p3 := node.NewRemoteNode(addr2, lp)
 			p3.Timestamp = time.Now().Add(21 * time.Minute)
-			mgr.KnownPeers()[p2.StringID()] = p2
-			mgr.KnownPeers()[p3.StringID()] = p3
+			mgr.Peers()[p2.StringID()] = p2
+			mgr.Peers()[p3.StringID()] = p3
 			err := mgr.SavePeers()
 			Expect(err).To(BeNil())
-			Expect(mgr.KnownPeers()).To(HaveLen(2))
+			Expect(mgr.Peers()).To(HaveLen(2))
 		})
 
 		It("should fetch", func() {
 			mgr.SetKnownPeers(map[string]types.Engine{})
 			err := mgr.LoadPeers()
 			Expect(err).To(BeNil())
-			Expect(mgr.KnownPeers()).To(HaveLen(2))
+			Expect(mgr.Peers()).To(HaveLen(2))
 		})
 	})
 
@@ -204,7 +204,7 @@ var _ = Describe("GetAddr", func() {
 		It("should return nil when peer is not in known peer list", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
-			Expect(mgr.GetKnownPeer(p2.StringID())).To(BeNil())
+			Expect(mgr.GetPeer(p2.StringID())).To(BeNil())
 			p2.GetHost().Close()
 		})
 
@@ -212,7 +212,7 @@ var _ = Describe("GetAddr", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40003", crypto.NewKeyFromIntSeed(3), log)
 			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
-			actual := mgr.GetKnownPeer(p2.StringID())
+			actual := mgr.GetPeer(p2.StringID())
 			Expect(actual).NotTo(BeNil())
 			Expect(actual).To(Equal(p2))
 			p2.GetHost().Close()
@@ -262,7 +262,7 @@ var _ = Describe("GetAddr", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			mgr.AddOrUpdatePeer(p2)
-			actual := mgr.GetKnownPeers()
+			actual := mgr.GetPeers()
 			Expect(actual).To(HaveLen(1))
 			Expect(actual).To(ContainElement(p2))
 		})
@@ -287,16 +287,16 @@ var _ = Describe("GetAddr", func() {
 		It("peer with address '/ip4/127.0.0.1/tcp/40004/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd' must be added", func() {
 			err := mgr.CreatePeerFromAddress(address)
 			Expect(err).To(BeNil())
-			p := mgr.KnownPeers()["12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"]
+			p := mgr.Peers()["12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"]
 			Expect(p).NotTo(BeNil())
 		})
 
 		It("duplicate peer should be not be recreated", func() {
-			Expect(len(mgr.KnownPeers())).To(Equal(0))
+			Expect(len(mgr.Peers())).To(Equal(0))
 			mgr.CreatePeerFromAddress(address)
-			Expect(len(mgr.KnownPeers())).To(Equal(1))
+			Expect(len(mgr.Peers())).To(Equal(1))
 			mgr.CreatePeerFromAddress(address)
-			Expect(len(mgr.KnownPeers())).To(Equal(1))
+			Expect(len(mgr.Peers())).To(Equal(1))
 		})
 	})
 
@@ -385,7 +385,7 @@ var _ = Describe("GetAddr", func() {
 		It("should return a different slice from the original knownPeer slice", func() {
 			actual := mgr.CopyActivePeers(1)
 			Expect(actual).To(HaveLen(1))
-			Expect(actual).NotTo(Equal(mgr.KnownPeers))
+			Expect(actual).NotTo(Equal(mgr.Peers))
 		})
 	})
 
@@ -451,7 +451,7 @@ var _ = Describe("GetAddr", func() {
 			mgr.SetKnownPeers(map[string]types.Engine{
 				"peer1": peer1,
 			})
-			Expect(mgr.NeedMorePeers()).To(BeTrue())
+			Expect(mgr.RequirePeers()).To(BeTrue())
 		})
 
 		It("should return false when peer manager does not have upto 1000 peers and but has reached max connection", func() {
@@ -461,7 +461,7 @@ var _ = Describe("GetAddr", func() {
 			mgr.SetKnownPeers(map[string]types.Engine{
 				"peer1": peer1,
 			})
-			Expect(mgr.NeedMorePeers()).To(BeFalse())
+			Expect(mgr.RequirePeers()).To(BeFalse())
 		})
 	})
 

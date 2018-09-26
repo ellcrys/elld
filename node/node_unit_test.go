@@ -11,7 +11,6 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	ma "github.com/multiformats/go-multiaddr"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -161,24 +160,25 @@ var _ = Describe("Node Unit Test", func() {
 	Describe(".AddBootstrapNodes", func() {
 		Context("with empty address", func() {
 			It("peer manager's bootstrap list should be empty", func() {
-				n.AddBootstrapNodes(nil, false)
-				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
+				n.AddAddresses(nil, false)
+				Expect(n.PM().GetPeers()).To(HaveLen(0))
 			})
 		})
 
 		Context("with invalid address", func() {
 			It("peer manager's bootstrap list should not contain invalid address", func() {
-				n.AddBootstrapNodes([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
-				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
+				n.AddAddresses([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
+				Expect(n.PM().GetPeers()).To(HaveLen(0))
 			})
 
 			It("peer manager's bootstrap list contain only one valid address", func() {
-				n.AddBootstrapNodes([]string{
+				addresses := []string{
 					"/ip4/127.0.0.1/tcp/40000",
 					"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
-				}, false)
-				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(1))
-				Expect(n.PM().GetBootstrapPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).To(BeAssignableToTypeOf(&node.Node{}))
+				}
+				n.AddAddresses(addresses, false)
+				Expect(n.PM().GetPeers()).To(HaveLen(1))
+				Expect(n.PM().GetPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).ToNot(BeNil())
 			})
 		})
 	})
@@ -205,22 +205,6 @@ var _ = Describe("Node Unit Test", func() {
 
 			host.Connect(context.Background(), host.Peerstore().PeerInfo(host2.ID()))
 			host.Connect(context.Background(), host.Peerstore().PeerInfo(host3.ID()))
-		})
-
-		It("the peers (/ip4/127.0.0.1/tcp/40106, /ip4/127.0.0.1/tcp/40107) must be returned", func() {
-			peers := n.PeersPublicAddr(nil)
-			Expect(peers).To(HaveLen(2))
-			expected, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40106")
-			expected2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40107")
-			Expect(peers).To(ContainElement(expected))
-			Expect(peers).To(ContainElement(expected2))
-		})
-
-		It("only /ip4/127.0.0.1/tcp/40107 must be returned", func() {
-			peers := n.PeersPublicAddr([]string{host2.ID().Pretty()})
-			Expect(peers).To(HaveLen(1))
-			expected, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40107")
-			Expect(peers).To(ContainElement(expected))
 		})
 
 		AfterEach(func() {

@@ -48,7 +48,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		// Check if the timestamp us acceptable according to
 		// the discovery protocol rules
 		if p.IsBadTimestamp() {
-			p.Timestamp = time.Now().Add(-1 * time.Hour * 24 * 5)
+			p.Timestamp = time.Now().UTC().Add(-1 * time.Hour * 24 * 5)
 		}
 
 		// Add the remote peer to the peer manager's list
@@ -105,7 +105,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// If the last time we selected the peers
 	// have not surpassed 24 hours, return the
@@ -168,7 +168,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 	}
 
 	// Update the relay peer selection time
-	g.relayPeerSelectedAt = time.Now()
+	g.relayPeerSelectedAt = time.Now().UTC()
 
 	return g.RelayPeers
 
@@ -187,7 +187,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 	var errs []error
 	var relayable []*wire.Address
-	now := time.Now()
+	now := time.Now().UTC()
 
 	// Do not proceed if there are more
 	// than 10 addresses

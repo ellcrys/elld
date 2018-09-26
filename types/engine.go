@@ -31,4 +31,6 @@ type Engine interface {
 	GetBlockchain() core.Blockchain       // Returns the blockchain manager
 	SetBlockchain(bchain core.Blockchain) // Set the blockchain manager
 	ProdMode() bool                       // Checks whether the current mode is ModeProd
+	Acquainted()                          // Sets the acquainted status to true
+	IsAcquainted() bool                   // Returns the acquainted status
 }

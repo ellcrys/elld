@@ -27,8 +27,10 @@ func createHandshakeMsg(bestChain core.ChainReader, log logger.Logger) (*wire.Ha
 	// the handshake message.
 	bestBlock, err := bestChain.GetBlock(0)
 	if err != nil {
-		log.Error("Handshake failed. Failed to determine best block", "Err", err.Error())
-		return nil, fmt.Errorf("handshake failed: failed to determine best block: %s", err.Error())
+		log.Error("Handshake failed. Failed to determine "+
+			"best block", "Err", err.Error())
+		return nil, fmt.Errorf("handshake failed: failed to "+
+			"determine best block: %s", err.Error())
 	}
 
 	msg.BestBlockHash = bestBlock.GetHash()
@@ -50,19 +52,23 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	defer cf()
 	s, err := g.NewStream(ctx, remotePeer, config.HandshakeVersion)
 	if err != nil {
-		g.log.Debug("Handshake failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("handshake failed. failed to connect to peer. %s", err.Error())
+		g.log.Debug("Handshake failed. failed to connect to peer",
+			"Err", err, "PeerID", remotePeerIDShort)
+		return fmt.Errorf("handshake failed. failed to "+
+			"connect to peer. %s", err.Error())
 	}
 	defer s.Close()
 
-	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().ChainReader(), g.log)
+	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().
+		ChainReader(), g.log)
 	if err != nil {
 		return err
 	}
 
 	// write to the stream
 	if err := WriteStream(s, engineHandshakeMsg); err != nil {
-		g.log.Debug("Handshake failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Handshake failed. failed to write to stream",
+			"Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to write to stream")
 	}
 
@@ -74,15 +80,22 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	// receive handshake message from the remote peer.
 	resp := &wire.Handshake{}
 	if err := ReadStream(s, resp); err != nil {
-		g.log.Debug("Failed to read handshake response", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Failed to read handshake response", "Err", err,
+			"PeerID", remotePeerIDShort)
 		return fmt.Errorf("failed to read handshake response")
 	}
 
-	// update the timestamp of the peer
-	remotePeer.SetTimestamp(time.Now())
+	// Update the timestamp of the peer
 	g.PM().AddOrUpdatePeer(remotePeer)
 
-	g.log.Info("Handshake was successful", "PeerID", remotePeerIDShort, "SubVersion", resp.SubVersion)
+	// Set the remote peer's acquainted status to
+	// true, which will allow some unsolicited
+	// messages to be accepted and health check
+	// to be performed
+	remotePeer.Acquainted()
+
+	g.log.Info("Handshake was successful", "PeerID", remotePeerIDShort,
+		"SubVersion", resp.SubVersion)
 	g.log.Info("Received handshake response",
 		"PeerID", remotePeerIDShort,
 		"SubVersion", resp.SubVersion,
@@ -93,14 +106,16 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	// If the blockchain best block has a less
 	// total difficulty, then need to start the block sync process
 	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().Cmp(resp.BestBlockTotalDifficulty) == -1 {
+	if bestBlock.GetHeader().GetTotalDifficulty().
+		Cmp(resp.BestBlockTotalDifficulty) == -1 {
 		g.log.Info("Local blockchain is behind peer",
 			"ChainHeight", bestBlock.GetNumber(),
 			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
 			"PeerID", remotePeerIDShort,
 			"PeerChainHeight", resp.BestBlockNumber,
 			"PeerChainTotalDifficulty", resp.BestBlockTotalDifficulty)
-		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
+		g.log.Info("Attempting to sync blockchain with peer", "PeerID",
+			remotePeerIDShort)
 		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
@@ -120,7 +135,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 
 	// In non-production mode, ensure wire from public addresses are ignored
 	if !g.Engine().ProdMode() && !util.IsDevAddr(remotePeer.IP) {
-		g.log.Debug("In development mode, we cannot interact with peers with public IP",
+		g.log.Debug("In development mode, we cannot interact with "+
+			"peers with public IP",
 			"Addr", remotePeer.GetMultiAddr(), "Msg", "Handshake")
 		return
 	}
@@ -128,7 +144,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	// read the message from the stream
 	msg := &wire.Handshake{}
 	if err := ReadStream(s, msg); err != nil {
-		g.log.Error("failed to read handshake message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read handshake message", "Err",
+			err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -138,7 +155,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 		"Height", msg.BestBlockNumber,
 		"TotalDifficulty", msg.BestBlockTotalDifficulty)
 
-	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().ChainReader(), g.log)
+	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().
+		ChainReader(), g.log)
 	if err != nil {
 		return
 	}
@@ -149,9 +167,15 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 		return
 	}
 
-	// update the remote peer's timestamp and add it to the peer manager's list
-	remotePeer.SetTimestamp(time.Now())
+	// update the remote peer's timestamp
+	// and add it to the peer manager's list
 	g.PM().AddOrUpdatePeer(remotePeer)
+
+	// Set the remote peer's acquainted status to
+	// true, which will allow some unsolicited
+	// messages to be accepted and health check
+	// to be performed
+	remotePeer.Acquainted()
 
 	g.log.Info("Responded to handshake with chain state", "PeerID",
 		remotePeerIDShort, "SubVersion",

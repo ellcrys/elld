@@ -28,8 +28,6 @@ import (
 
 	"github.com/ellcrys/elld/config"
 
-	"github.com/thoas/go-funk"
-
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
@@ -87,6 +85,7 @@ type Node struct {
 	blockHashQueue      *lane.Deque          // Contains headers collected during block syncing
 	bestRemoteBlockInfo *BestBlockInfo       // Holds information about the best known block heard from peers
 	syncing             bool                 // Indicates the process of syncing the blockchain with peers
+	acquainted          bool                 // Indicates that the node has "handshooked" the local node
 	tickerDone          chan bool
 }
 
@@ -500,7 +499,7 @@ func (n *Node) IsKnown() bool {
 	if n.localNode == nil {
 		return false
 	}
-	return n.localNode.PM().GetKnownPeer(n.StringID()) != nil
+	return n.localNode.PM().GetPeer(n.StringID()) != nil
 }
 
 // PrivKey returns the node's private key
@@ -568,8 +567,10 @@ func validateAddress(engine types.Engine, address string) error {
 	return nil
 }
 
-// AddBootstrapNodes sets the initial nodes to communicate to
-func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
+// AddAddresses adds addresses that can be
+// connected to when new connections need to
+// be established.
+func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
 
 	for _, addr := range peerAddresses {
 
@@ -582,22 +583,9 @@ func (n *Node) AddBootstrapNodes(peerAddresses []string, hardcoded bool) error {
 		rp := NewRemoteNode(pAddr, n)
 		rp.isHardcodedSeed = hardcoded
 		rp.gProtoc = n.gProtoc
-		n.peerManager.AddBootstrapPeer(rp)
+		n.peerManager.addPeer(rp)
 	}
 	return nil
-}
-
-// PeersPublicAddr gets all the peers' public address.
-// It will ignore any peer whose ID is specified in peerIDsToIgnore
-func (n *Node) PeersPublicAddr(peerIDsToIgnore []string) (peerAddrs []ma.Multiaddr) {
-	for _, _p := range n.host.Peerstore().Peers() {
-		if !funk.Contains(peerIDsToIgnore, _p.Pretty()) {
-			if _pAddrs := n.host.Peerstore().Addrs(_p); len(_pAddrs) > 0 {
-				peerAddrs = append(peerAddrs, _pAddrs[0])
-			}
-		}
-	}
-	return
 }
 
 // connectToNode handshake to each bootstrap peer.
@@ -628,16 +616,28 @@ func (n *Node) relayTx() {
 	}
 }
 
+// Acquainted indicates that a node
+// has undergone the handshake ritual
+func (n *Node) Acquainted() {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	n.acquainted = true
+}
+
+// IsAcquainted checks whether the node
+// is acquainted with its local node.
+func (n *Node) IsAcquainted() bool {
+	return n.acquainted
+}
+
 // Start starts the node.
 func (n *Node) Start() {
 
 	// Start the peer manager
 	n.PM().Manage()
 
-	// Attempt to connect to the
-	// addresses contained in the bootstrap
-	// peer list managed by the peer manager
-	for _, node := range n.PM().bootstrapNodes {
+	// Attempt to connect to peers
+	for _, node := range n.PM().Peers() {
 		go n.connectToNode(node)
 	}
 
@@ -865,7 +865,7 @@ func (n *Node) IsBadTimestamp() bool {
 		return true
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	if n.Timestamp.After(now.Add(time.Minute*10)) || n.Timestamp.Before(now.Add(-3*time.Hour)) {
 		return true
 	}
