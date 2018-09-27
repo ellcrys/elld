@@ -151,12 +151,14 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 }
 
 // NewNode creates a Node instance
-func NewNode(config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func NewNode(config *config.EngineConfig, address string,
+	signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 	return newNode(nil, config, address, signatory, log)
 }
 
 // NewNodeWithDB is like NewNode but it accepts a db instance
-func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string, signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
+func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string,
+	signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
 	return newNode(db, config, address, signatory, log)
 }
 
@@ -181,7 +183,9 @@ func NewAlmostEmptyNode() *Node {
 }
 
 // OpenDB opens the database.
-// In dev mode, create a namespace and open database file prefixed with the namespace.
+// In dev mode, create a namespace
+// and open database file prefixed
+// with the namespace.
 func (n *Node) OpenDB() error {
 
 	if n.db != nil {
@@ -239,7 +243,8 @@ func (n *Node) updateSyncInfo(bi *BestBlockInfo) {
 	// latest, we update to the latests
 	if n.bestRemoteBlockInfo == nil {
 		n.bestRemoteBlockInfo = bi
-	} else if n.bestRemoteBlockInfo.BestBlockTotalDifficulty.Cmp(bi.BestBlockTotalDifficulty) == -1 {
+	} else if n.bestRemoteBlockInfo.BestBlockTotalDifficulty.
+		Cmp(bi.BestBlockTotalDifficulty) == -1 {
 		n.bestRemoteBlockInfo = bi
 	}
 
@@ -258,7 +263,8 @@ compare:
 	// block is equal or better, we set syncing status
 	// to false
 	localBestBlock, _ := n.GetBlockchain().ChainReader().Current()
-	if localBestBlock.GetHeader().GetTotalDifficulty().Cmp(n.bestRemoteBlockInfo.BestBlockTotalDifficulty) > -1 {
+	if localBestBlock.GetHeader().GetTotalDifficulty().
+		Cmp(n.bestRemoteBlockInfo.BestBlockTotalDifficulty) > -1 {
 		n.syncing = false
 	}
 }
@@ -288,8 +294,10 @@ func (n *Node) getSyncStateInfo() *SyncStateInfo {
 
 	// compute progress percentage based
 	// on block height differences
-	pct := float64(100) * (float64(syncState.CurrentChainHeight) / float64(syncState.TargetChainHeight))
-	syncState.ProgressPercent, _ = decimal.NewFromFloat(pct).Round(1).Float64()
+	pct := float64(100) * (float64(syncState.CurrentChainHeight) /
+		float64(syncState.TargetChainHeight))
+	syncState.ProgressPercent, _ = decimal.NewFromFloat(pct).
+		Round(1).Float64()
 
 	return syncState
 }
@@ -312,8 +320,9 @@ func (n *Node) PM() *Manager {
 	return n.peerManager
 }
 
-// GetHistory return a cache for holding arbitrary
-// objects we want to keep track of
+// GetHistory return a cache for
+// holding arbitrary objects we
+// want to keep track of
 func (n *Node) GetHistory() *cache.Cache {
 	return n.history
 }
@@ -323,7 +332,8 @@ func (n *Node) IsSame(node types.Engine) bool {
 	return n.StringID() == node.StringID()
 }
 
-// GetBlockchain returns the blockchain manager
+// GetBlockchain returns the
+// blockchain manager
 func (n *Node) GetBlockchain() core.Blockchain {
 	return n.bchain
 }
@@ -333,12 +343,14 @@ func (n *Node) SetBlockchain(bchain core.Blockchain) {
 	n.bchain = bchain
 }
 
-// IsHardcodedSeed checks whether the node is an hardcoded seed node
+// IsHardcodedSeed checks whether
+// the node is an hardcoded seed node
 func (n *Node) IsHardcodedSeed() bool {
 	return n.isHardcodedSeed
 }
 
-// MakeHardcoded sets the node has an hardcoded seed node
+// MakeHardcoded sets the node has
+// an hardcoded seed node
 func (n *Node) MakeHardcoded() {
 	n.isHardcodedSeed = true
 }
@@ -350,7 +362,8 @@ func (n *Node) SetTimestamp(newTime time.Time) {
 	n.Timestamp = newTime
 }
 
-// GetEventEmitter gets the event emitter
+// GetEventEmitter gets the
+// event emitter
 func (n *Node) GetEventEmitter() *emitter.Emitter {
 	return n.event
 }
@@ -362,27 +375,33 @@ func (n *Node) GetTimestamp() time.Time {
 	return n.Timestamp
 }
 
-// DevMode checks whether the node is in dev mode
+// DevMode checks whether the
+// node is in dev mode
 func (n *Node) DevMode() bool {
 	return n.cfg.Node.Mode == config.ModeDev
 }
 
-// TestMode checks whether the node is in test mode
+// TestMode checks whether the
+// node is in test mode
 func (n *Node) TestMode() bool {
 	return n.cfg.Node.Mode == config.ModeTest
 }
 
-// ProdMode checks whether the node is in production mode
+// ProdMode checks whether the
+// node is in production mode
 func (n *Node) ProdMode() bool {
 	return n.cfg.Node.Mode == config.ModeProd
 }
 
-// IsSameID is like IsSame except it accepts string
+// IsSameID is like IsSame except
+// it accepts string
 func (n *Node) IsSameID(id string) bool {
 	return n.StringID() == id
 }
 
-// SetEventEmitter set the event bus used to broadcast events across the engine
+// SetEventEmitter set the event bus
+// used to broadcast events across
+// the engine
 func (n *Node) SetEventEmitter(ee *emitter.Emitter) {
 	n.event = ee
 	n.transactionsPool.SetEventEmitter(ee)
@@ -393,9 +412,11 @@ func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
 }
 
-// canAcceptPeer determines whether we can continue to interact with
-// a remote node. This is a good place to check if a remote node
-// has been blacklisted etc
+// canAcceptPeer determines whether we
+// can continue to interact with a
+// remote node. This is a good place
+// to check if a remote node has been
+// blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
 	// In non-production mode, we cannot interact with a remote peer with a public IP
 	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
@@ -411,7 +432,8 @@ func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
 	return true, nil
 }
 
-// addToPeerStore adds a remote node to the host's peerstore
+// addToPeerStore adds a remote node
+// to the host's peerstore
 func (n *Node) addToPeerStore(remote types.Engine) *Node {
 	n.localNode.Peerstore().AddAddr(remote.ID(), remote.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
 	return n
@@ -422,12 +444,14 @@ func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string)
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
 }
 
-// SetTransactionPool sets the transaction pool
+// SetTransactionPool sets the
+// transaction pool
 func (n *Node) SetTransactionPool(txp *txpool.TxPool) {
 	n.transactionsPool = txp
 }
 
-// SetGossipProtocol sets the gossip protocol implementation
+// SetGossipProtocol sets the
+// gossip protocol implementation
 func (n *Node) SetGossipProtocol(protoc *Gossip) {
 	n.gProtoc = protoc
 }
@@ -437,12 +461,14 @@ func (n *Node) GetHost() host.Host {
 	return n.host
 }
 
-// GetBlockHashQueue returns the block hash queue
+// GetBlockHashQueue returns
+// the block hash queue
 func (n *Node) GetBlockHashQueue() *lane.Deque {
 	return n.blockHashQueue
 }
 
-// Peerstore returns the Peerstore of the node
+// Peerstore returns the Peerstore
+// of the node
 func (n *Node) Peerstore() pstore.Peerstore {
 	if h := n.Host(); h != nil {
 		return h.Peerstore()
@@ -450,7 +476,8 @@ func (n *Node) Peerstore() pstore.Peerstore {
 	return nil
 }
 
-// Host returns the internal host instance
+// Host returns the internal
+// host instance
 func (n *Node) Host() host.Host {
 	return n.host
 }
@@ -466,7 +493,8 @@ func (n *Node) ID() peer.ID {
 	return id
 }
 
-// StringID is like ID() but returns string
+// StringID is like ID() but
+// it returns string
 func (n *Node) StringID() string {
 	if n.address == nil {
 		return ""
@@ -485,7 +513,8 @@ func (n *Node) ShortID() string {
 	return id[0:12] + ".." + id[40:52]
 }
 
-// Connected checks whether the node is connected to the local node.
+// Connected checks whether the node
+// is connected to the local node.
 // Returns false if node is the local node.
 func (n *Node) Connected() bool {
 	if n.localNode == nil {
@@ -494,7 +523,8 @@ func (n *Node) Connected() bool {
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
 }
 
-// IsKnown checks whether a peer is known to the local node
+// IsKnown checks whether a peer is
+// known to the local node
 func (n *Node) IsKnown() bool {
 	if n.localNode == nil {
 		return false
@@ -512,8 +542,10 @@ func (n *Node) PubKey() crypto.PubKey {
 	return n.host.Peerstore().PubKey(n.host.ID())
 }
 
-// SetProtocolHandler sets the protocol handler for a specific protocol
-func (n *Node) SetProtocolHandler(version string, handler inet.StreamHandler) {
+// SetProtocolHandler sets the protocol
+// handler for a specific protocol
+func (n *Node) SetProtocolHandler(version string,
+	handler inet.StreamHandler) {
 	n.host.SetStreamHandler(protocol.ID(version), handler)
 }
 
@@ -524,19 +556,24 @@ func (n *Node) GetMultiAddr() string {
 	} else if n.remote {
 		return n.address.String()
 	}
-	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", n.host.ID().Pretty()))
+	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s",
+		n.host.ID().Pretty()))
 	return n.host.Addrs()[0].Encapsulate(hostAddr).String()
 }
 
-// GetAddr returns the host and port of the node as "host:port"
+// GetAddr returns the host and port
+// of the node as "host:port"
 func (n *Node) GetAddr() string {
-	parts := strings.Split(strings.Trim(n.host.Addrs()[0].String(), "/"), "/")
+	hostAddr := n.host.Addrs()[0].String()
+	parts := strings.Split(strings.Trim(hostAddr, "/"), "/")
 	return fmt.Sprintf("%s:%s", parts[1], parts[3])
 }
 
-// GetIP4TCPAddr returns ip4 and tcp parts of the host's multi address
+// GetIP4TCPAddr returns ip4 and tcp
+// parts of the host's multi address
 func (n *Node) GetIP4TCPAddr() ma.Multiaddr {
-	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", n.ID().Pretty()))
+	ipfsPart := fmt.Sprintf("/ipfs/%s", n.ID().Pretty())
+	ipfsAddr, _ := ma.NewMultiaddr(ipfsPart)
 	return n.address.Decapsulate(ipfsAddr)
 }
 
@@ -545,8 +582,9 @@ func (n *Node) GetBindAddress() string {
 	return n.address.String()
 }
 
-// validateAddress checks whether an address is
-// valid for the current engine mode.
+// validateAddress checks whether
+// an address is valid for the
+// current engine mode.
 func validateAddress(engine types.Engine, address string) error {
 
 	// Check whether the address is valid
@@ -554,14 +592,18 @@ func validateAddress(engine types.Engine, address string) error {
 		return fmt.Errorf("not a valid multiaddr")
 	}
 
-	// In non-production mode, only local/private addresses are allowed
+	// In non-production mode, only
+	// local/private addresses are allowed
 	if !engine.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(address)) {
-		return fmt.Errorf("public addresses are not allowed in development mode")
+		return fmt.Errorf("public addresses are " +
+			"not allowed in development mode")
 	}
 
-	// In production mode, only routable addresses are allowed
+	// In production mode, only routable
+	// addresses are allowed
 	if engine.ProdMode() && !util.IsRoutableAddr(address) {
-		return fmt.Errorf("local or private addresses are not allowed in production mode")
+		return fmt.Errorf("local or private addresses " +
+			"are not allowed in production mode")
 	}
 
 	return nil
@@ -575,7 +617,8 @@ func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
 	for _, addr := range peerAddresses {
 
 		if err := validateAddress(n, addr); err != nil {
-			n.log.Info("Invalid Bootstrap Address: "+err.Error(), "Address", addr)
+			n.log.Info("Invalid Bootstrap Address",
+				"Err", err.Error(), "Address", addr)
 			continue
 		}
 
@@ -588,8 +631,9 @@ func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
 	return nil
 }
 
-// connectToNode handshake to each bootstrap peer.
-// Then send GetAddr message if handshake is successful
+// connectToNode handshake to each bootstrap
+// peer. Then send GetAddr message if
+// handshake is successful
 func (n *Node) connectToNode(remote types.Engine) error {
 	if n.gProtoc.SendHandshake(remote) == nil {
 		n.gProtoc.SendGetAddr([]types.Engine{remote})
@@ -597,7 +641,8 @@ func (n *Node) connectToNode(remote types.Engine) error {
 	return nil
 }
 
-// relayTx continuously relays transactions in the tx relay queue
+// relayTx continuously relays transactions
+// in the tx relay queue
 func (n *Node) relayTx() {
 	ticker := time.NewTicker(3 * time.Second)
 	for {
@@ -641,19 +686,22 @@ func (n *Node) Start() {
 		go n.connectToNode(node)
 	}
 
-	// Start the sub-routine that relays transactions
+	// Start the sub-routine that
+	// relays transactions
 	go n.relayTx()
 
 	// Handle incoming events
 	go n.handleEvents()
 
-	// start a block body requester workers
+	// start a block body requester
+	// workers
 	for i := 0; i < params.NumBlockBodiesRequesters; i++ {
 		go n.ProcessBlockHashes()
 	}
 }
 
-// relayBlock attempts to relay non-genesis a block to active peers.
+// relayBlock attempts to relay non-genesis
+//  a block to active peers.
 func (n *Node) relayBlock(block core.Block) {
 	if block.GetNumber() > 1 {
 		n.gProtoc.RelayBlock(block, n.peerManager.GetActivePeers(0))
@@ -674,7 +722,8 @@ func (n *Node) handleNewTransactionEvent() {
 		select {
 		case evt := <-n.event.Once(core.EventNewTransaction):
 			if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
-				n.log.Debug("Failed to add transaction to relay queue.", "Err", "Capacity reached")
+				n.log.Debug("Failed to add transaction to relay queue.",
+					"Err", "Capacity reached")
 			}
 		}
 	}
@@ -688,8 +737,9 @@ func (n *Node) handleOrphanBlockEvent() {
 			// peer who sent it to us (a.k.a broadcaster)
 			orphanBlock := evt.Args[0].(*objects.Block)
 			parentHash := orphanBlock.GetHeader().GetParentHash()
-			n.log.Debug("Requesting orphan parent block from broadcaster", "BlockNo",
-				orphanBlock.GetNumber(), "ParentBlockHash", parentHash.SS())
+			n.log.Debug("Requesting orphan parent block from broadcaster",
+				"BlockNo", orphanBlock.GetNumber(),
+				"ParentBlockHash", parentHash.SS())
 			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
 		}
 	}
@@ -703,10 +753,13 @@ func (n *Node) handleAbortedMinerBlockEvent() {
 			// listens for aborted miner blocks and attempt
 			// to re-add the transactions to the pool.
 			abortedBlock := evt.Args[0].(*objects.Block)
-			n.log.Debug("Attempting to re-add transactions in aborted miner block", "NumTx", len(abortedBlock.Transactions))
+			n.log.Debug("Attempting to re-add transactions "+
+				"in aborted miner block",
+				"NumTx", len(abortedBlock.Transactions))
 			for _, tx := range abortedBlock.Transactions {
 				if err := n.addTransaction(tx); err != nil {
-					n.log.Debug("failed to re-add transaction", "Err", err.Error())
+					n.log.Debug("failed to re-add transaction",
+						"Err", err.Error())
 				}
 			}
 		}
@@ -742,15 +795,20 @@ func (n *Node) ProcessBlockHashes() {
 			var broadcaster types.Engine
 			otherBlockHashes := []interface{}{}
 
-			// Collect hash of headers sent by a particular broadcaster.
-			// Temporarily keep the others in a cache to be added back
+			// Collect hash of headers sent by a
+			// particular broadcaster. Temporarily
+			// keep the others in a cache to be added back
 			// in the queue when we have collected some hashes
-			for !n.blockHashQueue.Empty() && int64(len(hashes)) < params.MaxGetBlockBodiesHashes {
+			for !n.blockHashQueue.Empty() && int64(len(hashes)) <
+				params.MaxGetBlockBodiesHashes {
 				bh := n.blockHashQueue.Shift().(*BlockHash)
-				if broadcaster != nil && bh.Broadcaster.StringID() != broadcaster.StringID() {
+
+				if broadcaster != nil && bh.Broadcaster.StringID() !=
+					broadcaster.StringID() {
 					otherBlockHashes = append(otherBlockHashes, bh)
 					continue
 				}
+
 				hashes = append(hashes, bh.Hash)
 				broadcaster = bh.Broadcaster
 			}
@@ -805,8 +863,9 @@ func (n *Node) Stop() {
 	// Close the database.
 	if n.db != nil {
 
-		// Wait a few seconds for active operations to
-		// complete before closing the database
+		// Wait a few seconds for active
+		// operations to complete before
+		// closing the database
 		time.Sleep(2 * time.Second)
 
 		err := n.db.Close()
@@ -866,7 +925,8 @@ func (n *Node) IsBadTimestamp() bool {
 	}
 
 	now := time.Now().UTC()
-	if n.Timestamp.After(now.Add(time.Minute*10)) || n.Timestamp.Before(now.Add(-3*time.Hour)) {
+	if n.Timestamp.After(now.Add(time.Minute*10)) ||
+		n.Timestamp.Before(now.Add(-3*time.Hour)) {
 		return true
 	}
 

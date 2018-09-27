@@ -47,8 +47,8 @@ func IsRoutableAddr(addr string) bool {
 	return IsRoutable(net.ParseIP(ip))
 }
 
-// FullRemoteAddressFromStream returns the full peer multi address containing ip4, tcp and ipfs protocols
-func FullRemoteAddressFromStream(s inet.Stream) ma.Multiaddr {
+// RemoteAddressFromStream returns the full peer multi address containing ip4, tcp and ipfs protocols
+func RemoteAddressFromStream(s inet.Stream) ma.Multiaddr {
 	if s == nil {
 		return nil
 	}

@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"time"
 
 	"github.com/ellcrys/elld/config"
@@ -9,39 +8,44 @@ import (
 	"github.com/ellcrys/elld/wire"
 )
 
-// SelfAdvertise sends an Addr message containing the address of the local peer
-// to all connected peers known to the local peer.
-// The caller is responsible for ensuring only connected peers are passed.
-// Returns the number of peers advertised to.
+// SelfAdvertise sends an Addr message
+// containing the address of the local peer
+// to all connected peers.
 func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
-	msg := &wire.Addr{Addresses: []*wire.Address{{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()}}}
-	successfullySent := 0
+	msg := &wire.Addr{
+		Addresses: []*wire.Address{
+			{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()},
+		},
+	}
 
+	sent := 0
 	for _, peer := range connectedPeers {
 
-		// create stream
-		ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
-		ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
-		defer cf()
-		s, err := g.NewStream(ctx, peer, config.AddrVersion)
+		s, c, err := g.NewStream(peer, config.AddrVersion)
 		if err != nil {
-			g.log.Error("selfAdvertise failed. Failed to connect to peer", "Err", err, "PeerID", peer.ShortID())
+			g.log.Error("selfAdvertise failed. Failed to connect to peer",
+				"Err", err, "PeerID", peer.ShortID())
 			continue
 		}
+		defer c()
 		defer s.Close()
 
 		// write to the stream
 		if err := WriteStream(s, msg); err != nil {
 			s.Reset()
-			g.log.Error("Addr failed. failed to write to stream", "Err", err, "PeerID", peer.ShortID())
+			g.log.Error("Addr failed. failed to write to stream",
+				"Err", err, "PeerID", peer.ShortID())
 			continue
 		}
 
-		successfullySent++
+		g.PM().UpdatePeerTime(peer)
+
+		sent++
 	}
 
-	g.log.Info("Self advertisement completed", "ConnectedPeers", len(connectedPeers), "NumAdvertisedTo", successfullySent)
+	g.log.Debug("Self advertisement completed",
+		"ConnectedPeers", len(connectedPeers), "NumAdvertisedTo", sent)
 
-	return successfullySent
+	return sent
 }

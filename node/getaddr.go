@@ -1,9 +1,7 @@
 package node
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
@@ -19,23 +17,25 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 
 	remotePeerIDShort := remotePeer.ShortID()
 
-	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
-	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
-	defer cf()
-	s, err := g.NewStream(ctx, remotePeer, config.GetAddrVersion)
+	s, c, err := g.NewStream(remotePeer, config.GetAddrVersion)
 	if err != nil {
-		g.log.Debug("GetAddr message failed. failed to connect to peer", "Err", err, "PeerID", remotePeerIDShort)
-		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s", err)
+		g.log.Debug("GetAddr message failed. failed to connect to peer",
+			"Err", err, "PeerID", remotePeerIDShort)
+		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s",
+			err)
 	}
+	defer c()
 	defer s.Close()
 
 	msg := &wire.GetAddr{}
 	if err := WriteStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Debug("GetAddr failed. failed to write to stream", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("GetAddr failed. failed to write to stream",
+			"Err", err, "PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("getaddr failed. failed to write to stream")
 	}
 
+	g.PM().UpdatePeerTime(remotePeer)
 	g.log.Debug("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
 
 	addr, err := g.onAddr(s)
@@ -43,7 +43,7 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 		return nil, err
 	}
 
-	defer g.engine.event.Emit(EventReceivedAddr)
+	g.engine.event.Emit(EventReceivedAddr)
 
 	return addr, nil
 }
@@ -85,13 +85,14 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	defer s.Close()
 
 	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
-	remoteAddr := util.FullRemoteAddressFromStream(s)
+	remoteAddr := util.RemoteAddressFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 
 	// check whether we can interact with this remote peer
 	if ok, err := g.engine.canAcceptPeer(remotePeer); !ok {
 		s.Reset()
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", err.Error()),
+		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s",
+			err.Error()),
 			"Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
 		return
 	}
@@ -100,10 +101,12 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	msg := &wire.GetAddr{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("failed to read getaddr message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read getaddr message", "Err",
+			err, "PeerID", remotePeerIDShort)
 		return
 	}
 
+	g.PM().UpdatePeerTime(remotePeer)
 	g.log.Debug("Received GetAddr message", "PeerID", remotePeerIDShort)
 
 	// get active addresses we know about. If we have more 2500
@@ -118,7 +121,8 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	for _, peer := range activePeers {
 		// Ignore an address if it is the same with the local node
 		// and if it is an hardcoded seed address
-		if g.PM().IsLocalNode(peer) || peer.IsSame(remotePeer) || peer.IsHardcodedSeed() {
+		if g.PM().IsLocalNode(peer) || peer.IsSame(remotePeer) ||
+			peer.IsHardcodedSeed() {
 			continue
 		}
 		addr.Addresses = append(addr.Addresses, &wire.Address{

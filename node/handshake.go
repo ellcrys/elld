@@ -1,9 +1,7 @@
 package node
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
@@ -16,7 +14,8 @@ import (
 )
 
 // createHandshakeMsg creates an Handshake message
-func createHandshakeMsg(bestChain core.ChainReader, log logger.Logger) (*wire.Handshake, error) {
+func createHandshakeMsg(bestChain core.ChainReader,
+	log logger.Logger) (*wire.Handshake, error) {
 
 	msg := &wire.Handshake{
 		SubVersion: config.ClientVersion,
@@ -47,16 +46,14 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 
 	g.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
 
-	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
-	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
-	defer cf()
-	s, err := g.NewStream(ctx, remotePeer, config.HandshakeVersion)
+	s, c, err := g.NewStream(remotePeer, config.HandshakeVersion)
 	if err != nil {
 		g.log.Debug("Handshake failed. failed to connect to peer",
 			"Err", err, "PeerID", remotePeerIDShort)
 		return fmt.Errorf("handshake failed. failed to "+
 			"connect to peer. %s", err.Error())
 	}
+	defer c()
 	defer s.Close()
 
 	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().
@@ -94,16 +91,12 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	// to be performed
 	remotePeer.Acquainted()
 
-	g.log.Info("Handshake was successful", "PeerID", remotePeerIDShort,
-		"SubVersion", resp.SubVersion)
-	g.log.Info("Received handshake response",
-		"PeerID", remotePeerIDShort,
-		"SubVersion", resp.SubVersion,
-		"Height", resp.BestBlockNumber,
+	g.log.Info("Received handshake response", "PeerID", remotePeerIDShort,
+		"SubVersion", resp.SubVersion, "Height", resp.BestBlockNumber,
 		"TotalDifficulty", resp.BestBlockTotalDifficulty)
 
 	// compare best chain.
-	// If the blockchain best block has a less
+	// If the blockchain best block has a lesser
 	// total difficulty, then need to start the block sync process
 	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
 	if bestBlock.GetHeader().GetTotalDifficulty().
@@ -124,13 +117,14 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	var bestBlockInfo BestBlockInfo
 	copier.Copy(&bestBlockInfo, resp)
 	g.engine.updateSyncInfo(&bestBlockInfo)
+
 	return nil
 }
 
 // OnHandshake handles incoming handshake request
 func (g *Gossip) OnHandshake(s net.Stream) {
 
-	remotePeer := NewRemoteNode(util.FullRemoteAddressFromStream(s), g.Engine())
+	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.Engine())
 	remotePeerIDShort := remotePeer.ShortID()
 
 	// In non-production mode, ensure wire from public addresses are ignored
@@ -186,7 +180,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	// If the blockchain best block has a less
 	// total difficulty, then need to start the block sync process
 	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().Cmp(msg.BestBlockTotalDifficulty) == -1 {
+	if bestBlock.GetHeader().GetTotalDifficulty().
+		Cmp(msg.BestBlockTotalDifficulty) == -1 {
 		g.log.Info("Local blockchain is behind peer",
 			"ChainHeight", bestBlock.GetNumber(),
 			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
