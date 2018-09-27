@@ -168,7 +168,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	}
 
 	// Get all the rpc methods information
-	resp, err := e.rpc.Client.call("methods", nil, e.authToken)
+	resp, err := e.rpc.Client.call("rpc_methods", nil, e.authToken)
 	if err != nil {
 		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 		return suggestions, err
@@ -206,7 +206,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 				arg = args[0]
 			}
 
-			result, err := e.callRPCMethod(mName, arg)
+			result, err := e.callRPCMethod(ns+"_"+mName, arg)
 			if err != nil {
 				e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 				v, _ := otto.ToValue(nil)
