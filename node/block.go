@@ -72,7 +72,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 			continue
 		}
 
-		g.PM().UpdatePeerTime(peer)
+		g.PM().UpdateLastSeen(peer)
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++
@@ -99,7 +99,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 
 	var block objects.Block
 	copier.Copy(&block, blockBody)
@@ -163,7 +163,7 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine,
 		return err
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	return nil
@@ -185,7 +185,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 	g.log.Debug("Received request for block",
 		"RequestedBlockHash", util.StrToHash(requestBlock.Hash).SS())
 
@@ -345,7 +345,7 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 		return fmt.Errorf("%s: %s", errMsg, err)
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 
 	// add all the hashes to the hash queue
 	for _, h := range blockHashes.Hashes {
@@ -387,7 +387,7 @@ func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 
 	var blockHashes = wire.BlockHashes{}
 	var startBlock core.Block
@@ -497,7 +497,7 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 			"Failed to read stream: %s", err)
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 	g.log.Info("Received block bodies",
 		"NumBlocks", len(blockBodies.Blocks))
 
@@ -553,7 +553,7 @@ func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 
 	var bestChain = g.GetBlockchain().ChainReader()
 	var blockBodies = new(wire.BlockBodies)

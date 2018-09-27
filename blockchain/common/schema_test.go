@@ -1,7 +1,6 @@
 package common
 
 import (
-	"github.com/k0kubun/pp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -87,7 +86,6 @@ var _ = Describe("Schema", func() {
 	Describe(".MakeTreeKey", func() {
 		It("should return expected key", func() {
 			k := MakeTreeKey(10, TagAccount)
-			pp.Println(k)
 			Expect(k).To(Equal([]uint8{
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x61,
 			}))

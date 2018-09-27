@@ -70,7 +70,8 @@ type Node struct {
 	peerManager         *Manager             // node manager for managing connections to other remote peers
 	gProtoc             *Gossip              // gossip protocol instance
 	remote              bool                 // remote indicates the node represents a remote peer
-	Timestamp           time.Time            // the last time this node was seen/active
+	lastSeen            time.Time            // the last time this node was seen
+	createdAt           time.Time            // the first time this node was seen/added
 	isHardcodedSeed     bool                 // whether the node was hardcoded as a seed
 	stopped             bool                 // flag to tell if node has stopped
 	log                 logger.Logger        // node logger
@@ -139,6 +140,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 		blockHashQueue:   lane.NewDeque(),
 		history:          cache.NewActiveCache(5000),
 		tickerDone:       make(chan bool),
+		createdAt:        time.Now().UTC(),
 	}
 
 	node.localNode = node
@@ -169,6 +171,7 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 		localNode: localNode,
 		remote:    true,
 		mtx:       &sync.RWMutex{},
+		createdAt: time.Now().UTC(),
 	}
 	node.IP = node.ip()
 	return node
@@ -178,7 +181,18 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 // almost all its field uninitialized.
 func NewAlmostEmptyNode() *Node {
 	return &Node{
-		mtx: &sync.RWMutex{},
+		createdAt: time.Now().UTC(),
+		mtx:       &sync.RWMutex{},
+	}
+}
+
+// NewTestNodeWithAddress returns a node with
+// with the given address set
+func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
+	return &Node{
+		createdAt: time.Now().UTC(),
+		mtx:       &sync.RWMutex{},
+		address:   address,
 	}
 }
 
@@ -355,24 +369,41 @@ func (n *Node) MakeHardcoded() {
 	n.isHardcodedSeed = true
 }
 
-// SetTimestamp sets the timestamp value
-func (n *Node) SetTimestamp(newTime time.Time) {
+// SetLastSeen sets the timestamp value
+func (n *Node) SetLastSeen(newTime time.Time) {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
-	n.Timestamp = newTime
+	n.lastSeen = newTime.UTC()
 }
 
-// GetEventEmitter gets the
-// event emitter
+// CreatedAt returns the node's time
+// of creation
+func (n *Node) CreatedAt() time.Time {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	return n.createdAt
+}
+
+// SetCreatedAt sets the time the
+// node was created
+func (n *Node) SetCreatedAt(t time.Time) {
+	n.mtx.Lock()
+	defer n.mtx.Unlock()
+	n.createdAt = t.UTC()
+}
+
+// GetEventEmitter gets the event emitter
 func (n *Node) GetEventEmitter() *emitter.Emitter {
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
 	return n.event
 }
 
-// GetTimestamp gets the nodes timestamp
-func (n *Node) GetTimestamp() time.Time {
+// GetLastSeen gets the nodes timestamp
+func (n *Node) GetLastSeen() time.Time {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()
-	return n.Timestamp
+	return n.lastSeen
 }
 
 // DevMode checks whether the
@@ -459,6 +490,11 @@ func (n *Node) SetGossipProtocol(protoc *Gossip) {
 // GetHost returns the node's host
 func (n *Node) GetHost() host.Host {
 	return n.host
+}
+
+// SetHost sets the host
+func (n *Node) SetHost(h host.Host) {
+	n.host = h
 }
 
 // GetBlockHashQueue returns
@@ -890,6 +926,7 @@ func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
 	}
 	nAddr, _ := ma.NewMultiaddr(addr)
 	return &Node{
+		createdAt: time.Now().UTC(),
 		address:   nAddr,
 		localNode: n,
 		gProtoc:   n.gProtoc,
@@ -920,13 +957,13 @@ func (n *Node) IsBadTimestamp() bool {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()
 
-	if n.Timestamp.IsZero() {
+	if n.lastSeen.IsZero() {
 		return true
 	}
 
 	now := time.Now().UTC()
-	if n.Timestamp.After(now.Add(time.Minute*10)) ||
-		n.Timestamp.Before(now.Add(-3*time.Hour)) {
+	if n.lastSeen.After(now.Add(time.Minute*10)) ||
+		n.lastSeen.Before(now.Add(-3*time.Hour)) {
 		return true
 	}
 

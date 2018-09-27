@@ -27,7 +27,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		return nil, fmt.Errorf("failed to read Addr response: %s", err)
 	}
 
-	g.PM().UpdatePeerTime(remotePeer)
+	g.PM().UpdateLastSeen(remotePeer)
 
 	// we need to ensure the amount of
 	// addresses does not exceed the
@@ -45,16 +45,16 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 		// first construct a remote node and set the node's timestamp
 		p, _ := g.engine.NodeFromAddr(addr.Address, true)
-		p.Timestamp = time.Unix(addr.Timestamp, 0)
+		p.lastSeen = time.Unix(addr.Timestamp, 0)
 
 		// Check if the timestamp us acceptable according to
 		// the discovery protocol rules
 		if p.IsBadTimestamp() {
-			p.Timestamp = time.Now().UTC().Add(-1 * time.Hour * 24 * 5)
+			p.lastSeen = time.Now().UTC().Add(-1 * time.Hour * 24 * 5)
 		}
 
 		// Add the remote peer to the peer manager's list
-		if g.PM().UpdatePeerTime(p) != nil {
+		if g.PM().UpdateLastSeen(p) != nil {
 			invalidAddrs++
 			continue
 		}
@@ -169,7 +169,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 	// from the first 2 addresses.
 	for _, info := range candidatesInfo {
 		n, _ := g.engine.NodeFromAddr(info.address, true)
-		n.Timestamp = time.Unix(info.timestamp, 0)
+		n.lastSeen = time.Unix(info.timestamp, 0)
 		g.RelayPeers = append(g.RelayPeers, n)
 		if len(g.RelayPeers) == 2 {
 			break
@@ -299,7 +299,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			continue
 		}
 
-		g.PM().UpdatePeerTime(remotePeer)
+		g.PM().UpdateLastSeen(remotePeer)
 
 		// add new history
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)

@@ -72,7 +72,7 @@ func (e *Executor) login(username, password string) interface{} {
 	}
 
 	// Call the auth RPC method
-	rpcResp, err := e.rpc.Client.call("auth", arg, "")
+	rpcResp, err := e.rpc.Client.call("admin_auth", arg, "")
 	if err != nil {
 		e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 		v, _ := otto.ToValue(nil)

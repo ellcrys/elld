@@ -53,13 +53,15 @@ var _ = Describe("Node Unit Test", func() {
 			})
 
 			It("return nil if address is ':40000'", func() {
-				_, err := node.NewNode(cfg, ":40000", crypto.NewKeyFromIntSeed(1), log)
+				n, err := node.NewNode(cfg, ":40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
+				closeNode(n)
 			})
 
 			It("return nil if address is '127.0.0.1:40000'", func() {
-				_, err := node.NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(1), log)
+				n, err := node.NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
+				closeNode(n)
 			})
 		})
 	})
@@ -136,17 +138,17 @@ var _ = Describe("Node Unit Test", func() {
 
 	Describe(".IsBadTimestamp", func() {
 		It("should return false when time is zero", func() {
-			n.SetTimestamp(time.Time{})
+			n.SetLastSeen(time.Time{})
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 10 minutes, 1 second in the future", func() {
-			n.SetTimestamp(time.Now().Add(10*time.Minute + 1*time.Second))
+			n.SetLastSeen(time.Now().Add(10*time.Minute + 1*time.Second))
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 3 hours, 1 second in the past", func() {
-			n.SetTimestamp(time.Now().Add(-3 * time.Hour))
+			n.SetLastSeen(time.Now().Add(-3 * time.Hour))
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 	})
@@ -211,36 +213,6 @@ var _ = Describe("Node Unit Test", func() {
 			host.Close()
 			host2.Close()
 			host3.Close()
-		})
-	})
-
-	Describe(".Connected", func() {
-
-		var n, n2 *node.Node
-		var err error
-
-		BeforeEach(func() {
-			n, err = node.NewNode(cfg, "127.0.0.1:40106", crypto.NewKeyFromIntSeed(6), log)
-			Expect(err).To(BeNil())
-			n2, err = node.NewNode(cfg, "127.0.0.1:40107", crypto.NewKeyFromIntSeed(7), log)
-			Expect(err).To(BeNil())
-			n2.SetLocalNode(n)
-		})
-
-		It("should return false when localPeer is nil", func() {
-			n.SetLocalNode(nil)
-			Expect(n.Connected()).To(BeFalse())
-		})
-
-		It("should return true when peer is connected", func() {
-			n.GetHost().Peerstore().AddAddr(n2.GetHost().ID(), n2.GetHost().Addrs()[0], pstore.PermanentAddrTTL)
-			n.GetHost().Connect(context.Background(), n.GetHost().Peerstore().PeerInfo(n2.GetHost().ID()))
-			Expect(n2.Connected()).To(BeTrue())
-		})
-
-		AfterEach(func() {
-			closeNode(n)
-			closeNode(n2)
 		})
 	})
 

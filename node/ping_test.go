@@ -73,15 +73,15 @@ var _ = Describe("Ping", func() {
 			var rpBeforePingTime int64
 
 			BeforeEach(func() {
-				lp.PM().UpdatePeerTime(rp)
-				rp.SetTimestamp(time.Now().Add(-2 * time.Hour))
-				rpBeforePingTime = rp.GetTimestamp().Unix()
+				lp.PM().UpdateLastSeen(rp)
+				rp.SetLastSeen(time.Now().Add(-2 * time.Hour))
+				rpBeforePingTime = rp.GetLastSeen().Unix()
 			})
 
 			It("should return nil and update remote peer timestamp locally", func() {
 				err := lp.Gossip().SendPingToPeer(rp)
 				Expect(err).To(BeNil())
-				rpAfterPingTime := rp.GetTimestamp().Unix()
+				rpAfterPingTime := rp.GetLastSeen().Unix()
 				Expect(rpAfterPingTime > rpBeforePingTime).To(BeTrue())
 			})
 		})

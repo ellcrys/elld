@@ -22,10 +22,12 @@ type Engine interface {
 	ShortID() string                      // Return the short version of the engine ID
 	ID() peer.ID                          // Get the ID as issued by libp2p
 	GetIP4TCPAddr() ma.Multiaddr          // Returns the ipv4 address of the engine
-	GetTimestamp() time.Time              // Returns the timestamp of the engine
-	SetTimestamp(time.Time)               // Set the engine's timestamp
+	GetLastSeen() time.Time               // Returns the timestamp of the engine
+	SetLastSeen(time.Time)                // Set the engine's timestamp
+	CreatedAt() time.Time                 // Returns the time the node was created
+	SetCreatedAt(t time.Time)             // Set the time the node was created locally
 	IsSame(Engine) bool                   // Checks whether an remote node has same ID as the engine
-	IsHardcodedSeed() bool                // Checks whether the engine is an hardcoded seed peer
+	IsHardcodedSeed() bool                // Checks whether the engine is an hardcoded seed node
 	GetMultiAddr() string                 // Returns the multiaddr of the node
 	Connected() bool                      // Returns true if engine is connected to its local node
 	GetBlockchain() core.Blockchain       // Returns the blockchain manager
