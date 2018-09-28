@@ -1,7 +1,6 @@
 package node_test
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -223,8 +222,9 @@ var _ = Describe("Addr", func() {
 
 		Context("when the number of addresses is below max address expected", func() {
 			BeforeEach(func() {
-				stream, err := lp.Gossip().NewStream(context.Background(), rp, config.AddrVersion)
+				stream, c, err := lp.Gossip().NewStream(rp, config.AddrVersion)
 				Expect(err).To(BeNil())
+				defer c()
 				defer stream.Close()
 				go func() {
 					defer GinkgoRecover()
@@ -247,8 +247,9 @@ var _ = Describe("Addr", func() {
 
 			BeforeEach(func(done Done) {
 				rp.GetCfg().Node.MaxAddrsExpected = 1
-				stream, err := lp.Gossip().NewStream(context.Background(), rp, config.AddrVersion)
+				stream, c, err := lp.Gossip().NewStream(rp, config.AddrVersion)
 				Expect(err).To(BeNil())
+				defer c()
 				defer stream.Reset()
 				go func() {
 					err := node.WriteStream(stream, addrMsg)

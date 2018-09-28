@@ -82,8 +82,15 @@ func (g *Gossip) GetBlockchain() core.Blockchain {
 
 // NewStream creates a stream for a given protocol
 // ID and between the local peer and the given remote peer.
-func (g *Gossip) NewStream(ctx context.Context, remotePeer types.Engine, msgVersion string) (net.Stream, error) {
-	return g.engine.addToPeerStore(remotePeer).newStream(ctx, remotePeer.ID(), msgVersion)
+func (g *Gossip) NewStream(remotePeer types.Engine, msgVersion string) (net.Stream, context.CancelFunc, error) {
+	ctxDur := time.Second * time.Duration(g.engine.cfg.Node.MessageTimeout)
+	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
+	s, err := g.engine.addToPeerStore(remotePeer).
+		newStream(ctx, remotePeer.ID(), msgVersion)
+	if err != nil {
+		cf()
+	}
+	return s, cf, err
 }
 
 // ReadStream reads the content of a steam into dest

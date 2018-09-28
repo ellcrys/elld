@@ -11,7 +11,6 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	ma "github.com/multiformats/go-multiaddr"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -54,13 +53,15 @@ var _ = Describe("Node Unit Test", func() {
 			})
 
 			It("return nil if address is ':40000'", func() {
-				_, err := node.NewNode(cfg, ":40000", crypto.NewKeyFromIntSeed(1), log)
+				n, err := node.NewNode(cfg, ":40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
+				closeNode(n)
 			})
 
 			It("return nil if address is '127.0.0.1:40000'", func() {
-				_, err := node.NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(1), log)
+				n, err := node.NewNode(cfg, "127.0.0.1:40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).To(BeNil())
+				closeNode(n)
 			})
 		})
 	})
@@ -137,17 +138,17 @@ var _ = Describe("Node Unit Test", func() {
 
 	Describe(".IsBadTimestamp", func() {
 		It("should return false when time is zero", func() {
-			n.SetTimestamp(time.Time{})
+			n.SetLastSeen(time.Time{})
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 10 minutes, 1 second in the future", func() {
-			n.SetTimestamp(time.Now().Add(10*time.Minute + 1*time.Second))
+			n.SetLastSeen(time.Now().Add(10*time.Minute + 1*time.Second))
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 
 		It("should return false when time 3 hours, 1 second in the past", func() {
-			n.SetTimestamp(time.Now().Add(-3 * time.Hour))
+			n.SetLastSeen(time.Now().Add(-3 * time.Hour))
 			Expect(n.IsBadTimestamp()).To(BeTrue())
 		})
 	})
@@ -161,24 +162,25 @@ var _ = Describe("Node Unit Test", func() {
 	Describe(".AddBootstrapNodes", func() {
 		Context("with empty address", func() {
 			It("peer manager's bootstrap list should be empty", func() {
-				n.AddBootstrapNodes(nil, false)
-				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
+				n.AddAddresses(nil, false)
+				Expect(n.PM().GetPeers()).To(HaveLen(0))
 			})
 		})
 
 		Context("with invalid address", func() {
 			It("peer manager's bootstrap list should not contain invalid address", func() {
-				n.AddBootstrapNodes([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
-				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(0))
+				n.AddAddresses([]string{"/ip4/127.0.0.1/tcp/40000"}, false)
+				Expect(n.PM().GetPeers()).To(HaveLen(0))
 			})
 
 			It("peer manager's bootstrap list contain only one valid address", func() {
-				n.AddBootstrapNodes([]string{
+				addresses := []string{
 					"/ip4/127.0.0.1/tcp/40000",
 					"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
-				}, false)
-				Expect(n.PM().GetBootstrapNodes()).To(HaveLen(1))
-				Expect(n.PM().GetBootstrapPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).To(BeAssignableToTypeOf(&node.Node{}))
+				}
+				n.AddAddresses(addresses, false)
+				Expect(n.PM().GetPeers()).To(HaveLen(1))
+				Expect(n.PM().GetPeer("12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw")).ToNot(BeNil())
 			})
 		})
 	})
@@ -207,56 +209,10 @@ var _ = Describe("Node Unit Test", func() {
 			host.Connect(context.Background(), host.Peerstore().PeerInfo(host3.ID()))
 		})
 
-		It("the peers (/ip4/127.0.0.1/tcp/40106, /ip4/127.0.0.1/tcp/40107) must be returned", func() {
-			peers := n.PeersPublicAddr(nil)
-			Expect(peers).To(HaveLen(2))
-			expected, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40106")
-			expected2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40107")
-			Expect(peers).To(ContainElement(expected))
-			Expect(peers).To(ContainElement(expected2))
-		})
-
-		It("only /ip4/127.0.0.1/tcp/40107 must be returned", func() {
-			peers := n.PeersPublicAddr([]string{host2.ID().Pretty()})
-			Expect(peers).To(HaveLen(1))
-			expected, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/40107")
-			Expect(peers).To(ContainElement(expected))
-		})
-
 		AfterEach(func() {
 			host.Close()
 			host2.Close()
 			host3.Close()
-		})
-	})
-
-	Describe(".Connected", func() {
-
-		var n, n2 *node.Node
-		var err error
-
-		BeforeEach(func() {
-			n, err = node.NewNode(cfg, "127.0.0.1:40106", crypto.NewKeyFromIntSeed(6), log)
-			Expect(err).To(BeNil())
-			n2, err = node.NewNode(cfg, "127.0.0.1:40107", crypto.NewKeyFromIntSeed(7), log)
-			Expect(err).To(BeNil())
-			n2.SetLocalNode(n)
-		})
-
-		It("should return false when localPeer is nil", func() {
-			n.SetLocalNode(nil)
-			Expect(n.Connected()).To(BeFalse())
-		})
-
-		It("should return true when peer is connected", func() {
-			n.GetHost().Peerstore().AddAddr(n2.GetHost().ID(), n2.GetHost().Addrs()[0], pstore.PermanentAddrTTL)
-			n.GetHost().Connect(context.Background(), n.GetHost().Peerstore().PeerInfo(n2.GetHost().ID()))
-			Expect(n2.Connected()).To(BeTrue())
-		})
-
-		AfterEach(func() {
-			closeNode(n)
-			closeNode(n2)
 		})
 	})
 

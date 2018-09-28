@@ -38,16 +38,20 @@ var (
 	errInvalidPoW        = errors.New("invalid proof-of-work")
 )
 
-// VerifyHeader checks whether a header conforms to the consensus rules
+// VerifyHeader checks whether a header
+// conforms to the consensus rules
 func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 
-	// Ensure that the header's extra-data section is of a reasonable size
+	// Ensure that the header's extra-data
+	// section is of a reasonable size
 	if uint64(len(header.GetExtra())) > params.MaximumExtraDataSize {
-		return fmt.Errorf("extra-data too long: %d > %d", len(header.GetExtra()), params.MaximumExtraDataSize)
+		return fmt.Errorf("extra-data too long: %d > %d", len(header.GetExtra()),
+			params.MaximumExtraDataSize)
 	}
 
 	// Verify the header's timestamp
-	if time.Unix(header.GetTimestamp(), 0).After(time.Now().Add(params.AllowedFutureBlockTime)) {
+	if time.Unix(header.GetTimestamp(), 0).After(time.Now().
+		Add(params.AllowedFutureBlockTime)) {
 		return ErrFutureBlock
 	}
 
@@ -55,23 +59,31 @@ func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 		return errZeroBlockTime
 	}
 
-	// Verify the block's difficulty based on it's timestamp and parent's difficulty
+	// Verify the block's difficulty based on
+	// it's timestamp and parent's difficulty
 	expected := b.CalcDifficulty(uint64(header.GetTimestamp()), parent)
 	if expected.Cmp(header.GetDifficulty()) != 0 {
-		return fmt.Errorf("invalid difficulty: have %v, want %v", header.GetDifficulty(), expected)
-	}
-	// Verify that the total difficulty is parent total difficulty + header total difficulty
-	expectedTd := new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty())
-	if headerTd := header.GetTotalDifficulty(); headerTd.Cmp(expectedTd) != 0 {
-		return fmt.Errorf("invalid total difficulty: have %v, want %v", headerTd, expectedTd)
+		return fmt.Errorf("invalid difficulty: have %v, want %v",
+			header.GetDifficulty(), expected)
 	}
 
-	// Verify that the block number is parent's +1
+	// Verify that the total difficulty is
+	// parent total difficulty + header total
+	// difficulty
+	expectedTd := new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty())
+	if headerTd := header.GetTotalDifficulty(); headerTd.Cmp(expectedTd) != 0 {
+		return fmt.Errorf("invalid total difficulty: have %v, want %v",
+			headerTd, expectedTd)
+	}
+
+	// Verify that the block number is
+	// parent's +1
 	if diff := header.GetNumber() - parent.GetNumber(); diff != 1 {
 		return ErrInvalidNumber
 	}
 
-	// Verify the engine specific seal securing the block
+	// Verify the engine specific seal
+	// securing the block
 	if seal {
 		if err := b.VerifySeal(header); err != nil {
 			return err
@@ -81,21 +93,24 @@ func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 	return nil
 }
 
-// CalcDifficulty is the difficulty adjustment algorithm. It returns
-// the difficulty that a new block should have when created at time
+// CalcDifficulty is the difficulty adjustment
+// algorithm. It returns the difficulty that a
+// new block should have when created at time
 // given the parent block's time and difficulty.
 func (b *Blakimoto) CalcDifficulty(time uint64, parent core.Header) *big.Int {
 	return CalcDifficulty(time, parent)
 }
 
-// CalcDifficulty is the difficulty adjustment algorithm. It returns
-// the difficulty that a new block should have when created at time
+// CalcDifficulty is the difficulty adjustment
+// algorithm. It returns the difficulty that a new
+// block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(time uint64, parent core.Header) *big.Int {
 	return calcDifficultyFrontier(time, parent)
 }
 
-// Some weird constants to avoid constant memory allocs for them.
+// Some weird constants to avoid constant memory
+// allocs for them.
 var (
 	// expDiffPeriod = big.NewInt(100000)
 	expDiffPeriod = big.NewInt(3)
@@ -104,9 +119,11 @@ var (
 	big2          = big.NewInt(2)
 )
 
-// calcDifficultyFrontier is the difficulty adjustment algorithm. It returns the
-// difficulty that a new block should have when created at time given the parent
-// block's time and difficulty. The calculation uses the Frontier rules.
+// calcDifficultyFrontier is the difficulty adjustment
+// algorithm. It returns the difficulty that a new block
+// should have when created at time given the parent
+// block's time and difficulty. The calculation uses
+// the Frontier rules.
 func calcDifficultyFrontier(time uint64, parent core.Header) *big.Int {
 	diff := new(big.Int)
 	adjust := new(big.Int).Div(parent.GetDifficulty(), params.DifficultyBoundDivisor)
@@ -137,8 +154,9 @@ func calcDifficultyFrontier(time uint64, parent core.Header) *big.Int {
 	return diff
 }
 
-// VerifySeal checks whether the given block satisfies
-// the PoW difficulty requirements.
+// VerifySeal checks whether the given
+// block satisfies the PoW difficulty
+// requirements.
 func (b *Blakimoto) VerifySeal(header core.Header) error {
 	// If we're running a fake PoW, accept any seal as valid
 	if b.config.PowMode == ModeTest {
@@ -165,7 +183,8 @@ func (b *Blakimoto) VerifySeal(header core.Header) error {
 }
 
 // Prepare initializes the difficulty and
-// total difficulty fields of a header to conform to the protocol
+// total difficulty fields of a header to
+// conform to the protocol
 func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 
 	// Get the header of the block's parent.
@@ -178,12 +197,16 @@ func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 	}
 
 	header.SetDifficulty(b.CalcDifficulty(uint64(header.GetTimestamp()), parent))
-	header.SetTotalDifficulty(new(big.Int).Add(parent.GetTotalDifficulty(), header.GetDifficulty()))
+	header.SetTotalDifficulty(new(big.Int).Add(parent.GetTotalDifficulty(),
+		header.GetDifficulty()))
 	return nil
 }
 
-// Finalize accumulates rewards, computes the final state and assembling the block.
-func (b *Blakimoto) Finalize(chain core.BlockMaker, block core.Block) (core.Block, error) {
-	// TODO: accumulate rewards, recompute state and update block header
+// Finalize accumulates rewards, computes the
+// final state and assembling the block.
+func (b *Blakimoto) Finalize(chain core.BlockMaker,
+	block core.Block) (core.Block, error) {
+	// TODO: accumulate rewards, recompute
+	// state and update block header
 	return block, nil
 }

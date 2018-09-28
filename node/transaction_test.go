@@ -119,7 +119,7 @@ var _ = Describe("Transaction", func() {
 
 			It("should return error about unexpected allocation transaction", func() {
 				Expect(evt.Args).To(HaveLen(1))
-				Expect(evt.Args[0].(error).Error()).To(Equal("unexpected allocation transaction received"))
+				Expect(evt.Args[0].(error).Error()).To(Equal("Unexpected allocation transaction received"))
 			})
 		})
 

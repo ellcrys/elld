@@ -97,18 +97,18 @@ var _ = Describe("Handshake", func() {
 			Specify("local peer should send block hashes request with the current block as the locator", func(done Done) {
 				go func() {
 					defer GinkgoRecover()
-					err := lp.Gossip().SendHandshake(rp)
+					lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
 					Expect(err).To(BeNil())
+
+					evt := <-lp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
+					locators := evt.Args[0].([]util.Hash)
+					Expect(locators).To(HaveLen(1))
+					Expect(locators[0]).To(Equal(lpCurBlock.GetHash()))
+					close(done)
 				}()
 
-				lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
+				err := lp.Gossip().SendHandshake(rp)
 				Expect(err).To(BeNil())
-
-				evt := <-lp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
-				locators := evt.Args[0].([]util.Hash)
-				Expect(locators).To(HaveLen(1))
-				Expect(locators[0]).To(Equal(lpCurBlock.GetHash()))
-				close(done)
 			})
 		})
 
@@ -127,18 +127,17 @@ var _ = Describe("Handshake", func() {
 			Specify("remote peer should send block hashes request with its current block as the locator", func(done Done) {
 				go func() {
 					defer GinkgoRecover()
-					err := lp.Gossip().SendHandshake(rp)
+					rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
 					Expect(err).To(BeNil())
+					evt := <-rp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
+					locators := evt.Args[0].([]util.Hash)
+					Expect(locators).To(HaveLen(1))
+					Expect(locators[0]).To(Equal(rpCurBlock.GetHash()))
+					close(done)
 				}()
 
-				rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
+				err := lp.Gossip().SendHandshake(rp)
 				Expect(err).To(BeNil())
-
-				evt := <-rp.GetEventEmitter().Once(node.EventRequestedBlockHashes)
-				locators := evt.Args[0].([]util.Hash)
-				Expect(locators).To(HaveLen(1))
-				Expect(locators[0]).To(Equal(rpCurBlock.GetHash()))
-				close(done)
 			})
 		})
 	})

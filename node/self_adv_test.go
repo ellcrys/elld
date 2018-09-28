@@ -41,7 +41,7 @@ var _ = Describe("GetAddr", func() {
 			}()
 
 			<-rp.GetEventEmitter().Once(node.EventAddrProcessed)
-			knownPeers := rp.PM().GetKnownPeers()
+			knownPeers := rp.PM().GetPeers()
 			Expect(knownPeers).To(HaveLen(1))
 			Expect(knownPeers[0].StringID()).To(Equal(lp.StringID()))
 			close(done)

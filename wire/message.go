@@ -9,7 +9,8 @@ import (
 	"github.com/vmihailenco/msgpack"
 )
 
-// Handshake represents the first message between peers
+// Handshake represents the first
+// message between peers
 type Handshake struct {
 	SubVersion               string    `json:"subversion" msgpack:"subversion"`
 	BestBlockHash            util.Hash `json:"bestBlockHash" msgpack:"bestBlockHash"`
@@ -17,13 +18,15 @@ type Handshake struct {
 	BestBlockNumber          uint64    `json:"bestBlockNumber" msgpack:"bestBlockNumber"`
 }
 
-// EncodeMsgpack implements msgpack.CustomEncoder
+// EncodeMsgpack implements
+// msgpack.CustomEncoder
 func (h *Handshake) EncodeMsgpack(enc *msgpack.Encoder) error {
 	tdStr := h.BestBlockTotalDifficulty.String()
 	return enc.Encode(h.SubVersion, h.BestBlockHash, h.BestBlockNumber, tdStr)
 }
 
-// DecodeMsgpack implements msgpack.CustomDecoder
+// DecodeMsgpack implements
+// msgpack.CustomDecoder
 func (h *Handshake) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var tdStr string
 	if err := dec.Decode(&h.SubVersion, &h.BestBlockHash, &h.BestBlockNumber, &tdStr); err != nil {
@@ -33,16 +36,18 @@ func (h *Handshake) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return nil
 }
 
-// GetAddr is used to request for peer addresses from other peers
+// GetAddr is used to request for peer
+// addresses from other peers
 type GetAddr struct {
 }
 
-// Addr is used to send peer addresses in response to a GetAddr
+// Addr is used to send peer addresses
+// in response to a GetAddr
 type Addr struct {
 	Addresses []*Address `json:"addresses" msgpack:"addresses"`
 }
 
-// Address represents a peer address
+// Address represents a peer's address
 type Address struct {
 	Address   string `json:"address" msgpack:"address"`
 	Timestamp int64  `json:"timestamp" msgpack:"timestamp"`
