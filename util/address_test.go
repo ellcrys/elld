@@ -52,7 +52,7 @@ var _ = Describe("Address", func() {
 		})
 
 		It("should return nil if nil is passed", func() {
-			addr := FullRemoteAddressFromStream(nil)
+			addr := RemoteAddressFromStream(nil)
 			Expect(addr).To(BeNil())
 		})
 
@@ -67,7 +67,7 @@ var _ = Describe("Address", func() {
 			Expect(err).To(BeNil())
 			defer host.Close()
 
-			addr := FullRemoteAddressFromStream(s)
+			addr := RemoteAddressFromStream(s)
 			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"))
 		})
 	})

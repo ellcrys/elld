@@ -52,15 +52,17 @@ func (m *ConnectionManager) needMoreConnections() bool {
 // addresses that have not been connected to as long as the max
 // connection limit has not been reached
 func (m *ConnectionManager) makeConnections(done chan bool) {
-	ticker := time.NewTicker(time.Duration(m.pm.config.Node.ConnEstInterval) * time.Second)
+	dur := time.Duration(m.pm.config.Node.ConnEstInterval)
+	ticker := time.NewTicker(dur * time.Second)
 	for {
 		select {
 		case <-ticker.C:
 			unconnectedPeers := m.pm.GetUnconnectedPeers()
-			if !m.pm.NeedMorePeers() || len(unconnectedPeers) == 0 {
+			if !m.pm.RequirePeers() || len(unconnectedPeers) == 0 {
 				continue
 			}
-			m.log.Info("Establishing connection with more peers", "UnconnectedPeers", len(unconnectedPeers))
+			m.log.Info("Establishing connection with more peers",
+				"UnconnectedPeers", len(unconnectedPeers))
 			for _, p := range unconnectedPeers {
 				m.pm.ConnectToPeer(p.StringID())
 			}

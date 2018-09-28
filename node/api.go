@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/base64"
+	"time"
 
 	"github.com/ellcrys/elld/config"
 
@@ -13,8 +14,8 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
-// apiBasicNodeInfo returns basic information
-// about the node.
+// apiBasicNodeInfo returns basic
+// information about the node.
 func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 
 	var mode = "development"
@@ -39,21 +40,24 @@ func (n *Node) apiGetConfig(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.cfg)
 }
 
-// apiJoin attempts to establish connection with a node
-// at the specified address.
+// apiJoin attempts to establish connection
+// with a node at the specified address.
 func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
-
 	address, ok := arg.(string)
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("String").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
-	n.AddBootstrapNodes([]string{address}, true)
 	rp, err := n.NodeFromAddr(address, true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}
-	rp.isHardcodedSeed = true
+
+	if rp.IsSame(n) {
+		return jsonrpc.Error(types.ErrCodeAddress,
+			"can't add own address as a peer", nil)
+	}
 
 	go func(rp *Node) {
 		n.connectToNode(rp)
@@ -62,12 +66,42 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(nil)
 }
 
-// apiNumConnections returns the number of peers connected to
+// apiAddPeer adds an address of a
+// remote node to the list of known
+// addresses. Unlike apiJoin it does
+// not initiate a connection.
+func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	rp, err := n.NodeFromAddr(address, true)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
+	}
+
+	rp.lastSeen = time.Now().UTC()
+
+	if rp.IsSame(n) {
+		return jsonrpc.Error(types.ErrCodeAddress,
+			"can't add self as a peer", nil)
+	}
+
+	n.PM().AddPeer(rp)
+
+	return jsonrpc.Success(nil)
+}
+
+// apiNumConnections returns the
+// number of peers connected to
 func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.peerManager.connMgr.connectionCount())
 }
 
-// apiGetSyncQueueSize returns the size of the block hash queue
+// apiGetSyncQueueSize returns the
+// size of the block hash queue
 func (n *Node) apiGetSyncQueueSize(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.blockHashQueue.Size())
 }
@@ -77,10 +111,26 @@ func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 	var peers = []map[string]interface{}{}
 	for _, p := range n.peerManager.GetActivePeers(0) {
 		peers = append(peers, map[string]interface{}{
-			"id":          p.StringID(),
-			"lastSeen":    p.GetTimestamp(),
-			"connected":   p.Connected(),
-			"isHardcoded": p.IsHardcodedSeed(),
+			"id":           p.StringID(),
+			"lastSeen":     p.GetLastSeen(),
+			"connected":    p.Connected(),
+			"isHardcoded":  p.IsHardcodedSeed(),
+			"isAcquainted": p.IsAcquainted(),
+		})
+	}
+	return jsonrpc.Success(peers)
+}
+
+// apiGetPeers fetches all peers
+func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
+	var peers = []map[string]interface{}{}
+	for _, p := range n.peerManager.GetPeers() {
+		peers = append(peers, map[string]interface{}{
+			"id":           p.StringID(),
+			"lastSeen":     p.GetLastSeen(),
+			"connected":    p.Connected(),
+			"isHardcoded":  p.IsHardcodedSeed(),
+			"isAcquainted": p.IsAcquainted(),
 		})
 	}
 	return jsonrpc.Success(peers)
@@ -111,7 +161,8 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 
 	txData, ok := arg.(map[string]interface{})
 	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("JSON").Error(), nil)
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("JSON").Error(), nil)
 	}
 	// set the type to TxTypeBalance.
 	// it will override the type given
@@ -174,10 +225,21 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Private:     true,
 			Func:        n.apiJoin,
 		},
+		"addPeer": {
+			Namespace:   "net",
+			Description: "Add a peer address",
+			Private:     true,
+			Func:        n.apiAddPeer,
+		},
 		"numConnections": {
 			Namespace:   "net",
 			Description: "Get number of active connections",
 			Func:        n.apiNumConnections,
+		},
+		"getPeers": {
+			Namespace:   "net",
+			Description: "Get a list of all peers",
+			Func:        n.apiGetPeers,
 		},
 		"getActivePeers": {
 			Namespace:   "net",

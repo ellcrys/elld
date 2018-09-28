@@ -21,16 +21,14 @@ import (
 // It is responsible for initiating and managing peers
 // according to the current protocol and engine rules.
 type Manager struct {
-	knownPeerMtx   *sync.Mutex             // known peer mutex
-	mtx            *sync.Mutex             // general mutex
-	localNode      *Node                   // local node
-	bootstrapNodes map[string]types.Engine // bootstrap peers
-	knownPeers     map[string]types.Engine // peers known to the peer manager
-	log            logger.Logger           // manager's logger
-	config         *config.EngineConfig    // manager's configuration
-	connMgr        *ConnectionManager      // connection manager
-	tickersDone    chan bool
-	stop           bool // signifies the start of the manager
+	mtx         *sync.RWMutex           // general mutex
+	localNode   *Node                   // local node
+	peers       map[string]types.Engine // peers known to the peer manager
+	log         logger.Logger           // manager's logger
+	config      *config.EngineConfig    // manager's configuration
+	connMgr     *ConnectionManager      // connection manager
+	stop        bool                    // signifies the start of the manager
+	tickersDone chan bool
 }
 
 // NewManager creates an instance of the peer manager
@@ -41,23 +39,13 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 		cfg.Node = &config.PeerConfig{}
 	}
 
-	// Set hardcoded config in production mode
-	if localPeer.ProdMode() {
-		cfg.Node.GetAddrInterval = 30 * 60
-		cfg.Node.PingInterval = 30 * 60
-		cfg.Node.SelfAdvInterval = 24 * 60 * 60
-		cfg.Node.CleanUpInterval = 10 * 60
-	}
-
 	m := &Manager{
-		knownPeerMtx:   new(sync.Mutex),
-		mtx:            new(sync.Mutex),
-		localNode:      localPeer,
-		log:            log,
-		bootstrapNodes: make(map[string]types.Engine),
-		knownPeers:     make(map[string]types.Engine),
-		config:         cfg,
-		tickersDone:    make(chan bool),
+		mtx:         new(sync.RWMutex),
+		localNode:   localPeer,
+		log:         log,
+		peers:       make(map[string]types.Engine),
+		config:      cfg,
+		tickersDone: make(chan bool),
 	}
 
 	m.connMgr = NewConnMrg(m, log)
@@ -67,21 +55,22 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 
 // PeerExist checks whether a peer is a known peer
 func (m *Manager) PeerExist(peerID string) bool {
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
-	_, exist := m.knownPeers[peerID]
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	_, exist := m.peers[peerID]
 	return exist
 }
 
-// GetKnownPeer returns a known peer
-func (m *Manager) GetKnownPeer(peerID string) types.Engine {
+// GetPeer returns a peer
+func (m *Manager) GetPeer(peerID string) types.Engine {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+
 	if !m.PeerExist(peerID) {
 		return nil
 	}
 
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
-	peer, _ := m.knownPeers[peerID]
+	peer, _ := m.peers[peerID]
 	return peer
 }
 
@@ -94,33 +83,26 @@ func (m *Manager) GetKnownPeer(peerID string) types.Engine {
 // Eventually, it will be removed if it does not reconnect.
 func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
 	peerID := util.IDFromAddr(peerAddr).Pretty()
-	peer := m.GetKnownPeer(peerID)
+	peer := m.GetPeer(peerID)
 	if peer == nil {
 		return
 	}
 	m.HasDisconnected(peer)
 	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
-	m.CleanKnownPeers()
+	m.CleanPeers()
 }
 
-// AddBootstrapPeer adds a peer to the manager
-func (m *Manager) AddBootstrapPeer(peer *Node) {
-	m.bootstrapNodes[peer.StringID()] = peer
+// AddPeer adds a peer
+func (m *Manager) AddPeer(peer types.Engine) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.peers[peer.StringID()] = peer
 }
 
-// GetBootstrapNodes returns the bootstrap peers
-func (m *Manager) GetBootstrapNodes() map[string]types.Engine {
-	return m.bootstrapNodes
-}
-
-// GetBootstrapPeer returns a peer in the boostrap peer list
-func (m *Manager) GetBootstrapPeer(id string) types.Engine {
-	return m.bootstrapNodes[id]
-}
-
-// ConnectToPeer attempts to connect to a peer
+// ConnectToPeer attempts to establish
+// a connection to a peer with the given id
 func (m *Manager) ConnectToPeer(peerID string) error {
-	peer := m.GetKnownPeer(peerID)
+	peer := m.GetPeer(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
 	}
@@ -128,11 +110,10 @@ func (m *Manager) ConnectToPeer(peerID string) error {
 }
 
 // GetUnconnectedPeers returns the peers that
-// are not connected to the local peer.
-// Hardcoded bootstrap peers are not included.
+// are currently not connected to the local peer.
 func (m *Manager) GetUnconnectedPeers() (peers []types.Engine) {
 	for _, p := range m.GetActivePeers(0) {
-		if !p.IsHardcodedSeed() && !p.Connected() {
+		if !p.Connected() {
 			peers = append(peers, p)
 		}
 	}
@@ -180,7 +161,7 @@ func (m *Manager) periodicPingMsgs(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
-			m.localNode.gProtoc.SendPing(m.GetKnownPeers())
+			m.localNode.gProtoc.SendPing(m.GetPeers())
 		case <-done:
 			ticker.Stop()
 			return
@@ -196,13 +177,13 @@ func (m *Manager) periodicSelfAdvertisement(done chan bool) {
 		select {
 		case <-ticker.C:
 			connectedPeers := []types.Engine{}
-			for _, p := range m.GetKnownPeers() {
+			for _, p := range m.GetPeers() {
 				if p.Connected() {
 					connectedPeers = append(connectedPeers, p)
 				}
 			}
 			m.localNode.gProtoc.SelfAdvertise(connectedPeers)
-			m.CleanKnownPeers()
+			m.CleanPeers()
 		case <-done:
 			ticker.Stop()
 			return
@@ -217,8 +198,8 @@ func (m *Manager) periodicCleanUp(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
-			nCleaned := m.CleanKnownPeers()
-			m.log.Debug("Cleaned up old peers", "NumKnownPeers", len(m.knownPeers), "NumPeersCleaned", nCleaned)
+			nCleaned := m.CleanPeers()
+			m.log.Debug("Cleaned up old peers", "NumKnownPeers", len(m.peers), "NumPeersCleaned", nCleaned)
 		case <-done:
 			ticker.Stop()
 			return
@@ -226,110 +207,60 @@ func (m *Manager) periodicCleanUp(done chan bool) {
 	}
 }
 
-// AddOrUpdatePeer adds a peer to the list of known peers if it doesn't
-// exist. If the peer already exists:
-// - if the peer has been seen in the last 24 hours and its current
-// 	 timestamp is over 60 minutes old, then update the timestamp to 60 minutes ago.
-// - else if the peer has not been seen in the last 24 hours and its current timestamp is
-//	 over 24 hours, then update the timestamp to 24 hours ago.
-// - else use whatever timestamp is returned
-// - clean old addresses
-func (m *Manager) AddOrUpdatePeer(p types.Engine) error {
+// UpdateLastSeen updates a peer's
+// last seen time to the current time
+func (m *Manager) UpdateLastSeen(p types.Engine) error {
 
-	defer m.CleanKnownPeers()
+	defer func() {
+		m.CleanPeers()
+		m.SavePeers()
+	}()
 
-	if p == nil {
-		return fmt.Errorf("nil received")
-	}
+	// Get a peer matching the ID from the
+	// list of peers. if it does not
+	// exist, we add it immediately
+	existingPeer := m.GetPeer(p.StringID())
+	if existingPeer == nil {
 
-	// Peer address must not be same as the local node
-	if p.IsSame(m.localNode) {
-		return fmt.Errorf("peer is the local peer")
-	}
+		// Update the timestamp only if
+		// the address is not set
+		if p.GetLastSeen().IsZero() {
+			p.SetLastSeen(time.Now())
+		}
 
-	// It must have a valid address
-	if !util.IsValidAddr(p.GetMultiAddr()) {
-		return fmt.Errorf("peer address is not valid")
-	}
-
-	// In production mode, it must be a routable address
-	if m.localNode.ProdMode() && !util.IsRoutableAddr(p.GetMultiAddr()) {
-		return fmt.Errorf("peer address is not routable")
-	}
-
-	// Save the known peers.
-	// don't do this in test environment (we will test savePeer alone)
-	if !m.localNode.TestMode() {
-		defer m.SavePeers()
-	}
-
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
-
-	// update the timestamp only if not already
-	// set by caller or elsewhere
-	if p.GetTimestamp().IsZero() {
-		p.SetTimestamp(time.Now())
-	}
-
-	// get a peer matching the ID from the list of known peers.
-	// if it does not exist, we add it immediately
-	existingPeer, exist := m.knownPeers[p.StringID()]
-	if !exist {
-		m.knownPeers[p.StringID()] = p
+		m.AddPeer(p)
 		return nil
 	}
 
-	// if a peer exists, return error if the peer's
-	// full address matches the candidate peer
-	if existingPeer.GetMultiAddr() != p.GetMultiAddr() {
-		return fmt.Errorf("existing peer address do not match")
-	}
-
-	// If the candidate peer's timestamp is within
-	// the last 24 hours and the existing/matching peer we already know
-	// has a timestamp within the last hour, we set the existing peer's
-	// timestamp to an hour ago.
-	now := time.Now()
-	if now.Add(-24*time.Hour).Before(p.GetTimestamp()) && now.Add(-60*time.Minute).Before(existingPeer.GetTimestamp()) {
-		existingPeer.SetTimestamp(now.Add(-60 * time.Minute))
-		return nil
-	}
-
-	// If the candidate peer's timestamp is not within
-	// the last 24 hours and the existing/matching peer we already know
-	// has a timestamp also not within the last hour, we set the existing peer's
-	// timestamp to 24 hours ago.
-	if !now.Add(-24*time.Hour).Before(p.GetTimestamp()) && !now.Add(-24*time.Hour).Before(existingPeer.GetTimestamp()) {
-		existingPeer.SetTimestamp(now.Add(-24 * time.Hour))
-		return nil
-	}
-
-	// At this point, we simple update the existing peer's
-	// timestamp with the candidate's peer timestamp
-	existingPeer.SetTimestamp(p.GetTimestamp())
+	existingPeer.SetLastSeen(time.Now())
 
 	return nil
 }
 
-// KnownPeers returns the map of known peers
-func (m *Manager) KnownPeers() map[string]types.Engine {
-	return m.knownPeers
+// Peers returns the map of known peers
+func (m *Manager) Peers() map[string]types.Engine {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	return m.peers
 }
 
-// SetKnownPeers sets the known peers
-func (m *Manager) SetKnownPeers(d map[string]types.Engine) {
-	m.knownPeers = d
+// SetPeers sets the known peers
+func (m *Manager) SetPeers(d map[string]types.Engine) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.peers = d
 }
 
-// NeedMorePeers checks whether we need more peers
-func (m *Manager) NeedMorePeers() bool {
+// RequirePeers checks whether
+// we need more peers
+func (m *Manager) RequirePeers() bool {
 	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
 }
 
-// IsLocalNode checks if a peer is the local peer
+// IsLocalNode checks if a peer
+// is the local peer
 func (m *Manager) IsLocalNode(p types.Engine) bool {
-	return p != nil && m.localNode != nil && p.StringID() == m.localNode.StringID()
+	return p != nil && m.localNode != nil && m.localNode.IsSame(p)
 }
 
 // SetLocalNode sets the local node
@@ -343,72 +274,77 @@ func (m *Manager) SetNumActiveConnections(n int64) {
 	m.connMgr.activeConn = n
 }
 
-// IsActive returns true of a peer is considered active.
-// First rule, its timestamp must be within the last 3 hours
+// IsActive returns true of a peer is
+// considered active. First rule,
+// its timestamp must be within
+// the last 3 hours
 func (m *Manager) IsActive(p types.Engine) bool {
-	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.GetTimestamp())
+	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).
+		Before(p.GetLastSeen())
 }
 
 // HasDisconnected reduces the timestamp of
 // a disconnected peer such that its time
-// of removal is expedited.
-// It also cleans up the known peers list
-// removing peers that are unconnected and old.
+// of removal is expedited. It also cleans
+// up the known peers list removing peers
+// that are unconnected and old.
 func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
 	if remotePeer == nil {
 		return fmt.Errorf("nil passed")
 	}
-	remotePeer.SetTimestamp(remotePeer.GetTimestamp().Add(-1 * time.Hour))
-	m.CleanKnownPeers()
+	remotePeer.SetLastSeen(remotePeer.GetLastSeen().Add(-1 * time.Hour))
+	m.CleanPeers()
 	return nil
 }
 
-// CleanKnownPeers removes old peers from the list
-// of peers known by the local peer. Typically, we remove
-// peers based on the last time they were seen. At least
-// 3 connections must be active before we can clean.
+// CleanPeers removes old peers from the list
+// of peers known by the local peer. Typically,
+// we remove peers based on the last time
+// they were seen. At least 3 connections must
+// be active before we can proceed.
 // It returns the number of peers removed
-func (m *Manager) CleanKnownPeers() int {
-
+func (m *Manager) CleanPeers() int {
 	if m.connMgr.connectionCount() < 3 {
 		return 0
 	}
 
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
-
-	before := len(m.knownPeers)
-
+	peers := m.GetPeers()
+	before := len(peers)
 	newKnownPeers := make(map[string]types.Engine)
-	for k, p := range m.knownPeers {
+	for k, p := range m.peers {
 		if m.IsActive(p) {
 			newKnownPeers[k] = p
 		}
 	}
 
-	m.knownPeers = newKnownPeers
+	m.mtx.Lock()
+	after := len(newKnownPeers)
+	m.peers = newKnownPeers
+	m.mtx.Unlock()
 
-	return before - len(newKnownPeers)
+	return before - after
 }
 
-// GetKnownPeers gets all the known peers (active or inactive)
-func (m *Manager) GetKnownPeers() (peers []types.Engine) {
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
+// GetPeers gets all the known
+// peers (active or inactive)
+func (m *Manager) GetPeers() (peers []types.Engine) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
 
-	for _, p := range m.knownPeers {
+	for _, p := range m.peers {
 		peers = append(peers, p)
 	}
 
 	return
 }
 
-// GetActivePeers returns active peers. Passing a zero or negative value
+// GetActivePeers returns active peers.
+// Passing a zero or negative value
 // as limit means no limit is applied.
 func (m *Manager) GetActivePeers(limit int) (peers []types.Engine) {
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
-	for _, p := range m.knownPeers {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	for _, p := range m.peers {
 		if limit > 0 && len(peers) >= limit {
 			return
 		}
@@ -419,61 +355,43 @@ func (m *Manager) GetActivePeers(limit int) (peers []types.Engine) {
 	return
 }
 
-// CopyActivePeers is like GetActivePeers but a different slice is returned
+// CopyActivePeers is like GetActivePeers
+// but a different slice is returned
 func (m *Manager) CopyActivePeers(limit int) (peers []types.Engine) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+
 	activePeers := m.GetActivePeers(limit)
 	copiedActivePeers := make([]types.Engine, len(activePeers))
 	copy(copiedActivePeers, activePeers)
 	return copiedActivePeers
 }
 
-// GetRandomActivePeers returns a slice of randomly selected peers
-// whose timestamp is within 3 hours ago.
+// GetRandomActivePeers returns a slice
+// of randomly selected peers whose
+// timestamp is within 3 hours ago.
 func (m *Manager) GetRandomActivePeers(limit int) []types.Engine {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
 
-	knownActivePeers := m.CopyActivePeers(0)
-	m.knownPeerMtx.Lock()
-	defer m.knownPeerMtx.Unlock()
+	peers := m.CopyActivePeers(0)
 
 	// shuffle known peer slice
-	for i := range knownActivePeers {
+	for i := range peers {
 		j := rand.Intn(i + 1)
-		knownActivePeers[i], knownActivePeers[j] = knownActivePeers[j], knownActivePeers[i]
+		peers[i], peers[j] = peers[j], peers[i]
 	}
 
-	if len(knownActivePeers) <= limit {
-		return knownActivePeers
+	if len(peers) <= limit {
+		return peers
 	}
 
-	return knownActivePeers[:limit]
+	return peers[:limit]
 }
 
-// CreatePeerFromAddress creates a new peer and assign the multiaddr to it.
-func (m *Manager) CreatePeerFromAddress(addr string) error {
-
-	var err error
-
-	if err = validateAddress(m.localNode, addr); err != nil {
-		return err
-	}
-
-	// The peer must not already exists be known
-	mAddr, _ := ma.NewMultiaddr(addr)
-	remotePeer := NewRemoteNode(mAddr, m.localNode)
-	if m.PeerExist(remotePeer.StringID()) {
-		m.log.Info("Peer already exists", "PeerID", remotePeer.StringID())
-		return nil
-	}
-
-	remotePeer.Timestamp = time.Now()
-	err = m.AddOrUpdatePeer(remotePeer)
-	m.log.Info("Added a peer", "PeerAddr", mAddr.String())
-
-	return err
-}
-
-// deserializePeers takes a slice of bytes which was created by
-// serializeActivePeers and creates new remote node
+// deserializePeers takes a slice of bytes
+// which was created by serializeActivePeers
+// and creates a new remote node instance
 func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 
 	var peers = make([]*Node, len(serPeers))
@@ -486,7 +404,7 @@ func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
 
 		addr, _ := ma.NewMultiaddr(data[0].(string))
 		peer := NewRemoteNode(addr, m.localNode)
-		peer.Timestamp = time.Unix(int64(data[1].(float64)), 0)
+		peer.lastSeen = time.Unix(int64(data[1].(float64)), 0)
 		peers[i] = peer
 	}
 
@@ -499,19 +417,20 @@ func (m *Manager) SavePeers() error {
 	var numAddrs = 0
 	var kvObjs []*elldb.KVObject
 
-	// Determine the active addresses that are eligible.
-	// Hardcoded seed peers are no eligible.
-	// Peers that are not up to 20 minutes old are also not
-	// eligible
+	// Hardcoded seed peers and peers that are
+	// not up to 20 minutes old are also not saved.
 	peers := m.CopyActivePeers(0)
 	for _, p := range peers {
-		if !p.IsHardcodedSeed() && time.Now().Add(20*time.Minute).Before(p.GetTimestamp()) {
+		isOldEnough := time.Now().UTC().Sub(p.CreatedAt().UTC()).Minutes() >= 20
+		if !p.IsHardcodedSeed() && isOldEnough {
 			key := []byte(p.StringID())
 			value := util.ObjectToBytes(map[string]interface{}{
-				"addr": p.GetMultiAddr(),
-				"ts":   p.GetTimestamp().Unix(),
+				"address":   p.GetMultiAddr(),
+				"createdAt": p.CreatedAt().Unix(),
+				"lastSeen":  p.GetLastSeen().Unix(),
 			})
-			kvObjs = append(kvObjs, elldb.NewKVObject(key, value, []byte("address")))
+			obj := elldb.NewKVObject(key, value, []byte("address"))
+			kvObjs = append(kvObjs, obj)
 			numAddrs++
 		}
 	}
@@ -525,13 +444,15 @@ func (m *Manager) SavePeers() error {
 	return nil
 }
 
-// LoadPeers loads peers stored in the local database
+// LoadPeers loads peers stored in
+// the local database
 func (m *Manager) LoadPeers() error {
 
 	kvObjs := m.localNode.db.GetByPrefix([]byte("address"))
 
-	// create remote node to represent the addresses
-	// and add them to the managers active peer list
+	// create remote node to represent
+	// the addresses and add them to the
+	// managers active peer list
 	for _, o := range kvObjs {
 
 		var addrData map[string]interface{}
@@ -539,24 +460,26 @@ func (m *Manager) LoadPeers() error {
 			return err
 		}
 
-		addr, _ := ma.NewMultiaddr(addrData["addr"].(string))
+		addr, _ := ma.NewMultiaddr(addrData["address"].(string))
 		peer := NewRemoteNode(addr, m.localNode)
-		peer.Timestamp = time.Unix(int64(addrData["ts"].(uint32)), 0)
-		m.AddOrUpdatePeer(peer)
+		peer.createdAt = time.Unix(int64(addrData["createdAt"].(uint32)), 0)
+		peer.lastSeen = time.Unix(int64(addrData["lastSeen"].(uint32)), 0)
+		m.AddPeer(peer)
 	}
 
 	return nil
 }
 
-// Stop gracefully stops running routines managed by the manager
+// Stop gracefully stops running
+// routines managed by the manager
 func (m *Manager) Stop() {
+	m.SavePeers()
+
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
 	if m.stop {
 		return
 	}
-
-	m.stop = true
 
 	if m.tickersDone != nil {
 		close(m.tickersDone)
@@ -566,5 +489,6 @@ func (m *Manager) Stop() {
 		close(m.connMgr.tickerDone)
 	}
 
+	m.stop = true
 	m.log.Info("Peer manager has stopped")
 }
