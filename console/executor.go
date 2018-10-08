@@ -2,6 +2,7 @@ package console
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/ellcrys/elld/rpc"
@@ -227,15 +228,12 @@ func (e *Executor) runScript(file string) {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
 
-	script, err := e.vm.Compile(fullPath, nil)
+	content, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
 
-	_, err = e.vm.Run(script)
-	if err != nil {
-		panic(e.vm.MakeCustomError("ExecError", err.Error()))
-	}
+	e.runRaw(content)
 }
 
 func (e *Executor) runRaw(src interface{}) {

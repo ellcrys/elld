@@ -61,7 +61,8 @@ type Miner struct {
 }
 
 // New creates and returns a new Miner instance
-func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter, cfg *config.EngineConfig, log logger.Logger) *Miner {
+func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter,
+	cfg *config.EngineConfig, log logger.Logger) *Miner {
 
 	m := &Miner{
 		minerKey:   mineKey,
@@ -173,7 +174,8 @@ func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReade
 	// abort current proposed block and emit an event.
 	if m.blockMaker.IsMainChain(chain) &&
 		!m.proposedBlock.GetHash().Equal(newBlock.GetHash()) {
-		m.log.Debug("Aborting on-going miner session. Proposing a new block.", "Number", newBlock.Header.Number)
+		m.log.Debug("Aborting on-going miner session. Proposing a new block.",
+			"Number", newBlock.Header.Number)
 		go m.event.Emit(core.EventMinerProposedBlockAborted, m.proposedBlock)
 		m.abortCurrent()
 	}
@@ -181,7 +183,8 @@ func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReade
 
 // ValidateHeader validates a given header according to
 // the Ethash specification.
-func (m *Miner) ValidateHeader(chain core.ChainReader, header, parent *objects.Header, seal bool) {
+func (m *Miner) ValidateHeader(chain core.ChainReader, header,
+	parent *objects.Header, seal bool) {
 	m.blakimoto.VerifyHeader(header, parent, seal)
 }
 
