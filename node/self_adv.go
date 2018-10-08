@@ -15,7 +15,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 	msg := &wire.Addr{
 		Addresses: []*wire.Address{
-			{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()},
+			{Address: g.engine.GetAddress(), Timestamp: time.Now().Unix()},
 		},
 	}
 

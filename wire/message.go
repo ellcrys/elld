@@ -49,8 +49,8 @@ type Addr struct {
 
 // Address represents a peer's address
 type Address struct {
-	Address   string `json:"address" msgpack:"address"`
-	Timestamp int64  `json:"timestamp" msgpack:"timestamp"`
+	Address   util.NodeAddr `json:"address" msgpack:"address"`
+	Timestamp int64         `json:"timestamp" msgpack:"timestamp"`
 }
 
 // Ping represents a ping message

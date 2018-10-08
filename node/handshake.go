@@ -45,7 +45,6 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	remotePeerIDShort := remotePeer.ShortID()
 
 	g.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
-
 	s, c, err := g.NewStream(remotePeer, config.HandshakeVersion)
 	if err != nil {
 		g.log.Debug("Handshake failed. failed to connect to peer",
@@ -124,14 +123,14 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 // OnHandshake handles incoming handshake request
 func (g *Gossip) OnHandshake(s net.Stream) {
 
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.Engine())
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.Engine())
 	remotePeerIDShort := remotePeer.ShortID()
 
 	// In non-production mode, ensure wire from public addresses are ignored
 	if !g.Engine().ProdMode() && !util.IsDevAddr(remotePeer.IP) {
 		g.log.Debug("In development mode, we cannot interact with "+
 			"peers with public IP",
-			"Addr", remotePeer.GetMultiAddr(), "Msg", "Handshake")
+			"Addr", remotePeer.GetAddress(), "Msg", "Handshake")
 		return
 	}
 

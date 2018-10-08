@@ -128,7 +128,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	defer s.Close()
 
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
 	g.log.Info("Received ping message", "PeerID", remotePeerIDShort)

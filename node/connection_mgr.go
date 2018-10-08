@@ -92,8 +92,8 @@ func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
 
 // Disconnected is called when a connection is closed
 func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
-	fullAddr := util.FullRemoteAddressFromConn(conn)
-	m.pm.OnPeerDisconnect(fullAddr)
+	addr := util.RemoteAddrFromConn(conn)
+	m.pm.OnPeerDisconnect(addr)
 
 	m.gmx.Lock()
 	defer m.gmx.Unlock()

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -62,7 +61,7 @@ type SyncStateInfo struct {
 type Node struct {
 	mtx                 *sync.RWMutex
 	cfg                 *config.EngineConfig // node config
-	address             ma.Multiaddr         // node multiaddr
+	address             util.NodeAddr        // node address
 	IP                  net.IP               // node ip
 	host                host.Host            // node libp2p host
 	wg                  sync.WaitGroup       // wait group for preventing the main thread from exiting
@@ -127,7 +126,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 	node := &Node{
 		mtx:              &sync.RWMutex{},
 		cfg:              config,
-		address:          util.FullAddressFromHost(host),
+		address:          util.AddressFromHost(host),
 		host:             host,
 		wg:               sync.WaitGroup{},
 		log:              log,
@@ -165,7 +164,7 @@ func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string,
 }
 
 // NewRemoteNode creates a Node that represents a remote node
-func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
+func NewRemoteNode(address util.NodeAddr, localNode *Node) *Node {
 	node := &Node{
 		address:   address,
 		localNode: localNode,
@@ -175,6 +174,12 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	}
 	node.IP = node.ip()
 	return node
+}
+
+// NewRemoteNodeFromMultiAddr is like NewRemoteNode
+// excepts it accepts a Multiaddr
+func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
+	return NewRemoteNode(util.NodeAddr(address.String()), localNode)
 }
 
 // NewAlmostEmptyNode returns a node with
@@ -192,7 +197,7 @@ func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	return &Node{
 		createdAt: time.Now().UTC(),
 		mtx:       &sync.RWMutex{},
-		address:   address,
+		address:   util.NodeAddr(address.String()),
 	}
 }
 
@@ -449,12 +454,16 @@ func (n *Node) SetLocalNode(node *Node) {
 // to check if a remote node has been
 // blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
-	// In non-production mode, we cannot interact with a remote peer with a public IP
+	// In non-production mode, we cannot
+	// interact with a remote peer
+	// with a public IP
 	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
-		return false, fmt.Errorf("in development mode, we cannot interact with peers with public IP")
+		return false, fmt.Errorf("in development mode, we " +
+			"cannot interact with peers with public IP")
 	}
 
-	// If the local peer does not know the remotePeer, it cannot interact with it.
+	// If the local peer does not know the
+	// remotePeer, it cannot interact with it.
 	// This only applies in production mode.
 	if n.ProdMode() && !remotePeer.IsKnown() {
 		return false, fmt.Errorf("remote peer is unknown")
@@ -466,12 +475,16 @@ func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
 // addToPeerStore adds a remote node
 // to the host's peerstore
 func (n *Node) addToPeerStore(remote types.Engine) *Node {
-	n.localNode.Peerstore().AddAddr(remote.ID(), remote.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
+	addr := remote.GetAddress()
+	n.localNode.Peerstore().AddAddr(remote.ID(),
+		addr.DecapIPFS(),
+		pstore.PermanentAddrTTL)
 	return n
 }
 
 // newStream creates a stream to a peer
-func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string) (inet.Stream, error) {
+func (n *Node) newStream(ctx context.Context,
+	peerID peer.ID, protocolID string) (inet.Stream, error) {
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
 }
 
@@ -520,32 +533,27 @@ func (n *Node) Host() host.Host {
 
 // ID returns the peer id of the host
 func (n *Node) ID() peer.ID {
-	if n.address == nil {
-		return ""
+	if n.address == "" {
+		return peer.ID("")
 	}
-
-	pid, _ := n.address.ValueForProtocol(ma.P_IPFS)
-	id, _ := peer.IDB58Decode(pid)
-	return id
+	return n.address.ID()
 }
 
 // StringID is like ID() but
 // it returns string
 func (n *Node) StringID() string {
-	if n.address == nil {
+	if n.address == "" {
 		return ""
 	}
-
-	pid, _ := n.address.ValueForProtocol(ma.P_IPFS)
-	return pid
+	return n.ID().Pretty()
 }
 
 // ShortID is like IDPretty but shorter
 func (n *Node) ShortID() string {
-	id := n.StringID()
-	if len(id) == 0 {
+	if n.address == "" {
 		return ""
 	}
+	id := n.StringID()
 	return id[0:12] + ".." + id[40:52]
 }
 
@@ -585,59 +593,39 @@ func (n *Node) SetProtocolHandler(version string,
 	n.host.SetStreamHandler(protocol.ID(version), handler)
 }
 
-// GetMultiAddr returns the full multi address of the node
-func (n *Node) GetMultiAddr() string {
+// GetAddress returns the node's address
+func (n *Node) GetAddress() util.NodeAddr {
 	if n.host == nil && !n.remote {
 		return ""
-	} else if n.remote {
-		return n.address.String()
 	}
-	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s",
-		n.host.ID().Pretty()))
-	return n.host.Addrs()[0].Encapsulate(hostAddr).String()
+	if n.remote {
+		return n.address
+	}
+	ipfsPart := fmt.Sprintf("/ipfs/%s", n.host.ID().Pretty())
+	hostAddr, _ := ma.NewMultiaddr(ipfsPart)
+	fullAddr := n.host.Addrs()[0].Encapsulate(hostAddr).String()
+	return util.NodeAddr(fullAddr)
 }
 
-// GetAddr returns the host and port
-// of the node as "host:port"
-func (n *Node) GetAddr() string {
-	hostAddr := n.host.Addrs()[0].String()
-	parts := strings.Split(strings.Trim(hostAddr, "/"), "/")
-	return fmt.Sprintf("%s:%s", parts[1], parts[3])
-}
-
-// GetIP4TCPAddr returns ip4 and tcp
-// parts of the host's multi address
-func (n *Node) GetIP4TCPAddr() ma.Multiaddr {
-	ipfsPart := fmt.Sprintf("/ipfs/%s", n.ID().Pretty())
-	ipfsAddr, _ := ma.NewMultiaddr(ipfsPart)
-	return n.address.Decapsulate(ipfsAddr)
-}
-
-// GetBindAddress returns the bind address
-func (n *Node) GetBindAddress() string {
-	return n.address.String()
-}
-
-// validateAddress checks whether
-// an address is valid for the
-// current engine mode.
-func validateAddress(engine types.Engine, address string) error {
+// validateAddress checks whether an address
+// is valid for the current engine mode.
+func validateAddress(engine types.Engine, address util.NodeAddr) error {
 
 	// Check whether the address is valid
-	if !util.IsValidAddr(address) {
+	if !address.IsValid() {
 		return fmt.Errorf("not a valid multiaddr")
 	}
 
 	// In non-production mode, only
 	// local/private addresses are allowed
-	if !engine.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(address)) {
+	if !engine.ProdMode() && !util.IsDevAddr(address.IP()) {
 		return fmt.Errorf("public addresses are " +
 			"not allowed in development mode")
 	}
 
 	// In production mode, only routable
 	// addresses are allowed
-	if engine.ProdMode() && !util.IsRoutableAddr(address) {
+	if engine.ProdMode() && !address.IsRoutable() {
 		return fmt.Errorf("local or private addresses " +
 			"are not allowed in production mode")
 	}
@@ -652,14 +640,13 @@ func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
 
 	for _, addr := range peerAddresses {
 
-		if err := validateAddress(n, addr); err != nil {
+		if err := validateAddress(n, util.NodeAddr(addr)); err != nil {
 			n.log.Info("Invalid Bootstrap Address",
 				"Err", err.Error(), "Address", addr)
 			continue
 		}
 
-		pAddr, _ := ma.NewMultiaddr(addr)
-		rp := NewRemoteNode(pAddr, n)
+		rp := NewRemoteNode(util.NodeAddr(addr), n)
 		rp.isHardcodedSeed = hardcoded
 		rp.gProtoc = n.gProtoc
 		n.peerManager.AddPeer(rp)
@@ -920,14 +907,13 @@ func (n *Node) Stop() {
 }
 
 // NodeFromAddr creates a Node from a multiaddr
-func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
-	if !util.IsValidAddr(addr) {
+func (n *Node) NodeFromAddr(addr util.NodeAddr, remote bool) (*Node, error) {
+	if !addr.IsValid() {
 		return nil, fmt.Errorf("invalid address provided")
 	}
-	nAddr, _ := ma.NewMultiaddr(addr)
 	return &Node{
 		createdAt: time.Now().UTC(),
-		address:   nAddr,
+		address:   addr,
 		localNode: n,
 		gProtoc:   n.gProtoc,
 		remote:    remote,
@@ -937,15 +923,7 @@ func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
 
 // ip returns the IP address
 func (n *Node) ip() net.IP {
-	addr := n.GetIP4TCPAddr()
-	if addr == nil {
-		return nil
-	}
-	ip, _ := addr.ValueForProtocol(ma.P_IP6)
-	if ip == "" {
-		ip, _ = addr.ValueForProtocol(ma.P_IP4)
-	}
-	return net.ParseIP(ip)
+	return n.address.IP()
 }
 
 // IsBadTimestamp checks whether the timestamp of the node is bad.

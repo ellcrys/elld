@@ -64,8 +64,8 @@ var _ = Describe("Addr", func() {
 				It("should return two nodes", func() {
 					peers := lp.Gossip().SelectRelayPeers(candidateAddrs)
 					Expect(len(peers)).To(Equal(2))
-					Expect(peers[0].GetMultiAddr()).To(Equal(candidateAddrs[2].Address))
-					Expect(peers[1].GetMultiAddr()).To(Equal(candidateAddrs[1].Address))
+					Expect(peers[0].GetAddress()).To(Equal(candidateAddrs[2].Address))
+					Expect(peers[1].GetAddress()).To(Equal(candidateAddrs[1].Address))
 				})
 			})
 
@@ -77,13 +77,13 @@ var _ = Describe("Addr", func() {
 				It("Should return the only candidate node", func() {
 					peers := lp.Gossip().SelectRelayPeers(candidateAddrs)
 					Expect(len(peers)).To(Equal(1))
-					Expect(peers[0].GetMultiAddr()).To(Equal(candidateAddrs[0].Address))
+					Expect(peers[0].GetAddress()).To(Equal(candidateAddrs[0].Address))
 				})
 			})
 		})
 
 		Context("when one replay peer had been selected", func() {
-			var addr = "/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV"
+			var addr = util.NodeAddr("/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV")
 
 			When("there is at least one candidate", func() {
 
@@ -100,8 +100,8 @@ var _ = Describe("Addr", func() {
 					lp.Gossip().RelayPeers = append(lp.Gossip().RelayPeers, n)
 					peers := lp.Gossip().SelectRelayPeers(candidateAddrs)
 					Expect(len(peers)).To(Equal(2))
-					Expect(peers[0].GetMultiAddr()).ToNot(Equal(addr))
-					Expect(peers[1].GetMultiAddr()).ToNot(Equal(addr))
+					Expect(peers[0].GetAddress()).ToNot(Equal(addr))
+					Expect(peers[1].GetAddress()).ToNot(Equal(addr))
 				})
 			})
 
@@ -117,7 +117,7 @@ var _ = Describe("Addr", func() {
 					Expect(n.Gossip().RelayPeers).To(HaveLen(1))
 					peers := rp.Gossip().SelectRelayPeers(candidateAddrs)
 					Expect(len(peers)).To(Equal(2))
-					Expect(peers[0].GetMultiAddr()).To(Equal(addr))
+					Expect(peers[0].GetAddress()).To(Equal(addr))
 				})
 			})
 		})
@@ -184,9 +184,9 @@ var _ = Describe("Addr", func() {
 
 			It("should successfully select relay peers from the 3 peers address", func() {
 				addrs := []*wire.Address{
-					{Address: p.GetMultiAddr(), Timestamp: time.Now().Unix()},
-					{Address: p2.GetMultiAddr(), Timestamp: time.Now().Unix()},
-					{Address: p3.GetMultiAddr(), Timestamp: time.Now().Unix()},
+					{Address: p.GetAddress(), Timestamp: time.Now().Unix()},
+					{Address: p2.GetAddress(), Timestamp: time.Now().Unix()},
+					{Address: p3.GetAddress(), Timestamp: time.Now().Unix()},
 				}
 				Expect(p.Gossip().RelayPeers).To(HaveLen(0))
 				p.Gossip().RelayAddresses(addrs)
@@ -207,9 +207,9 @@ var _ = Describe("Addr", func() {
 			p3 = makeTestNode(30602)
 			addrMsg = &wire.Addr{
 				Addresses: []*wire.Address{
-					{Address: p.GetMultiAddr(), Timestamp: time.Now().Unix()},
-					{Address: p2.GetMultiAddr(), Timestamp: time.Now().Unix()},
-					{Address: p3.GetMultiAddr(), Timestamp: time.Now().Unix()},
+					{Address: p.GetAddress(), Timestamp: time.Now().Unix()},
+					{Address: p2.GetAddress(), Timestamp: time.Now().Unix()},
+					{Address: p3.GetAddress(), Timestamp: time.Now().Unix()},
 				},
 			}
 		})

@@ -36,7 +36,7 @@ func (n *Node) addTransaction(tx core.Transaction) error {
 func (g *Gossip) OnTx(s net.Stream) {
 	defer s.Close()
 
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
 	msg := &objects.Transaction{}

@@ -88,7 +88,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 func (g *Gossip) OnBlockBody(s net.Stream) {
 
 	defer s.Close()
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	rpID := remotePeer.ShortID()
 
 	blockBody := &wire.BlockBody{}
@@ -173,7 +173,7 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine,
 func (g *Gossip) OnRequestBlock(s net.Stream) {
 
 	defer s.Close()
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	rpID := remotePeer.ShortID()
 
 	// read the message
@@ -376,7 +376,7 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 // ancestor) which exists on the main chain.
 func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 	defer s.Close()
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	rpID := remotePeer.ShortID()
 
 	// Read the message
@@ -543,7 +543,7 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 
 // OnGetBlockBodies handles GetBlockBodies requests
 func (g *Gossip) OnGetBlockBodies(s net.Stream) {
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	rpID := remotePeer.ShortID()
 
 	// Read the message

@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	boostrapAddresses = []string{} // hardcoded bootstrap node address
+	boostrapAddresses = []string{}
 )
 
 func devDefaultConfig(cfg *config.EngineConfig) {
@@ -208,7 +208,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to open local database")
 	}
 
-	log.Info("Waiting patiently to interact on", "Addr", n.GetMultiAddr(), "Dev", devMode)
+	log.Info("Waiting patiently to interact on", "Addr", n.GetAddress(), "Dev", devMode)
 
 	// Initialized gossip protocol handlers
 	protocol := node.NewGossip(n, log)

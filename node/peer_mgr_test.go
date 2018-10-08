@@ -105,12 +105,12 @@ var _ = Describe("Peer Manager", func() {
 			mgr.SetNumActiveConnections(3)
 
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
-			p2 := node.NewRemoteNode(addr, lp)
+			p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
 			p2.SetLastSeen(time.Now())
 			mgr.Peers()[p2.StringID()] = p2
 
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := node.NewRemoteNode(addr2, lp)
+			p3 := node.NewRemoteNodeFromMultiAddr(addr2, lp)
 			p3.SetLastSeen(time.Now())
 			mgr.Peers()[p3.StringID()] = p3
 
@@ -122,12 +122,12 @@ var _ = Describe("Peer Manager", func() {
 			mgr.SetNumActiveConnections(3)
 
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
-			p2 := node.NewRemoteNode(addr, lp)
+			p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
 			p2.SetLastSeen(time.Now())
 			mgr.Peers()[p2.StringID()] = p2
 
 			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := node.NewRemoteNode(addr2, lp)
+			p3 := node.NewRemoteNodeFromMultiAddr(addr2, lp)
 			mgr.Peers()[p3.StringID()] = p3
 
 			n := mgr.CleanPeers()
@@ -140,7 +140,7 @@ var _ = Describe("Peer Manager", func() {
 		When("peer was created less than 20 minutes ago", func() {
 			It("should not store peer", func() {
 				addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
-				rp := node.NewRemoteNode(addr, lp)
+				rp := node.NewRemoteNodeFromMultiAddr(addr, lp)
 				rp.SetCreatedAt(time.Now())
 
 				mgr = lp.PM()
@@ -162,11 +162,11 @@ var _ = Describe("Peer Manager", func() {
 				addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 				addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
 
-				p2 := node.NewRemoteNode(addr, lp)
+				p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
 				p2.SetLastSeen(time.Now())
 				p2.SetCreatedAt(time.Now().Add(-21 * time.Minute))
 
-				p3 := node.NewRemoteNode(addr2, lp)
+				p3 := node.NewRemoteNodeFromMultiAddr(addr2, lp)
 				p3.SetLastSeen(time.Now())
 				p3.SetCreatedAt(time.Now().Add(-21 * time.Minute))
 
@@ -194,7 +194,7 @@ var _ = Describe("Peer Manager", func() {
 			lastSeen = time.Now().UTC()
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
-			peer = node.NewRemoteNode(addr, lp)
+			peer = node.NewRemoteNodeFromMultiAddr(addr, lp)
 			peer.SetCreatedAt(createdAt)
 			peer.SetLastSeen(lastSeen)
 			mgr.AddPeer(peer)
@@ -265,8 +265,7 @@ var _ = Describe("Peer Manager", func() {
 			mgr.UpdateLastSeen(p2)
 			currentTimestamp := p2.GetLastSeen().Unix()
 
-			addr, _ := ma.NewMultiaddr(p2.GetMultiAddr())
-			mgr.OnPeerDisconnect(addr)
+			mgr.OnPeerDisconnect(p2.GetAddress())
 			newTimestamp := p2.GetLastSeen().Unix()
 			Expect(newTimestamp).ToNot(Equal(currentTimestamp))
 			Expect(newTimestamp >= currentTimestamp).ToNot(BeTrue())

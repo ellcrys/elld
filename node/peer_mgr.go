@@ -1,7 +1,6 @@
 package node
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -14,7 +13,6 @@ import (
 	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/util"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 // Manager manages known peers connected to the local peer.
@@ -81,9 +79,8 @@ func (m *Manager) GetPeer(peerID string) types.Engine {
 // short time but subtract 2 hours from its current
 // timestamp.
 // Eventually, it will be removed if it does not reconnect.
-func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
-	peerID := util.IDFromAddr(peerAddr).Pretty()
-	peer := m.GetPeer(peerID)
+func (m *Manager) OnPeerDisconnect(peerAddr util.NodeAddr) {
+	peer := m.GetPeer(peerAddr.StringID())
 	if peer == nil {
 		return
 	}
@@ -389,28 +386,6 @@ func (m *Manager) GetRandomActivePeers(limit int) []types.Engine {
 	return peers[:limit]
 }
 
-// deserializePeers takes a slice of bytes
-// which was created by serializeActivePeers
-// and creates a new remote node instance
-func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
-
-	var peers = make([]*Node, len(serPeers))
-
-	for i, p := range serPeers {
-		var data []interface{}
-		if err := json.Unmarshal(p, &data); err != nil {
-			return nil, err
-		}
-
-		addr, _ := ma.NewMultiaddr(data[0].(string))
-		peer := NewRemoteNode(addr, m.localNode)
-		peer.lastSeen = time.Unix(int64(data[1].(float64)), 0)
-		peers[i] = peer
-	}
-
-	return peers, nil
-}
-
 // SavePeers stores active peer addresses
 func (m *Manager) SavePeers() error {
 
@@ -425,7 +400,7 @@ func (m *Manager) SavePeers() error {
 		if !p.IsHardcodedSeed() && isOldEnough {
 			key := []byte(p.StringID())
 			value := util.ObjectToBytes(map[string]interface{}{
-				"address":   p.GetMultiAddr(),
+				"address":   p.GetAddress(),
 				"createdAt": p.CreatedAt().Unix(),
 				"lastSeen":  p.GetLastSeen().Unix(),
 			})
@@ -460,7 +435,7 @@ func (m *Manager) LoadPeers() error {
 			return err
 		}
 
-		addr, _ := ma.NewMultiaddr(addrData["address"].(string))
+		addr := util.NodeAddr(addrData["address"].(string))
 		peer := NewRemoteNode(addr, m.localNode)
 		peer.createdAt = time.Unix(int64(addrData["createdAt"].(uint32)), 0)
 		peer.lastSeen = time.Unix(int64(addrData["lastSeen"].(uint32)), 0)

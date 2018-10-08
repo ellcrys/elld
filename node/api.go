@@ -27,7 +27,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 
 	return jsonrpc.Success(map[string]interface{}{
 		"id":                n.ID().Pretty(),
-		"address":           n.GetMultiAddr(),
+		"address":           n.GetAddress(),
 		"mode":              mode,
 		"netVersion":        config.ProtocolVersion,
 		"syncing":           n.isSyncing(),
@@ -49,7 +49,13 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
-	rp, err := n.NodeFromAddr(address, true)
+	addr := util.NodeAddr(address)
+	if !addr.IsValid() {
+		return jsonrpc.Error(types.ErrCodeAddress,
+			"address is not a valid network address", nil)
+	}
+
+	rp, err := n.NodeFromAddr(addr, true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}
@@ -77,7 +83,13 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
-	rp, err := n.NodeFromAddr(address, true)
+	addr := util.NodeAddr(address)
+	if !addr.IsValid() {
+		return jsonrpc.Error(types.ErrCodeAddress,
+			"address is not a valid network address", nil)
+	}
+
+	rp, err := n.NodeFromAddr(addr, true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}

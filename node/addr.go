@@ -11,13 +11,12 @@ import (
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/wire"
 	net "github.com/libp2p/go-libp2p-net"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 // onAddr processes wire.Addr message
 func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
-	remoteAddr := util.RemoteAddressFromStream(s)
+	remoteAddr := util.RemoteAddrFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
@@ -74,14 +73,14 @@ func (g *Gossip) OnAddr(s net.Stream) {
 
 	defer s.Close()
 
-	remoteAddr := util.RemoteAddressFromStream(s)
+	remoteAddr := util.RemoteAddrFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 
 	// check whether we are are allowed to
 	//  interact with the remote peer
 	if ok, err := g.engine.canAcceptPeer(remotePeer); !ok {
 		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", err.Error()),
-			"Addr", remotePeer.GetMultiAddr(), "Msg", "GetAddr")
+			"Addr", remotePeer.GetAddress(), "Msg", "GetAddr")
 		return
 	}
 
@@ -125,7 +124,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 
 	type addrInfo struct {
 		hash      *big.Int
-		address   string
+		address   util.NodeAddr
 		timestamp int64
 	}
 
@@ -134,8 +133,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 
 		// Make sure the address isn't the same
 		// as the address of the local node
-		mAddr, _ := ma.NewMultiaddr(c.Address)
-		if g.engine.IsSameID(util.IDFromAddr(mAddr).Pretty()) {
+		if g.engine.IsSameID(c.Address.ID().Pretty()) {
 			continue
 		}
 
@@ -213,14 +211,13 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 	for _, addr := range addrs {
 
 		// We must ensure we don't relay invalid addresses
-		if !util.IsValidAddr(addr.Address) {
+		if !addr.Address.IsValid() {
 			errs = append(errs, fmt.Errorf("address {%s} is not valid", addr.Address))
 			continue
 		}
 
 		// Ignore an address that matches the local
-		mAddr, _ := ma.NewMultiaddr(addr.Address)
-		if g.engine.IsSameID(util.IDFromAddr(mAddr).Pretty()) {
+		if g.engine.IsSameID(addr.Address.ID().Pretty()) {
 			errs = append(errs, fmt.Errorf("address {%s} is the same as local peer's", addr.Address))
 			continue
 		}
@@ -235,7 +232,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		// In non-production mode, we are allowed
 		// to relay non-routable addresses.
 		// But we can't allow them in production
-		if g.engine.ProdMode() && !util.IsRoutableAddr(addr.Address) {
+		if g.engine.ProdMode() && !addr.Address.IsRoutable() {
 			errs = append(errs, fmt.Errorf("address {%s} is not routable", addr.Address))
 			continue
 		}
@@ -264,7 +261,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		// matching the remote peer's
 		addrMsg := &wire.Addr{}
 		for _, p := range relayable {
-			if p.Address != remotePeer.GetMultiAddr() {
+			if !p.Address.Equal(remotePeer.GetAddress()) {
 				addrMsg.Addresses = append(addrMsg.Addresses, p)
 			}
 		}

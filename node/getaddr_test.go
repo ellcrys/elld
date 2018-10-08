@@ -114,7 +114,7 @@ var _ = Describe("GetAddr", func() {
 				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
 				Expect(err).To(BeNil())
 				Expect(addrs).To(HaveLen(1))
-				Expect(addrs[0].Address).To(Equal(remoteAddr.GetMultiAddr()))
+				Expect(addrs[0].Address).To(Equal(remoteAddr.GetAddress()))
 			})
 		})
 
