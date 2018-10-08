@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	goprompt "github.com/segmentio/go-prompt"
+
 	"github.com/ellcrys/elld/rpc"
 	"github.com/gobuffalo/packr"
 
@@ -65,7 +67,25 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	return e
 }
 
-func (e *Executor) login(username, password string) interface{} {
+func (e *Executor) login(credentials ...string) interface{} {
+
+	var username, password string
+	if len(credentials) == 1 {
+		username = credentials[0]
+	} else if len(credentials) > 1 {
+		username = credentials[0]
+		password = credentials[1]
+	}
+
+	// When password is not provided, we assume the
+	// caller intends to enter interactive mode.
+	// Prompt user to enter password util she does.
+	if len(password) == 0 {
+		fmt.Println("Please enter your password below:")
+		for len(password) == 0 {
+			password = goprompt.Password("Password")
+		}
+	}
 
 	var arg = map[string]interface{}{
 		"username": username,
