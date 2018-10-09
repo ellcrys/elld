@@ -212,73 +212,81 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+
+		// namespace: "node"
 		"config": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceNode,
 			Description: "Get node configurations",
 			Private:     true,
 			Func:        n.apiGetConfig,
 		},
 		"info": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceNode,
 			Description: "Get basic information of the node",
 			Func:        n.apiBasicNodeInfo,
 		},
+		"isSyncing": {
+			Namespace:   core.NamespaceNode,
+			Description: "Check whether blockchain synchronization is active",
+			Func:        n.apiIsSyncing,
+		},
+		"getSyncState": {
+			Namespace:   core.NamespaceNode,
+			Description: "Get blockchain synchronization status",
+			Func:        n.apiGetSyncState,
+		},
+		"getSyncQueueSize": {
+			Namespace:   core.NamespaceNode,
+			Description: "Get number of block hashes in the sync queue",
+			Func:        n.apiGetSyncQueueSize,
+		},
+
+		// namespace: "ell"
 		"send": {
-			Namespace:   "ell",
+			Namespace:   core.NamespaceEll,
 			Description: "Create a balance transaction",
 			Private:     true,
 			Func:        n.apiSend,
 		},
+
+		// namespace: "net"
 		"join": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Connect to a peer",
 			Private:     true,
 			Func:        n.apiJoin,
 		},
 		"addPeer": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Add a peer address",
 			Private:     true,
 			Func:        n.apiAddPeer,
 		},
 		"numConnections": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Get number of active connections",
 			Func:        n.apiNumConnections,
 		},
 		"getPeers": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Get a list of all peers",
 			Func:        n.apiGetPeers,
 		},
 		"getActivePeers": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Get a list of active peers",
 			Func:        n.apiGetActivePeers,
 		},
-		"isSyncing": {
-			Namespace:   "node",
-			Description: "Check whether blockchain synchronization is active",
-			Func:        n.apiIsSyncing,
-		},
-		"getSyncState": {
-			Namespace:   "node",
-			Description: "Get blockchain synchronization status",
-			Func:        n.apiGetSyncState,
-		},
-		"getPoolSize": {
-			Namespace:   "node",
+
+		// namespace: "pool"
+		"getSize": {
+			Namespace:   core.NamespacePool,
 			Description: "Get size information of the transaction pool",
 			Func:        n.apiTxPoolSizeInfo,
 		},
-		"getSyncQueueSize": {
-			Namespace:   "node",
-			Description: "Get number of block hashes in the sync queue",
-			Func:        n.apiGetSyncQueueSize,
-		},
-		"fetchPool": {
-			Namespace:   "node",
-			Description: "Get the transactions in the pool",
+		"getAll": {
+			Namespace:   core.NamespacePool,
+			Description: "Get transactions in the pool",
 			Func:        n.apiFetchPool,
 		},
 	}

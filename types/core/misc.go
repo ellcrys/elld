@@ -102,3 +102,38 @@ type GenerateBlockParams struct {
 	// miner fee reward and add an Alloc transaction
 	AddFeeAlloc bool
 }
+
+const (
+	// NamespaceState is the namespace
+	// for RPC methods that access the database
+	NamespaceState = "state"
+
+	// NamespaceEll is the namespace for RPC methods
+	// that interact with the native currency
+	NamespaceEll = "ell"
+
+	// NamespaceNode is the namespace for RPC methods
+	// that interact and access the node/client properties
+	NamespaceNode = "node"
+
+	// NamespacePool is the namespace for RPC methods
+	// that access the transaction pool
+	NamespacePool = "pool"
+
+	// NamespaceMiner is the namespace for RPC methods
+	// that interact with the miner
+	NamespaceMiner = "miner"
+
+	// NamespacePersonal is the namespace for RPC methods
+	// that interact with private and sensitive data of the
+	// client
+	NamespacePersonal = "personal"
+
+	// NamespaceAdmin is the namespace for RPC methods
+	// that perform administrative actions
+	NamespaceAdmin = "admin"
+
+	// NamespaceNet is the namespace for RPC methods
+	// that perform network actions
+	NamespaceNet = "net"
+)

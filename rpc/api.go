@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 )
 
 func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
@@ -27,8 +28,9 @@ func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (s *Server) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+		// namespace: "admin"
 		"auth": {
-			Namespace:   "admin",
+			Namespace:   core.NamespaceAdmin,
 			Description: "Get a session token",
 			Func:        s.rpcAuth,
 		},

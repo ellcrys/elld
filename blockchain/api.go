@@ -298,70 +298,76 @@ func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+
+		// namespace: "state"
 		"getChains": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get all chains",
 			Func:        b.apiGetChains,
 		},
 		"getBlock": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a block by number",
 			Func:        b.apiGetBlock,
 		},
 		"getBlockByHash": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
 		},
 		"getOrphans": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a list of orphans",
 			Func:        b.apiGetOrphans,
 		},
 		"getBestChain": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get the best chain",
 			Func:        b.apiGetBestchain,
 		},
 		"getReOrgs": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a list of re-organization events",
 			Func:        b.apiGetReOrgs,
 		},
 		"getAccount": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get an account",
 			Func:        b.apiGetAccount,
 		},
 		"getAccountNonce": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get the nonce of an account",
 			Func:        b.apiGetNonce,
 		},
-		"getBalance": {
-			Namespace:   "ell",
-			Description: "Get account balance",
-			Func:        b.apiGetBalance,
-		},
 		"getTransaction": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a transaction by hash",
 			Func:        b.apiGetTransaction,
 		},
 		"getDifficulty": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get difficulty information",
 			Func:        b.apiGetDifficultyInfo,
 		},
+		"getObjects": {
+			Namespace:   core.NamespaceState,
+			Description: "Get raw database objects (for debugging)",
+			Func:        b.apiGetDBObjects,
+		},
+
+		// namespace: "node"
 		"getTransactionStatus": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceNode,
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
 		},
-		"getObjects": {
-			Namespace:   "debug",
-			Description: "Get raw database objects",
-			Func:        b.apiGetDBObjects,
+
+		// namespace: "ell"
+		"getBalance": {
+			Namespace:   core.NamespaceEll,
+			Description: "Get account balance",
+			Func:        b.apiGetBalance,
 		},
 	}
 }
