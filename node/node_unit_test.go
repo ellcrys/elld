@@ -163,7 +163,8 @@ var _ = Describe("Node Unit Test", func() {
 			It("peer manager's bootstrap list contain only one valid address", func() {
 				addresses := []string{
 					"/ip4/127.0.0.1/tcp/40000",
-					"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
+					"127.0.0.0:1",
+					"ellcrys://12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw@127.0.0.1:9000",
 				}
 				n.AddAddresses(addresses, false)
 				Expect(n.PM().GetPeers()).To(HaveLen(1))

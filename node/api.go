@@ -49,13 +49,12 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
-	addr := util.NodeAddr(address)
-	if !addr.IsValid() {
+	if !util.IsValidConnectionString(address) {
 		return jsonrpc.Error(types.ErrCodeAddress,
-			"address is not a valid network address", nil)
+			"address format is invalid", nil)
 	}
 
-	rp, err := n.NodeFromAddr(addr, true)
+	rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}
@@ -83,13 +82,12 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
-	addr := util.NodeAddr(address)
-	if !addr.IsValid() {
+	if !util.IsValidConnectionString(address) {
 		return jsonrpc.Error(types.ErrCodeAddress,
-			"address is not a valid network address", nil)
+			"address format is invalid", nil)
 	}
 
-	rp, err := n.NodeFromAddr(addr, true)
+	rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
 	}

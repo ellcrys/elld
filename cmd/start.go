@@ -178,7 +178,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	log.Info("Elld has started", "Version", config.ClientVersion)
+	log.Info("Elld has started", "Version", config.ClientVersion, "DevMode", devMode)
 
 	// Create the local node.
 	n, err := node.NewNode(cfg, addressToListenOn, coinbase, log)
@@ -208,7 +208,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to open local database")
 	}
 
-	log.Info("Waiting patiently to interact on", "Addr", n.GetAddress(), "Dev", devMode)
+	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
 
 	// Initialized gossip protocol handlers
 	protocol := node.NewGossip(n, log)

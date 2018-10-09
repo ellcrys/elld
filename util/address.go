@@ -3,6 +3,8 @@ package util
 import (
 	"fmt"
 	"net"
+	"regexp"
+	"strings"
 
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -20,7 +22,7 @@ func IsValidHostPortAddress(address string) bool {
 }
 
 // IsValidAddr checks if an address is a valid
-// multi address with ip4, tcp, and ipfs protocols
+// multi address with ip4/ip6, tcp, and ipfs protocols
 func IsValidAddr(addr string) bool {
 	mAddr, err := ma.NewMultiaddr(addr)
 	if err != nil {
@@ -153,6 +155,27 @@ func AddressFromHost(host host.Host) NodeAddr {
 	return NodeAddr(fullAddr.String())
 }
 
+// AddressFromConnString creates a NodeAddress
+// from a given connection string
+func AddressFromConnString(str string) NodeAddr {
+	if !IsValidConnectionString(str) {
+		return ""
+	}
+
+	connData := ParseConnString(str)
+
+	host := connData["address"]
+	port := connData["port"]
+	tcpIPAddr := fmt.Sprintf("/ip4/%s/tcp/%s", host, port)
+	if net.ParseIP(host).To4() == nil {
+		tcpIPAddr = fmt.Sprintf("/ip6/%s/tcp/%s", host, port)
+	}
+
+	addr, _ := ma.NewMultiaddr(tcpIPAddr)
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", connData["id"]))
+	return NodeAddr(addr.Encapsulate(ipfsAddr).String())
+}
+
 // IsValid checks whether the address
 // is valid Multiaddr
 func (a NodeAddr) IsValid() bool {
@@ -206,4 +229,48 @@ func (a NodeAddr) DecapIPFS() ma.Multiaddr {
 	ipfsPart := fmt.Sprintf("/ipfs/%s", a.ID().Pretty())
 	ipfsAddr, _ := ma.NewMultiaddr(ipfsPart)
 	return a.GetMultiaddr().Decapsulate(ipfsAddr)
+}
+
+// ConnectionString returns an address similar
+// to database connection string with a branded
+// schema
+func (a NodeAddr) ConnectionString() string {
+	addrData := ParseAddr(a.String())
+	ip := addrData["ip4"]
+	if ip == "" {
+		ip = addrData["ip6"]
+	}
+	return fmt.Sprintf("ellcrys://%s@%s:%s",
+		addrData["ipfs"],
+		ip,
+		addrData["tcp"])
+}
+
+// IsValidConnectionString checks whether
+// a connection string is valid
+func IsValidConnectionString(str string) bool {
+	p := "^ell(crys)?://[a-zA-Z0-9]+@.*:[0-9]+$"
+	matched, _ := regexp.MatchString(p, str)
+	return matched
+}
+
+// ParseConnString breaksdown a connection string
+func ParseConnString(str string) (m map[string]string) {
+	if !IsValidConnectionString(str) {
+		return nil
+	}
+
+	m = make(map[string]string)
+	mainPart := strings.Split(str, "//")[1]
+	idAddrPart := strings.Split(mainPart, "@")
+	host, port, err := net.SplitHostPort(idAddrPart[1])
+	if err != nil {
+		return nil
+	}
+
+	m["id"] = idAddrPart[0]
+	m["address"] = host
+	m["port"] = port
+
+	return
 }

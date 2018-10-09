@@ -607,25 +607,28 @@ func (n *Node) GetAddress() util.NodeAddr {
 	return util.NodeAddr(fullAddr)
 }
 
-// validateAddress checks whether an address
-// is valid for the current engine mode.
-func validateAddress(engine types.Engine, address util.NodeAddr) error {
+// checkConnString checks whether a connection
+// string is valid for the current engine mode.
+func checkConnString(engine types.Engine, address string) error {
 
-	// Check whether the address is valid
-	if !address.IsValid() {
-		return fmt.Errorf("not a valid multiaddr")
+	// Check whether the address is
+	// a valid connection string
+	if !util.IsValidConnectionString(address) {
+		return fmt.Errorf("not a valid connection address")
 	}
+
+	addr := util.AddressFromConnString(address)
 
 	// In non-production mode, only
 	// local/private addresses are allowed
-	if !engine.ProdMode() && !util.IsDevAddr(address.IP()) {
+	if !engine.ProdMode() && !util.IsDevAddr(addr.IP()) {
 		return fmt.Errorf("public addresses are " +
 			"not allowed in development mode")
 	}
 
 	// In production mode, only routable
 	// addresses are allowed
-	if engine.ProdMode() && !address.IsRoutable() {
+	if engine.ProdMode() && !addr.IsRoutable() {
 		return fmt.Errorf("local or private addresses " +
 			"are not allowed in production mode")
 	}
@@ -636,17 +639,21 @@ func validateAddress(engine types.Engine, address util.NodeAddr) error {
 // AddAddresses adds addresses that can be
 // connected to when new connections need to
 // be established.
-func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
+func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 
-	for _, addr := range peerAddresses {
+	for _, connStr := range connStrings {
 
-		if err := validateAddress(n, util.NodeAddr(addr)); err != nil {
-			n.log.Info("Invalid Bootstrap Address",
-				"Err", err.Error(), "Address", addr)
+		// Check whether the connection string is valid.
+		// If not valid, proceed to the next immediately.
+		if err := checkConnString(n, connStr); err != nil {
+			n.log.Info("Invalid bootstrap address",
+				"Err", err.Error(), "Address", connStr)
 			continue
 		}
 
-		rp := NewRemoteNode(util.NodeAddr(addr), n)
+		// Convert the connection string to a valid
+		// IPFS Multiaddr format
+		rp := NewRemoteNode(util.AddressFromConnString(connStr), n)
 		rp.isHardcodedSeed = hardcoded
 		rp.gProtoc = n.gProtoc
 		n.peerManager.AddPeer(rp)
