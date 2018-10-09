@@ -144,7 +144,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Process flags
 	bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
-	addressToListenOn, _ := cmd.Flags().GetString("address")
+	listeningAddr, _ := cmd.Flags().GetString("address")
 	startRPC, _ := cmd.Flags().GetBool("rpc")
 	rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
 	account, _ := cmd.Flags().GetString("account")
@@ -167,7 +167,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// check that the host address to bind
 	// the engine to is valid,
-	if !util.IsValidHostPortAddress(addressToListenOn) {
+	if !util.IsValidHostPortAddress(listeningAddr) {
 		log.Fatal("invalid bind address provided")
 	}
 
@@ -181,7 +181,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	log.Info("Elld has started", "Version", config.ClientVersion, "DevMode", devMode)
 
 	// Create the local node.
-	n, err := node.NewNode(cfg, addressToListenOn, coinbase, log)
+	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
 	if err != nil {
 		log.Fatal("failed to create local node")
 	}
