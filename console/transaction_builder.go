@@ -31,6 +31,11 @@ type TxBalanceBuilder struct {
 // Balance creates a balance transaction builder.
 // It will attempt to fetch the address
 func (o *TxBuilder) Balance() *TxBalanceBuilder {
+
+	if o.e.coinbase == nil {
+		panic(o.e.vm.MakeCustomError("BuilderError", "account not loaded"))
+	}
+
 	return &TxBalanceBuilder{
 		e: o.e,
 		data: map[string]interface{}{
@@ -69,7 +74,7 @@ func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
 		goto send
 	}
 
-	result, err = o.e.callRPCMethod("getAccountNonce", o.data["from"])
+	result, err = o.e.callRPCMethod("state_getAccountNonce", o.data["from"])
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +109,7 @@ send:
 	o.data["sig"] = sig
 
 	// Call the RPC method
-	resp, err := o.e.callRPCMethod("send", o.data)
+	resp, err := o.e.callRPCMethod("ell_send", o.data)
 	if err != nil {
 		return nil, err
 	}
