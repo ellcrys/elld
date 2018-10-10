@@ -11,6 +11,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
@@ -59,7 +60,30 @@ var _ = Describe("BlockValidator", func() {
 		Expect(err).To(BeNil())
 	})
 
-	Describe(".checkFields", func() {
+	Describe(".CheckSize", func() {
+
+		var curMaxBlockNonTxsSize, curMaxBlockTxsSize int64
+
+		BeforeEach(func() {
+			curMaxBlockNonTxsSize = params.MaxBlockNonTxsSize
+			curMaxBlockTxsSize = params.MaxBlockTxsSize
+		})
+
+		AfterEach(func() {
+			params.MaxBlockNonTxsSize = curMaxBlockNonTxsSize
+			params.MaxBlockTxsSize = curMaxBlockTxsSize
+		})
+
+		It("should return error if block size is exceeded", func() {
+			params.MaxBlockNonTxsSize = 1
+			params.MaxBlockTxsSize = 1
+			block := MakeBlock(bc, genesisChain, sender, receiver)
+			errs := NewBlockValidator(block, nil, nil, cfg, log).CheckSize()
+			Expect(errs).To(ContainElement(fmt.Errorf("block size exceeded")))
+		})
+	})
+
+	Describe(".CheckFields", func() {
 
 		Context("when block is nil", func() {
 			It("should return error", func() {

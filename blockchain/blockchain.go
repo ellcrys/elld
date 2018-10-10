@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dustin/go-humanize"
-
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/types/core/objects"
@@ -141,9 +139,6 @@ func (b *Blockchain) Up() error {
 	if b.db == nil {
 		return fmt.Errorf("db has not been initialized")
 	}
-
-	bl, _ := LoadBlockFromFile("genesis.json")
-	fmt.Println(humanize.Bytes(uint64(bl.GetSizeNoTxs())))
 
 	// Get known chains
 	chains, err := b.getChains()
