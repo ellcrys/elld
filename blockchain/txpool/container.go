@@ -107,14 +107,14 @@ func (q *TxContainer) Add(tx core.Transaction) bool {
 
 	// Calculate the transaction's fee rate
 	// formula: tx fee / size
-	txSizeDec := decimal.NewFromBigInt(new(big.Int).SetInt64(tx.SizeNoFee()), 0)
+	txSizeDec := decimal.NewFromBigInt(new(big.Int).SetInt64(tx.GetSizeNoFee()), 0)
 	item.FeeRate = util.String(tx.GetFee().Decimal().Div(txSizeDec).StringFixed(params.Decimals))
 
 	q.gmx.Lock()
 	q.container = append(q.container, item)
 	q.index[tx.GetHash().HexStr()] = struct{}{}
 	q.len++
-	q.byteSize += tx.SizeNoFee()
+	q.byteSize += tx.GetSizeNoFee()
 	q.gmx.Unlock()
 
 	if !q.noSorting {
@@ -152,7 +152,7 @@ func (q *TxContainer) First() core.Transaction {
 	item := q.container[0]
 	q.container = q.container[1:]
 	delete(q.index, item.Tx.GetHash().HexStr())
-	q.byteSize -= item.Tx.SizeNoFee()
+	q.byteSize -= item.Tx.GetSizeNoFee()
 	q.len--
 	return item.Tx
 }
@@ -172,7 +172,7 @@ func (q *TxContainer) Last() core.Transaction {
 	item := q.container[lastIndex]
 	q.container = q.container[0:lastIndex]
 	delete(q.index, item.Tx.GetHash().HexStr())
-	q.byteSize -= item.Tx.SizeNoFee()
+	q.byteSize -= item.Tx.GetSizeNoFee()
 	q.len--
 	return item.Tx
 }
@@ -241,7 +241,7 @@ func (q *TxContainer) Remove(txs ...core.Transaction) {
 			return o.Tx.GetHash().Equal(tx.GetHash())
 		}) != nil {
 			delete(q.index, o.Tx.GetHash().HexStr())
-			q.byteSize -= o.Tx.SizeNoFee()
+			q.byteSize -= o.Tx.GetSizeNoFee()
 			q.len--
 			return false
 		}

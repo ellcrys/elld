@@ -195,7 +195,7 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(map[string]interface{}{
-		"id": tx.ID(),
+		"id": tx.GetID(),
 	})
 }
 

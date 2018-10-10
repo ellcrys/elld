@@ -228,7 +228,7 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		// the fee passed format validation
 		if err == nil {
 			fee := tx.GetFee().Decimal()
-			txSize := decimal.NewFromFloat(float64(tx.SizeNoFee()))
+			txSize := decimal.NewFromFloat(float64(tx.GetSizeNoFee()))
 
 			// Calculate the expected fee
 			expectedMinimumFee := params.FeePerByte.Mul(txSize)
@@ -261,7 +261,7 @@ func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
 		return
 	}
 
-	valid, err := pubKey.Verify(tx.Bytes(), tx.GetSignature())
+	valid, err := pubKey.Verify(tx.GetBytesNoHashAndSig(), tx.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"sig", err.Error()))

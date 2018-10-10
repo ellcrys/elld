@@ -9,7 +9,7 @@ import (
 // Block defines a block
 type Block interface {
 	ComputeHash() util.Hash
-	Bytes() []byte
+	GetBytes() []byte
 	GetHeader() Header
 	SetHeader(h Header)
 	WithSeal(header Header) Block
@@ -19,7 +19,11 @@ type Block interface {
 	GetTransactions() []Transaction
 	GetSignature() []byte
 	SetSignature(sig []byte)
-	HashToHex() string
+	GetHashAsHex() string
+	GetBytesNoHashSig() []byte
+	GetSize() int64
+	GetSizeNoTxs() int64
+	GetBytesNoTxs() []byte
 }
 
 // Header defines a block header containing
@@ -27,8 +31,8 @@ type Block interface {
 type Header interface {
 	GetNumber() uint64
 	SetNumber(uint64)
-	HashNoNonce() util.Hash
-	Bytes() []byte
+	GetHashNoNonce() util.Hash
+	GetBytes() []byte
 	ComputeHash() util.Hash
 	GetExtra() []byte
 	GetTimestamp() int64
@@ -62,10 +66,10 @@ type Account interface {
 type Transaction interface {
 	GetHash() util.Hash
 	SetHash(util.Hash)
-	Bytes() []byte
-	SizeNoFee() int64
+	GetBytesNoHashAndSig() []byte
+	GetSizeNoFee() int64
 	ComputeHash() util.Hash
-	ID() string
+	GetID() string
 	Sign(privKey string) ([]byte, error)
 	GetType() int64
 	GetFrom() util.String

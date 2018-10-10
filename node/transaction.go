@@ -16,7 +16,7 @@ import (
 // MakeTxHistoryKey creates an history cache key
 // for recording a received/sent transaction
 func MakeTxHistoryKey(tx core.Transaction, peer types.Engine) []interface{} {
-	return []interface{}{tx.ID(), peer.StringID()}
+	return []interface{}{tx.GetID(), peer.StringID()}
 }
 
 // addTransaction adds a transaction to the transaction pool.
@@ -96,13 +96,13 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	g.engine.event.Emit(EventTransactionProcessed)
 
-	g.log.Info("Added new transaction to pool", "TxID", msg.ID())
+	g.log.Info("Added new transaction to pool", "TxID", msg.GetID())
 }
 
 // RelayTx relays transactions to peers
 func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error {
 
-	txID := util.String(tx.ID()).SS()
+	txID := util.String(tx.GetID()).SS()
 	sent := 0
 	g.log.Debug("Relaying transaction to peers",
 		"TxID", txID, "NumPeers", len(remotePeers))

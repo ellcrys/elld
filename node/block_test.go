@@ -79,7 +79,7 @@ var _ = Describe("Block", func() {
 				processedBlock, err := evtArgs.Args[0], evtArgs.Args[1]
 				Expect(err).To(BeNil())
 				Expect(processedBlock).ToNot(BeNil())
-				Expect(block.HashToHex()).To(Equal(processedBlock.(core.Block).HashToHex()))
+				Expect(block.GetHashAsHex()).To(Equal(processedBlock.(core.Block).GetHashAsHex()))
 
 				rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
 				Expect(err).To(BeNil())
@@ -152,10 +152,10 @@ var _ = Describe("Block", func() {
 			processedBlock, err := evtArgs.Args[0], evtArgs.Args[1]
 			Expect(err).To(BeNil())
 			Expect(processedBlock).ToNot(BeNil())
-			Expect(block2.HashToHex()).To(Equal(processedBlock.(core.Block).HashToHex()))
+			Expect(block2.GetHashAsHex()).To(Equal(processedBlock.(core.Block).GetHashAsHex()))
 			curBlock, err := rp.GetBlockchain().ChainReader().Current()
 			Expect(err).To(BeNil())
-			Expect(curBlock.HashToHex()).To(Equal(block2.HashToHex()))
+			Expect(curBlock.GetHashAsHex()).To(Equal(block2.GetHashAsHex()))
 		})
 	})
 

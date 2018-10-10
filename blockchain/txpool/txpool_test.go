@@ -154,7 +154,7 @@ var _ = Describe("TxPool", func() {
 
 		It("should return expected byte size", func() {
 			s := tp.ByteSize()
-			Expect(s).To(Equal(tx.SizeNoFee() + tx2.SizeNoFee()))
+			Expect(s).To(Equal(tx.GetSizeNoFee() + tx2.GetSizeNoFee()))
 		})
 
 		When("a transaction is removed", func() {
@@ -163,19 +163,19 @@ var _ = Describe("TxPool", func() {
 
 			BeforeEach(func() {
 				curByteSize = tp.ByteSize()
-				Expect(curByteSize).To(Equal(tx.SizeNoFee() + tx2.SizeNoFee()))
+				Expect(curByteSize).To(Equal(tx.GetSizeNoFee() + tx2.GetSizeNoFee()))
 			})
 
 			It("should reduce the byte size when First is called", func() {
 				rmTx := tp.container.First()
 				s := tp.ByteSize()
-				Expect(s).To(Equal(curByteSize - rmTx.SizeNoFee()))
+				Expect(s).To(Equal(curByteSize - rmTx.GetSizeNoFee()))
 			})
 
 			It("should reduce the byte size when Last is called", func() {
 				rmTx := tp.container.Last()
 				s := tp.ByteSize()
-				Expect(s).To(Equal(curByteSize - rmTx.SizeNoFee()))
+				Expect(s).To(Equal(curByteSize - rmTx.GetSizeNoFee()))
 			})
 		})
 	})

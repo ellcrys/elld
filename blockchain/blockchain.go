@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/types/core/objects"
@@ -122,7 +124,7 @@ func LoadBlockFromFile(name string) (core.Block, error) {
 // + pointer address of initial block)
 func makeChainID(initialBlock core.Block) util.String {
 	now := time.Now().Unix()
-	blockHash := initialBlock.HashToHex()
+	blockHash := initialBlock.GetHashAsHex()
 	id := fmt.Sprintf("%s %d %d", blockHash, now, util.GetPtrAddr(initialBlock))
 	hash := util.BytesToHash(util.Blake2b256([]byte(id)))
 	return util.String(hash.HexStr())
@@ -139,6 +141,9 @@ func (b *Blockchain) Up() error {
 	if b.db == nil {
 		return fmt.Errorf("db has not been initialized")
 	}
+
+	bl, _ := LoadBlockFromFile("genesis.json")
+	fmt.Println(humanize.Bytes(uint64(bl.GetSizeNoTxs())))
 
 	// Get known chains
 	chains, err := b.getChains()
@@ -608,7 +613,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// Check whether the addition of this
 		// transaction will push us over the
 		// size limit
-		if totalSelectedTxsSize+tx.SizeNoFee() > maxSize {
+		if totalSelectedTxsSize+tx.GetSizeNoFee() > maxSize {
 			unSelected = append(unSelected, tx)
 
 			// And also, if the amount of space left for new
@@ -649,7 +654,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// selected tx slice and update the
 		// total selected transactions size
 		selectedTxs = append(selectedTxs, tx)
-		totalSelectedTxsSize += tx.SizeNoFee()
+		totalSelectedTxsSize += tx.GetSizeNoFee()
 	}
 
 	// put the unselected transactions

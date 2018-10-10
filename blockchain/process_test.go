@@ -474,7 +474,7 @@ var _ = Describe("Process", func() {
 		})
 
 		It("should reject the block if it has been added to the rejected cache", func() {
-			bc.rejectedBlocks.Add(block.HashToHex(), struct{}{})
+			bc.rejectedBlocks.Add(block.GetHashAsHex(), struct{}{})
 			_, err = bc.ProcessBlock(block)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(core.ErrBlockRejected))
@@ -489,7 +489,7 @@ var _ = Describe("Process", func() {
 		})
 
 		It("should return error if block has been added to the orphaned cache", func() {
-			bc.orphanBlocks.Add(block.HashToHex(), block)
+			bc.orphanBlocks.Add(block.GetHashAsHex(), block)
 			_, err = bc.ProcessBlock(block)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(fmt.Errorf("orphan block")))
@@ -507,7 +507,7 @@ var _ = Describe("Process", func() {
 			It("should return nil and be added to the orphan block cache", func() {
 				_, err = bc.ProcessBlock(block)
 				Expect(err).To(BeNil())
-				Expect(bc.orphanBlocks.Has(block.HashToHex())).To(BeTrue())
+				Expect(bc.orphanBlocks.Has(block.GetHashAsHex())).To(BeTrue())
 			})
 		})
 
@@ -703,7 +703,7 @@ var _ = Describe("Process", func() {
 				Describe("chain should contain newly added block", func() {
 					mBlock, err := genesisChain.getBlockByHash(okStateRoot.GetHash())
 					Expect(err).To(BeNil())
-					Expect(mBlock.Bytes()).To(Equal(okStateRoot.Bytes()))
+					Expect(mBlock.GetBytes()).To(Equal(okStateRoot.GetBytes()))
 				})
 
 				Describe("all state objects must be persisted", func() {

@@ -44,7 +44,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 	sent := 0
 	for _, peer := range remotePeers {
 
-		historyKey := makeBlockHistoryKey(block.HashToHex(), peer)
+		historyKey := makeBlockHistoryKey(block.GetHashAsHex(), peer)
 
 		// check if we have an history of
 		// sending or receiving this block
@@ -112,7 +112,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 	// check if we have an history about this
 	// block with the remote peer, if no,
 	// process the block.
-	historyKey := makeBlockHistoryKey(block.HashToHex(), remotePeer)
+	historyKey := makeBlockHistoryKey(block.GetHashAsHex(), remotePeer)
 	if g.engine.history.HasMulti(historyKey...) {
 		return
 	}
@@ -508,7 +508,7 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 
 		// Add an history that prevents other routines from
 		// relaying this same block to the remote peer.
-		historyKey := makeBlockHistoryKey(block.HashToHex(), remotePeer)
+		historyKey := makeBlockHistoryKey(block.GetHashAsHex(), remotePeer)
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		// set the broadcaster and process the block

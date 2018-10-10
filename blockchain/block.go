@@ -196,7 +196,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// select transactions and compute transaction root
 	if len(params.Transactions) == 0 {
-		selectedTxs, err := b.SelectTransactions(p.MaxBlockTransactionsSize)
+		selectedTxs, err := b.SelectTransactions(p.MaxBlockTxsSize)
 		if err != nil {
 			return nil, err
 		}

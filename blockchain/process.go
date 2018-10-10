@@ -612,7 +612,7 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 			}
 
 			// remove from the orphan from the cache
-			b.orphanBlocks.Remove(orphanBlock.HashToHex())
+			b.orphanBlocks.Remove(orphanBlock.GetHashAsHex())
 
 			// re-attempt to process the block
 			if _, err := b.maybeAcceptBlock(orphanBlock, nil); err != nil {

@@ -314,7 +314,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 		return
 	}
 
-	valid, err := pubKey.Verify(v.block.Bytes(),
+	valid, err := pubKey.Verify(v.block.GetBytesNoHashSig(),
 		v.block.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldError("sig", err.Error()))
