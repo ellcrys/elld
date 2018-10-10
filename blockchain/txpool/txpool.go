@@ -2,9 +2,11 @@ package txpool
 
 import (
 	"sync"
+	"time"
 
 	"github.com/olebedev/emitter"
 
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -32,21 +34,24 @@ func New(cap int64) *TxPool {
 // SetEventEmitter sets the event emitter
 func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
 	tp.event = ee
-	go tp.handleNewBlockEvent()
+	go tp.onNewBlock()
 }
 
-func (tp *TxPool) removeTransactionsInBlock(block core.Block) {
-	tp.container.Remove(block.GetTransactions()...)
+func (tp *TxPool) remove(txs ...core.Transaction) {
+	tp.Lock()
+	defer tp.Unlock()
+	tp.container.Remove(txs...)
+	tp.clean()
 }
 
-// handleNewBlockEvent removes transactions from
+// onNewBlock removes transactions from
 // the pool if they are contained in the broadcast
 // block that was appended to the chain
-func (tp *TxPool) handleNewBlockEvent() {
+func (tp *TxPool) onNewBlock() {
 	for {
 		select {
 		case evt := <-tp.event.Once(core.EventNewBlock):
-			tp.removeTransactionsInBlock(evt.Args[0].(core.Block))
+			tp.remove(evt.Args[0].(core.Block).GetTransactions()...)
 		}
 	}
 }
@@ -63,7 +68,20 @@ func (tp *TxPool) Put(tx core.Transaction) error {
 	// Emit an event about the accepted transaction
 	tp.event.Emit(core.EventNewTransaction, tx)
 
+	tp.clean()
+
 	return nil
+}
+
+// clean removes old transactions
+func (tp *TxPool) clean() {
+	tp.container.IFind(func(tx core.Transaction) bool {
+		expTime := time.Unix(tx.GetTimestamp(), 0).UTC().AddDate(0, 0, params.TxTTL)
+		if time.Now().UTC().After(expTime) {
+			tp.container.remove(tx)
+		}
+		return false
+	})
 }
 
 // PutSilently is like Put but it does not

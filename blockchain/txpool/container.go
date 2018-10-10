@@ -222,22 +222,11 @@ func (q *TxContainer) IFind(predicate func(core.Transaction) bool) core.Transact
 	return nil
 }
 
-// Remove removes a transaction
-func (q *TxContainer) Remove(txs ...core.Transaction) {
-
-	// Filter out the transactions that
-	// do not exists in the container
-	filteredTxs := funk.Filter(txs, func(tx core.Transaction) bool {
-		return q.Has(tx)
-	})
-
-	q.gmx.Lock()
-	defer q.gmx.Unlock()
-
-	// Remove transactions that are present
-	// in the filtered txs
+// remove removes a transaction.
+// Note: Not thread-safe
+func (q *TxContainer) remove(txs ...core.Transaction) {
 	finalTxs := funk.Filter(q.container, func(o *ContainerItem) bool {
-		if funk.Find(filteredTxs.([]core.Transaction), func(tx core.Transaction) bool {
+		if funk.Find(txs, func(tx core.Transaction) bool {
 			return o.Tx.GetHash().Equal(tx.GetHash())
 		}) != nil {
 			delete(q.index, o.Tx.GetHash().HexStr())
@@ -249,4 +238,11 @@ func (q *TxContainer) Remove(txs ...core.Transaction) {
 	})
 
 	q.container = finalTxs.([]*ContainerItem)
+}
+
+// Remove removes a transaction
+func (q *TxContainer) Remove(txs ...core.Transaction) {
+	q.gmx.Lock()
+	defer q.gmx.Unlock()
+	q.remove(txs...)
 }

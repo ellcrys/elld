@@ -53,7 +53,9 @@ type Transaction struct {
 }
 
 // NewTransaction creates a new transaction
-func NewTransaction(txType int64, nonce uint64, to util.String, senderPubKey util.String, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
+func NewTransaction(txType int64, nonce uint64, to util.String,
+	senderPubKey util.String, value util.String,
+	fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
@@ -114,6 +116,11 @@ func (tx *Transaction) SetSenderPubKey(pk util.String) {
 // GetTimestamp gets the timestamp
 func (tx *Transaction) GetTimestamp() int64 {
 	return tx.Timestamp
+}
+
+// SetTimestamp set the unix timestamp
+func (tx *Transaction) SetTimestamp(t int64) {
+	tx.Timestamp = t
 }
 
 // GetNonce gets the nonce

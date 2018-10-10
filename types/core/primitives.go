@@ -80,6 +80,7 @@ type Transaction interface {
 	GetFee() util.String
 	GetNonce() uint64
 	GetTimestamp() int64
+	SetTimestamp(int64)
 	GetSenderPubKey() util.String
 	SetSenderPubKey(util.String)
 	GetSignature() []byte
