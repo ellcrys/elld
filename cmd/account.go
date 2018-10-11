@@ -48,7 +48,7 @@ var accountCreateCmd = &cobra.Command{
 	Short: "Create an account",
 	Long: `Description:
   This command creates an account and encrypts it using a passphrase
-  you provide. Do not forget your your passphrase. You will not be able 
+  you provide. Do not forget your passphrase, you will not be able 
   to unlock your account if you do.
 
   Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `. 
