@@ -80,8 +80,16 @@ func NewTxValidator(tx core.Transaction, txPool core.TxPool,
 // Validate execute validation checks
 // against each transactions
 func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
+	var seenTxs = make(map[string]struct{})
 	for i, tx := range v.txs {
 		v.curIndex = i
+
+		// check duplicate
+		if _, ok := seenTxs[tx.GetHash().HexStr()]; ok {
+			errs = appendErr(errs,
+				fieldErrorWithIndex(v.curIndex, "", "duplicate transaction"))
+			continue
+		}
 
 		txErrs := v.ValidateTx(tx, opts...)
 		if len(txErrs) > 0 {
@@ -96,13 +104,16 @@ func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
 		// the account which has not been updated with
 		// the lastest nonce.
 		v.nonces[tx.GetFrom().String()] = tx.GetNonce()
+
+		// cache the hash
+		seenTxs[tx.GetHash().HexStr()] = struct{}{}
 	}
 	return
 }
 
-// fieldsCheck checks validates the transaction
+// CheckFields checks validates the transaction
 // fields and values.
-func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
+func (v *TxsValidator) CheckFields(tx core.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -369,7 +380,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 // by the gossip handler..
 func (v *TxsValidator) ValidateTx(tx core.Transaction, opts ...core.CallOp) []error {
 
-	errs := v.fieldsCheck(tx)
+	errs := v.CheckFields(tx)
 	if len(errs) > 0 {
 		return errs
 	}
