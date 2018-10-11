@@ -916,15 +916,16 @@ func (n *Node) Stop() {
 // NodeFromAddr creates a Node from a multiaddr
 func (n *Node) NodeFromAddr(addr util.NodeAddr, remote bool) (*Node, error) {
 	if !addr.IsValid() {
-		return nil, fmt.Errorf("invalid address provided")
+		return nil, fmt.Errorf("invalid address (" + addr.String() + ") provided")
 	}
 	return &Node{
-		createdAt: time.Now().UTC(),
 		address:   addr,
 		localNode: n,
 		gProtoc:   n.gProtoc,
 		remote:    remote,
 		mtx:       &sync.RWMutex{},
+		createdAt: time.Now().UTC(),
+		lastSeen:  time.Now().UTC(),
 	}, nil
 }
 

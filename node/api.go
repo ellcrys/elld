@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/base64"
-	"time"
 
 	"github.com/ellcrys/elld/config"
 
@@ -43,30 +42,52 @@ func (n *Node) apiGetConfig(arg interface{}) *jsonrpc.Response {
 // apiJoin attempts to establish connection
 // with a node at the specified address.
 func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
-	address, ok := arg.(string)
-	if !ok {
+
+	var addrs = []string{}
+
+	// Expect a string or slice
+	address, isStr := arg.(string)
+	addresses, isSlice := arg.([]interface{})
+	if !isStr && !isSlice {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-			rpc.ErrMethodArgType("String").Error(), nil)
+			rpc.ErrMethodArgType("String or Array{String}").Error(), nil)
 	}
 
-	if !util.IsValidConnectionString(address) {
-		return jsonrpc.Error(types.ErrCodeAddress,
-			"address format is invalid", nil)
+	// When a slice is provided as argument,
+	// Check that all values are string type
+	if isSlice {
+		for _, val := range addresses {
+			if _, isStr := val.(string); !isStr {
+				return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+					rpc.ErrMethodArgType(`String or Array{String}`).Error(), nil)
+			}
+			addrs = append(addrs, val.(string))
+		}
+	} else {
+		addrs = append(addrs, address)
 	}
 
-	rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
-	}
+	for _, address := range addrs {
 
-	if rp.IsSame(n) {
-		return jsonrpc.Error(types.ErrCodeAddress,
-			"can't add own address as a peer", nil)
-	}
+		if !util.IsValidConnectionString(address) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"address ("+address+") format is invalid", nil)
+		}
 
-	go func(rp *Node) {
-		n.connectToNode(rp)
-	}(rp)
+		rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
+		if err != nil {
+			return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
+		}
+
+		if rp.IsSame(n) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"can't add self ("+address+") as a peer", nil)
+		}
+
+		go func(rp *Node) {
+			n.connectToNode(rp)
+		}(rp)
+	}
 
 	return jsonrpc.Success(nil)
 }
@@ -76,30 +97,49 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 // addresses. Unlike apiJoin it does
 // not initiate a connection.
 func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
-	address, ok := arg.(string)
-	if !ok {
+	var addrs = []string{}
+
+	// Expect a string or slice
+	address, isStr := arg.(string)
+	addresses, isSlice := arg.([]interface{})
+	if !isStr && !isSlice {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-			rpc.ErrMethodArgType("String").Error(), nil)
+			rpc.ErrMethodArgType("String or Array{String}").Error(), nil)
 	}
 
-	if !util.IsValidConnectionString(address) {
-		return jsonrpc.Error(types.ErrCodeAddress,
-			"address format is invalid", nil)
+	// When a slice is provided as argument,
+	// Check that all values are string type
+	if isSlice {
+		for _, val := range addresses {
+			if _, isStr := val.(string); !isStr {
+				return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+					rpc.ErrMethodArgType(`String or Array{String}`).Error(), nil)
+			}
+			addrs = append(addrs, val.(string))
+		}
+	} else {
+		addrs = append(addrs, address)
 	}
 
-	rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
+	for _, address := range addrs {
+
+		if !util.IsValidConnectionString(address) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"address ("+address+") format is invalid", nil)
+		}
+
+		rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
+		if err != nil {
+			return jsonrpc.Error(types.ErrCodeAddress, err.Error()+" ("+address+")", nil)
+		}
+
+		if rp.IsSame(n) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"can't add self ("+address+") as a peer", nil)
+		}
+
+		n.PM().AddPeer(rp)
 	}
-
-	rp.lastSeen = time.Now().UTC()
-
-	if rp.IsSame(n) {
-		return jsonrpc.Error(types.ErrCodeAddress,
-			"can't add self as a peer", nil)
-	}
-
-	n.PM().AddPeer(rp)
 
 	return jsonrpc.Success(nil)
 }

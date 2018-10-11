@@ -125,7 +125,7 @@ var _ = Describe("Node Unit Test", func() {
 		It("should return error if address is not valid", func() {
 			_, err := n.NodeFromAddr("/invalid", false)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("invalid address provided"))
+			Expect(err.Error()).To(Equal("invalid address (/invalid) provided"))
 		})
 	})
 

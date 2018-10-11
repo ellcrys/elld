@@ -223,8 +223,10 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 			// parse arguments.
 			// App RPC functions can have zero or one argument
 			var arg interface{}
-			if len(args) > 0 {
+			if len(args) == 1 {
 				arg = args[0]
+			} else {
+				arg = args
 			}
 
 			result, err := e.callRPCMethod(ns+"_"+mName, arg)
