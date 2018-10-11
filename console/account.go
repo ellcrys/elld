@@ -38,6 +38,9 @@ func (e *Executor) loadAccount(address, password string) {
 
 // loadedAccount returns the currently loaded account
 func (e *Executor) loadedAccount() string {
+	if e.coinbase == nil {
+		return ""
+	}
 	return e.coinbase.Addr()
 }
 
