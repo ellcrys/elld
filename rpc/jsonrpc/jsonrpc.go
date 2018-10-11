@@ -193,6 +193,8 @@ func (s *JSONRPC) Methods() (methodsInfo []MethodInfo) {
 // Serve starts the server
 func (s *JSONRPC) Serve() {
 
+	s.done = make(chan bool)
+
 	r := mux.NewRouter()
 	server := rpc.NewServer()
 	server.RegisterCodec(json2.NewCodec(), "application/json")

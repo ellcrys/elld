@@ -136,4 +136,8 @@ const (
 	// NamespaceNet is the namespace for RPC methods
 	// that perform network actions
 	NamespaceNet = "net"
+
+	// NamespaceRPC is the namespace for RPC methods
+	// that perform rpc  actions
+	NamespaceRPC = "rpc"
 )

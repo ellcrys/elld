@@ -146,9 +146,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	}
 
 	// Add some methods to namespaces
-	nsObj["rpc"]["started"] = e.isRPCServerStarted
 	nsObj["rpc"]["start"] = e.startRPCServer
-	nsObj["rpc"]["stop"] = e.stopRPCServer
 	nsObj["admin"]["login"] = e.login
 	nsObj["personal"]["loadAccount"] = e.loadAccount
 	nsObj["personal"]["loadedAccount"] = e.loadedAccount
@@ -171,8 +169,6 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 
 	// Add some methods to the suggestions
 	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.start", Description: "Start RPC Server"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.stop", Description: "Stop RPC Server"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.started", Description: "Check whether RPC server has started"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
