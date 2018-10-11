@@ -107,11 +107,6 @@ type StateObject struct {
 	// to persist the object to database
 	Key []byte
 
-	// TreeKey represents the key to use
-	// to add a record of this object in
-	// a merkle tree
-	TreeKey []byte
-
 	// Value is the content of this state
 	// object. It is written to the database
 	// and the tree

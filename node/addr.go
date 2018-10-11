@@ -212,20 +212,23 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 		// We must ensure we don't relay invalid addresses
 		if !addr.Address.IsValid() {
-			errs = append(errs, fmt.Errorf("address {%s} is not valid", addr.Address))
+			errs = append(errs, fmt.Errorf("address {%s} is not valid",
+				addr.Address))
 			continue
 		}
 
 		// Ignore an address that matches the local
 		if g.engine.IsSameID(addr.Address.ID().Pretty()) {
-			errs = append(errs, fmt.Errorf("address {%s} is the same as local peer's", addr.Address))
+			errs = append(errs, fmt.Errorf("address {%s} is the same"+
+				" as local peer's", addr.Address))
 			continue
 		}
 
 		// Ignore an address whose timestamp is over 60 minutes old
 		addrTime := time.Unix(addr.Timestamp, 0)
 		if now.Add(60 * time.Minute).Before(addrTime) {
-			errs = append(errs, fmt.Errorf("address {%s} is over 60 minutes old", addr.Address))
+			errs = append(errs, fmt.Errorf("address {%s} is over 60 minutes old",
+				addr.Address))
 			continue
 		}
 
@@ -233,7 +236,8 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		// to relay non-routable addresses.
 		// But we can't allow them in production
 		if g.engine.ProdMode() && !addr.Address.IsRoutable() {
-			errs = append(errs, fmt.Errorf("address {%s} is not routable", addr.Address))
+			errs = append(errs, fmt.Errorf("address {%s} is not routable",
+				addr.Address))
 			continue
 		}
 
@@ -251,7 +255,8 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 	// relayable peers that we will send the addresses to
 	relayPeers := g.SelectRelayPeers(relayable)
 
-	g.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable), "RelayPeers", len(relayPeers))
+	g.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable),
+		"RelayPeers", len(relayPeers))
 
 	relayed := 0
 	for _, remotePeer := range relayPeers {

@@ -251,7 +251,7 @@ var _ = Describe("TransactionValidator", func() {
 				From:         util.String(sender.Addr()),
 				SenderPubKey: util.String(sender.PubKey().Base58()),
 				Value:        "10",
-				Timestamp:    1234567,
+				Timestamp:    time.Now().Unix(),
 				Fee:          "0.1",
 			}
 			tx.SetHash(tx.ComputeHash())

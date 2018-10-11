@@ -44,7 +44,8 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 //
 // It will create a OpCreateAccount transition
 // object if the recipient account does not exist.
-func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transition, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transition,
+	chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var senderAcct, recipientAcct core.Account
@@ -54,10 +55,12 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 	// the processing of other transactions, the new account
 	// state must be taken as the truth current state of the account
 	for _, prevOp := range ops {
-		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetFrom() {
+		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes &&
+			opNewBalance.Address() == tx.GetFrom() {
 			senderAcct = opNewBalance.Account
 		}
-		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetTo() {
+		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes &&
+			opNewBalance.Address() == tx.GetTo() {
 			recipientAcct = opNewBalance.Account
 		}
 	}
@@ -112,7 +115,8 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// Add an operation to set a new account
 	// balance for the sender
-	newSenderBal := senderAcct.GetBalance().Decimal().Sub(deductable).StringFixed(params.Decimals)
+	newSenderBal := senderAcct.GetBalance().Decimal().
+		Sub(deductable).StringFixed(params.Decimals)
 	senderAcct.SetBalance(util.String(newSenderBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetFrom()},
@@ -121,7 +125,8 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 
 	// Add an operation to set a new balance
 	// of the recipient
-	newRecipientBal := recipientAcct.GetBalance().Decimal().Add(sendingAmount).StringFixed(params.Decimals)
+	newRecipientBal := recipientAcct.GetBalance().Decimal().
+		Add(sendingAmount).StringFixed(params.Decimals)
 	recipientAcct.SetBalance(util.String(newRecipientBal))
 	txOps = append(txOps, &common.OpNewAccountBalance{
 		OpBase:  &common.OpBase{Addr: tx.GetTo()},
@@ -144,7 +149,9 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 //
 // It will create a OpCreateAccount transition
 // object if the account does not exist.
-func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transition, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+func (b *Blockchain) processAllocCoinTx(tx core.Transaction,
+	ops []common.Transition, chain core.Chainer,
+	opts ...core.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
 	var recipientAcct core.Account
@@ -154,7 +161,8 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 	// the processing of other transactions, the new account
 	// state must be taken as the truth current state of the account
 	for _, prevOp := range ops {
-		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes && opNewBalance.Address() == tx.GetTo() {
+		if opNewBalance, yes := prevOp.(*common.OpNewAccountBalance); yes &&
+			opNewBalance.Address() == tx.GetTo() {
 			recipientAcct = opNewBalance.Account
 		}
 	}
@@ -179,7 +187,8 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 
 	// Update the recipients account balance to be the
 	// sum of current balance and the new allocation
-	newBal := recipientAcct.GetBalance().Decimal().Add(tx.GetValue().Decimal()).StringFixed(params.Decimals)
+	newBal := recipientAcct.GetBalance().Decimal().
+		Add(tx.GetValue().Decimal()).StringFixed(params.Decimals)
 	recipientAcct.SetBalance(util.String(newBal))
 
 	// construct an OpNewAccountBalance transition object
@@ -192,8 +201,10 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction, ops []common.Transi
 	return txOps, nil
 }
 
-// opsToKVObjects takes a slice of operations and apply them to the provided chain
-func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops []common.Transition) ([]*common.StateObject, error) {
+// opsToKVObjects takes a slice of operations
+// and apply them to the provided chain
+func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer,
+	ops []common.Transition) ([]*common.StateObject, error) {
 
 	stateObjs := []*common.StateObject{}
 
@@ -202,16 +213,16 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops
 
 		case *common.OpCreateAccount:
 			stateObjs = append(stateObjs, &common.StateObject{
-				TreeKey: common.MakeTreeKey(block.GetNumber(), common.TagAccount),
-				Key:     common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
-				Value:   util.ObjectToBytes(_op.Account),
+				Key: common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(),
+					_op.Address().Bytes()),
+				Value: util.ObjectToBytes(_op.Account),
 			})
 
 		case *common.OpNewAccountBalance:
 			stateObjs = append(stateObjs, &common.StateObject{
-				TreeKey: common.MakeTreeKey(block.GetNumber(), common.TagAccount),
-				Key:     common.MakeKeyAccount(block.GetNumber(), chain.GetID().Bytes(), _op.Address().Bytes()),
-				Value:   util.ObjectToBytes(_op.Account),
+				Key: common.MakeKeyAccount(block.GetNumber(),
+					chain.GetID().Bytes(), _op.Address().Bytes()),
+				Value: util.ObjectToBytes(_op.Account),
 			})
 
 		default:
@@ -225,7 +236,8 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer, ops
 // ProcessTransactions computes the state transition operations
 // for each transactions that must be applied to the state tree
 // and world state
-func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chainer,
+	opts ...core.CallOp) ([]common.Transition, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -263,7 +275,8 @@ func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chai
 // passed chain. This should only be used for the genesis block.
 //
 // NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...core.CallOp) (*Chain, error) {
+func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain,
+	opts ...core.CallOp) (*Chain, error) {
 
 	var err error
 	var parentBlock core.Block
@@ -286,7 +299,8 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 	// We need to find the chain in which the block's
 	// parent belongs to. This chain may be the main cain or
 	// a side chain (branch). We also need the tip of this chain.
-	parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().GetParentHash(), opts...)
+	parentBlock, chain, chainTip, err = b.findChainByBlockHash(block.GetHeader().
+		GetParentHash(), opts...)
 
 	// If the block's parent does not belong to
 	// any known chain. This is a orphan block
@@ -294,7 +308,8 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain, opts ...co
 		if err != core.ErrBlockNotFound {
 			return nil, err
 		}
-		b.log.Debug("Block is not compatible with any chain", "BlockNo", block.GetNumber(), "Err", err.Error())
+		b.log.Debug("Block is not compatible with any chain",
+			"BlockNo", block.GetNumber(), "Err", err.Error())
 	}
 
 	// Since we are unable to find a chain for this block,
@@ -343,7 +358,8 @@ process:
 	// Only do this in production or development mode
 	if (b.cfg.Node.Mode != config.ModeTest) && block.GetNumber() > 1 {
 		if errs := bValidator.CheckPoW(opts...); len(errs) > 0 {
-			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", errs[0])
+			b.log.Debug("Block PoW is invalid", "BlockNo",
+				block.GetNumber(), "Err", errs[0])
 			return nil, errs[0]
 		}
 	}
@@ -429,7 +445,8 @@ process:
 	// they can are queryable but only if the
 	// chain is not a side chain
 	if !chain.HasParent(txOp) {
-		if err := chain.PutTransactions(block.GetTransactions(), block.GetNumber(), txOp); err != nil {
+		if err := chain.PutTransactions(block.GetTransactions(),
+			block.GetNumber(), txOp); err != nil {
 			rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
 		}
@@ -466,10 +483,12 @@ process:
 	// if the chain is the best chain, emit a new block
 	// event for other processes to act on the new block
 	if b.bestChain.GetID() == chain.GetID() {
-		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader(), emitter.Sync)
+		b.eventEmitter.Emit(core.EventNewBlock, block,
+			chain.ChainReader(), emitter.Sync)
 	}
 
-	b.log.Info("Block has been successfully processed", "BlockNo", block.GetNumber())
+	b.log.Info("Block has been successfully processed",
+		"BlockNo", block.GetNumber())
 	return chain, nil
 }
 
@@ -481,7 +500,8 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 	b.processLock.Lock()
 	defer b.processLock.Unlock()
 
-	b.log.Debug("Processing block", "BlockNo", block.GetNumber(), "Hash", block.GetHash().SS())
+	b.log.Debug("Processing block", "BlockNo", block.GetNumber(),
+		"Hash", block.GetHash().SS())
 
 	// If ever we forgot to set the transaction pool,
 	// the client should be forced to exit.
@@ -540,7 +560,9 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 
 // execBlock execute the transactions of the blocks to
 // output the resulting state objects and state root.
-func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...core.CallOp) (root util.Hash, stateObjs []*common.StateObject, err error) {
+func (b *Blockchain) execBlock(chain core.Chainer,
+	block core.Block, opts ...core.CallOp) (root util.Hash,
+	stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
 	// that must be applied to the blockchain state.
@@ -549,22 +571,26 @@ func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...cor
 		return util.EmptyHash, nil, fmt.Errorf("transaction error: %s", err)
 	}
 
-	// Create state objects from the transition objects. State objects when written
-	// to the blockchain state (store and tree) change the values of data.
+	// Create state objects from the transition
+	// objects. State objects when written to the
+	// blockchain state (store and tree) change
+	// the values of data.
 	stateObjs, err = b.opsToStateObjects(block, chain, ops)
 	if err != nil {
 		return util.EmptyHash, nil, err
 	}
 
-	// Get a new state tree. The tree is seeded with the state root of the parent block
+	// Get a new state tree. The tree is
+	// seeded with the state root of the parent block
 	tree, err := chain.NewStateTree(opts...)
 	if err != nil {
-		return util.EmptyHash, nil, fmt.Errorf("failed to create new state tree: %s", err)
+		return util.EmptyHash, nil,
+			fmt.Errorf("failed to create new state tree: %s", err)
 	}
 
-	// Add the state objects into the tree. Contantenate the key and value into a TreeItem
+	// Add the state value into the tree.
 	for _, so := range stateObjs {
-		tree.Add(common.TreeItem(append(so.TreeKey, so.Value...)))
+		tree.Add(common.TreeItem(so.Value))
 	}
 
 	// Build the tree and compute new state root
@@ -576,8 +602,9 @@ func (b *Blockchain) execBlock(chain core.Chainer, block core.Block, opts ...cor
 	return
 }
 
-// processOrphanBlocks finds orphan blocks in the cache and attempts
-// to re-process the blocks that are parented by the latestBlockHash.
+// processOrphanBlocks finds orphan blocks
+// in the cache and attempts to re-process
+// the blocks that are parented by the latestBlockHash.
 //
 // This method is not protected by any lock. It must be called with
 // the chain lock held.
@@ -589,7 +616,8 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 	var parentHashes = []string{latestBlockHash}
 
 	// As long as we have parent hashes, We will continuously pick a
-	// parent hash and try to find an orphan block that references the parent hash.
+	// parent hash and try to find an orphan block that
+	// references the parent hash.
 	for len(parentHashes) > 0 {
 		// pick the next parent hash and remove it from the slice
 		curParentHash := parentHashes[0]
