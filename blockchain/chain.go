@@ -312,6 +312,11 @@ func (c *Chain) GetAccount(address util.String, opts ...core.CallOp) (core.Accou
 	return c.store.GetAccount(address, opts...)
 }
 
+// GetAccounts gets all accounts
+func (c *Chain) GetAccounts(opts ...core.CallOp) ([]core.Account, error) {
+	return c.store.GetAccounts()
+}
+
 // append adds a block to the tail of the chain. It returns
 // error if the previous block hash in the header is not the hash
 // of the current block and if the difference between the chain tip

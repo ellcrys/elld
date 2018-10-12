@@ -50,8 +50,7 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	num, ok := arg.(float64)
@@ -79,8 +78,7 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	hash, ok := arg.(string)
@@ -122,8 +120,7 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 // apiGetBestchain fetches the best chain
 func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	tip, err := b.bestChain.Current()
@@ -255,8 +252,7 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 	tx, err := b.GetTransaction(hash)
 	if err != nil {
 		if err != core.ErrTxNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed,
-				err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
 		}
 	}
 
@@ -275,24 +271,57 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	tip, err := b.bestChain.Current()
 	if err != nil {
 		if err != core.ErrBlockNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed,
-				err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
 		}
-		return jsonrpc.Error(types.ErrCodeBlockNotFound,
-			err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
 		"difficulty":      tip.GetDifficulty(),
 		"totalDifficulty": tip.GetTotalDifficulty(),
 	}))
+}
+
+// apiListAccounts gets all accounts
+func (b *Blockchain) apiListAccounts(arg interface{}) *jsonrpc.Response {
+
+	if b.bestChain == nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+	}
+
+	accounts, err := b.bestChain.GetAccounts()
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(accounts)
+}
+
+// apiListTopAccounts gets the top N accounts
+func (b *Blockchain) apiListTopNAccounts(arg interface{}) *jsonrpc.Response {
+
+	numAccts, ok := arg.(float64)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("Integer").Error(), nil)
+	}
+
+	if b.bestChain == nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+	}
+
+	accounts, err := b.ListTopAccounts(int(numAccts))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(accounts)
 }
 
 // APIs returns all API handlers
@@ -334,6 +363,16 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   core.NamespaceState,
 			Description: "Get an account",
 			Func:        b.apiGetAccount,
+		},
+		"listAccounts": {
+			Namespace:   core.NamespaceState,
+			Description: "List all accounts",
+			Func:        b.apiListAccounts,
+		},
+		"listTopAccounts": {
+			Namespace:   core.NamespaceState,
+			Description: "List top accounts",
+			Func:        b.apiListTopNAccounts,
 		},
 		"getAccountNonce": {
 			Namespace:   core.NamespaceState,
