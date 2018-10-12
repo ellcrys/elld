@@ -11,11 +11,18 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
-// MakeTestBlock creates a block
+// MakeTestBlock creates a block and adds
+// the transactions in the transactions pool
+// attached to the blockchain instance
 func MakeTestBlock(bc core.Blockchain, chain core.Chainer, gp *core.GenerateBlockParams) core.Block {
 	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
 	if err != nil {
 		panic(err)
+	}
+	if !gp.NoPoolAdditionInTest && bc.GetTxPool() != nil {
+		for _, tx := range blk.GetTransactions() {
+			bc.GetTxPool().PutSilently(tx)
+		}
 	}
 	return blk
 }

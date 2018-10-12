@@ -723,6 +723,63 @@ var _ = Describe("Process", func() {
 				})
 			})
 		})
+
+		When("ContextBlock only is set", func() {
+
+			BeforeEach(func() {
+				Expect(bc.getBlockValidator(nil).has(core.ContextBlock)).To(BeTrue())
+			})
+
+			When("block includes a transaction that does not exist in the pool", func() {
+				var block core.Block
+
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
+						},
+						Creator:              sender,
+						Nonce:                util.EncodeNonce(1),
+						Difficulty:           new(big.Int).SetInt64(131072),
+						NoPoolAdditionInTest: true,
+					})
+				})
+
+				It("should return error", func() {
+					_, err = bc.ProcessBlock(block)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("tx:0, error:transaction does not " +
+						"exist in the transactions pool"))
+				})
+			})
+		})
+
+		When("ContextBlockSync is set", func() {
+
+			When("block includes a transaction that does not exist in the pool", func() {
+				var block core.Block
+
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+						Transactions: []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
+						},
+						Creator:              sender,
+						Nonce:                util.EncodeNonce(1),
+						Difficulty:           new(big.Int).SetInt64(131072),
+						NoPoolAdditionInTest: true,
+					})
+					block.SetValidationContexts(core.ContextBlockSync)
+				})
+
+				It("should be successful with no error", func() {
+					_, err = bc.ProcessBlock(block)
+					Expect(err).To(BeNil())
+				})
+			})
+		})
 	})
 
 	Describe(".ProcessBlock: Test internal call of .processOrphanBlocks", func() {
@@ -742,7 +799,7 @@ var _ = Describe("Process", func() {
 			db = elldb.NewDB(cfg.ConfigDir())
 			err = db.Open(util.RandString(5))
 
-			bc2 = New(txpool.New(100), cfg, log)
+			bc2 = New(bc.txPool, cfg, log)
 			bc2.SetDB(db)
 			bc2.SetGenesisBlock(genesisBlock)
 			err = bc2.Up()

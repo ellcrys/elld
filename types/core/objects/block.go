@@ -186,6 +186,10 @@ type Block struct {
 	// Broadcaster is the peer responsible
 	// for sending this block.
 	Broadcaster types.Engine `json:"-" msgpack:"-"`
+
+	// ValidationContext can be used to alter
+	// the way the block is validated
+	ValidationContexts []core.ValidationContext `json:"-" msgpack:"-"`
 }
 
 // SetBroadcaster sets the originator
@@ -246,6 +250,16 @@ func (b *Block) GetTransactions() (txs []core.Transaction) {
 		txs = append(txs, tx)
 	}
 	return
+}
+
+// GetValidationContexts gets the validation contexts
+func (b *Block) GetValidationContexts() []core.ValidationContext {
+	return b.ValidationContexts
+}
+
+// SetValidationContexts sets the validation contexts
+func (b *Block) SetValidationContexts(ctxs ...core.ValidationContext) {
+	b.ValidationContexts = ctxs
 }
 
 // GetHeader gets the block's header

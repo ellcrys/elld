@@ -474,7 +474,7 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs).To(HaveLen(0))
 					})
 
-					Specify("container should contain 1 transaction", func() {
+					Specify("container should contain 1 transaction since selected txs go back in the pool", func() {
 						Expect(tp.Container().Size()).To(Equal(int64(1)))
 					})
 				})
@@ -507,8 +507,8 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs).To(HaveLen(2))
 					})
 
-					Specify("container should contain 0 transactions", func() {
-						Expect(tp.Size()).To(Equal(int64(0)))
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Size()).To(Equal(int64(2)))
 					})
 				})
 			})
@@ -533,14 +533,14 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(err).To(BeNil())
 					})
 
-					It("should return 2 transaction with tx(2) selected before tx(1)", func() {
+					It("should return 2 transactions with tx(2) selected before tx(1)", func() {
 						Expect(txs).To(HaveLen(2))
 						Expect(txs[0]).To(Equal(tx2))
 						Expect(txs[1]).To(Equal(tx))
 					})
 
-					Specify("container should contain 0 transaction", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
 					})
 				})
 			})
@@ -570,8 +570,8 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs[0]).To(Equal(tx))
 					})
 
-					Specify("container should contain 1 transaction", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(1)))
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
 					})
 				})
 			})
@@ -592,8 +592,8 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs).To(HaveLen(1))
 					})
 
-					Specify("container should contain 0 transactions", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					Specify("container should contain 1 transaction since selected txs go back in the pool", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(1)))
 					})
 				})
 			})

@@ -20,35 +20,13 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 )
 
-// ValidationContext is used to
-// represent a validation behaviour
-type ValidationContext int
-
-const (
-	// ContextBlock represents validation
-	// context of which the intent is to validate
-	// a block that needs to be appended to a chain
-	ContextBlock ValidationContext = iota + 1
-
-	// ContextBranch represents validation
-	// context of which the intent is to validate
-	// a block that needs to be appended to a branch chain
-	ContextBranch
-
-	// ContextTxPool represents validation context
-	// in which the intent is to validate a
-	// transaction that needs to be included in
-	// the transaction pool.
-	ContextTxPool
-)
-
 // VContexts manages validation contexts
 type VContexts struct {
-	contexts []ValidationContext
+	contexts []core.ValidationContext
 }
 
 // Has checks whether a context exists
-func (c *VContexts) has(ctx ValidationContext) bool {
+func (c *VContexts) has(ctx core.ValidationContext) bool {
 	for _, c := range c.contexts {
 		if c == ctx {
 			return true
@@ -59,11 +37,11 @@ func (c *VContexts) has(ctx ValidationContext) bool {
 
 // clearContexts clears removes all validation contexts
 func (c *VContexts) clearContexts() {
-	c.contexts = []ValidationContext{}
+	c.contexts = []core.ValidationContext{}
 }
 
 // addContext adds a validation context
-func (c *VContexts) addContext(contexts ...ValidationContext) {
+func (c *VContexts) addContext(contexts ...core.ValidationContext) {
 	c.contexts = append(c.contexts, contexts...)
 }
 
@@ -117,8 +95,10 @@ func NewBlockValidator(block core.Block, txPool core.TxPool,
 }
 
 // setContext sets the validation context
-func (v *BlockValidator) setContext(ctx ValidationContext) {
-	v.contexts = append(v.contexts, ctx)
+func (v *BlockValidator) setContext(ctx core.ValidationContext) {
+	if !v.has(ctx) {
+		v.contexts = append(v.contexts, ctx)
+	}
 }
 
 // validateHeader checks that an header fields and

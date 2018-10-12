@@ -211,7 +211,7 @@ func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 
 func (b *Blockchain) getBlockValidator(block core.Block) *BlockValidator {
 	v := NewBlockValidator(block, b.txPool, b, b.cfg, b.log)
-	v.setContext(ContextBlock)
+	v.setContext(core.ContextBlock)
 	return v
 }
 
@@ -597,7 +597,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 	b.chainLock.RUnlock()
 
 	totalSelectedTxsSize := int64(0)
-	unSelected := []core.Transaction{}
+	cache := []core.Transaction{}
 	nonces := make(map[util.String]uint64)
 	for b.txPool.Size() > 0 {
 
@@ -609,7 +609,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// transaction will push us over the
 		// size limit
 		if totalSelectedTxsSize+tx.GetSizeNoFee() > maxSize {
-			unSelected = append(unSelected, tx)
+			cache = append(cache, tx)
 
 			// And also, if the amount of space left for new
 			// transactions is less that the minimum
@@ -625,7 +625,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// nonce matches the expected/next nonce value.
 		if nonce, ok := nonces[tx.GetFrom()]; ok {
 			if (nonce + 1) != tx.GetNonce() {
-				unSelected = append(unSelected, tx)
+				cache = append(cache, tx)
 				continue
 			}
 			nonces[tx.GetFrom()] = tx.GetNonce()
@@ -639,7 +639,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 				return nil, err
 			}
 			if (nonces[tx.GetFrom()] + 1) != tx.GetNonce() {
-				unSelected = append(unSelected, tx)
+				cache = append(cache, tx)
 				continue
 			}
 			nonces[tx.GetFrom()] = tx.GetNonce()
@@ -650,12 +650,16 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Trans
 		// total selected transactions size
 		selectedTxs = append(selectedTxs, tx)
 		totalSelectedTxsSize += tx.GetSizeNoFee()
+
+		// Add the transaction back the cache
+		// so it can be put back in the pool.
+		cache = append(cache, tx)
 	}
 
-	// put the unselected transactions
+	// put the cached transactions
 	// back to the pool. But this time,
 	// we do it silently (no events, etc)
-	for _, tx := range unSelected {
+	for _, tx := range cache {
 		b.txPool.PutSilently(tx)
 	}
 

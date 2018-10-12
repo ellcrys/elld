@@ -24,6 +24,8 @@ type Block interface {
 	GetSize() int64
 	GetSizeNoTxs() int64
 	GetBytesNoTxs() []byte
+	GetValidationContexts() []ValidationContext
+	SetValidationContexts(...ValidationContext)
 }
 
 // Header defines a block header containing

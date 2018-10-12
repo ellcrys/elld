@@ -65,7 +65,7 @@ type RPCConfig struct {
 
 	// SessionSecretKey is the key used to sign the
 	// session tokens. Must be kept secret.
-	SessionSecretKey string `json:"sessionSecretKet"`
+	SessionSecretKey string `json:"sessionSecretKey"`
 }
 
 // TxPoolConfig defines configuration for the transaction pool

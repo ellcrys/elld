@@ -121,41 +121,23 @@ var _ = Describe("TransactionValidator", func() {
 			Context("context checks", func() {
 
 				var tx *objects.Transaction
-				var sender, receiver *crypto.Key
 
 				BeforeEach(func() {
-					sender = crypto.NewKeyFromIntSeed(1)
-					receiver = crypto.NewKeyFromIntSeed(1)
-					tx = &objects.Transaction{
-						Type:         objects.TxTypeBalance,
-						Nonce:        1,
-						To:           util.String(sender.Addr()),
-						From:         util.String(receiver.Addr()),
-						Value:        "10",
-						SenderPubKey: util.String(sender.PubKey().Base58()),
-						Fee:          "2.5",
-						Timestamp:    time.Now().Unix(),
-						Hash:         util.StrToHash("some_hash"),
-						Sig:          []byte("sig"),
-					}
+					tx = objects.NewTx(objects.TxTypeBalance, 1,
+						util.String(sender.Addr()), sender, "1", "2.5", time.Now().Unix())
+					bc.txPool.Put(tx)
 				})
 
-				Context("when block context is set", func() {
+				Context("when ContextBlock is set", func() {
 					It("should not check transaction existence in the transaction pool", func() {
-						tx.Hash = tx.ComputeHash()
-						sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-						Expect(err).To(BeNil())
-						tx.Sig = sig
-
-						txp := txpool.New(1)
-						validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-						validator.addContext(ContextBlock)
+						validator = NewTxsValidator([]core.Transaction{tx}, bc.txPool, bc)
+						validator.addContext(core.ContextBlock)
 						errs := validator.Validate()
 						Expect(errs).To(HaveLen(0))
 					})
 				})
 
-				Context("when branch context is set", func() {
+				Context("when ContextBranch is set", func() {
 
 					var block2 core.Block
 
@@ -174,7 +156,7 @@ var _ = Describe("TransactionValidator", func() {
 
 						txp := txpool.New(1)
 						validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-						validator.addContext(ContextBranch)
+						validator.addContext(core.ContextBranch)
 						errs := validator.Validate()
 						Expect(errs).To(HaveLen(0))
 					})
@@ -393,7 +375,7 @@ var _ = Describe("TransactionValidator", func() {
 			})
 		})
 
-		When("In ContextBlock validation context and a transaction's nonce is greater than expected", func() {
+		When("In core.ContextBlock validation context and a transaction's nonce is greater than expected", func() {
 
 			var tx2 core.Transaction
 
@@ -414,7 +396,7 @@ var _ = Describe("TransactionValidator", func() {
 			It("should return err='index:0, error:invalid nonce: has 2, wants 1'", func() {
 				txp := txpool.New(1)
 				validator := NewTxValidator(nil, txp, bc)
-				validator.addContext(ContextBlock)
+				validator.addContext(core.ContextBlock)
 				errs := validator.consistencyCheck(tx2)
 				Expect(errs).ToNot(BeEmpty())
 				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:invalid nonce: has 2, wants 1")))

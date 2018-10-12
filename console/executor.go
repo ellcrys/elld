@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	goprompt "github.com/segmentio/go-prompt"
 
@@ -191,29 +192,23 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 		return suggestions, err
 	}
 
-	// Create console suggestions and collect methods info
-	var methodsInfo = []jsonrpc.MethodInfo{}
-	for _, m := range resp.Result.([]interface{}) {
+	for _, r := range resp.Result.([]interface{}) {
 		var mInfo jsonrpc.MethodInfo
-		util.MapDecode(m, &mInfo)
+		util.MapDecode(r, &mInfo)
+		methodInfoParts := strings.Split(mInfo.Name, "_")
+		mName := methodInfoParts[1]
+		ns := methodInfoParts[0]
+
+		// Add suggestions
 		suggestions = append(suggestions, prompt.Suggest{
-			Text:        fmt.Sprintf("%s.%s", mInfo.Namespace, mInfo.Name),
+			Text:        fmt.Sprintf("%s.%s", ns, mName),
 			Description: mInfo.Description,
 		})
-		methodsInfo = append(methodsInfo, mInfo)
-	}
 
-	// Add supported methods to the namespace object
-	if len(methodsInfo) == 0 {
-		return suggestions, nil
-	}
-
-	for _, methodInfo := range methodsInfo {
-		mName := methodInfo.Name
-		ns := methodInfo.Namespace
 		if nsObj[ns] == nil {
 			nsObj[ns] = map[string]interface{}{}
 		}
+
 		nsObj[ns][mName] = func(args ...interface{}) interface{} {
 
 			// parse arguments.
@@ -225,7 +220,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 				arg = args
 			}
 
-			result, err := e.callRPCMethod(ns+"_"+mName, arg)
+			result, err := e.callRPCMethod(mInfo.Name, arg)
 			if err != nil {
 				e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 				v, _ := otto.ToValue(nil)

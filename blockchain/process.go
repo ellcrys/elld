@@ -284,6 +284,11 @@ func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain,
 	var createNewChain bool
 	var bValidator = b.getBlockValidator(block)
 
+	// add any assigned validation contexts
+	for _, ctx := range block.GetValidationContexts() {
+		bValidator.setContext(ctx)
+	}
+
 	// Sanity check. This should have been done
 	// in ProcessBlock
 	if errs := bValidator.CheckFields(); len(errs) > 0 {
@@ -400,12 +405,13 @@ process:
 
 		// Update the validator context to ContextBranch
 		// since we intend to add the block to a branch
-		bValidator.setContext(ContextBranch)
+		bValidator.setContext(core.ContextBranch)
 	}
 
 	// validate transactions in the block
 	chainOp := &common.ChainerOp{Chain: chain}
 	if errs := bValidator.CheckTransactions(txOp, chainOp); len(errs) > 0 {
+		rollback()
 		return nil, errs[0]
 	}
 
@@ -511,6 +517,12 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 
 	// Validate the block fields.
 	bValidator := b.getBlockValidator(block)
+
+	// add any assigned validation contexts
+	for _, ctx := range block.GetValidationContexts() {
+		bValidator.setContext(ctx)
+	}
+
 	if errs := bValidator.CheckFields(); len(errs) > 0 {
 		return nil, errs[0]
 	}

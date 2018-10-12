@@ -12,7 +12,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 		// namespace: "miner"
 		"start": {
 			Namespace:   core.NamespaceMiner,
-			Description: "Stop mining",
+			Description: "Start the CPU miner",
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
 				go m.Mine()
@@ -21,7 +21,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 		},
 		"stop": {
 			Namespace:   core.NamespaceMiner,
-			Description: "Start the miner",
+			Description: "Stop the CPU miner",
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
 				m.Stop()
@@ -30,7 +30,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 		},
 		"isMining": {
 			Namespace:   core.NamespaceMiner,
-			Description: "Check mining status",
+			Description: "Check miner status",
 			Func: func(params interface{}) *jsonrpc.Response {
 				return jsonrpc.Success(m.IsMining())
 			},

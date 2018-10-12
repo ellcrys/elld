@@ -26,7 +26,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 
 	return jsonrpc.Success(map[string]interface{}{
 		"id":                n.ID().Pretty(),
-		"address":           n.GetAddress(),
+		"address":           n.GetAddress().ConnectionString(),
 		"mode":              mode,
 		"netVersion":        config.ProtocolVersion,
 		"syncing":           n.isSyncing(),

@@ -117,8 +117,6 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 		return
 	}
 
-	// Add the transaction to the transaction
-	// pool and wait for error response
 	if _, err := g.GetBlockchain().ProcessBlock(&block); err != nil {
 		g.engine.event.Emit(EventBlockProcessed, &block, err)
 		return
@@ -511,8 +509,13 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 		historyKey := makeBlockHistoryKey(block.GetHashAsHex(), remotePeer)
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
-		// set the broadcaster and process the block
+		// set core.ContextBlockSync to inform the block
+		// process to validate the block as synced block
+		// and set the broadcaster
+		block.SetValidationContexts(core.ContextBlockSync)
 		block.SetBroadcaster(remotePeer)
+
+		// Process the block
 		_, err := g.GetBlockchain().ProcessBlock(&block)
 		if err != nil {
 			g.log.Debug("Unable to append block", "Err", err)

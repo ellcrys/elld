@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/k0kubun/pp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -470,6 +471,7 @@ var _ = Describe("Jsonrpc", func() {
 		It("should return all methods name", func() {
 			apiSet1 := APISet(map[string]APIInfo{
 				"add": {
+					Namespace: "math",
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) + m["y"].(float64))
@@ -478,12 +480,14 @@ var _ = Describe("Jsonrpc", func() {
 			})
 			apiSet2 := APISet(map[string]APIInfo{
 				"add": {
+					Namespace: "math",
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) + m["y"].(float64))
 					},
 				},
 				"div": {
+					Namespace: "math",
 					Func: func(params interface{}) *Response {
 						m := params.(map[string]interface{})
 						return Success(m["x"].(float64) / m["y"].(float64))
@@ -492,8 +496,9 @@ var _ = Describe("Jsonrpc", func() {
 			})
 			rpc.MergeAPISet(apiSet1, apiSet2)
 			m := rpc.Methods()
+			pp.Println(m)
 			Expect(m).To(HaveLen(3))
-			expectedMethods := []string{"methods", "add", "div"}
+			expectedMethods := []string{"rpc_methods", "math_add", "math_div"}
 			Expect(expectedMethods).To(ContainElement(m[0].Name))
 			Expect(expectedMethods).To(ContainElement(m[1].Name))
 			Expect(expectedMethods).To(ContainElement(m[2].Name))

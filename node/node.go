@@ -890,7 +890,6 @@ func (n *Node) Stop() {
 		n.host.Close()
 	}
 
-	// Close the database.
 	if n.db != nil {
 
 		// Wait a few seconds for active

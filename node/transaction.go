@@ -71,7 +71,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	}
 
 	// Validate the transaction and check whether
-	// it already exists in the transaction pool,
+	// it already exists in the transactions pool,
 	// main chain and side chains. If so, reject it
 	errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(),
 		g.engine.bchain).Validate()
