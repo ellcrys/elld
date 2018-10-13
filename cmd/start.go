@@ -152,11 +152,20 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
 
-	// Set hard coded configurations
-	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
+	// Set configurations
 	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 60)
-	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
+	cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
+	cfg.Node.MaxOutboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 10)
+	cfg.Node.MaxInboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 115)
+
+	// set connections hard limit
+	if cfg.Node.MaxOutboundConnections > 10 {
+		cfg.Node.MaxOutboundConnections = 10
+	}
+	if cfg.Node.MaxInboundConnections > 115 {
+		cfg.Node.MaxInboundConnections = 115
+	}
 
 	// set to dev mode if -dev is set
 	// and apply dev config values
@@ -199,7 +208,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Add bootstrap addresses supplied
 	// in the config file
-	if err := n.AddAddresses(cfg.Node.BootstrapNodes, false); err != nil {
+	if err := n.AddAddresses(cfg.Node.BootstrapAddresses, false); err != nil {
 		log.Fatal("%s", err)
 	}
 

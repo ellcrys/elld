@@ -67,7 +67,7 @@ var _ = Describe("GetAddr", func() {
 			BeforeEach(func() {
 				remoteAddr = makeTestNode(getPort())
 				remoteAddr.SetLastSeen(time.Now().Add(-3 * time.Hour))
-				err := rp.PM().UpdateLastSeen(remoteAddr)
+				err := rp.PM().UpdateLastSeenTime(remoteAddr)
 				Expect(err).To(BeNil())
 			})
 
@@ -85,7 +85,7 @@ var _ = Describe("GetAddr", func() {
 		Context("when a remote peer knowns an address that is the same as the requesting peer", func() {
 
 			BeforeEach(func() {
-				err := rp.PM().UpdateLastSeen(lp)
+				err := rp.PM().UpdateLastSeenTime(lp)
 				Expect(err).To(BeNil())
 			})
 
@@ -102,7 +102,7 @@ var _ = Describe("GetAddr", func() {
 			BeforeEach(func() {
 				remoteAddr = makeTestNode(getPort())
 				remoteAddr.SetLastSeen(time.Now())
-				err := rp.PM().UpdateLastSeen(remoteAddr)
+				err := rp.PM().UpdateLastSeenTime(remoteAddr)
 				Expect(err).To(BeNil())
 			})
 
@@ -125,7 +125,7 @@ var _ = Describe("GetAddr", func() {
 				remoteAddr = makeTestNode(getPort())
 				remoteAddr.MakeHardcoded()
 				remoteAddr.SetLastSeen(time.Now())
-				err := rp.PM().UpdateLastSeen(remoteAddr)
+				err := rp.PM().UpdateLastSeenTime(remoteAddr)
 				Expect(err).To(BeNil())
 			})
 
@@ -147,7 +147,7 @@ var _ = Describe("GetAddr", func() {
 				lp.GetCfg().Node.MaxAddrsExpected = 0
 				remoteAddr = makeTestNode(getPort())
 				remoteAddr.SetLastSeen(time.Now())
-				err := rp.PM().UpdateLastSeen(remoteAddr)
+				err := rp.PM().UpdateLastSeenTime(remoteAddr)
 				Expect(err).To(BeNil())
 			})
 

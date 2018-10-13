@@ -26,7 +26,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		return nil, fmt.Errorf("failed to read Addr response: %s", err)
 	}
 
-	g.PM().UpdateLastSeen(remotePeer)
+	g.PM().UpdateLastSeenTime(remotePeer)
 
 	// we need to ensure the amount of
 	// addresses does not exceed the
@@ -53,7 +53,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		}
 
 		// Add the remote peer to the peer manager's list
-		if g.PM().UpdateLastSeen(p) != nil {
+		if g.PM().UpdateLastSeenTime(p) != nil {
 			invalidAddrs++
 			continue
 		}
@@ -301,7 +301,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			continue
 		}
 
-		g.PM().UpdateLastSeen(remotePeer)
+		g.PM().UpdateLastSeenTime(remotePeer)
 
 		// add new history
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)

@@ -86,6 +86,7 @@ type Node struct {
 	bestRemoteBlockInfo *BestBlockInfo      // Holds information about the best known block heard from peers
 	syncing             bool                // Indicates the process of syncing the blockchain with peers
 	acquainted          bool                // Indicates that the node has "handshooked" the local node
+	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	tickerDone          chan bool
 }
 
@@ -112,13 +113,11 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string,
 		h = "127.0.0.1"
 	}
 
-	// construct host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/%s/tcp/%s", h, port)),
 		libp2p.Identity(priv),
 	}
 
-	// create host
 	host, err := libp2p.New(context.Background(), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host > %s", err)
@@ -240,6 +239,16 @@ func (n *Node) SetCfg(cfg *config.EngineConfig) {
 // GetCfg returns the config
 func (n *Node) GetCfg() *config.EngineConfig {
 	return n.cfg
+}
+
+// SetInbound set the connection as inbound or not
+func (n *Node) SetInbound(v bool) {
+	n.inbound = v
+}
+
+// IsInbound checks whether the connection is inbound
+func (n *Node) IsInbound() bool {
+	return n.inbound
 }
 
 // updateSyncInfo sets a given remote best
@@ -554,18 +563,12 @@ func (n *Node) ShortID() string {
 // is connected to the local node.
 // Returns false if node is the local node.
 func (n *Node) Connected() bool {
-	if n.localNode == nil {
-		return false
-	}
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
 }
 
 // IsKnown checks whether a peer is
 // known to the local node
 func (n *Node) IsKnown() bool {
-	if n.localNode == nil {
-		return false
-	}
 	return n.localNode.PM().GetPeer(n.StringID()) != nil
 }
 
@@ -654,9 +657,9 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 	return nil
 }
 
-// connectToNode handshake to each bootstrap
-// peer. Then send GetAddr message if
-// handshake is successful
+// connectToNode sends Handshake message a
+// given remote node. Then it sends a
+// GetAddr message afterwards
 func (n *Node) connectToNode(remote types.Engine) error {
 	if n.gProtoc.SendHandshake(remote) == nil {
 		n.gProtoc.SendGetAddr([]types.Engine{remote})

@@ -133,12 +133,12 @@ func (m *Manager) Manage() {
 	go m.periodicSelfAdvertisement(m.tickersDone)
 	go m.periodicCleanUp(m.tickersDone)
 	go m.periodicPingMsgs(m.tickersDone)
-	go m.sendPeriodicGetAddrMsg(m.tickersDone)
+	go m.periodicGetAddrMsg(m.tickersDone)
 }
 
-// sendPeriodicGetAddrMsg sends "getaddr"
+// periodicGetAddrMsg sends "getaddr"
 // message to all known active peers
-func (m *Manager) sendPeriodicGetAddrMsg(done chan bool) {
+func (m *Manager) periodicGetAddrMsg(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
 	for {
 		select {
@@ -204,9 +204,9 @@ func (m *Manager) periodicCleanUp(done chan bool) {
 	}
 }
 
-// UpdateLastSeen updates a peer's
+// UpdateLastSeenTime updates a peer's
 // last seen time to the current time
-func (m *Manager) UpdateLastSeen(p types.Engine) error {
+func (m *Manager) UpdateLastSeenTime(p types.Engine) error {
 
 	defer func() {
 		m.CleanPeers()
@@ -248,14 +248,28 @@ func (m *Manager) SetPeers(d map[string]types.Engine) {
 	m.peers = d
 }
 
-// RequirePeers checks whether
-// we need more peers
-func (m *Manager) RequirePeers() bool {
-	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needConnections()
+// hasReachedOutConnLimit checks whether the
+// local peer has reached its outgoing
+// connection limit
+func (m *Manager) hasReachedOutConnLimit() bool {
+	_, outbound, _ := m.connectionsCount()
+	return int64(outbound) >= m.config.Node.MaxOutboundConnections
 }
 
-// IsLocalNode checks if a peer
-// is the local peer
+// hasReachedInConnLimit checks whether the
+// local peer has reached its inbound
+// connection limit
+func (m *Manager) hasReachedInConnLimit() bool {
+	_, _, inbound := m.connectionsCount()
+	return int64(inbound) >= m.config.Node.MaxInboundConnections
+}
+
+// RequirePeers checks whether we need more peers
+func (m *Manager) RequirePeers() bool {
+	return len(m.GetActivePeers(0)) < 1000 && !m.hasReachedOutConnLimit()
+}
+
+// IsLocalNode checks if a peer is the local peer
 func (m *Manager) IsLocalNode(p types.Engine) bool {
 	return p != nil && m.localNode != nil && m.localNode.IsSame(p)
 }
@@ -265,19 +279,30 @@ func (m *Manager) SetLocalNode(n *Node) {
 	m.localNode = n
 }
 
-// SetNumActiveConnections sets the number of active
-// connections.
-func (m *Manager) SetNumActiveConnections(n int64) {
-	m.connMgr.numConn = n
-}
 
-// IsActive returns true of a peer is
-// considered active. First rule,
-// its timestamp must be within
-// the last 3 hours
+
+// IsActive returns true of a peer is considered active.
+// First rule:
+// - Its timestamp must be within the last 3 hours
 func (m *Manager) IsActive(p types.Engine) bool {
 	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).
 		Before(p.GetLastSeen())
+}
+
+// connectionsCount gets the number of
+// all, inbound and outbound connections
+func (m *Manager) connectionsCount() (total int, outbound int, inbound int) {
+	var connections = m.GetActivePeers(0)
+	for _, p := range connections {
+		if p.Connected() {
+			if p.IsInbound() {
+				inbound++
+				continue
+			}
+			outbound++
+		}
+	}
+	return outbound + inbound, outbound, inbound
 }
 
 // HasDisconnected reduces the timestamp of
@@ -297,14 +322,9 @@ func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
 // CleanPeers removes old peers from the list
 // of peers known by the local peer. Typically,
 // we remove peers based on the last time
-// they were seen. At least 3 connections must
-// be active before we can proceed.
+// they were seen.
 // It returns the number of peers removed
 func (m *Manager) CleanPeers() int {
-	if m.connMgr.numConnections() < 3 {
-		return 0
-	}
-
 	peers := m.GetPeers()
 	before := len(peers)
 	newKnownPeers := make(map[string]types.Engine)

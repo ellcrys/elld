@@ -34,4 +34,6 @@ type Engine interface {
 	ProdMode() bool                       // Checks whether the current mode is ModeProd
 	Acquainted()                          // Sets the acquainted status to true
 	IsAcquainted() bool                   // Returns the acquainted status
+	IsInbound() bool                      // Checks whether the engine's connection is inbound
+	SetInbound(v bool)                    // Sets the inbound flag
 }

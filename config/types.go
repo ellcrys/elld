@@ -17,29 +17,35 @@ const (
 // PeerConfig represents peer configuration
 type PeerConfig struct {
 
-	// BootstrapNodes are the list of nodes to join in other to gain access to the network
-	BootstrapNodes []string `json:"boostrapNodes"`
+	// BootstrapAddresses sets addresses to connect to
+	BootstrapAddresses []string `json:"addresses"`
 
 	// Mode determines the current environment type
 	Mode int `json:"dev"`
 
-	// GetAddrInterval is the time interval when the node sends a GetAddr message to peers
+	// GetAddrInterval is the interval between GetAddr messages
 	GetAddrInterval int64 `json:"getAddrInt"`
 
-	// PingInterval is the time interval when the node sends Ping messages to peers
+	// PingInterval is the interval between Ping messages
 	PingInterval int64 `json:"pingInt"`
 
-	// SelfAdvInterval is the time interval when the node sends a self advertisement Addr message to peers
+	// SelfAdvInterval is the interval self advertisement messages
 	SelfAdvInterval int64 `json:"selfAdvInt"`
 
-	// CleanUpInterval is the time interval when the node cleans up disconnected, old peers and updates its address list
+	// CleanUpInterval is the interval between address clean ups
 	CleanUpInterval int64 `json:"cleanUpInt"`
 
-	// MaxAddrsExpected is the maximum address the node expects to receive from a remote node
+	// MaxAddrsExpected is the maximum number addresses
+	// expected from a remote peer
 	MaxAddrsExpected int64 `json:"maxAddrsExpected"`
 
-	// MaxConnections is the maximum number of connections the node is allowed to maintain
-	MaxConnections int64 `json:"maxConnections"`
+	// MaxOutboundConnections is the maximum number of outbound
+	// connections the node is allowed
+	MaxOutboundConnections int64 `json:"maxOutConnections"`
+
+	// MaxOutboundConnections is the maximum number of inbound
+	// connections the node is allowed
+	MaxInboundConnections int64 `json:"maxInConnections"`
 
 	// ConnEstInterval is the time interval when the node
 	ConnEstInterval int64 `json:"conEstInt"`
@@ -150,15 +156,16 @@ var defaultConfig = EngineConfig{}
 func init() {
 
 	defaultConfig.Node = &PeerConfig{
-		GetAddrInterval:  60,
-		PingInterval:     60,
-		SelfAdvInterval:  120,
-		CleanUpInterval:  600,
-		MaxAddrsExpected: 1000,
-		MaxConnections:   100,
-		ConnEstInterval:  10,
-		Mode:             ModeProd,
-		MessageTimeout:   60,
+		GetAddrInterval:        60,
+		PingInterval:           60,
+		SelfAdvInterval:        120,
+		CleanUpInterval:        600,
+		MaxAddrsExpected:       1000,
+		MaxOutboundConnections: 10,
+		MaxInboundConnections:  115,
+		ConnEstInterval:        10,
+		Mode:                   ModeProd,
+		MessageTimeout:         60,
 	}
 
 	defaultConfig.Consensus = &ConsensusConfig{

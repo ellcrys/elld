@@ -15,9 +15,8 @@ import (
 // ensuring the required number of connections at any given
 // time is maintained
 type ConnectionManager struct {
-	sync.Mutex
+	sync.RWMutex
 	pm         *Manager
-	numConn    int64
 	log        logger.Logger
 	tickerDone chan bool
 }
@@ -33,19 +32,6 @@ func NewConnMrg(m *Manager, log logger.Logger) *ConnectionManager {
 // Manage starts connection management
 func (m *ConnectionManager) Manage() {
 	go m.makeConnections(m.tickerDone)
-}
-
-// numConnections returns the number of active connections
-func (m *ConnectionManager) numConnections() int64 {
-	m.Lock()
-	defer m.Unlock()
-	return m.numConn
-}
-
-// needConnections checks whether the
-// local peer needs new connections
-func (m *ConnectionManager) needConnections() bool {
-	return m.numConnections() < m.pm.config.Node.MaxConnections
 }
 
 // makeConnections will attempt to send a handshake to
@@ -73,31 +59,26 @@ func (m *ConnectionManager) makeConnections(done chan bool) {
 	}
 }
 
-// Listen is called when network starts listening on an address
-func (m *ConnectionManager) Listen(net.Network, ma.Multiaddr) {
+// Listen is called when hosts starts listening on an address
+func (m *ConnectionManager) Listen(net.Network, ma.Multiaddr) {}
 
-}
-
-// ListenClose is called when network stops listening on an address
-func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {
-
-}
+// ListenClose is called when host stops listening on an address
+func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {}
 
 // Connected is called when a connection is opened
 func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
-	m.Lock()
-	defer m.Unlock()
-	m.numConn++
+
+	// if !m.needConnections() {
+	// 	m.log.Debug("Closed unneeded connection")
+	// 	conn.Close()
+	// }
+
 }
 
 // Disconnected is called when a connection is closed
 func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
 	addr := util.RemoteAddrFromConn(conn)
 	m.pm.OnPeerDisconnect(addr)
-
-	m.Lock()
-	defer m.Unlock()
-	m.numConn--
 }
 
 // OpenedStream is called when a stream is openned
@@ -111,5 +92,4 @@ func (m *ConnectionManager) OpenedStream(n net.Network, s net.Stream) {
 }
 
 // ClosedStream is called when a stream is openned
-func (m *ConnectionManager) ClosedStream(nt net.Network, s net.Stream) {
-}
+func (m *ConnectionManager) ClosedStream(nt net.Network, s net.Stream) {}

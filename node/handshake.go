@@ -81,8 +81,7 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 		return fmt.Errorf("failed to read handshake response")
 	}
 
-	// Update the timestamp of the peer
-	g.PM().UpdateLastSeen(remotePeer)
+	g.PM().UpdateLastSeenTime(remotePeer)
 
 	// Set the remote peer's acquainted status to
 	// true, which will allow some unsolicited
@@ -160,9 +159,11 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 		return
 	}
 
-	// update the remote peer's timestamp
-	// and add it to the peer manager's list
-	g.PM().UpdateLastSeen(remotePeer)
+	// Add the remote peer if not previously
+	// known and update the last seen time. Also,
+	// mark the remote peer as an inbound connection.
+	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().GetPeer(remotePeer.StringID()).SetInbound(true)
 
 	// Set the remote peer's acquainted status to
 	// true, which will allow some unsolicited

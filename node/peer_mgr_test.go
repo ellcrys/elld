@@ -64,7 +64,7 @@ var _ = Describe("Peer Manager", func() {
 			BeforeEach(func() {
 				p2, err = node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 				defer closeNode(p2)
-				err = mgr.UpdateLastSeen(p2)
+				err = mgr.UpdateLastSeenTime(p2)
 				Expect(err).To(BeNil())
 			})
 
@@ -84,7 +84,7 @@ var _ = Describe("Peer Manager", func() {
 				Expect(err).To(BeNil())
 				defer closeNode(existingPeer)
 				mgr.AddPeer(existingPeer)
-				err = mgr.UpdateLastSeen(existingPeer)
+				err = mgr.UpdateLastSeenTime(existingPeer)
 				Expect(err).To(BeNil())
 			})
 
@@ -94,7 +94,7 @@ var _ = Describe("Peer Manager", func() {
 		})
 	})
 
-	Describe(".CleanKnownPeers", func() {
+	Describe(".CleanPeers", func() {
 
 		It("should return 0 when number of connected peers is less than 3", func() {
 			n := mgr.CleanPeers()
@@ -102,8 +102,6 @@ var _ = Describe("Peer Manager", func() {
 		})
 
 		It("should return 0 when no peer was removed", func() {
-			mgr.SetNumActiveConnections(3)
-
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
 			p2.SetLastSeen(time.Now())
@@ -119,8 +117,6 @@ var _ = Describe("Peer Manager", func() {
 		})
 
 		It("should return 1 when a peer was removed", func() {
-			mgr.SetNumActiveConnections(3)
-
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 			p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
 			p2.SetLastSeen(time.Now())
@@ -227,7 +223,7 @@ var _ = Describe("Peer Manager", func() {
 		It("should return peer when peer is in known peer list", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40003", crypto.NewKeyFromIntSeed(3), log)
 			defer closeNode(p2)
-			mgr.UpdateLastSeen(p2)
+			mgr.UpdateLastSeenTime(p2)
 			Expect(err).To(BeNil())
 			actual := mgr.GetPeer(p2.StringID())
 			Expect(actual).NotTo(BeNil())
@@ -248,7 +244,7 @@ var _ = Describe("Peer Manager", func() {
 		It("peer exists, must return true", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			defer closeNode(p2)
-			mgr.UpdateLastSeen(p2)
+			mgr.UpdateLastSeenTime(p2)
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p2.StringID())).To(BeTrue())
 			closeNode(p2)
@@ -262,7 +258,7 @@ var _ = Describe("Peer Manager", func() {
 			Expect(err).To(BeNil())
 			defer closeNode(p2)
 
-			mgr.UpdateLastSeen(p2)
+			mgr.UpdateLastSeenTime(p2)
 			currentTimestamp := p2.GetLastSeen().Unix()
 
 			mgr.OnPeerDisconnect(p2.GetAddress())
@@ -278,7 +274,7 @@ var _ = Describe("Peer Manager", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			defer closeNode(p2)
-			mgr.UpdateLastSeen(p2)
+			mgr.UpdateLastSeenTime(p2)
 			actual := mgr.GetPeers()
 			Expect(actual).To(HaveLen(1))
 			Expect(actual).To(ContainElement(p2))
@@ -429,7 +425,7 @@ var _ = Describe("Peer Manager", func() {
 	Describe(".NeedMorePeers", func() {
 
 		It("should return true when peer manager does not have upto 1000 peers and has not reached max connection", func() {
-			cfg.Node.MaxConnections = 120
+			cfg.Node.MaxOutboundConnections = 120
 			peer1 := emptyNodeWithLastSeenTime(time.Now().Add(-1 * (60 * 60) * time.Second))
 			mgr.SetPeers(map[string]types.Engine{
 				"peer1": peer1,
@@ -438,7 +434,7 @@ var _ = Describe("Peer Manager", func() {
 		})
 
 		It("should return false when peer manager does not have upto 1000 peers and but has reached max connection", func() {
-			cfg.Node.MaxConnections = 10
+			cfg.Node.MaxOutboundConnections = 10
 			mgr.SetNumActiveConnections(10)
 			peer1 := emptyNodeWithLastSeenTime(time.Now().Add(-1 * (60 * 60) * time.Second))
 			mgr.SetPeers(map[string]types.Engine{
