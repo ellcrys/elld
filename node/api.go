@@ -147,11 +147,11 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 // apiNumConnections returns the
 // number of peers connected to
 func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
-	var total, outbound, inbound = n.peerManager.connectionsCount()
+	var connsInfo = n.peerManager.connMgr.GetConnsCount()
 	var result = map[string]int{
-		"total":    total,
-		"inbound":  inbound,
-		"outbound": outbound,
+		"total":    connsInfo.Outbound + connsInfo.Inbound,
+		"inbound":  connsInfo.Inbound,
+		"outbound": connsInfo.Outbound,
 	}
 	return jsonrpc.Success(result)
 }

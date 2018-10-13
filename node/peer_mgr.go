@@ -72,23 +72,6 @@ func (m *Manager) GetPeer(peerID string) types.Engine {
 	return peer
 }
 
-// OnPeerDisconnect is called when peer disconnects.
-// Active peer count is decreased by one.
-// The disconnected peer is not removed from the
-// known peer list because it might come back in a
-// short time but subtract 2 hours from its current
-// timestamp.
-// Eventually, it will be removed if it does not reconnect.
-func (m *Manager) OnPeerDisconnect(peerAddr util.NodeAddr) {
-	peer := m.GetPeer(peerAddr.StringID())
-	if peer == nil {
-		return
-	}
-	m.HasDisconnected(peer)
-	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
-	m.CleanPeers()
-}
-
 // AddPeer adds a peer
 func (m *Manager) AddPeer(peer types.Engine) {
 	m.mtx.Lock()
@@ -252,16 +235,8 @@ func (m *Manager) SetPeers(d map[string]types.Engine) {
 // local peer has reached its outgoing
 // connection limit
 func (m *Manager) hasReachedOutConnLimit() bool {
-	_, outbound, _ := m.connectionsCount()
+	outbound := m.connMgr.GetConnsCount().Outbound
 	return int64(outbound) >= m.config.Node.MaxOutboundConnections
-}
-
-// hasReachedInConnLimit checks whether the
-// local peer has reached its inbound
-// connection limit
-func (m *Manager) hasReachedInConnLimit() bool {
-	_, _, inbound := m.connectionsCount()
-	return int64(inbound) >= m.config.Node.MaxInboundConnections
 }
 
 // RequirePeers checks whether we need more peers
@@ -274,12 +249,15 @@ func (m *Manager) IsLocalNode(p types.Engine) bool {
 	return p != nil && m.localNode != nil && m.localNode.IsSame(p)
 }
 
+// ConnMgr gets the connection manager
+func (m *Manager) ConnMgr() *ConnectionManager {
+	return m.connMgr
+}
+
 // SetLocalNode sets the local node
 func (m *Manager) SetLocalNode(n *Node) {
 	m.localNode = n
 }
-
-
 
 // IsActive returns true of a peer is considered active.
 // First rule:
@@ -289,33 +267,24 @@ func (m *Manager) IsActive(p types.Engine) bool {
 		Before(p.GetLastSeen())
 }
 
-// connectionsCount gets the number of
-// all, inbound and outbound connections
-func (m *Manager) connectionsCount() (total int, outbound int, inbound int) {
-	var connections = m.GetActivePeers(0)
-	for _, p := range connections {
-		if p.Connected() {
-			if p.IsInbound() {
-				inbound++
-				continue
-			}
-			outbound++
-		}
-	}
-	return outbound + inbound, outbound, inbound
-}
+// HasDisconnected is called with a address belonging
+// to a peer that had just disconnected. It will set
+// the last seen time of the peer to an hour ago to
+// to quicken the time to clean up. The peer may
+// reconnect before clean up.
+func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
 
-// HasDisconnected reduces the timestamp of
-// a disconnected peer such that its time
-// of removal is expedited. It also cleans
-// up the known peers list removing peers
-// that are unconnected and old.
-func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
-	if remotePeer == nil {
-		return fmt.Errorf("nil passed")
+	peer := m.GetPeer(peerAddr.StringID())
+	if peer == nil {
+		return fmt.Errorf("unknown peer")
 	}
-	remotePeer.SetLastSeen(remotePeer.GetLastSeen().Add(-1 * time.Hour))
+
+	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
+
+	peer.SetLastSeen(peer.GetLastSeen().Add(-1 * time.Hour))
+
 	m.CleanPeers()
+
 	return nil
 }
 
