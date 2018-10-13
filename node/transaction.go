@@ -66,7 +66,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	// Ignore the transaction if already
 	// in our transaction pool
-	if g.engine.transactionsPool.Has(msg) {
+	if g.engine.txsPool.Has(msg) {
 		return
 	}
 

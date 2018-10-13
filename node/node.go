@@ -74,23 +74,24 @@ type Node struct {
 	isHardcodedSeed     bool                 // whether the node was hardcoded as a seed
 	stopped             bool                 // flag to tell if node has stopped
 	log                 logger.Logger        // node logger
-	rSeed               []byte               // random 256 bit seed to be used for seed random operations
-	db                  elldb.DB             // used to access and modify local database
-	signatory           *d_crypto.Key        // signatory address used to get node ID and for signing
-	history             *cache.Cache         // Used to track things we want to remember
-	event               *emitter.Emitter     // Provides access event emitting service
-	transactionsPool    *txpool.TxPool       // the transaction pool for transactions
-	txsRelayQueue       *txpool.TxContainer  // stores transactions waiting to be relayed
-	bchain              core.Blockchain      // The blockchain manager
-	blockHashQueue      *lane.Deque          // Contains headers collected during block syncing
-	bestRemoteBlockInfo *BestBlockInfo       // Holds information about the best known block heard from peers
-	syncing             bool                 // Indicates the process of syncing the blockchain with peers
-	acquainted          bool                 // Indicates that the node has "handshooked" the local node
+	txsPool             *txpool.TxPool
+	rSeed               []byte              // random 256 bit seed to be used for seed random operations
+	db                  elldb.DB            // used to access and modify local database
+	signatory           *d_crypto.Key       // signatory address used to get node ID and for signing
+	history             *cache.Cache        // Used to track things we want to remember
+	event               *emitter.Emitter    // Provides access event emitting service
+	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
+	bchain              core.Blockchain     // The blockchain manager
+	blockHashQueue      *lane.Deque         // Contains headers collected during block syncing
+	bestRemoteBlockInfo *BestBlockInfo      // Holds information about the best known block heard from peers
+	syncing             bool                // Indicates the process of syncing the blockchain with peers
+	acquainted          bool                // Indicates that the node has "handshooked" the local node
 	tickerDone          chan bool
 }
 
 // NewNode creates a node instance at the specified port
-func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db elldb.DB, config *config.EngineConfig, address string,
+	coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
 
 	if coinbase == nil {
 		return nil, fmt.Errorf("signatory address required")
@@ -124,22 +125,21 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 	}
 
 	node := &Node{
-		mtx:              &sync.RWMutex{},
-		cfg:              config,
-		address:          util.AddressFromHost(host),
-		host:             host,
-		wg:               sync.WaitGroup{},
-		log:              log,
-		rSeed:            util.RandBytes(64),
-		signatory:        coinbase,
-		db:               db,
-		event:            &emitter.Emitter{},
-		transactionsPool: txpool.New(config.TxPool.Capacity),
-		txsRelayQueue:    txpool.NewQueueNoSort(config.TxPool.Capacity),
-		blockHashQueue:   lane.NewDeque(),
-		history:          cache.NewActiveCache(5000),
-		tickerDone:       make(chan bool),
-		createdAt:        time.Now().UTC(),
+		mtx:            &sync.RWMutex{},
+		cfg:            config,
+		address:        util.AddressFromHost(host),
+		host:           host,
+		wg:             sync.WaitGroup{},
+		log:            log,
+		rSeed:          util.RandBytes(64),
+		signatory:      coinbase,
+		db:             db,
+		event:          &emitter.Emitter{},
+		txsRelayQueue:  txpool.NewQueueNoSort(config.TxPool.Capacity),
+		blockHashQueue: lane.NewDeque(),
+		history:        cache.NewActiveCache(5000),
+		tickerDone:     make(chan bool),
+		createdAt:      time.Now().UTC(),
 	}
 
 	node.localNode = node
@@ -438,9 +438,8 @@ func (n *Node) IsSameID(id string) bool {
 // SetEventEmitter set the event bus
 // used to broadcast events across
 // the engine
-func (n *Node) SetEventEmitter(ee *emitter.Emitter) {
-	n.event = ee
-	n.transactionsPool.SetEventEmitter(ee)
+func (n *Node) SetEventEmitter(e *emitter.Emitter) {
+	n.event = e
 }
 
 // SetLocalNode sets the local peer
@@ -486,12 +485,6 @@ func (n *Node) addToPeerStore(remote types.Engine) *Node {
 func (n *Node) newStream(ctx context.Context,
 	peerID peer.ID, protocolID string) (inet.Stream, error) {
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
-}
-
-// SetTransactionPool sets the
-// transaction pool
-func (n *Node) SetTransactionPool(txp *txpool.TxPool) {
-	n.transactionsPool = txp
 }
 
 // SetGossipProtocol sets the
@@ -962,5 +955,10 @@ func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
 
 // GetTxPool returns the unsigned transaction pool
 func (n *Node) GetTxPool() core.TxPool {
-	return n.transactionsPool
+	return n.txsPool
+}
+
+// SetTxsPool sets the transaction pool
+func (n *Node) SetTxsPool(txp *txpool.TxPool) {
+	n.txsPool = txp
 }

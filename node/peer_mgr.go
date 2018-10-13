@@ -251,7 +251,7 @@ func (m *Manager) SetPeers(d map[string]types.Engine) {
 // RequirePeers checks whether
 // we need more peers
 func (m *Manager) RequirePeers() bool {
-	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
+	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needConnections()
 }
 
 // IsLocalNode checks if a peer
@@ -268,7 +268,7 @@ func (m *Manager) SetLocalNode(n *Node) {
 // SetNumActiveConnections sets the number of active
 // connections.
 func (m *Manager) SetNumActiveConnections(n int64) {
-	m.connMgr.activeConn = n
+	m.connMgr.numConn = n
 }
 
 // IsActive returns true of a peer is
@@ -301,7 +301,7 @@ func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
 // be active before we can proceed.
 // It returns the number of peers removed
 func (m *Manager) CleanPeers() int {
-	if m.connMgr.connectionCount() < 3 {
+	if m.connMgr.numConnections() < 3 {
 		return 0
 	}
 

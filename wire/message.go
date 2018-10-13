@@ -109,8 +109,7 @@ type Reject struct {
 
 // RequestBlock represents a message requesting for a block
 type RequestBlock struct {
-	Hash   string `json:"hash" msgpack:"hash"`
-	Number uint64 `json:"number" msgpack:"number"`
+	Hash string `json:"hash" msgpack:"hash"`
 }
 
 // GetBlockHashes represents a message requesting

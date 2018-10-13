@@ -57,7 +57,34 @@ var _ = Describe("Block", func() {
 
 	Describe(".RelayBlock", func() {
 
-		Context("when block is successfully relayed to a remote peer", func() {
+		Context("when a block has a transaction that is not in the txs pool of the remote peer", func() {
+			Context("when block is successfully relayed to a remote peer", func() {
+
+				var evtArgs emitter.Event
+				var block core.Block
+
+				BeforeEach(func(done Done) {
+					block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+
+					go func() {
+						evtArgs = <-rp.GetEventEmitter().Once(node.EventBlockProcessed)
+						close(done)
+					}()
+
+					err := lp.Gossip().RelayBlock(block, []types.Engine{rp})
+					Expect(err).To(BeNil())
+				})
+
+				Specify("relayed block must be processed by the remote peer", func() {
+					Expect(evtArgs.Args).To(HaveLen(2))
+					_, err := evtArgs.Args[0], evtArgs.Args[1]
+					Expect(err).ToNot(BeNil())
+					Expect(err.(error).Error()).To(Equal("tx:0, error:transaction does not exist in the transactions pool"))
+				})
+			})
+		})
+
+		Context("when a block is successfully relayed to a remote peer", func() {
 
 			var evtArgs emitter.Event
 			var block core.Block
@@ -70,7 +97,13 @@ var _ = Describe("Block", func() {
 					close(done)
 				}()
 
-				err := lp.Gossip().RelayBlock(block, []types.Engine{rp})
+				// Add the transaction to the remote node's
+				// transaction pool to prevent the block rejection
+				// because of the tx being unknown.
+				err := rp.GetTxPool().Put(block.GetTransactions()[0])
+				Expect(err).To(BeNil())
+
+				err = lp.Gossip().RelayBlock(block, []types.Engine{rp})
 				Expect(err).To(BeNil())
 			})
 
@@ -131,28 +164,16 @@ var _ = Describe("Block", func() {
 	Describe(".RequestBlock", func() {
 
 		var block2 core.Block
-		var evtArgs emitter.Event
 
-		BeforeEach(func(done Done) {
+		BeforeEach(func() {
 			block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 			_, err := lp.GetBlockchain().ProcessBlock(block2)
-			Expect(err).To(BeNil())
-
-			go func() {
-				evtArgs = <-rp.GetEventEmitter().Once(node.EventBlockProcessed)
-				close(done)
-			}()
-
-			err = rp.Gossip().RequestBlock(lp, block2.GetHash())
 			Expect(err).To(BeNil())
 		})
 
 		It("Should request and process block from remote peer", func() {
-			Expect(evtArgs.Args).To(HaveLen(2))
-			processedBlock, err := evtArgs.Args[0], evtArgs.Args[1]
+			err := rp.Gossip().RequestBlock(lp, block2.GetHash())
 			Expect(err).To(BeNil())
-			Expect(processedBlock).ToNot(BeNil())
-			Expect(block2.GetHashAsHex()).To(Equal(processedBlock.(core.Block).GetHashAsHex()))
 			curBlock, err := rp.GetBlockchain().ChainReader().Current()
 			Expect(err).To(BeNil())
 			Expect(curBlock.GetHashAsHex()).To(Equal(block2.GetHashAsHex()))

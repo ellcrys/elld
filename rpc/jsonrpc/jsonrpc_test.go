@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/k0kubun/pp"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -107,75 +106,37 @@ var _ = Describe("Jsonrpc", func() {
 			handler.ServeHTTP(rr, req)
 		})
 
-		When("namespace is not provided", func() {
-			It("should return 'Method not found' error", func() {
-				rpc.apiSet["add"] = APIInfo{
-					Func: func(params interface{}) *Response {
-						m := params.(map[string]interface{})
-						return Success(m["x"].(float64) + m["y"].(float64))
-					},
-				}
+		It("should return 'Method not found' error", func() {
+			rpc.apiSet["add"] = APIInfo{
+				Func: func(params interface{}) *Response {
+					m := params.(map[string]interface{})
+					return Success(m["x"].(float64) + m["y"].(float64))
+				},
+			}
 
-				data, _ := json.Marshal(Request{
-					JSONRPCVersion: "2.0",
-					Method:         "add",
-					Params: map[string]interface{}{
-						"x": 2, "y": 2,
-					},
-					ID: 1,
-				})
-
-				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
-				rr := httptest.NewRecorder()
-				rr.Header().Set("Content-Type", "application/json")
-
-				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					resp := rpc.handle(w, r)
-					Expect(resp.Err).ToNot(BeNil())
-					Expect(resp.Err.Code).To(Equal(-32601))
-					Expect(resp.Err.Message).To(Equal("Method not found"))
-					Expect(resp.Result).To(BeNil())
-					Expect(rr.Code).To(Equal(404))
-				})
-
-				handler.ServeHTTP(rr, req)
+			data, _ := json.Marshal(Request{
+				JSONRPCVersion: "2.0",
+				Method:         "plus",
+				Params: map[string]interface{}{
+					"x": 2, "y": 2,
+				},
+				ID: 1,
 			})
-		})
 
-		When("the method requested does not start with a namespace", func() {
-			It("should return 'Method not found' error", func() {
-				rpc.apiSet["add"] = APIInfo{
-					Namespace: "math",
-					Func: func(params interface{}) *Response {
-						m := params.(map[string]interface{})
-						return Success(m["x"].(float64) + m["y"].(float64))
-					},
-				}
+			req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
+			rr := httptest.NewRecorder()
+			rr.Header().Set("Content-Type", "application/json")
 
-				data, _ := json.Marshal(Request{
-					JSONRPCVersion: "2.0",
-					Method:         "add",
-					Params: map[string]interface{}{
-						"x": 2, "y": 2,
-					},
-					ID: 1,
-				})
-
-				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
-				rr := httptest.NewRecorder()
-				rr.Header().Set("Content-Type", "application/json")
-
-				handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					resp := rpc.handle(w, r)
-					Expect(resp.Err).ToNot(BeNil())
-					Expect(resp.Err.Code).To(Equal(-32601))
-					Expect(resp.Err.Message).To(Equal("Method not found"))
-					Expect(resp.Result).To(BeNil())
-					Expect(rr.Code).To(Equal(404))
-				})
-
-				handler.ServeHTTP(rr, req)
+			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				resp := rpc.handle(w, r)
+				Expect(resp.Err).ToNot(BeNil())
+				Expect(resp.Err.Code).To(Equal(-32601))
+				Expect(resp.Err.Message).To(Equal("Method not found"))
+				Expect(resp.Result).To(BeNil())
+				Expect(rr.Code).To(Equal(404))
 			})
+
+			handler.ServeHTTP(rr, req)
 		})
 
 		Context("Successfully call method", func() {
@@ -191,7 +152,7 @@ var _ = Describe("Jsonrpc", func() {
 
 					data, _ := json.Marshal(Request{
 						JSONRPCVersion: "2.0",
-						Method:         "math_add",
+						Method:         "add",
 						Params: map[string]interface{}{
 							"x": 2, "y": 2,
 						},
@@ -227,7 +188,7 @@ var _ = Describe("Jsonrpc", func() {
 
 					data, _ := json.Marshal(Request{
 						JSONRPCVersion: "2.0",
-						Method:         "math_add",
+						Method:         "add",
 						Params: map[string]interface{}{
 							"x": 2, "y": 2,
 						},
@@ -265,7 +226,7 @@ var _ = Describe("Jsonrpc", func() {
 
 				data, _ := json.Marshal(Request{
 					JSONRPCVersion: "2.0",
-					Method:         "test_echo",
+					Method:         "echo",
 					Params:         map[string]interface{}{},
 				})
 
@@ -298,7 +259,7 @@ var _ = Describe("Jsonrpc", func() {
 
 				data, _ := json.Marshal(Request{
 					JSONRPCVersion: "2.0",
-					Method:         "test_echo",
+					Method:         "echo",
 					Params:         map[string]interface{}{},
 				})
 
@@ -332,7 +293,7 @@ var _ = Describe("Jsonrpc", func() {
 
 				data, _ := json.Marshal(Request{
 					JSONRPCVersion: "2.0",
-					Method:         "test_echo",
+					Method:         "echo",
 					Params:         map[string]interface{}{},
 				})
 
@@ -366,7 +327,7 @@ var _ = Describe("Jsonrpc", func() {
 
 				data, _ := json.Marshal(Request{
 					JSONRPCVersion: "2.0",
-					Method:         "test_echo",
+					Method:         "echo",
 					ID:             1,
 					Params: map[string]interface{}{
 						"age": 100,
@@ -402,7 +363,7 @@ var _ = Describe("Jsonrpc", func() {
 
 				data, _ := json.Marshal(Request{
 					JSONRPCVersion: "2.0",
-					Method:         "test_echo",
+					Method:         "echo",
 					ID:             1,
 					Params: map[string]interface{}{
 						"age": 100,
@@ -427,14 +388,31 @@ var _ = Describe("Jsonrpc", func() {
 	})
 
 	Describe(".AddAPI", func() {
-		It("should add API", func() {
-			rpc.AddAPI("add", APIInfo{
-				Func: func(params interface{}) *Response {
-					m := params.(map[string]interface{})
-					return Success(m["x"].(float64) + m["y"].(float64))
-				},
+		Context("with no namespace provided", func() {
+			It("should add API", func() {
+				rpc.AddAPI("add", APIInfo{
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) + m["y"].(float64))
+					},
+				})
+				Expect(rpc.apiSet).To(HaveLen(2))
+				Expect(rpc.apiSet).To(HaveKey("_add"))
 			})
-			Expect(rpc.apiSet).To(HaveLen(2))
+		})
+
+		Context("with a namespace provided", func() {
+			It("should add API", func() {
+				rpc.AddAPI("add", APIInfo{
+					Namespace: "math",
+					Func: func(params interface{}) *Response {
+						m := params.(map[string]interface{})
+						return Success(m["x"].(float64) + m["y"].(float64))
+					},
+				})
+				Expect(rpc.apiSet).To(HaveLen(2))
+				Expect(rpc.apiSet).To(HaveKey("math_add"))
+			})
 		})
 	})
 
@@ -496,7 +474,6 @@ var _ = Describe("Jsonrpc", func() {
 			})
 			rpc.MergeAPISet(apiSet1, apiSet2)
 			m := rpc.Methods()
-			pp.Println(m)
 			Expect(m).To(HaveLen(3))
 			expectedMethods := []string{"rpc_methods", "math_add", "math_div"}
 			Expect(expectedMethods).To(ContainElement(m[0].Name))

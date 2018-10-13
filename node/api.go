@@ -147,7 +147,7 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 // apiNumConnections returns the
 // number of peers connected to
 func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.peerManager.connMgr.connectionCount())
+	return jsonrpc.Success(n.peerManager.connMgr.numConnections())
 }
 
 // apiGetSyncQueueSize returns the
@@ -200,7 +200,7 @@ func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
 // of the transaction pool
 func (n *Node) apiTxPoolSizeInfo(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(map[string]int64{
-		"byteSize": n.GetTxPool().ByteSize(),
+		"byteSize": n.GetBlockchain().GetTxPool().ByteSize(),
 		"numTxs":   n.GetTxPool().Size(),
 	})
 }

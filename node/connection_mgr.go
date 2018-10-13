@@ -15,9 +15,9 @@ import (
 // ensuring the required number of connections at any given
 // time is maintained
 type ConnectionManager struct {
-	gmx        *sync.Mutex
+	sync.Mutex
 	pm         *Manager
-	activeConn int64
+	numConn    int64
 	log        logger.Logger
 	tickerDone chan bool
 }
@@ -26,7 +26,6 @@ type ConnectionManager struct {
 func NewConnMrg(m *Manager, log logger.Logger) *ConnectionManager {
 	return &ConnectionManager{
 		pm:  m,
-		gmx: &sync.Mutex{},
 		log: log,
 	}
 }
@@ -36,21 +35,22 @@ func (m *ConnectionManager) Manage() {
 	go m.makeConnections(m.tickerDone)
 }
 
-// connectionCount returns the number of active connections
-func (m *ConnectionManager) connectionCount() int64 {
-	m.gmx.Lock()
-	defer m.gmx.Unlock()
-	return m.activeConn
+// numConnections returns the number of active connections
+func (m *ConnectionManager) numConnections() int64 {
+	m.Lock()
+	defer m.Unlock()
+	return m.numConn
 }
 
-// needMoreConnections checks whether the local peer needs new connections
-func (m *ConnectionManager) needMoreConnections() bool {
-	return m.connectionCount() < m.pm.config.Node.MaxConnections
+// needConnections checks whether the
+// local peer needs new connections
+func (m *ConnectionManager) needConnections() bool {
+	return m.numConnections() < m.pm.config.Node.MaxConnections
 }
 
 // makeConnections will attempt to send a handshake to
-// addresses that have not been connected to as long as the max
-// connection limit has not been reached
+// addresses that have not been connected to as long
+// as the max connection limit has not been reached
 func (m *ConnectionManager) makeConnections(done chan bool) {
 	dur := time.Duration(m.pm.config.Node.ConnEstInterval)
 	ticker := time.NewTicker(dur * time.Second)
@@ -85,9 +85,9 @@ func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {
 
 // Connected is called when a connection is opened
 func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
-	m.gmx.Lock()
-	defer m.gmx.Unlock()
-	m.activeConn++
+	m.Lock()
+	defer m.Unlock()
+	m.numConn++
 }
 
 // Disconnected is called when a connection is closed
@@ -95,9 +95,9 @@ func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
 	addr := util.RemoteAddrFromConn(conn)
 	m.pm.OnPeerDisconnect(addr)
 
-	m.gmx.Lock()
-	defer m.gmx.Unlock()
-	m.activeConn--
+	m.Lock()
+	defer m.Unlock()
+	m.numConn--
 }
 
 // OpenedStream is called when a stream is openned
