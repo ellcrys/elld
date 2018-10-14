@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/olebedev/emitter"
 
@@ -111,6 +112,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	if err != nil {
 		panic(err)
 	}
+	n.SetLastSeen(time.Now().UTC())
 
 	n.SetTxsPool(txp)
 	gossip := node.NewGossip(n, log)

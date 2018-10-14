@@ -48,77 +48,92 @@ var _ = Describe("Addr", func() {
 		closeNode(rp)
 	})
 
-	Describe(".SelectRelayPeers", func() {
+	Describe(".PickBroadcastPeers", func() {
 
-		Context("when no replay peer had been selected", func() {
+		var candidateAddrs = []*wire.Address{
+			{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
+			{Address: "/ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh"},
+			{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
+			{Address: "/ip4/172.16.238.13/tcp/9000/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"},
+			{Address: "/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV"},
+		}
 
-			When("there are many candidate addresses", func() {
-				candidateAddrs := []*wire.Address{
-					{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
-					{Address: "/ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh"},
-					{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
-					{Address: "/ip4/172.16.238.13/tcp/9000/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"},
-					{Address: "/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV"},
-				}
-
-				It("should return two nodes", func() {
-					peers := lp.Gossip().SelectRelayPeers(candidateAddrs)
-					Expect(len(peers)).To(Equal(2))
+		When("cache contains no address", func() {
+			When("many candidate addresses is passed", func() {
+				It("should return N nodes", func() {
+					peers := lp.Gossip().PickBroadcastPeers(candidateAddrs, 2)
+					Expect(peers).To(HaveLen(2))
 					Expect(peers[0].GetAddress()).To(Equal(candidateAddrs[2].Address))
 					Expect(peers[1].GetAddress()).To(Equal(candidateAddrs[1].Address))
 				})
 			})
 
-			When("there is only one candidate address", func() {
+			When("only one candidate address is passed", func() {
 				candidateAddrs := []*wire.Address{
 					{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
 				}
 
 				It("Should return the only candidate node", func() {
-					peers := lp.Gossip().SelectRelayPeers(candidateAddrs)
-					Expect(len(peers)).To(Equal(1))
+					peers := lp.Gossip().PickBroadcastPeers(candidateAddrs, 2)
+					Expect(peers).To(HaveLen(1))
 					Expect(peers[0].GetAddress()).To(Equal(candidateAddrs[0].Address))
 				})
 			})
 		})
 
-		Context("when one replay peer had been selected", func() {
+		When("cache has one address and multiple candidate addresses", func() {
 			var addr = util.NodeAddr("/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV")
 
-			When("there is at least one candidate", func() {
-
-				candidateAddrs := []*wire.Address{
-					{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
-					{Address: "/ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh"},
-					{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
-					{Address: "/ip4/172.16.238.13/tcp/9000/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"},
-					{Address: "/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV"},
-				}
-
-				It("Should remove existing peers and select completely new ones", func() {
-					n, _ := rp.NodeFromAddr(addr, true)
-					lp.Gossip().RelayPeers = append(lp.Gossip().RelayPeers, n)
-					peers := lp.Gossip().SelectRelayPeers(candidateAddrs)
-					Expect(len(peers)).To(Equal(2))
-					Expect(peers[0].GetAddress()).ToNot(Equal(addr))
-					Expect(peers[1].GetAddress()).ToNot(Equal(addr))
-				})
+			BeforeEach(func() {
+				n, _ := rp.NodeFromAddr(addr, true)
+				lp.Gossip().BroadcastPeers = append(lp.Gossip().BroadcastPeers, n)
 			})
 
-			When("one replay peer had been selected and only one candidate is provided", func() {
+			It("should clear the cache and select new addresses", func() {
+				peers := lp.Gossip().PickBroadcastPeers(candidateAddrs, 2)
+				Expect(peers).To(HaveLen(2))
+				Expect(peers[0].GetAddress()).ToNot(Equal(addr))
+				Expect(peers[1].GetAddress()).ToNot(Equal(addr))
+			})
+		})
 
-				candidateAddrs := []*wire.Address{
-					{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
-				}
+		When("cache has one address and one candidate addresses", func() {
+			var addr = util.NodeAddr("/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV")
+			var candidateAddrs = []*wire.Address{
+				{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
+			}
 
-				It("Should leave existing relay node and add the candidate address to make it 2", func() {
-					n, _ := rp.NodeFromAddr(addr, true)
-					n.Gossip().RelayPeers = append(n.Gossip().RelayPeers, n)
-					Expect(n.Gossip().RelayPeers).To(HaveLen(1))
-					peers := rp.Gossip().SelectRelayPeers(candidateAddrs)
-					Expect(len(peers)).To(Equal(2))
-					Expect(peers[0].GetAddress()).To(Equal(addr))
-				})
+			BeforeEach(func() {
+				n, _ := rp.NodeFromAddr(addr, true)
+				lp.Gossip().BroadcastPeers = append(lp.Gossip().BroadcastPeers, n)
+			})
+
+			It("should leave the cache untouched and add the only candidate address", func() {
+				peers := lp.Gossip().PickBroadcastPeers(candidateAddrs, 2)
+				Expect(peers).To(HaveLen(2))
+				Expect(peers[0].GetAddress()).To(Equal(addr))
+				Expect(peers[1].GetAddress()).To(Equal(candidateAddrs[0].Address))
+			})
+		})
+
+		When("cache has not expired", func() {
+			var peers []*node.Node
+			var candidateAddrs = []*wire.Address{
+				{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
+				{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
+			}
+			var candidateAddrs2 = []*wire.Address{
+				{Address: "/ip4/172.16.238.11/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqd"},
+			}
+
+			BeforeEach(func() {
+				peers = lp.Gossip().PickBroadcastPeers(candidateAddrs, 2)
+				Expect(peers).To(HaveLen(2))
+			})
+
+			It("should return current cache values", func() {
+				peers2 := lp.Gossip().PickBroadcastPeers(candidateAddrs2, 2)
+				Expect(peers2).To(Equal(peers))
 			})
 		})
 	})
@@ -188,9 +203,9 @@ var _ = Describe("Addr", func() {
 					{Address: p2.GetAddress(), Timestamp: time.Now().Unix()},
 					{Address: p3.GetAddress(), Timestamp: time.Now().Unix()},
 				}
-				Expect(p.Gossip().RelayPeers).To(HaveLen(0))
+				Expect(p.Gossip().BroadcastPeers).To(HaveLen(0))
 				p.Gossip().RelayAddresses(addrs)
-				Expect(p.Gossip().RelayPeers).To(HaveLen(2))
+				Expect(p.Gossip().BroadcastPeers).To(HaveLen(2))
 			})
 		})
 	})
@@ -239,7 +254,7 @@ var _ = Describe("Addr", func() {
 			})
 
 			It("should select relay peers from the relayed addresses", func() {
-				Expect(rp.Gossip().RelayPeers).To(HaveLen(2))
+				Expect(rp.Gossip().BroadcastPeers).To(HaveLen(2))
 			})
 		})
 

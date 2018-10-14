@@ -290,6 +290,29 @@ var _ = Describe("Peer Manager", func() {
 
 	})
 
+	Describe(".RandomPeers", func() {
+
+		var peer1, peer2, peer3 *node.Node
+		var mgr *node.Manager
+
+		BeforeEach(func() {
+			mgr = lp.PM()
+			mgr.SetLocalNode(lp)
+			peer1 = emptyNodeWithLastSeenTime(time.Now())
+			peer2 = emptyNodeWithLastSeenTime(time.Now())
+			peer3 = emptyNodeWithLastSeenTime(time.Now())
+			mgr.SetPeers(map[string]types.Engine{
+				"peer1": peer1,
+				"peer2": peer2,
+				"peer3": peer3,
+			})
+		})
+
+		It("", func() {
+			
+		})
+	})
+
 	Describe(".GetActivePeers", func() {
 
 		var peer1, peer2, peer3 *node.Node

@@ -90,8 +90,6 @@ func (g *Gossip) OnTx(s net.Stream) {
 		return
 	}
 
-	// add transaction to the history cache using
-	// the key we created earlier
 	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	g.engine.event.Emit(EventTransactionProcessed)
@@ -110,9 +108,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 	for _, peer := range remotePeers {
 		historyKey := MakeTxHistoryKey(tx, peer)
 
-		// check if we have an history of sending
-		// or receiving this transaction from this
-		// remote peer. If yes, do not relay
 		if g.engine.history.HasMulti(historyKey...) {
 			continue
 		}
@@ -126,7 +121,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		defer c()
 		defer s.Close()
 
-		// write to the stream
 		if err := WriteStream(s, tx); err != nil {
 			s.Reset()
 			g.log.Debug("Tx message failed. failed to write to stream",
@@ -134,7 +128,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 			continue
 		}
 
-		// add new history
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++

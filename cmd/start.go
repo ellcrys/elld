@@ -226,6 +226,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.PingVersion, protocol.OnPing)
 	n.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)
 	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
+	n.SetProtocolHandler(config.IntroVersion, protocol.OnIntro)
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 	n.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
 	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)

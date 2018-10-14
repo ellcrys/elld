@@ -100,6 +100,16 @@ func (m *Manager) GetUnconnectedPeers() (peers []types.Engine) {
 	return
 }
 
+// GetConnectedPeers returns the connected peers
+func (m *Manager) GetConnectedPeers() (peers []types.Engine) {
+	for _, p := range m.GetActivePeers(0) {
+		if p.Connected() {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
 // Manage starts managing peer connections.
 // Load peers that were serialized and stored in database.
 // Start connection manager
@@ -113,15 +123,16 @@ func (m *Manager) Manage() {
 	}
 
 	go m.connMgr.Manage()
-	go m.periodicSelfAdvertisement(m.tickersDone)
-	go m.periodicCleanUp(m.tickersDone)
-	go m.periodicPingMsgs(m.tickersDone)
-	go m.periodicGetAddrMsg(m.tickersDone)
+	go m.doSelfAdvert(m.tickersDone)
+	go m.doCleanUp(m.tickersDone)
+	go m.doPingMsgs(m.tickersDone)
+	go m.doGetAddrMsg(m.tickersDone)
+	go m.doIntro(m.tickersDone)
 }
 
-// periodicGetAddrMsg sends "getaddr"
-// message to all known active peers
-func (m *Manager) periodicGetAddrMsg(done chan bool) {
+// doGetAddrMsg periodically sends wire.GetAddr
+// message to all active peers
+func (m *Manager) doGetAddrMsg(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
 	for {
 		select {
@@ -134,9 +145,9 @@ func (m *Manager) periodicGetAddrMsg(done chan bool) {
 	}
 }
 
-// periodicPingMsgs sends "ping" messages to all peers
-// as a basic health check routine.
-func (m *Manager) periodicPingMsgs(done chan bool) {
+// doPingMsgs periodically sends wire.Ping
+// messages to all peers.
+func (m *Manager) doPingMsgs(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.PingInterval) * time.Second)
 	for {
 		select {
@@ -149,20 +160,18 @@ func (m *Manager) periodicPingMsgs(done chan bool) {
 	}
 }
 
-// periodicSelfAdvertisement send an Addr message containing only the
-// local peer address to all connected peers
-func (m *Manager) periodicSelfAdvertisement(done chan bool) {
+// doSelfAdvert periodically send an wire.Addr
+// message containing only the local peer's
+// address to all connected peers.
+func (m *Manager) doSelfAdvert(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
-			connectedPeers := []types.Engine{}
-			for _, p := range m.GetPeers() {
-				if p.Connected() {
-					connectedPeers = append(connectedPeers, p)
-				}
+			peers := m.GetConnectedPeers()
+			if len(peers) > 0 {
+				m.localNode.gProtoc.SelfAdvertise(peers)
 			}
-			m.localNode.gProtoc.SelfAdvertise(connectedPeers)
 			m.CleanPeers()
 		case <-done:
 			ticker.Stop()
@@ -171,15 +180,34 @@ func (m *Manager) periodicSelfAdvertisement(done chan bool) {
 	}
 }
 
-// periodicCleanUp performs peer clean up such as
-// removing old know peers.
-func (m *Manager) periodicCleanUp(done chan bool) {
+// doCleanUp periodically cleans the peer list,
+// removing inactive peers.
+func (m *Manager) doCleanUp(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.CleanUpInterval) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
 			nCleaned := m.CleanPeers()
-			m.log.Debug("Cleaned up old peers", "NumKnownPeers", len(m.peers), "NumPeersCleaned", nCleaned)
+			m.log.Debug("Cleaned up old peers",
+				"NumKnownPeers", len(m.peers),
+				"NumPeersCleaned", nCleaned)
+		case <-done:
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+// doIntro periodically sends out wire.Intro messages
+func (m *Manager) doIntro(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			peers := m.GetConnectedPeers()
+			if len(peers) > 0 {
+				m.localNode.gProtoc.SendIntro(nil)
+			}
 		case <-done:
 			ticker.Stop()
 			return

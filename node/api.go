@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/base64"
+	"fmt"
 
 	"github.com/ellcrys/elld/config"
 
@@ -144,14 +145,18 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(nil)
 }
 
-// apiNumConnections returns the
+// apiNetInfo returns the
 // number of peers connected to
-func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
+func (n *Node) apiNetInfo(arg interface{}) *jsonrpc.Response {
 	var connsInfo = n.peerManager.connMgr.GetConnsCount()
+	for _, i := range n.intros.Keys() {
+		fmt.Println(n.intros.Get(i), i)
+	}
 	var result = map[string]int{
 		"total":    connsInfo.Outbound + connsInfo.Inbound,
 		"inbound":  connsInfo.Inbound,
 		"outbound": connsInfo.Outbound,
+		"intros":   n.CountIntros(),
 	}
 	return jsonrpc.Success(result)
 }
@@ -308,10 +313,10 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Private:     true,
 			Func:        n.apiAddPeer,
 		},
-		"numConnections": {
+		"counts": {
 			Namespace:   core.NamespaceNet,
-			Description: "Get number of active connections",
-			Func:        n.apiNumConnections,
+			Description: "Get number connections and network nodes",
+			Func:        n.apiNetInfo,
 		},
 		"getPeers": {
 			Namespace:   core.NamespaceNet,

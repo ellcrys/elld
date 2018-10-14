@@ -22,7 +22,9 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	resp := &wire.Addr{}
 	if err := ReadStream(s, resp); err != nil {
-		g.log.Debug("Failed to read Addr response response", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Debug("Failed to read Addr response response",
+			"Err", err,
+			"PeerID", remotePeerIDShort)
 		return nil, fmt.Errorf("failed to read Addr response: %s", err)
 	}
 
@@ -32,7 +34,9 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 	// addresses does not exceed the
 	// maximum address expected
 	if int64(len(resp.Addresses)) > g.engine.cfg.Node.MaxAddrsExpected {
-		g.log.Debug("Too many addresses received. Ignoring addresses", "PeerID", remotePeerIDShort, "NumAddrReceived", len(resp.Addresses))
+		g.log.Debug("Too many addresses received. Ignoring addresses",
+			"PeerID", remotePeerIDShort,
+			"NumAddrReceived", len(resp.Addresses))
 		return nil, fmt.Errorf("too many addresses received. Ignoring addresses")
 	}
 
@@ -79,7 +83,8 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	// check whether we are are allowed to
 	//  interact with the remote peer
 	if ok, err := g.engine.canAcceptPeer(remotePeer); !ok {
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", err.Error()),
+		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s",
+			err.Error()),
 			"Addr", remotePeer.GetAddress(), "Msg", "GetAddr")
 		return
 	}
@@ -92,9 +97,8 @@ func (g *Gossip) OnAddr(s net.Stream) {
 		return
 	}
 
-	// As long as we have more that one
-	// address, we should attempt to relay
-	// it/them to other peers
+	// As long as we have more that one address,
+	// we should attempt to relay them to other peers
 	if len(addresses) > 0 {
 		go g.RelayAddresses(addresses)
 	}
@@ -102,24 +106,18 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	g.engine.event.Emit(EventAddrProcessed)
 }
 
-// SelectRelayPeers returns two random remote
-// nodes to broadcast wire.Addr messages to.
-// These peers are selected from the given
-// candidate addresses.
-// The selected peers are cached for up to
-// 24 hours after which the peers are
-// reselected.
-func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
+// PickBroadcastPeers selects N random addresses from
+// the given slice of addresses and caches them such
+// that, they are returned on subsequent calls.
+// The cache expires after 24 hours.
+func (g *Gossip) PickBroadcastPeers(addresses []*wire.Address, n int) []*Node {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
 	now := time.Now().UTC()
 
-	// If the last time we selected the peers
-	// have not surpassed 24 hours, return the
-	// last selected peers
-	if !g.relayPeerSelectedAt.Add(24 * time.Hour).Before(now) {
-		return g.RelayPeers
+	if !g.lastBroadcastPeersSelectedAt.Add(24 * time.Hour).Before(now) {
+		return g.BroadcastPeers
 	}
 
 	type addrInfo struct {
@@ -129,7 +127,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 	}
 
 	var candidatesInfo []addrInfo
-	for _, c := range candidates {
+	for _, c := range addresses {
 
 		// Make sure the address isn't the same
 		// as the address of the local node
@@ -138,7 +136,7 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 		}
 
 		// We need to get a numeric representation
-		// of the address. Preferable as big.Int
+		// of the address
 		addrHash := util.Blake2b256([]byte(c.Address))
 		addrBigInt := new(big.Int).SetBytes(addrHash)
 
@@ -151,33 +149,30 @@ func (g *Gossip) SelectRelayPeers(candidates []*wire.Address) []*Node {
 		})
 	}
 
-	// sort the filtered candidates
-	// in ascending order.
+	// sort the filtered candidates in ascending order.
 	sort.Slice(candidatesInfo, func(i, j int) bool {
 		return candidatesInfo[i].hash.Cmp(candidatesInfo[j].hash) == -1
 	})
 
-	// Clear the relay peer cache if we
-	// have at least 2 candidates
-	if len(candidatesInfo) >= 2 {
-		g.RelayPeers = []*Node{}
+	// Clear the cache if we have at least N cached
+	if len(candidatesInfo) >= n {
+		g.BroadcastPeers = []*Node{}
 	}
 
-	// Create an remote engine object
-	// from the first 2 addresses.
+	// Create a remote engine object from the first N addresses.
 	for _, info := range candidatesInfo {
-		n, _ := g.engine.NodeFromAddr(info.address, true)
-		n.lastSeen = time.Unix(info.timestamp, 0)
-		g.RelayPeers = append(g.RelayPeers, n)
-		if len(g.RelayPeers) == 2 {
+		node, _ := g.engine.NodeFromAddr(info.address, true)
+		node.lastSeen = time.Unix(info.timestamp, 0)
+		g.BroadcastPeers = append(g.BroadcastPeers, node)
+		if len(g.BroadcastPeers) == n {
 			break
 		}
 	}
 
-	// Update the relay peer selection time
-	g.relayPeerSelectedAt = time.Now().UTC()
+	// Update the selection time
+	g.lastBroadcastPeersSelectedAt = time.Now().UTC()
 
-	return g.RelayPeers
+	return g.BroadcastPeers
 
 }
 
@@ -253,7 +248,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 	// select two peers from the list of
 	// relayable peers that we will send the addresses to
-	relayPeers := g.SelectRelayPeers(relayable)
+	relayPeers := g.PickBroadcastPeers(relayable, 2)
 
 	g.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable),
 		"RelayPeers", len(relayPeers))
@@ -303,7 +298,6 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 		g.PM().UpdateLastSeenTime(remotePeer)
 
-		// add new history
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		relayed++

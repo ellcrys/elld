@@ -145,3 +145,14 @@ type BlockBodies struct {
 type GetBlockBodies struct {
 	Hashes []util.Hash
 }
+
+// Intro represents a message describing a peer's ID.
+type Intro struct {
+	PeerID string `json:"id" msgpack:"id"`
+}
+
+// Hash returns the hash representation
+func (m *Intro) Hash() util.Hash {
+	bs := util.ObjectToBytes([]interface{}{m.PeerID})
+	return util.BytesToHash(util.Blake2b256(bs))
+}

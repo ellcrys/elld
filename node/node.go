@@ -87,6 +87,7 @@ type Node struct {
 	syncing             bool                // Indicates the process of syncing the blockchain with peers
 	acquainted          bool                // Indicates that the node has "handshooked" the local node
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
+	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
 }
 
@@ -137,6 +138,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string,
 		txsRelayQueue:  txpool.NewQueueNoSort(config.TxPool.Capacity),
 		blockHashQueue: lane.NewDeque(),
 		history:        cache.NewActiveCache(5000),
+		intros:         cache.NewActiveCache(50000),
 		tickerDone:     make(chan bool),
 		createdAt:      time.Now().UTC(),
 	}
@@ -456,12 +458,19 @@ func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
 }
 
+// CountIntros counts the number of
+// intros received
+func (n *Node) CountIntros() int {
+	return n.intros.Len()
+}
+
 // canAcceptPeer determines whether we
 // can continue to interact with a
 // remote node. This is a good place
 // to check if a remote node has been
 // blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
+
 	// In non-production mode, we cannot
 	// interact with a remote peer
 	// with a public IP
