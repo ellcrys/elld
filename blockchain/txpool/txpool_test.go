@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
@@ -154,7 +155,7 @@ var _ = Describe("TxPool", func() {
 
 		It("should return expected byte size", func() {
 			s := tp.ByteSize()
-			Expect(s).To(Equal(tx.SizeNoFee() + tx2.SizeNoFee()))
+			Expect(s).To(Equal(tx.GetSizeNoFee() + tx2.GetSizeNoFee()))
 		})
 
 		When("a transaction is removed", func() {
@@ -163,19 +164,52 @@ var _ = Describe("TxPool", func() {
 
 			BeforeEach(func() {
 				curByteSize = tp.ByteSize()
-				Expect(curByteSize).To(Equal(tx.SizeNoFee() + tx2.SizeNoFee()))
+				Expect(curByteSize).To(Equal(tx.GetSizeNoFee() + tx2.GetSizeNoFee()))
 			})
 
 			It("should reduce the byte size when First is called", func() {
 				rmTx := tp.container.First()
 				s := tp.ByteSize()
-				Expect(s).To(Equal(curByteSize - rmTx.SizeNoFee()))
+				Expect(s).To(Equal(curByteSize - rmTx.GetSizeNoFee()))
 			})
 
 			It("should reduce the byte size when Last is called", func() {
 				rmTx := tp.container.Last()
 				s := tp.ByteSize()
-				Expect(s).To(Equal(curByteSize - rmTx.SizeNoFee()))
+				Expect(s).To(Equal(curByteSize - rmTx.GetSizeNoFee()))
+			})
+		})
+	})
+
+	Describe(".clean", func() {
+
+		var tx, tx2 core.Transaction
+		var tp *TxPool
+
+		Context("when TxTTL is 1 day", func() {
+
+			BeforeEach(func() {
+				params.TxTTL = 1
+				tp = New(2)
+
+				tx = objects.NewTransaction(objects.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+				tx.SetHash(util.StrToHash("hash1"))
+				tx.SetTimestamp(time.Now().UTC().AddDate(0, 0, -2).Unix())
+
+				tx2 = objects.NewTransaction(objects.TxTypeBalance, 101, "something2", util.String("abc"), "0", "0", time.Now().Unix())
+				tx2.SetHash(util.StrToHash("hash2"))
+				tx2.SetTimestamp(time.Now().Unix())
+
+				tp.container.Add(tx)
+				tp.container.Add(tx2)
+				Expect(tp.Size()).To(Equal(int64(2)))
+			})
+
+			It("should remove expired transaction", func() {
+				tp.clean()
+				Expect(tp.Size()).To(Equal(int64(1)))
+				Expect(tp.Has(tx2)).To(BeTrue())
+				Expect(tp.Has(tx)).To(BeFalse())
 			})
 		})
 	})
@@ -205,8 +239,8 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should remove the transactions included in the block", func() {
-			block := &objects.Block{Transactions: []*objects.Transaction{tx2, tx3}}
-			tp.removeTransactionsInBlock(block)
+			txs := []core.Transaction{tx2, tx3}
+			tp.remove(txs...)
 			Expect(tp.Size()).To(Equal(int64(1)))
 			Expect(tp.container.container[0].Tx).To(Equal(tx))
 		})

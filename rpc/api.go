@@ -3,9 +3,10 @@ package rpc
 import (
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 )
 
-func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
+func (s *Server) apiRPCAuth(params interface{}) *jsonrpc.Response {
 
 	p, ok := params.(map[string]interface{})
 	if !ok {
@@ -24,13 +25,37 @@ func (s *Server) rpcAuth(params interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(token)
 }
 
+func (s *Server) apiRPCStop(params interface{}) *jsonrpc.Response {
+	s.Stop()
+	return jsonrpc.Success("stopped")
+}
+
+func (s *Server) apiRPCEcho(params interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(params)
+}
+
 // APIs returns all API handlers
 func (s *Server) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+
+		// namespace: "admin"
 		"auth": {
-			Namespace:   "admin",
+			Namespace:   core.NamespaceAdmin,
 			Description: "Get a session token",
-			Func:        s.rpcAuth,
+			Func:        s.apiRPCAuth,
+		},
+
+		// namespace: "rpc"
+		"stop": {
+			Private:     true,
+			Namespace:   core.NamespaceRPC,
+			Description: "Get a session token",
+			Func:        s.apiRPCStop,
+		},
+		"echo": {
+			Namespace:   core.NamespaceRPC,
+			Description: "Sends back the parameter passed to it",
+			Func:        s.apiRPCEcho,
 		},
 	}
 }

@@ -23,7 +23,7 @@ const (
 // MethodInfo describe an RPC method info
 type MethodInfo struct {
 	Name        string `json:"name"`
-	Namespace   string `json:"namespace"`
+	Namespace   string `json:"-"`
 	Description string `json:"description"`
 	Private     bool   `json:"private"`
 }
@@ -193,6 +193,8 @@ func (s *JSONRPC) Methods() (methodsInfo []MethodInfo) {
 // Serve starts the server
 func (s *JSONRPC) Serve() {
 
+	s.done = make(chan bool)
+
 	r := mux.NewRouter()
 	server := rpc.NewServer()
 	server.RegisterCodec(json2.NewCodec(), "application/json")
@@ -232,14 +234,14 @@ func (s *JSONRPC) Stop() {
 func (s *JSONRPC) MergeAPISet(apiSets ...APISet) {
 	for _, set := range apiSets {
 		for k, v := range set {
-			s.apiSet[k] = v
+			s.apiSet[v.Namespace+"_"+k] = v
 		}
 	}
 }
 
 // AddAPI adds an API to s api set
 func (s *JSONRPC) AddAPI(name string, api APIInfo) {
-	s.apiSet[name] = api
+	s.apiSet[api.Namespace+"_"+name] = api
 }
 
 // handle processes incoming requests. It validates

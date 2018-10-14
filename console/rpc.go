@@ -94,25 +94,3 @@ func (e *Executor) startRPCServer() {
 		e.console.Prepare()
 	}()
 }
-
-// isRPCServerStarted checks whether the RPC
-// server has started. Intended to be
-// called in the JS environment.
-// It will panic if console is in attach mode
-func (e *Executor) isRPCServerStarted() bool {
-	if e.console.attached {
-		panic(e.vm.MakeCustomError("AttachError", "not applicable in attach mode"))
-	}
-	return e.rpcServer.IsStarted()
-}
-
-// stopRPC checks whether the RPC
-// server has started. Intended to be
-// called in the JS environment.
-// It will panic if console is in attach mode
-func (e *Executor) stopRPCServer() {
-	if e.console.attached {
-		panic(e.vm.MakeCustomError("AttachError", "not applicable in attach mode"))
-	}
-	e.rpcServer.Stop()
-}

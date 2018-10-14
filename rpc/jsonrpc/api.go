@@ -1,8 +1,6 @@
 package jsonrpc
 
 import (
-	"strings"
-
 	"github.com/ellcrys/elld/util"
 )
 
@@ -38,16 +36,9 @@ type APISet map[string]APIInfo
 // Get gets an API function by name
 // and namespace
 func (a APISet) Get(name string) *APIInfo {
-	nameParts := strings.Split(name, "_")
-
-	if len(nameParts) != 2 {
-		return nil
-	}
-
-	if api, ok := a[nameParts[1]]; ok && api.Namespace == nameParts[0] {
+	if api, ok := a[name]; ok {
 		return &api
 	}
-
 	return nil
 }
 

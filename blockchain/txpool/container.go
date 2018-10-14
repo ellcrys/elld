@@ -107,14 +107,14 @@ func (q *TxContainer) Add(tx core.Transaction) bool {
 
 	// Calculate the transaction's fee rate
 	// formula: tx fee / size
-	txSizeDec := decimal.NewFromBigInt(new(big.Int).SetInt64(tx.SizeNoFee()), 0)
+	txSizeDec := decimal.NewFromBigInt(new(big.Int).SetInt64(tx.GetSizeNoFee()), 0)
 	item.FeeRate = util.String(tx.GetFee().Decimal().Div(txSizeDec).StringFixed(params.Decimals))
 
 	q.gmx.Lock()
 	q.container = append(q.container, item)
 	q.index[tx.GetHash().HexStr()] = struct{}{}
 	q.len++
-	q.byteSize += tx.SizeNoFee()
+	q.byteSize += tx.GetSizeNoFee()
 	q.gmx.Unlock()
 
 	if !q.noSorting {
@@ -152,7 +152,7 @@ func (q *TxContainer) First() core.Transaction {
 	item := q.container[0]
 	q.container = q.container[1:]
 	delete(q.index, item.Tx.GetHash().HexStr())
-	q.byteSize -= item.Tx.SizeNoFee()
+	q.byteSize -= item.Tx.GetSizeNoFee()
 	q.len--
 	return item.Tx
 }
@@ -172,7 +172,7 @@ func (q *TxContainer) Last() core.Transaction {
 	item := q.container[lastIndex]
 	q.container = q.container[0:lastIndex]
 	delete(q.index, item.Tx.GetHash().HexStr())
-	q.byteSize -= item.Tx.SizeNoFee()
+	q.byteSize -= item.Tx.GetSizeNoFee()
 	q.len--
 	return item.Tx
 }
@@ -222,26 +222,15 @@ func (q *TxContainer) IFind(predicate func(core.Transaction) bool) core.Transact
 	return nil
 }
 
-// Remove removes a transaction
-func (q *TxContainer) Remove(txs ...core.Transaction) {
-
-	// Filter out the transactions that
-	// do not exists in the container
-	filteredTxs := funk.Filter(txs, func(tx core.Transaction) bool {
-		return q.Has(tx)
-	})
-
-	q.gmx.Lock()
-	defer q.gmx.Unlock()
-
-	// Remove transactions that are present
-	// in the filtered txs
+// remove removes a transaction.
+// Note: Not thread-safe
+func (q *TxContainer) remove(txs ...core.Transaction) {
 	finalTxs := funk.Filter(q.container, func(o *ContainerItem) bool {
-		if funk.Find(filteredTxs.([]core.Transaction), func(tx core.Transaction) bool {
+		if funk.Find(txs, func(tx core.Transaction) bool {
 			return o.Tx.GetHash().Equal(tx.GetHash())
 		}) != nil {
 			delete(q.index, o.Tx.GetHash().HexStr())
-			q.byteSize -= o.Tx.SizeNoFee()
+			q.byteSize -= o.Tx.GetSizeNoFee()
 			q.len--
 			return false
 		}
@@ -249,4 +238,11 @@ func (q *TxContainer) Remove(txs ...core.Transaction) {
 	})
 
 	q.container = finalTxs.([]*ContainerItem)
+}
+
+// Remove removes a transaction
+func (q *TxContainer) Remove(txs ...core.Transaction) {
+	q.gmx.Lock()
+	defer q.gmx.Unlock()
+	q.remove(txs...)
 }

@@ -81,8 +81,12 @@ func (s *Server) IsStarted() bool {
 func (s *Server) Stop() {
 	s.Lock()
 	defer s.Unlock()
+	if !s.started {
+		return
+	}
 	s.rpc.Stop()
 	s.started = false
+	s.log.Info("RPC service has stopped")
 }
 
 // AddAPI adds one or more API sets

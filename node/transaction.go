@@ -16,7 +16,7 @@ import (
 // MakeTxHistoryKey creates an history cache key
 // for recording a received/sent transaction
 func MakeTxHistoryKey(tx core.Transaction, peer types.Engine) []interface{} {
-	return []interface{}{tx.ID(), peer.StringID()}
+	return []interface{}{tx.GetID(), peer.StringID()}
 }
 
 // addTransaction adds a transaction to the transaction pool.
@@ -36,7 +36,7 @@ func (n *Node) addTransaction(tx core.Transaction) error {
 func (g *Gossip) OnTx(s net.Stream) {
 	defer s.Close()
 
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
 	msg := &objects.Transaction{}
@@ -66,12 +66,12 @@ func (g *Gossip) OnTx(s net.Stream) {
 
 	// Ignore the transaction if already
 	// in our transaction pool
-	if g.engine.transactionsPool.Has(msg) {
+	if g.engine.txsPool.Has(msg) {
 		return
 	}
 
 	// Validate the transaction and check whether
-	// it already exists in the transaction pool,
+	// it already exists in the transactions pool,
 	// main chain and side chains. If so, reject it
 	errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(),
 		g.engine.bchain).Validate()
@@ -90,19 +90,17 @@ func (g *Gossip) OnTx(s net.Stream) {
 		return
 	}
 
-	// add transaction to the history cache using
-	// the key we created earlier
 	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	g.engine.event.Emit(EventTransactionProcessed)
 
-	g.log.Info("Added new transaction to pool", "TxID", msg.ID())
+	g.log.Info("Added new transaction to pool", "TxID", msg.GetID())
 }
 
 // RelayTx relays transactions to peers
 func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error {
 
-	txID := util.String(tx.ID()).SS()
+	txID := util.String(tx.GetID()).SS()
 	sent := 0
 	g.log.Debug("Relaying transaction to peers",
 		"TxID", txID, "NumPeers", len(remotePeers))
@@ -110,9 +108,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 	for _, peer := range remotePeers {
 		historyKey := MakeTxHistoryKey(tx, peer)
 
-		// check if we have an history of sending
-		// or receiving this transaction from this
-		// remote peer. If yes, do not relay
 		if g.engine.history.HasMulti(historyKey...) {
 			continue
 		}
@@ -126,7 +121,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		defer c()
 		defer s.Close()
 
-		// write to the stream
 		if err := WriteStream(s, tx); err != nil {
 			s.Reset()
 			g.log.Debug("Tx message failed. failed to write to stream",
@@ -134,7 +128,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 			continue
 		}
 
-		// add new history
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++

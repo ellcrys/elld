@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"sort"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -9,14 +11,16 @@ import (
 // CreateAccount creates an account
 // that is associated with the given block number
 // and chain.
-func (b *Blockchain) CreateAccount(blockNo uint64, chain core.Chainer, account core.Account) error {
+func (b *Blockchain) CreateAccount(blockNo uint64, chain core.Chainer,
+	account core.Account) error {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return chain.CreateAccount(blockNo, account)
 }
 
 // GetAccountNonce gets the nonce of an account
-func (b *Blockchain) GetAccountNonce(address util.String, opts ...core.CallOp) (uint64, error) {
+func (b *Blockchain) GetAccountNonce(address util.String,
+	opts ...core.CallOp) (uint64, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	account, err := b.GetAccount(address, opts...)
@@ -27,7 +31,8 @@ func (b *Blockchain) GetAccountNonce(address util.String, opts ...core.CallOp) (
 }
 
 // GetAccount gets an account by its address
-func (b *Blockchain) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
+func (b *Blockchain) GetAccount(address util.String,
+	opts ...core.CallOp) (core.Account, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	opt := common.GetChainerOp(opts...)
@@ -36,4 +41,36 @@ func (b *Blockchain) GetAccount(address util.String, opts ...core.CallOp) (core.
 		return nil, err
 	}
 	return account, nil
+}
+
+// ListAccounts list all accounts
+func (b *Blockchain) ListAccounts(opts ...core.CallOp) ([]core.Account, error) {
+
+	if b.bestChain == nil {
+		return nil, core.ErrBestChainUnknown
+	}
+
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+	return b.bestChain.GetAccounts(opts...)
+}
+
+// ListTopAccounts lists top n accounts
+func (b *Blockchain) ListTopAccounts(n int, opts ...core.CallOp) ([]core.Account, error) {
+	accounts, err := b.ListAccounts(opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Slice(accounts, func(i, j int) bool {
+		aI := accounts[i].GetBalance().Decimal()
+		aJ := accounts[j].GetBalance().Decimal()
+		return aI.GreaterThan(aJ)
+	})
+
+	if nAccts := len(accounts); nAccts < n {
+		n = nAccts
+	}
+
+	return accounts[:n], nil
 }

@@ -31,18 +31,20 @@ var _ = Describe("Address", func() {
 	Describe(".IsValidFullMultiaddr", func() {
 
 		It("Should return false for all cases ", func() {
-			falseCases := []string{"ip4/1.1.1.1", "/ip4/1.1.1.1", "/ip4/1.1.1.1/tcp/1234", "/ip4/1.1.1.1/tcp/1234/ipfs"}
+			falseCases := []string{"ip4/1.1.1.1", "/ip4/1.1.1.1",
+				"/ip4/1.1.1.1/tcp/1234", "/ip4/1.1.1.1/tcp/1234/ipfs"}
 			for _, c := range falseCases {
 				Expect(IsValidAddr(c)).To(BeFalse())
 			}
 		})
 
-		It("Should return true if address is /ip4/1.1.1.1/tcp/1234/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA", func() {
-			Expect(IsValidAddr("/ip4/1.1.1.1/tcp/1234/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA")).To(BeTrue())
+		It("Should return true if address is valid", func() {
+			addr := "/ip4/1.1.1.1/tcp/1234/ipfs/12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"
+			Expect(IsValidAddr(addr)).To(BeTrue())
 		})
 	})
 
-	Describe(".FullRemoteAddressFromStream", func() {
+	Describe(".RemoteAddrFromStream", func() {
 		var host host.Host
 
 		BeforeEach(func() {
@@ -51,12 +53,7 @@ var _ = Describe("Address", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("should return nil if nil is passed", func() {
-			addr := RemoteAddressFromStream(nil)
-			Expect(addr).To(BeNil())
-		})
-
-		It("should return /ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73", func() {
+		It("should return get address from stream", func() {
 			remoteHost, err := testutil.RandomHost(1234, 40101)
 			Expect(err).To(BeNil())
 			defer remoteHost.Close()
@@ -67,23 +64,19 @@ var _ = Describe("Address", func() {
 			Expect(err).To(BeNil())
 			defer host.Close()
 
-			addr := RemoteAddressFromStream(s)
-			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"))
+			addr := RemoteAddrFromStream(s)
+			expected := "/ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"
+			Expect(addr.String()).To(Equal(expected))
 		})
 	})
 
-	Describe(".FullRemoteAddressFromConn", func() {
+	Describe(".RemoteAddrFromConn", func() {
 		var host host.Host
 
 		BeforeEach(func() {
 			var err error
 			host, err = testutil.RandomHost(0, 40102)
 			Expect(err).To(BeNil())
-		})
-
-		It("should return nil if nil is passed", func() {
-			addr := FullRemoteAddressFromConn(nil)
-			Expect(addr).To(BeNil())
 		})
 
 		It("should return /ip4/127.0.0.1/tcp/40103/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73", func() {
@@ -97,24 +90,24 @@ var _ = Describe("Address", func() {
 			Expect(err).To(BeNil())
 			defer host.Close()
 
-			addr := FullRemoteAddressFromConn(s.Conn())
+			addr := RemoteAddrFromConn(s.Conn())
 			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40103/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"))
 		})
 	})
 
-	Describe(".FullAddressFromHost", func() {
+	Describe(".AddressFromHost", func() {
 		var host host.Host
 
-		It("should return nil when nil is passed", func() {
-			addr := FullAddressFromHost(nil)
-			Expect(addr).To(BeNil())
+		It("should return empty address when nil is passed", func() {
+			addr := AddressFromHost(nil)
+			Expect(addr).To(Equal(NodeAddr("")))
 		})
 
 		It("should return /ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42", func() {
 			var err error
 			host, err = testutil.RandomHost(12345, 40104)
 			Expect(err).To(BeNil())
-			addr := FullAddressFromHost(host)
+			addr := AddressFromHost(host)
 			Expect(addr.String()).To(Equal("/ip4/127.0.0.1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"))
 			host.Close()
 		})
@@ -207,6 +200,77 @@ var _ = Describe("Address", func() {
 			addr := "/ip6/::1/tcp/40104/ipfs/12D3KooWG7YTN3ADjgCqkxXMFQ5tdHUFVDGGU9tXfDHWUV4hUs42"
 			valid := IsRoutableAddr(addr)
 			Expect(valid).To(BeFalse())
+		})
+	})
+
+	Describe(".IsValidConnectionString", func() {
+
+		When("scheme is 'ell'", func() {
+			It("should return true for a valid connection string", func() {
+				str := "ell://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:9000"
+				Expect(IsValidConnectionString(str)).To(BeTrue())
+			})
+		})
+
+		When("scheme is 'ellcrys'", func() {
+			It("should return true for a valid connection string", func() {
+				str := "ellcrys://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:9000"
+				Expect(IsValidConnectionString(str)).To(BeTrue())
+			})
+		})
+
+		It("should return false for a valid connection string", func() {
+			str := "mysql://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:9000"
+			Expect(IsValidConnectionString(str)).To(BeFalse())
+		})
+
+		It("should return false for a valid connection string", func() {
+			str := "mysql://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:900a"
+			Expect(IsValidConnectionString(str)).To(BeFalse())
+		})
+	})
+
+	Describe(".ParseConnectionString", func() {
+		It("should return expected connection string data", func() {
+			str := "ell://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:9000"
+			expected := map[string]string{
+				"id":      "12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy",
+				"address": "127.0.0.1",
+				"port":    "9000",
+			}
+			Expect(ParseConnString(str)).To(Equal(expected))
+		})
+
+		It("should return nil if connection string is invalid", func() {
+			str := "stuff://"
+			Expect(ParseConnString(str)).To(BeNil())
+		})
+	})
+
+	Describe(".AddressFromConnectionString", func() {
+		It("should return empty NodeAddr if connection string is invalid", func() {
+			str := "stuff://"
+			Expect(AddressFromConnString(str)).To(Equal(NodeAddr("")))
+		})
+
+		Context("using an ip4 address", func() {
+			It("should return a valid NodeAddr", func() {
+				str := "ell://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:9000"
+				expected := NodeAddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy")
+				addr := AddressFromConnString(str)
+				Expect(addr).To(Equal(expected))
+				Expect(addr.IsValid()).To(BeTrue())
+			})
+		})
+
+		Context("using an ip6 address", func() {
+			It("should return a valid NodeAddr", func() {
+				str := "ell://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@[2607:f0d0:1002:0051:0000:0000:0000:0004]:80"
+				expected := NodeAddr("/ip6/2607:f0d0:1002:51::4/tcp/80/ipfs/12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy")
+				addr := AddressFromConnString(str)
+				Expect(addr).To(Equal(expected))
+				Expect(addr.IsValid()).To(BeTrue())
+			})
 		})
 	})
 })

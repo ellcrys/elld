@@ -49,8 +49,8 @@ type Addr struct {
 
 // Address represents a peer's address
 type Address struct {
-	Address   string `json:"address" msgpack:"address"`
-	Timestamp int64  `json:"timestamp" msgpack:"timestamp"`
+	Address   util.NodeAddr `json:"address" msgpack:"address"`
+	Timestamp int64         `json:"timestamp" msgpack:"timestamp"`
 }
 
 // Ping represents a ping message
@@ -109,8 +109,7 @@ type Reject struct {
 
 // RequestBlock represents a message requesting for a block
 type RequestBlock struct {
-	Hash   string `json:"hash" msgpack:"hash"`
-	Number uint64 `json:"number" msgpack:"number"`
+	Hash string `json:"hash" msgpack:"hash"`
 }
 
 // GetBlockHashes represents a message requesting
@@ -145,4 +144,15 @@ type BlockBodies struct {
 // belonging to the given hashes
 type GetBlockBodies struct {
 	Hashes []util.Hash
+}
+
+// Intro represents a message describing a peer's ID.
+type Intro struct {
+	PeerID string `json:"id" msgpack:"id"`
+}
+
+// Hash returns the hash representation
+func (m *Intro) Hash() util.Hash {
+	bs := util.ObjectToBytes([]interface{}{m.PeerID})
+	return util.BytesToHash(util.Blake2b256(bs))
 }

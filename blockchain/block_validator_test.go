@@ -11,6 +11,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
@@ -59,7 +60,30 @@ var _ = Describe("BlockValidator", func() {
 		Expect(err).To(BeNil())
 	})
 
-	Describe(".checkFields", func() {
+	Describe(".CheckSize", func() {
+
+		var curMaxBlockNonTxsSize, curMaxBlockTxsSize int64
+
+		BeforeEach(func() {
+			curMaxBlockNonTxsSize = params.MaxBlockNonTxsSize
+			curMaxBlockTxsSize = params.MaxBlockTxsSize
+		})
+
+		AfterEach(func() {
+			params.MaxBlockNonTxsSize = curMaxBlockNonTxsSize
+			params.MaxBlockTxsSize = curMaxBlockTxsSize
+		})
+
+		It("should return error if block size is exceeded", func() {
+			params.MaxBlockNonTxsSize = 1
+			params.MaxBlockTxsSize = 1
+			block := MakeBlock(bc, genesisChain, sender, receiver)
+			errs := NewBlockValidator(block, nil, nil, cfg, log).CheckSize()
+			Expect(errs).To(ContainElement(fmt.Errorf("block size exceeded")))
+		})
+	})
+
+	Describe(".CheckFields", func() {
 
 		Context("when block is nil", func() {
 			It("should return error", func() {
@@ -213,27 +237,67 @@ var _ = Describe("BlockValidator", func() {
 	})
 
 	Describe(".CheckTransactions", func() {
-		Context("when a sender X's current nonce is 1", func() {
-			Context("and X has two transactions with nonce 2 and 3", func() {
-				var block core.Block
-				BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
-						},
-						Creator:           sender,
-						Nonce:             util.EncodeNonce(1),
-						Difficulty:        new(big.Int).SetInt64(131136),
-						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+
+		Context("core.ContextBlock is set", func() {
+			Context("when ContextBlockSync is not set", func() {
+				Context("when transaction does not exist in pool", func() {
+					var block core.Block
+					BeforeEach(func() {
+						block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions: []core.Transaction{
+								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
+							},
+							Creator:           sender,
+							Nonce:             util.EncodeNonce(1),
+							Difficulty:        new(big.Int).SetInt64(131136),
+							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+						})
+					})
+
+					It("should return error", func() {
+						tp := txpool.New(1)
+						validator := NewBlockValidator(block, tp, bc, cfg, log)
+						validator.setContext(core.ContextBlock)
+						errs := validator.CheckTransactions()
+						Expect(errs).To(HaveLen(1))
+						err := fmt.Errorf("tx:0, error:transaction does not" +
+							" exist in the transactions pool")
+						Expect(errs).To(ContainElement(err))
 					})
 				})
 
-				It("should return error no error", func() {
-					validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
-					validator.setContext(ContextBlock)
-					errs := validator.CheckTransactions()
-					Expect(errs).To(HaveLen(0))
+				Context("when a sender X's current nonce is 1", func() {
+
+					var txs []core.Transaction
+					var block core.Block
+
+					BeforeEach(func() {
+						now := time.Now().Unix()
+						txs = []core.Transaction{
+							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", now),
+							objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.4", now),
+						}
+						for _, tx := range txs {
+							bc.txPool.Put(tx)
+						}
+
+						block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							Transactions:      txs,
+							Creator:           sender,
+							Nonce:             util.EncodeNonce(1),
+							Difficulty:        new(big.Int).SetInt64(131136),
+							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+						})
+					})
+
+					Context("and X has two transactions with nonce 2 and 3", func() {
+						It("should return error no error", func() {
+							validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
+							validator.setContext(core.ContextBlock)
+							errs := validator.CheckTransactions()
+							Expect(errs).To(HaveLen(0))
+						})
+					})
 				})
 			})
 		})

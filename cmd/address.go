@@ -40,7 +40,7 @@ var addressCmd = &cobra.Command{
 
 // addressNewCmd represents the address command
 var addressNewCmd = &cobra.Command{
-	Use:   "new",
+	Use:   "create",
 	Short: "Create a new address",
 	Long:  `Create a new address`,
 	Run: func(cmd *cobra.Command, args []string) {

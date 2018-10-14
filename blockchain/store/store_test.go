@@ -183,7 +183,7 @@ var _ = Describe("Store", func() {
 			})
 		})
 
-		Context("with multiple account of same address", func() {
+		Context("with multiple account of same address but different block number", func() {
 
 			var acct, acct2 *objects.Account
 
@@ -241,6 +241,134 @@ var _ = Describe("Store", func() {
 				})
 			})
 		})
+	})
+
+	Describe(".GetAccounts", func() {
+		Context("when two accounts are stored", func() {
+
+			var acct, acct2 *objects.Account
+
+			BeforeEach(func() {
+				acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+				err = store.CreateAccount(1, acct)
+				Expect(err).To(BeNil())
+
+				acct2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr2"}
+				err = store.CreateAccount(2, acct2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return two accounts", func() {
+				result, err := store.GetAccounts()
+				Expect(err).To(BeNil())
+				Expect(result).To(HaveLen(2))
+			})
+		})
+
+		Context("with two accounts of same address at different blocks", func() {
+			var acct, acct2 *objects.Account
+
+			BeforeEach(func() {
+				acct = &objects.Account{Type: objects.AccountTypeBalance,
+					Balance: "1", Address: "addr"}
+				err = store.CreateAccount(1, acct)
+				Expect(err).To(BeNil())
+
+				acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+					Balance: "2", Address: "addr"}
+				err = store.CreateAccount(2, acct2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return one account", func() {
+				result, err := store.GetAccounts()
+				Expect(err).To(BeNil())
+				Expect(result).To(HaveLen(1))
+			})
+
+			It("should return the account at the highest block", func() {
+				result, err := store.GetAccounts()
+				Expect(err).To(BeNil())
+				Expect(result[0].GetBalance().String()).To(Equal("2"))
+			})
+		})
+
+		Context("Using BlockRange", func() {
+			Context("with minimum = 2", func() {
+				Context("with two accounts of same address at different blocks", func() {
+					var acct, acct2 *objects.Account
+
+					BeforeEach(func() {
+						acct = &objects.Account{Type: objects.AccountTypeBalance,
+							Balance: "1", Address: "addr"}
+						err = store.CreateAccount(1, acct)
+						Expect(err).To(BeNil())
+
+						acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+							Balance: "2", Address: "addr"}
+						err = store.CreateAccount(2, acct2)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return one account", func() {
+						result, err := store.GetAccounts(&common.BlockQueryRange{Min: 2})
+						Expect(err).To(BeNil())
+						Expect(result).To(HaveLen(1))
+						Expect(result[0].GetBalance().String()).To(Equal("2"))
+					})
+				})
+			})
+
+			Context("with maximum = 3", func() {
+				Context("with two accounts of different address at block 1 and 3 respectively", func() {
+					var acct, acct2 *objects.Account
+
+					BeforeEach(func() {
+						acct = &objects.Account{Type: objects.AccountTypeBalance,
+							Balance: "1", Address: "addr"}
+						err = store.CreateAccount(1, acct)
+						Expect(err).To(BeNil())
+
+						acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+							Balance: "30", Address: "addr2"}
+						err = store.CreateAccount(3, acct2)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return one account", func() {
+						result, err := store.GetAccounts(&common.BlockQueryRange{Max: 3})
+						Expect(err).To(BeNil())
+						Expect(result).To(HaveLen(2))
+					})
+				})
+			})
+
+			Context("with maximum = 4", func() {
+				Context("with two accounts of different address at block 1 and 5 respectively", func() {
+					var acct, acct2 *objects.Account
+
+					BeforeEach(func() {
+						acct = &objects.Account{Type: objects.AccountTypeBalance,
+							Balance: "1", Address: "addr"}
+						err = store.CreateAccount(1, acct)
+						Expect(err).To(BeNil())
+
+						acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+							Balance: "3", Address: "addr2"}
+						err = store.CreateAccount(5, acct2)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 1 account", func() {
+						result, err := store.GetAccounts(&common.BlockQueryRange{Max: 4})
+						Expect(err).To(BeNil())
+						Expect(result).To(HaveLen(1))
+						Expect(result[0].GetBalance().String()).To(Equal("1"))
+					})
+				})
+			})
+		})
+
 	})
 
 	Describe(".PutBlock", func() {

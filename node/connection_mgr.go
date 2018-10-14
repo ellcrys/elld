@@ -11,23 +11,31 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
+// ConnsInfo stores information about connections
+// such as the number of inbound and outbound
+// connections, etc
+type ConnsInfo struct {
+	Inbound  int
+	Outbound int
+}
+
 // ConnectionManager manages the active connections
 // ensuring the required number of connections at any given
 // time is maintained
 type ConnectionManager struct {
-	gmx        *sync.Mutex
+	sync.RWMutex
 	pm         *Manager
-	activeConn int64
 	log        logger.Logger
 	tickerDone chan bool
+	connsInfo  *ConnsInfo
 }
 
 // NewConnMrg creates a new connection manager
 func NewConnMrg(m *Manager, log logger.Logger) *ConnectionManager {
 	return &ConnectionManager{
-		pm:  m,
-		gmx: &sync.Mutex{},
-		log: log,
+		pm:        m,
+		log:       log,
+		connsInfo: &ConnsInfo{},
 	}
 }
 
@@ -36,21 +44,23 @@ func (m *ConnectionManager) Manage() {
 	go m.makeConnections(m.tickerDone)
 }
 
-// connectionCount returns the number of active connections
-func (m *ConnectionManager) connectionCount() int64 {
-	m.gmx.Lock()
-	defer m.gmx.Unlock()
-	return m.activeConn
+// SetConnsInfo sets the connections information.
+// Only used in tests.
+func (m *ConnectionManager) SetConnsInfo(info *ConnsInfo) {
+	m.connsInfo = info
 }
 
-// needMoreConnections checks whether the local peer needs new connections
-func (m *ConnectionManager) needMoreConnections() bool {
-	return m.connectionCount() < m.pm.config.Node.MaxConnections
+// GetConnsCount gets the inbound and outbound
+// connections count.
+func (m *ConnectionManager) GetConnsCount() *ConnsInfo {
+	m.RLock()
+	defer m.RUnlock()
+	return m.connsInfo
 }
 
 // makeConnections will attempt to send a handshake to
-// addresses that have not been connected to as long as the max
-// connection limit has not been reached
+// addresses that have not been connected to as long
+// as the max connection limit has not been reached
 func (m *ConnectionManager) makeConnections(done chan bool) {
 	dur := time.Duration(m.pm.config.Node.ConnEstInterval)
 	ticker := time.NewTicker(dur * time.Second)
@@ -73,31 +83,57 @@ func (m *ConnectionManager) makeConnections(done chan bool) {
 	}
 }
 
-// Listen is called when network starts listening on an address
-func (m *ConnectionManager) Listen(net.Network, ma.Multiaddr) {
+// Listen is called when hosts starts
+// listening on an address
+func (m *ConnectionManager) Listen(net.Network, ma.Multiaddr) {}
 
+// ListenClose is called when host stops
+// listening on an address
+func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {}
+
+// Connected is called when a connection is opened.
+// Check inbound and outbound connection count state
+// and close connections when limits are reached.
+func (m *ConnectionManager) Connected(n net.Network, conn net.Conn) {
+	m.Lock()
+	defer m.Unlock()
+
+	if conn.Stat().Direction == net.DirInbound {
+		m.connsInfo.Inbound++
+		if int64(m.connsInfo.Inbound) > m.pm.config.Node.MaxInboundConnections {
+			m.log.Debug("Closed inbound connection. Max. limit reached",
+				"MaxAllowed", m.pm.config.Node.MaxInboundConnections)
+			conn.Close()
+		}
+	}
+
+	if conn.Stat().Direction == net.DirOutbound {
+		m.connsInfo.Outbound++
+		if int64(m.connsInfo.Outbound) > m.pm.config.Node.MaxOutboundConnections {
+			m.log.Debug("Closed outbound connection. Max. limit reached",
+				"MaxAllowed", m.pm.config.Node.MaxOutboundConnections)
+			conn.Close()
+		}
+	}
 }
 
-// ListenClose is called when network stops listening on an address
-func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {
+// Disconnected is called when a connection is closed.
+// Update the connection count and inform the peer
+// manager of the disconnection event.
+func (m *ConnectionManager) Disconnected(n net.Network, conn net.Conn) {
 
-}
+	m.Lock()
+	if conn.Stat().Direction == net.DirInbound {
+		m.connsInfo.Inbound--
+	}
 
-// Connected is called when a connection is opened
-func (m *ConnectionManager) Connected(net net.Network, conn net.Conn) {
-	m.gmx.Lock()
-	defer m.gmx.Unlock()
-	m.activeConn++
-}
+	if conn.Stat().Direction == net.DirOutbound {
+		m.connsInfo.Outbound--
+	}
+	m.Unlock()
 
-// Disconnected is called when a connection is closed
-func (m *ConnectionManager) Disconnected(net net.Network, conn net.Conn) {
-	fullAddr := util.FullRemoteAddressFromConn(conn)
-	m.pm.OnPeerDisconnect(fullAddr)
-
-	m.gmx.Lock()
-	defer m.gmx.Unlock()
-	m.activeConn--
+	addr := util.RemoteAddrFromConn(conn)
+	m.pm.HasDisconnected(addr)
 }
 
 // OpenedStream is called when a stream is openned
@@ -111,5 +147,4 @@ func (m *ConnectionManager) OpenedStream(n net.Network, s net.Stream) {
 }
 
 // ClosedStream is called when a stream is openned
-func (m *ConnectionManager) ClosedStream(nt net.Network, s net.Stream) {
-}
+func (m *ConnectionManager) ClosedStream(nt net.Network, s net.Stream) {}

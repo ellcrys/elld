@@ -2,13 +2,13 @@ package node_test
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/util"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
@@ -110,21 +110,14 @@ var _ = Describe("Node Unit Test", func() {
 	})
 
 	Describe(".GetMultiAddr", func() {
-		It("should return empty string when node has no host", func() {
+
+		It("should return empty util.NodeAddr when node has no host", func() {
 			n := node.Node{}
-			Expect(n.GetMultiAddr()).To(Equal(""))
+			Expect(n.GetAddress()).To(Equal(util.NodeAddr("")))
 		})
 
-		// It("should return '/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw'", func() {
-		// 	Expect(n.GetMultiAddr()).To(Equal("/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw"))
-		// 	closeNode(n)
-		// })
-	})
-
-	Describe(".GetAddr", func() {
-		It("should return expected address'", func() {
-			Expect(n.GetAddr()).To(Equal(fmt.Sprintf("127.0.0.1:%d", lpPort)))
-			closeNode(n)
+		It("should return address", func() {
+			Expect(n.GetAddress()).ToNot(BeEmpty())
 		})
 	})
 
@@ -132,7 +125,7 @@ var _ = Describe("Node Unit Test", func() {
 		It("should return error if address is not valid", func() {
 			_, err := n.NodeFromAddr("/invalid", false)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("invalid address provided"))
+			Expect(err.Error()).To(Equal("invalid address (/invalid) provided"))
 		})
 	})
 
@@ -153,12 +146,6 @@ var _ = Describe("Node Unit Test", func() {
 		})
 	})
 
-	Describe(".GetIP4TCPAddr", func() {
-		It("should return expected address", func() {
-			Expect(n.GetIP4TCPAddr().String()).To(Equal(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", lpPort)))
-		})
-	})
-
 	Describe(".AddBootstrapNodes", func() {
 		Context("with empty address", func() {
 			It("peer manager's bootstrap list should be empty", func() {
@@ -176,7 +163,8 @@ var _ = Describe("Node Unit Test", func() {
 			It("peer manager's bootstrap list contain only one valid address", func() {
 				addresses := []string{
 					"/ip4/127.0.0.1/tcp/40000",
-					"/ip4/127.0.0.1/tcp/40000/ipfs/12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw",
+					"127.0.0.0:1",
+					"ellcrys://12D3KooWL3XJ9EMCyZvmmGXL2LMiVBtrVa2BuESsJiXkSj7333Jw@127.0.0.1:9000",
 				}
 				n.AddAddresses(addresses, false)
 				Expect(n.PM().GetPeers()).To(HaveLen(1))

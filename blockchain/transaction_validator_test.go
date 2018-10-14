@@ -63,119 +63,127 @@ var _ = Describe("TransactionValidator", func() {
 		var validator *TxsValidator
 
 		It("should return error if tx = nil", func() {
-			errs := validator.fieldsCheck(nil)
+			errs := validator.CheckFields(nil)
 			Expect(errs).To(HaveLen(1))
 			Expect(errs).To(ContainElement(fmt.Errorf("nil tx")))
 		})
 
 		It("should test all validation rules", func() {
 			var cases = map[core.Transaction]interface{}{
-				&objects.Transaction{Type: 0}:                                                                                                                    fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
-				&objects.Transaction{Type: objects.TxTypeBalance, Nonce: 0}:                                                                                      fmt.Errorf("index:0, field:to, error:recipient address is required"),
-				&objects.Transaction{To: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:                                                                       fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
-				&objects.Transaction{From: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:                                                                     fmt.Errorf("index:0, field:from, error:sender address is not valid"),
-				&objects.Transaction{To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}:                                                      fmt.Errorf("index:0, field:senderPubKey, error:sender public key is required"),
-				&objects.Transaction{SenderPubKey: "invalid", To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}:                             fmt.Errorf("index:0, field:senderPubKey, error:sender public key is not valid"),
-				&objects.Transaction{SenderPubKey: util.String(sender.PubKey().Base58()), To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:value, error:value is required"),
-				&objects.Transaction{Type: objects.TxTypeBalance, Value: "1oo"}:                                                                                  fmt.Errorf("index:0, field:value, error:could not convert to decimal"),
-				&objects.Transaction{Type: objects.TxTypeBalance, Value: "-10"}:                                                                                  fmt.Errorf("index:0, field:value, error:negative value not allowed"),
-				&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
-				&objects.Transaction{Type: objects.TxTypeBalance}:                                                                                                fmt.Errorf("index:0, field:fee, error:fee is required"),
-				&objects.Transaction{Type: objects.TxTypeBalance, Fee: "1oo"}:                                                                                    fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
-				&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.000001"}:                                                                               fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.440000000000000009159339953157541458494961261749267578125 (for 44 bytes)"),
-				&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:hash, error:hash is required"),
-				&objects.Transaction{Hash: util.StrToHash("incorrect")}:                                                                                          fmt.Errorf("index:0, field:hash, error:hash is not correct"),
-				&objects.Transaction{}:                                                                                                                           fmt.Errorf("index:0, field:sig, error:signature is required"),
+				&objects.Transaction{Type: 0}:                                                fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
+				&objects.Transaction{Type: objects.TxTypeBalance, Nonce: 0}:                  fmt.Errorf("index:0, field:to, error:recipient address is required"),
+				&objects.Transaction{To: "invalid", Type: objects.TxTypeBalance, Nonce: 0}:   fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
+				&objects.Transaction{From: "invalid", Type: objects.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:from, error:sender address is not valid"),
+				&objects.Transaction{To: util.String(sender.Addr()),
+					Type: objects.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:senderPubKey, error:sender public key is required"),
+				&objects.Transaction{SenderPubKey: "invalid", To: util.String(sender.Addr()),
+					Type: objects.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:senderPubKey, error:sender public key is not valid"),
+				&objects.Transaction{SenderPubKey: util.String(sender.PubKey().Base58()),
+					To: util.String(sender.Addr()), Type: objects.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:value, error:value is required"),
+				&objects.Transaction{Type: objects.TxTypeBalance, Value: "1oo"}:    fmt.Errorf("index:0, field:value, error:could not convert to decimal"),
+				&objects.Transaction{Type: objects.TxTypeBalance, Value: "-10"}:    fmt.Errorf("index:0, field:value, error:negative value not allowed"),
+				&objects.Transaction{}:                                             fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
+				&objects.Transaction{Type: objects.TxTypeBalance}:                  fmt.Errorf("index:0, field:fee, error:fee is required"),
+				&objects.Transaction{Type: objects.TxTypeBalance, Fee: "1oo"}:      fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
+				&objects.Transaction{Type: objects.TxTypeBalance, Fee: "0.000001"}: fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.440000000000000009159339953157541458494961261749267578125 (for 44 bytes)"),
+				&objects.Transaction{}:                                             fmt.Errorf("index:0, field:hash, error:hash is required"),
+				&objects.Transaction{Hash: util.StrToHash("incorrect")}:            fmt.Errorf("index:0, field:hash, error:hash is not correct"),
+				&objects.Transaction{}:                                             fmt.Errorf("index:0, field:sig, error:signature is required"),
 			}
 			for tx, err := range cases {
 				validator = NewTxsValidator([]core.Transaction{tx}, nil, bc)
-				errs := validator.fieldsCheck(tx)
+				errs := validator.CheckFields(tx)
 				Expect(errs).To(ContainElement(err))
 			}
 		})
 
-		Context("context checks", func() {
+		Describe(".Validate", func() {
 
-			var tx *objects.Transaction
-			var sender, receiver *crypto.Key
+			Context("when duplicate transactions exist", func() {
 
-			BeforeEach(func() {
-				sender = crypto.NewKeyFromIntSeed(1)
-				receiver = crypto.NewKeyFromIntSeed(1)
-				tx = &objects.Transaction{
-					Type:         objects.TxTypeBalance,
-					Nonce:        1,
-					To:           util.String(sender.Addr()),
-					From:         util.String(receiver.Addr()),
-					Value:        "10",
-					SenderPubKey: util.String(sender.PubKey().Base58()),
-					Fee:          "2.5",
-					Timestamp:    time.Now().Unix(),
-					Hash:         util.StrToHash("some_hash"),
-					Sig:          []byte("sig"),
-				}
-			})
-
-			Context("when block context is set", func() {
-				It("should not check transaction existence in the transaction pool", func() {
-					tx.Hash = tx.ComputeHash()
-					sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-					Expect(err).To(BeNil())
-					tx.Sig = sig
-
-					txp := txpool.New(1)
-					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-					validator.addContext(ContextBlock)
-					errs := validator.Validate()
-					Expect(errs).To(HaveLen(0))
-				})
-			})
-
-			Context("when branch context is set", func() {
-
-				var block2 core.Block
+				var txs []core.Transaction
 
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTx(bc, genesisChain, sender, sender, 1)
-					_, err := bc.ProcessBlock(block2)
-					Expect(err).To(BeNil())
+					txs = []core.Transaction{
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730723),
+						objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730723),
+					}
 				})
 
-				It("should not check transaction existence in the main chain", func() {
-					tx.Nonce = 2
-					tx.Hash = tx.ComputeHash()
-					sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
-					Expect(err).To(BeNil())
-					tx.Sig = sig
+				It("should return duplicate transaction error", func() {
+					txp := txpool.New(1)
+					validator = NewTxsValidator(txs, txp, bc)
+					errs := validator.Validate()
+					Expect(errs).To(ContainElement(fmt.Errorf("index:1, error:duplicate transaction")))
+				})
+			})
 
+			Context("context checks", func() {
+
+				var tx *objects.Transaction
+
+				BeforeEach(func() {
+					tx = objects.NewTx(objects.TxTypeBalance, 1,
+						util.String(sender.Addr()), sender, "1", "2.5", time.Now().Unix())
+					bc.txPool.Put(tx)
+				})
+
+				Context("when ContextBlock is set", func() {
+					It("should not check transaction existence in the transaction pool", func() {
+						validator = NewTxsValidator([]core.Transaction{tx}, bc.txPool, bc)
+						validator.addContext(core.ContextBlock)
+						errs := validator.Validate()
+						Expect(errs).To(HaveLen(0))
+					})
+				})
+
+				Context("when ContextBranch is set", func() {
+
+					var block2 core.Block
+
+					BeforeEach(func() {
+						block2 = MakeBlockWithSingleTx(bc, genesisChain, sender, sender, 1)
+						_, err := bc.ProcessBlock(block2)
+						Expect(err).To(BeNil())
+					})
+
+					It("should not check transaction existence in the main chain", func() {
+						tx.Nonce = 2
+						tx.Hash = tx.ComputeHash()
+						sig, err := objects.TxSign(tx, sender.PrivKey().Base58())
+						Expect(err).To(BeNil())
+						tx.Sig = sig
+
+						txp := txpool.New(1)
+						validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
+						validator.addContext(core.ContextBranch)
+						errs := validator.Validate()
+						Expect(errs).To(HaveLen(0))
+					})
+				})
+			})
+
+			Context("when a transaction is already on the main chain", func() {
+
+				var tx core.Transaction
+
+				BeforeEach(func() {
+					block := MakeBlockWithBalanceTx(bc, genesisChain, sender, sender)
+					_, err := bc.ProcessBlock(block)
+					Expect(err).To(BeNil())
+					tx = block.GetTransactions()[0]
+				})
+
+				It("should return error if transaction already exists in the main chain", func() {
 					txp := txpool.New(1)
 					validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-					validator.addContext(ContextBranch)
 					errs := validator.Validate()
-					Expect(errs).To(HaveLen(0))
+					Expect(errs).To(HaveLen(1))
+					Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in main chain")))
 				})
 			})
 		})
 
-		Context("when a transaction is already on the main chain", func() {
-
-			var tx core.Transaction
-
-			BeforeEach(func() {
-				block := MakeBlockWithBalanceTx(bc, genesisChain, sender, sender)
-				_, err := bc.ProcessBlock(block)
-				Expect(err).To(BeNil())
-				tx = block.GetTransactions()[0]
-			})
-
-			It("should return error if transaction already exists in the main chain", func() {
-				txp := txpool.New(1)
-				validator = NewTxsValidator([]core.Transaction{tx}, txp, bc)
-				errs := validator.Validate()
-				Expect(errs).To(HaveLen(1))
-				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:transaction already exist in main chain")))
-			})
-		})
 	})
 
 	Describe(".checkSignature", func() {
@@ -251,7 +259,7 @@ var _ = Describe("TransactionValidator", func() {
 				From:         util.String(sender.Addr()),
 				SenderPubKey: util.String(sender.PubKey().Base58()),
 				Value:        "10",
-				Timestamp:    1234567,
+				Timestamp:    time.Now().Unix(),
 				Fee:          "0.1",
 			}
 			tx.SetHash(tx.ComputeHash())
@@ -367,7 +375,7 @@ var _ = Describe("TransactionValidator", func() {
 			})
 		})
 
-		When("In ContextBlock validation context and a transaction's nonce is greater than expected", func() {
+		When("In core.ContextBlock validation context and a transaction's nonce is greater than expected", func() {
 
 			var tx2 core.Transaction
 
@@ -388,7 +396,7 @@ var _ = Describe("TransactionValidator", func() {
 			It("should return err='index:0, error:invalid nonce: has 2, wants 1'", func() {
 				txp := txpool.New(1)
 				validator := NewTxValidator(nil, txp, bc)
-				validator.addContext(ContextBlock)
+				validator.addContext(core.ContextBlock)
 				errs := validator.consistencyCheck(tx2)
 				Expect(errs).ToNot(BeEmpty())
 				Expect(errs).To(ContainElement(fmt.Errorf("index:0, error:invalid nonce: has 2, wants 1")))

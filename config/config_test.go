@@ -100,7 +100,7 @@ var _ = Describe("Configdir", func() {
 
 				defaultConfig = EngineConfig{
 					Node: &PeerConfig{
-						BootstrapNodes: []string{"127.0.0.1:4000"},
+						BootstrapAddresses: []string{"127.0.0.1:4000"},
 					},
 				}
 
@@ -114,7 +114,7 @@ var _ = Describe("Configdir", func() {
 				Expect(err).To(BeNil())
 				Expect(cfg).To(Equal(&EngineConfig{
 					Node: &PeerConfig{
-						BootstrapNodes: []string{"127.0.0.1:4000"},
+						BootstrapAddresses: []string{"127.0.0.1:4000"},
 					},
 				}))
 

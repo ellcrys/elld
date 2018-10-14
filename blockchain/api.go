@@ -50,8 +50,7 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	num, ok := arg.(float64)
@@ -79,8 +78,7 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 	defer b.chainLock.RUnlock()
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	hash, ok := arg.(string)
@@ -122,8 +120,7 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 // apiGetBestchain fetches the best chain
 func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	tip, err := b.bestChain.Current()
@@ -255,8 +252,7 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 	tx, err := b.GetTransaction(hash)
 	if err != nil {
 		if err != core.ErrTxNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed,
-				err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
 		}
 	}
 
@@ -275,18 +271,15 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 
 	if b.bestChain == nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			"best chain not set", nil)
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
 	tip, err := b.bestChain.Current()
 	if err != nil {
 		if err != core.ErrBlockNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed,
-				err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
 		}
-		return jsonrpc.Error(types.ErrCodeBlockNotFound,
-			err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
@@ -295,73 +288,125 @@ func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 	}))
 }
 
+// apiListAccounts gets all accounts
+func (b *Blockchain) apiListAccounts(arg interface{}) *jsonrpc.Response {
+
+	if b.bestChain == nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+	}
+
+	accounts, err := b.bestChain.GetAccounts()
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(accounts)
+}
+
+// apiListTopAccounts gets the top N accounts
+func (b *Blockchain) apiListTopNAccounts(arg interface{}) *jsonrpc.Response {
+
+	numAccts, ok := arg.(float64)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("Integer").Error(), nil)
+	}
+
+	if b.bestChain == nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+	}
+
+	accounts, err := b.ListTopAccounts(int(numAccts))
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(accounts)
+}
+
 // APIs returns all API handlers
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+
+		// namespace: "state"
 		"getChains": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get all chains",
 			Func:        b.apiGetChains,
 		},
 		"getBlock": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a block by number",
 			Func:        b.apiGetBlock,
 		},
 		"getBlockByHash": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
 		},
 		"getOrphans": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a list of orphans",
 			Func:        b.apiGetOrphans,
 		},
 		"getBestChain": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get the best chain",
 			Func:        b.apiGetBestchain,
 		},
 		"getReOrgs": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a list of re-organization events",
 			Func:        b.apiGetReOrgs,
 		},
 		"getAccount": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get an account",
 			Func:        b.apiGetAccount,
 		},
+		"listAccounts": {
+			Namespace:   core.NamespaceState,
+			Description: "List all accounts",
+			Func:        b.apiListAccounts,
+		},
+		"listTopAccounts": {
+			Namespace:   core.NamespaceState,
+			Description: "List top accounts",
+			Func:        b.apiListTopNAccounts,
+		},
 		"getAccountNonce": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get the nonce of an account",
 			Func:        b.apiGetNonce,
 		},
-		"getBalance": {
-			Namespace:   "ell",
-			Description: "Get account balance",
-			Func:        b.apiGetBalance,
-		},
 		"getTransaction": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get a transaction by hash",
 			Func:        b.apiGetTransaction,
 		},
 		"getDifficulty": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceState,
 			Description: "Get difficulty information",
 			Func:        b.apiGetDifficultyInfo,
 		},
+		"getObjects": {
+			Namespace:   core.NamespaceState,
+			Description: "Get raw database objects (for debugging)",
+			Func:        b.apiGetDBObjects,
+		},
+
+		// namespace: "node"
 		"getTransactionStatus": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceNode,
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
 		},
-		"getObjects": {
-			Namespace:   "debug",
-			Description: "Get raw database objects",
-			Func:        b.apiGetDBObjects,
+
+		// namespace: "ell"
+		"getBalance": {
+			Namespace:   core.NamespaceEll,
+			Description: "Get account balance",
+			Func:        b.apiGetBalance,
 		},
 	}
 }

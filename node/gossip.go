@@ -40,9 +40,12 @@ const (
 	// EventAddressesRelayed describes an event about
 	// relayed addresses
 	EventAddressesRelayed = "event.addressesRelayed"
-	// EventReceivedAddr describes an event about
+	// EventReceivedAddr describes an event about a
 	// received addresses
 	EventReceivedAddr = "event.receivedAddr"
+	// EventIntroReceived describes an event about
+	// a received intro
+	EventIntroReceived = "event.receivedIntro"
 )
 
 // Gossip represents the peer protocol
@@ -57,13 +60,13 @@ type Gossip struct {
 	// log is used for logging events
 	log logger.Logger
 
-	// relayPeerSelectedAt is the time the
+	// lastBroadcastPeersSelectedAt is the time the
 	// last relay peers where selected
-	relayPeerSelectedAt time.Time
+	lastBroadcastPeersSelectedAt time.Time
 
-	// RelayPeers contains the selected relay
+	// BroadcastPeers contains the selected relay
 	// peers to broadcast addresses to.
-	RelayPeers []*Node
+	BroadcastPeers []*Node
 }
 
 // NewGossip creates a new instance of the Gossip protocol

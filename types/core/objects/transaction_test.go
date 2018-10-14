@@ -25,7 +25,7 @@ var _ = Describe("Transaction", func() {
 
 		It("should return expected bytes", func() {
 			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: "some_pub_key"}
-			bs := tx.Bytes()
+			bs := tx.GetBytesNoHashAndSig()
 			expected := []byte{153, 1, 1, 172, 115, 111, 109, 101, 95, 97, 100, 100, 114, 101, 115, 115, 172, 115, 111, 109, 101, 95, 112, 117, 98, 95, 107, 101, 121, 160, 160, 160, 0, 192}
 			Expect(bs).ToNot(BeEmpty())
 			Expect(bs).To(Equal(expected))
@@ -124,7 +124,7 @@ var _ = Describe("Transaction", func() {
 			seed := int64(1)
 			a, _ := crypto.NewKey(&seed)
 			tx := &Transaction{Type: 1, Nonce: 1, To: "some_address", SenderPubKey: util.String(a.PubKey().Base58())}
-			Expect(tx.ID()).To(Equal("0xe3f596e866880da31572b40f3dbf343c0932d4c473eb01b532d4e82cc1afef3d"))
+			Expect(tx.GetID()).To(Equal("0xe3f596e866880da31572b40f3dbf343c0932d4c473eb01b532d4e82cc1afef3d"))
 		})
 	})
 })

@@ -15,7 +15,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 	msg := &wire.Addr{
 		Addresses: []*wire.Address{
-			{Address: g.engine.GetMultiAddr(), Timestamp: time.Now().Unix()},
+			{Address: g.engine.GetAddress(), Timestamp: time.Now().Unix()},
 		},
 	}
 
@@ -24,22 +24,21 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 		s, c, err := g.NewStream(peer, config.AddrVersion)
 		if err != nil {
-			g.log.Error("selfAdvertise failed. Failed to connect to peer",
+			g.log.Error("SelfAdvertise failed. Failed to connect to peer",
 				"Err", err, "PeerID", peer.ShortID())
 			continue
 		}
 		defer c()
 		defer s.Close()
 
-		// write to the stream
 		if err := WriteStream(s, msg); err != nil {
 			s.Reset()
-			g.log.Error("Addr failed. failed to write to stream",
+			g.log.Error("SelfAdvertise failed. failed to write to stream",
 				"Err", err, "PeerID", peer.ShortID())
 			continue
 		}
 
-		g.PM().UpdateLastSeen(peer)
+		g.PM().UpdateLastSeenTime(peer)
 
 		sent++
 	}

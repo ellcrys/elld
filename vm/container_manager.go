@@ -149,7 +149,7 @@ func (cm *ContainerManager) execTx(tx *objects.Transaction, output chan []byte, 
 		Func:    tx.InvokeArgs.Func,
 		Payload: tx.InvokeArgs.Params,
 		Tx: &Tx{
-			ID:    tx.ID(),
+			ID:    tx.GetID(),
 			Value: tx.Value.String(),
 		},
 	}

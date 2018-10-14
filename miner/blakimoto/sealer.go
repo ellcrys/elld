@@ -97,12 +97,13 @@ func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, er
 
 // mine is the actual proof-of-work miner that searches for a nonce starting from
 // seed that results in correct final block difficulty.
-func (b *Blakimoto) mine(block core.Block, id int, seed uint64, abort chan struct{}, found chan core.Block) {
+func (b *Blakimoto) mine(block core.Block, id int, seed uint64,
+	abort chan struct{}, found chan core.Block) {
 
 	// Extract some data from the header
 	var (
 		header = block.GetHeader()
-		hash   = header.HashNoNonce().Bytes()
+		hash   = header.GetHashNoNonce().Bytes()
 		target = new(big.Int).Div(maxUint256, header.GetDifficulty())
 	)
 
@@ -112,14 +113,16 @@ func (b *Blakimoto) mine(block core.Block, id int, seed uint64, abort chan struc
 		nonce    = seed
 	)
 
-	b.log.Debug("Started blakimoto search for new nonces", "Seed", seed, "WorkerID", id)
+	b.log.Debug("Started blakimoto search for new nonces",
+		"Seed", seed, "WorkerID", id)
 
 search:
 	for {
 		select {
 		case <-abort:
 			// Mining terminated, update stats and abort
-			b.log.Debug("Blakimoto nonce search aborted", "Attempts", nonce-seed, "WorkerID", id)
+			b.log.Debug("Blakimoto nonce search aborted",
+				"Attempts", nonce-seed, "WorkerID", id)
 			b.hashrate.Mark(attempts)
 			break search
 
