@@ -23,7 +23,8 @@ type WorldReader struct {
 
 // GetAccount gets an account by the given
 // address in the chain provided.
-func (r *WorldReader) GetAccount(chain core.Chainer, address util.String, opts ...core.CallOp) (core.Account, error) {
+func (r *WorldReader) GetAccount(chain core.Chainer, address util.String,
+	opts ...core.CallOp) (core.Account, error) {
 	r.bchain.chainLock.RLock()
 	defer r.bchain.chainLock.RUnlock()
 

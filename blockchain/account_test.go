@@ -67,7 +67,7 @@ var _ = Describe("Account", func() {
 		})
 	})
 
-	Describe(".GetNonce", func() {
+	Describe(".GetAccountNonce", func() {
 
 		var account *objects.Account
 
@@ -88,6 +88,59 @@ var _ = Describe("Account", func() {
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(core.ErrAccountNotFound))
 			Expect(nonce).To(Equal(uint64(0)))
+		})
+	})
+
+	Describe(".ListAccounts", func() {
+		It("should return error when best chain is unknown", func() {
+			bc.bestChain = nil
+			_, err := bc.ListAccounts()
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("best chain unknown"))
+		})
+
+		Context("with 2 accounts stored", func() {
+			var account, account2 *objects.Account
+
+			BeforeEach(func() {
+				account = &objects.Account{Type: objects.AccountTypeBalance, Address: "abc"}
+				err = bc.CreateAccount(1, genesisChain, account)
+				Expect(err).To(BeNil())
+
+				account2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "xyz"}
+				err = bc.CreateAccount(2, genesisChain, account2)
+				Expect(err).To(BeNil())
+			})
+
+			It("should return all accounts", func() {
+				result, err := bc.ListAccounts()
+				Expect(err).To(BeNil())
+				Expect(result).To(HaveLen(3))
+			})
+		})
+	})
+
+	Describe(".ListTopAccounts", func() {
+		var account, account2 *objects.Account
+
+		BeforeEach(func() {
+			account = &objects.Account{Type: objects.AccountTypeBalance,
+				Address: "abc", Balance: "10"}
+			err = bc.CreateAccount(1, genesisChain, account)
+			Expect(err).To(BeNil())
+
+			account2 = &objects.Account{Type: objects.AccountTypeBalance,
+				Address: "xyz", Balance: "300"}
+			err = bc.CreateAccount(2, genesisChain, account2)
+			Expect(err).To(BeNil())
+		})
+
+		It("should return top accounts", func() {
+			result, err := bc.ListTopAccounts(100)
+			Expect(err).To(BeNil())
+			Expect(result).To(HaveLen(3))
+			Expect(result[0].GetBalance().String()).To(Equal("300"))
+			Expect(result[2].GetBalance().String()).To(Equal("10"))
 		})
 	})
 })

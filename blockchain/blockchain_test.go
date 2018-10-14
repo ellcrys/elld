@@ -163,7 +163,7 @@ var _ = Describe("Blockchain.Up", func() {
 				Specify("the returned block mush equal the block used for query", func() {
 					result, _, _, err := bc.findChainByBlockHash(b1.GetHash())
 					Expect(err).To(BeNil())
-					Expect(b1.Bytes()).To(Equal(result.Bytes()))
+					Expect(b1.GetBytes()).To(Equal(result.GetBytes()))
 				})
 			})
 
@@ -180,7 +180,7 @@ var _ = Describe("Blockchain.Up", func() {
 				It("should return chain and header matching the header of block 1", func() {
 					result, chain, tipHeader, err := bc.findChainByBlockHash(genesisBlock.GetHash())
 					Expect(err).To(BeNil())
-					Expect(genesisBlock.Bytes()).To(Equal(result.Bytes()))
+					Expect(genesisBlock.GetBytes()).To(Equal(result.GetBytes()))
 					Expect(genesisBlock.GetNumber()).To(Equal(uint64(1)))
 					Expect(chain.GetID()).To(Equal(chain.id))
 					Expect(tipHeader.ComputeHash()).To(Equal(b2.GetHeader().ComputeHash()))
@@ -465,7 +465,7 @@ var _ = Describe("Blockchain.Up", func() {
 						tx = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 						tx.Hash = tx.ComputeHash()
 						tp.Put(tx)
-						maxSize := tx.SizeNoFee() + 100
+						maxSize := tx.GetSizeNoFee() + 100
 						txs, err = bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
@@ -474,7 +474,7 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs).To(HaveLen(0))
 					})
 
-					Specify("container should contain 1 transaction", func() {
+					Specify("container should contain 1 transaction since selected txs go back in the pool", func() {
 						Expect(tp.Container().Size()).To(Equal(int64(1)))
 					})
 				})
@@ -498,7 +498,7 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(err).To(BeNil())
 
 						Expect(tp.Size()).To(Equal(int64(2)))
-						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
 						txs, err = bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
@@ -507,8 +507,8 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs).To(HaveLen(2))
 					})
 
-					Specify("container should contain 0 transactions", func() {
-						Expect(tp.Size()).To(Equal(int64(0)))
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Size()).To(Equal(int64(2)))
 					})
 				})
 			})
@@ -528,19 +528,19 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(tp.Container().Size()).To(Equal(int64(2)))
 						Expect(err).To(BeNil())
 
-						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
 						txs, err = bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
-					It("should return 2 transaction with tx(2) selected before tx(1)", func() {
+					It("should return 2 transactions with tx(2) selected before tx(1)", func() {
 						Expect(txs).To(HaveLen(2))
 						Expect(txs[0]).To(Equal(tx2))
 						Expect(txs[1]).To(Equal(tx))
 					})
 
-					Specify("container should contain 0 transaction", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
 					})
 				})
 			})
@@ -560,7 +560,7 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(tp.Container().Size()).To(Equal(int64(2)))
 						Expect(err).To(BeNil())
 
-						maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
 						txs, err = bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
@@ -570,8 +570,8 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs[0]).To(Equal(tx))
 					})
 
-					Specify("container should contain 1 transaction", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(1)))
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
 					})
 				})
 			})
@@ -583,7 +583,7 @@ var _ = Describe("Blockchain.Up", func() {
 						tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 						tx.Hash = tx.ComputeHash()
 						tp.Put(tx)
-						maxSize := tx.SizeNoFee() + 100
+						maxSize := tx.GetSizeNoFee() + 100
 						txs, err = bc.SelectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
@@ -592,8 +592,8 @@ var _ = Describe("Blockchain.Up", func() {
 						Expect(txs).To(HaveLen(1))
 					})
 
-					Specify("container should contain 0 transactions", func() {
-						Expect(tp.Container().Size()).To(Equal(int64(0)))
+					Specify("container should contain 1 transaction since selected txs go back in the pool", func() {
+						Expect(tp.Container().Size()).To(Equal(int64(1)))
 					})
 				})
 			})
@@ -615,14 +615,14 @@ var _ = Describe("Blockchain.Up", func() {
 				})
 
 				It("should only include transactions up to the given max size", func() {
-					maxSize := tx.SizeNoFee() + tx2.SizeNoFee()
+					maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
 					txs, err := bc.SelectTransactions(maxSize)
 					Expect(err).To(BeNil())
 					Expect(txs).To(HaveLen(2))
 				})
 
 				It("should only include all transactions when max size exceeds pool size", func() {
-					maxSize := tx.SizeNoFee() + tx2.SizeNoFee() + tx3.SizeNoFee() + 100
+					maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee() + tx3.GetSizeNoFee() + 100
 					txs, err := bc.SelectTransactions(maxSize)
 					Expect(err).To(BeNil())
 					Expect(txs).To(HaveLen(3))

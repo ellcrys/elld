@@ -1,7 +1,6 @@
 package node
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -14,7 +13,6 @@ import (
 	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/util"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 // Manager manages known peers connected to the local peer.
@@ -74,24 +72,6 @@ func (m *Manager) GetPeer(peerID string) types.Engine {
 	return peer
 }
 
-// OnPeerDisconnect is called when peer disconnects.
-// Active peer count is decreased by one.
-// The disconnected peer is not removed from the
-// known peer list because it might come back in a
-// short time but subtract 2 hours from its current
-// timestamp.
-// Eventually, it will be removed if it does not reconnect.
-func (m *Manager) OnPeerDisconnect(peerAddr ma.Multiaddr) {
-	peerID := util.IDFromAddr(peerAddr).Pretty()
-	peer := m.GetPeer(peerID)
-	if peer == nil {
-		return
-	}
-	m.HasDisconnected(peer)
-	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
-	m.CleanPeers()
-}
-
 // AddPeer adds a peer
 func (m *Manager) AddPeer(peer types.Engine) {
 	m.mtx.Lock()
@@ -120,6 +100,16 @@ func (m *Manager) GetUnconnectedPeers() (peers []types.Engine) {
 	return
 }
 
+// GetConnectedPeers returns the connected peers
+func (m *Manager) GetConnectedPeers() (peers []types.Engine) {
+	for _, p := range m.GetActivePeers(0) {
+		if p.Connected() {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
 // Manage starts managing peer connections.
 // Load peers that were serialized and stored in database.
 // Start connection manager
@@ -133,15 +123,16 @@ func (m *Manager) Manage() {
 	}
 
 	go m.connMgr.Manage()
-	go m.periodicSelfAdvertisement(m.tickersDone)
-	go m.periodicCleanUp(m.tickersDone)
-	go m.periodicPingMsgs(m.tickersDone)
-	go m.sendPeriodicGetAddrMsg(m.tickersDone)
+	go m.doSelfAdvert(m.tickersDone)
+	go m.doCleanUp(m.tickersDone)
+	go m.doPingMsgs(m.tickersDone)
+	go m.doGetAddrMsg(m.tickersDone)
+	go m.doIntro(m.tickersDone)
 }
 
-// sendPeriodicGetAddrMsg sends "getaddr"
-// message to all known active peers
-func (m *Manager) sendPeriodicGetAddrMsg(done chan bool) {
+// doGetAddrMsg periodically sends wire.GetAddr
+// message to all active peers
+func (m *Manager) doGetAddrMsg(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
 	for {
 		select {
@@ -154,9 +145,9 @@ func (m *Manager) sendPeriodicGetAddrMsg(done chan bool) {
 	}
 }
 
-// periodicPingMsgs sends "ping" messages to all peers
-// as a basic health check routine.
-func (m *Manager) periodicPingMsgs(done chan bool) {
+// doPingMsgs periodically sends wire.Ping
+// messages to all peers.
+func (m *Manager) doPingMsgs(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.PingInterval) * time.Second)
 	for {
 		select {
@@ -169,20 +160,18 @@ func (m *Manager) periodicPingMsgs(done chan bool) {
 	}
 }
 
-// periodicSelfAdvertisement send an Addr message containing only the
-// local peer address to all connected peers
-func (m *Manager) periodicSelfAdvertisement(done chan bool) {
+// doSelfAdvert periodically send an wire.Addr
+// message containing only the local peer's
+// address to all connected peers.
+func (m *Manager) doSelfAdvert(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
-			connectedPeers := []types.Engine{}
-			for _, p := range m.GetPeers() {
-				if p.Connected() {
-					connectedPeers = append(connectedPeers, p)
-				}
+			peers := m.GetConnectedPeers()
+			if len(peers) > 0 {
+				m.localNode.gProtoc.SelfAdvertise(peers)
 			}
-			m.localNode.gProtoc.SelfAdvertise(connectedPeers)
 			m.CleanPeers()
 		case <-done:
 			ticker.Stop()
@@ -191,15 +180,17 @@ func (m *Manager) periodicSelfAdvertisement(done chan bool) {
 	}
 }
 
-// periodicCleanUp performs peer clean up such as
-// removing old know peers.
-func (m *Manager) periodicCleanUp(done chan bool) {
+// doCleanUp periodically cleans the peer list,
+// removing inactive peers.
+func (m *Manager) doCleanUp(done chan bool) {
 	ticker := time.NewTicker(time.Duration(m.config.Node.CleanUpInterval) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
 			nCleaned := m.CleanPeers()
-			m.log.Debug("Cleaned up old peers", "NumKnownPeers", len(m.peers), "NumPeersCleaned", nCleaned)
+			m.log.Debug("Cleaned up old peers",
+				"NumKnownPeers", len(m.peers),
+				"NumPeersCleaned", nCleaned)
 		case <-done:
 			ticker.Stop()
 			return
@@ -207,9 +198,26 @@ func (m *Manager) periodicCleanUp(done chan bool) {
 	}
 }
 
-// UpdateLastSeen updates a peer's
+// doIntro periodically sends out wire.Intro messages
+func (m *Manager) doIntro(done chan bool) {
+	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			peers := m.GetConnectedPeers()
+			if len(peers) > 0 {
+				m.localNode.gProtoc.SendIntro(nil)
+			}
+		case <-done:
+			ticker.Stop()
+			return
+		}
+	}
+}
+
+// UpdateLastSeenTime updates a peer's
 // last seen time to the current time
-func (m *Manager) UpdateLastSeen(p types.Engine) error {
+func (m *Manager) UpdateLastSeenTime(p types.Engine) error {
 
 	defer func() {
 		m.CleanPeers()
@@ -251,16 +259,27 @@ func (m *Manager) SetPeers(d map[string]types.Engine) {
 	m.peers = d
 }
 
-// RequirePeers checks whether
-// we need more peers
-func (m *Manager) RequirePeers() bool {
-	return len(m.GetActivePeers(0)) < 1000 && m.connMgr.needMoreConnections()
+// hasReachedOutConnLimit checks whether the
+// local peer has reached its outgoing
+// connection limit
+func (m *Manager) hasReachedOutConnLimit() bool {
+	outbound := m.connMgr.GetConnsCount().Outbound
+	return int64(outbound) >= m.config.Node.MaxOutboundConnections
 }
 
-// IsLocalNode checks if a peer
-// is the local peer
+// RequirePeers checks whether we need more peers
+func (m *Manager) RequirePeers() bool {
+	return len(m.GetActivePeers(0)) < 1000 && !m.hasReachedOutConnLimit()
+}
+
+// IsLocalNode checks if a peer is the local peer
 func (m *Manager) IsLocalNode(p types.Engine) bool {
 	return p != nil && m.localNode != nil && m.localNode.IsSame(p)
+}
+
+// ConnMgr gets the connection manager
+func (m *Manager) ConnMgr() *ConnectionManager {
+	return m.connMgr
 }
 
 // SetLocalNode sets the local node
@@ -268,46 +287,41 @@ func (m *Manager) SetLocalNode(n *Node) {
 	m.localNode = n
 }
 
-// SetNumActiveConnections sets the number of active
-// connections.
-func (m *Manager) SetNumActiveConnections(n int64) {
-	m.connMgr.activeConn = n
-}
-
-// IsActive returns true of a peer is
-// considered active. First rule,
-// its timestamp must be within
-// the last 3 hours
+// IsActive returns true of a peer is considered active.
+// First rule:
+// - Its timestamp must be within the last 3 hours
 func (m *Manager) IsActive(p types.Engine) bool {
 	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).
 		Before(p.GetLastSeen())
 }
 
-// HasDisconnected reduces the timestamp of
-// a disconnected peer such that its time
-// of removal is expedited. It also cleans
-// up the known peers list removing peers
-// that are unconnected and old.
-func (m *Manager) HasDisconnected(remotePeer types.Engine) error {
-	if remotePeer == nil {
-		return fmt.Errorf("nil passed")
+// HasDisconnected is called with a address belonging
+// to a peer that had just disconnected. It will set
+// the last seen time of the peer to an hour ago to
+// to quicken the time to clean up. The peer may
+// reconnect before clean up.
+func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
+
+	peer := m.GetPeer(peerAddr.StringID())
+	if peer == nil {
+		return fmt.Errorf("unknown peer")
 	}
-	remotePeer.SetLastSeen(remotePeer.GetLastSeen().Add(-1 * time.Hour))
+
+	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
+
+	peer.SetLastSeen(peer.GetLastSeen().Add(-1 * time.Hour))
+
 	m.CleanPeers()
+
 	return nil
 }
 
 // CleanPeers removes old peers from the list
 // of peers known by the local peer. Typically,
 // we remove peers based on the last time
-// they were seen. At least 3 connections must
-// be active before we can proceed.
+// they were seen.
 // It returns the number of peers removed
 func (m *Manager) CleanPeers() int {
-	if m.connMgr.connectionCount() < 3 {
-		return 0
-	}
-
 	peers := m.GetPeers()
 	before := len(peers)
 	newKnownPeers := make(map[string]types.Engine)
@@ -389,28 +403,6 @@ func (m *Manager) GetRandomActivePeers(limit int) []types.Engine {
 	return peers[:limit]
 }
 
-// deserializePeers takes a slice of bytes
-// which was created by serializeActivePeers
-// and creates a new remote node instance
-func (m *Manager) deserializePeers(serPeers [][]byte) ([]*Node, error) {
-
-	var peers = make([]*Node, len(serPeers))
-
-	for i, p := range serPeers {
-		var data []interface{}
-		if err := json.Unmarshal(p, &data); err != nil {
-			return nil, err
-		}
-
-		addr, _ := ma.NewMultiaddr(data[0].(string))
-		peer := NewRemoteNode(addr, m.localNode)
-		peer.lastSeen = time.Unix(int64(data[1].(float64)), 0)
-		peers[i] = peer
-	}
-
-	return peers, nil
-}
-
 // SavePeers stores active peer addresses
 func (m *Manager) SavePeers() error {
 
@@ -425,7 +417,7 @@ func (m *Manager) SavePeers() error {
 		if !p.IsHardcodedSeed() && isOldEnough {
 			key := []byte(p.StringID())
 			value := util.ObjectToBytes(map[string]interface{}{
-				"address":   p.GetMultiAddr(),
+				"address":   p.GetAddress(),
 				"createdAt": p.CreatedAt().Unix(),
 				"lastSeen":  p.GetLastSeen().Unix(),
 			})
@@ -460,7 +452,7 @@ func (m *Manager) LoadPeers() error {
 			return err
 		}
 
-		addr, _ := ma.NewMultiaddr(addrData["address"].(string))
+		addr := util.NodeAddr(addrData["address"].(string))
 		peer := NewRemoteNode(addr, m.localNode)
 		peer.createdAt = time.Unix(int64(addrData["createdAt"].(uint32)), 0)
 		peer.lastSeen = time.Unix(int64(addrData["lastSeen"].(uint32)), 0)

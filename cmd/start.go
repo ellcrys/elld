@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	boostrapAddresses = []string{} // hardcoded bootstrap node address
+	boostrapAddresses = []string{}
 )
 
 func devDefaultConfig(cfg *config.EngineConfig) {
@@ -144,7 +144,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Process flags
 	bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
-	addressToListenOn, _ := cmd.Flags().GetString("address")
+	listeningAddr, _ := cmd.Flags().GetString("address")
 	startRPC, _ := cmd.Flags().GetBool("rpc")
 	rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
 	account, _ := cmd.Flags().GetString("account")
@@ -152,11 +152,20 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
 
-	// Set hard coded configurations
-	cfg.Node.MaxConnections = util.NonZeroOrDefIn64(cfg.Node.MaxConnections, 60)
+	// Set configurations
 	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 60)
-	cfg.Node.BootstrapNodes = append(cfg.Node.BootstrapNodes, bootstrapAddresses...)
+	cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
+	cfg.Node.MaxOutboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 10)
+	cfg.Node.MaxInboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 115)
+
+	// set connections hard limit
+	if cfg.Node.MaxOutboundConnections > 10 {
+		cfg.Node.MaxOutboundConnections = 10
+	}
+	if cfg.Node.MaxInboundConnections > 115 {
+		cfg.Node.MaxInboundConnections = 115
+	}
 
 	// set to dev mode if -dev is set
 	// and apply dev config values
@@ -167,7 +176,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// check that the host address to bind
 	// the engine to is valid,
-	if !util.IsValidHostPortAddress(addressToListenOn) {
+	if !util.IsValidHostPortAddress(listeningAddr) {
 		log.Fatal("invalid bind address provided")
 	}
 
@@ -178,10 +187,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	log.Info("Elld has started", "Version", config.ClientVersion)
+	log.Info("Elld has started", "Version", config.ClientVersion, "DevMode", devMode)
 
 	// Create the local node.
-	n, err := node.NewNode(cfg, addressToListenOn, coinbase, log)
+	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
 	if err != nil {
 		log.Fatal("failed to create local node")
 	}
@@ -199,7 +208,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Add bootstrap addresses supplied
 	// in the config file
-	if err := n.AddAddresses(cfg.Node.BootstrapNodes, false); err != nil {
+	if err := n.AddAddresses(cfg.Node.BootstrapAddresses, false); err != nil {
 		log.Fatal("%s", err)
 	}
 
@@ -208,7 +217,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to open local database")
 	}
 
-	log.Info("Waiting patiently to interact on", "Addr", n.GetMultiAddr(), "Dev", devMode)
+	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
 
 	// Initialized gossip protocol handlers
 	protocol := node.NewGossip(n, log)
@@ -217,6 +226,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.PingVersion, protocol.OnPing)
 	n.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)
 	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
+	n.SetProtocolHandler(config.IntroVersion, protocol.OnIntro)
 	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
 	n.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
 	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
@@ -261,6 +271,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		miner.APIs(),
 		accountMgr.APIs(),
 		bchain.APIs(),
+		rpcServer.APIs(),
 	)
 
 	if startRPC {

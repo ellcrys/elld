@@ -80,8 +80,16 @@ func NewTxValidator(tx core.Transaction, txPool core.TxPool,
 // Validate execute validation checks
 // against each transactions
 func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
+	var seenTxs = make(map[string]struct{})
 	for i, tx := range v.txs {
 		v.curIndex = i
+
+		// check duplicate
+		if _, ok := seenTxs[tx.GetHash().HexStr()]; ok {
+			errs = appendErr(errs,
+				fieldErrorWithIndex(v.curIndex, "", "duplicate transaction"))
+			continue
+		}
 
 		txErrs := v.ValidateTx(tx, opts...)
 		if len(txErrs) > 0 {
@@ -96,13 +104,16 @@ func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
 		// the account which has not been updated with
 		// the lastest nonce.
 		v.nonces[tx.GetFrom().String()] = tx.GetNonce()
+
+		// cache the hash
+		seenTxs[tx.GetHash().HexStr()] = struct{}{}
 	}
 	return
 }
 
-// fieldsCheck checks validates the transaction
+// CheckFields checks validates the transaction
 // fields and values.
-func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
+func (v *TxsValidator) CheckFields(tx core.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -228,7 +239,7 @@ func (v *TxsValidator) fieldsCheck(tx core.Transaction) (errs []error) {
 		// the fee passed format validation
 		if err == nil {
 			fee := tx.GetFee().Decimal()
-			txSize := decimal.NewFromFloat(float64(tx.SizeNoFee()))
+			txSize := decimal.NewFromFloat(float64(tx.GetSizeNoFee()))
 
 			// Calculate the expected fee
 			expectedMinimumFee := params.FeePerByte.Mul(txSize)
@@ -261,7 +272,7 @@ func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
 		return
 	}
 
-	valid, err := pubKey.Verify(tx.Bytes(), tx.GetSignature())
+	valid, err := pubKey.Verify(tx.GetBytesNoHashAndSig(), tx.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"sig", err.Error()))
@@ -284,21 +295,31 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 		return
 	}
 
-	// If the callers intent is not to validate a block
+	// If the caller's intent is not to validate a block
 	// for inclusion in a chain, then we must
 	// check that the transaction does not have a
 	// duplicate in the pool
-	if !v.has(ContextBlock) && v.txpool.Has(tx) {
+	if !v.has(core.ContextBlock) && v.txpool.Has(tx) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in the transactions pool"))
 		return
+	}
+
+	// If the caller intends to validate a block that was
+	// received when the client is not is a block sync state,
+	// the transaction must exist in the transactions pool
+	if v.has(core.ContextBlock) && !v.has(core.ContextBlockSync) {
+		if !v.txpool.Has(tx) {
+			errs = append(errs, fieldErrorWithIndex(v.curIndex,
+				"", "transaction does not exist in the transactions pool"))
+		}
 	}
 
 	// If the callers intent is not to append a block
 	// to a branch chain but the main chain, we must
 	// ensure the transaction does not exist on the
 	// main chain.
-	if !v.has(ContextBranch) {
+	if !v.has(core.ContextBranch) {
 		_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
 		if err != nil {
 			if err != core.ErrTxNotFound {
@@ -344,7 +365,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// transaction into a block, then the nonce
 	// must be greater than the account's current
 	// nonce by at least 1
-	if !v.has(ContextBlock) && (tx.GetNonce() <= accountNonce) {
+	if !v.has(core.ContextBlock) && (tx.GetNonce() <= accountNonce) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants from %d",
 				tx.GetNonce(), accountNonce+1)))
@@ -354,7 +375,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// If the caller intends to process a block of which
 	// this transaction is part of, then the nonce must
 	// be greater than the account's current nonce by 1
-	if v.has(ContextBlock) && tx.GetNonce() > accountNonce &&
+	if v.has(core.ContextBlock) && tx.GetNonce() > accountNonce &&
 		tx.GetNonce()-accountNonce != 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants %d",
@@ -369,7 +390,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 // by the gossip handler..
 func (v *TxsValidator) ValidateTx(tx core.Transaction, opts ...core.CallOp) []error {
 
-	errs := v.fieldsCheck(tx)
+	errs := v.CheckFields(tx)
 	if len(errs) > 0 {
 		return errs
 	}

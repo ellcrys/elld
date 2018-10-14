@@ -3,23 +3,26 @@ package util
 import (
 	"fmt"
 	"net"
+	"regexp"
+	"strings"
 
+	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
-
-	"github.com/libp2p/go-libp2p-host"
 
 	inet "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// IsValidHostPortAddress checks if an address is a valid address matching
+// IsValidHostPortAddress checks if an address
+// is a valid address matching
 // the format `host:port`
 func IsValidHostPortAddress(address string) bool {
 	_, _, err := net.SplitHostPort(address)
 	return err == nil
 }
 
-// IsValidAddr checks if an address is a valid multi address with ip4, tcp, and ipfs protocols
+// IsValidAddr checks if an address is a valid
+// multi address with ip4/ip6, tcp, and ipfs protocols
 func IsValidAddr(addr string) bool {
 	mAddr, err := ma.NewMultiaddr(addr)
 	if err != nil {
@@ -27,14 +30,17 @@ func IsValidAddr(addr string) bool {
 	}
 
 	protocols := mAddr.Protocols()
-	if len(protocols) != 3 || (protocols[0].Name != "ip4" && protocols[0].Name != "ip6") || protocols[1].Name != "tcp" || protocols[2].Name != "ipfs" {
+	if len(protocols) != 3 || (protocols[0].Name != "ip4" &&
+		protocols[0].Name != "ip6") || protocols[1].Name != "tcp" ||
+		protocols[2].Name != "ipfs" {
 		return false
 	}
 
 	return true
 }
 
-// IsRoutableAddr checks if an addr is valid and routable
+// IsRoutableAddr checks if an addr
+// is valid and routable
 func IsRoutableAddr(addr string) bool {
 	maddr, err := ma.NewMultiaddr(addr)
 	if err != nil {
@@ -47,37 +53,20 @@ func IsRoutableAddr(addr string) bool {
 	return IsRoutable(net.ParseIP(ip))
 }
 
-// RemoteAddressFromStream returns the full peer multi address containing ip4, tcp and ipfs protocols
-func RemoteAddressFromStream(s inet.Stream) ma.Multiaddr {
-	if s == nil {
-		return nil
-	}
+// RemoteAddrFromStream gets the remote
+// address from the given stream
+func RemoteAddrFromStream(s inet.Stream) NodeAddr {
 	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", s.Conn().RemotePeer().Pretty()))
 	fullAddr := s.Conn().RemoteMultiaddr().Encapsulate(ipfsAddr)
-	return fullAddr
+	return NodeAddr(fullAddr.String())
 }
 
-// FullRemoteAddressFromConn returns the full peer multi address containing ip4, tcp and ipfs protocols
-func FullRemoteAddressFromConn(c inet.Conn) ma.Multiaddr {
-	if c == nil {
-		return nil
-	}
+// RemoteAddrFromConn gets the remote address
+// from the given connection
+func RemoteAddrFromConn(c inet.Conn) NodeAddr {
 	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", c.RemotePeer().Pretty()))
 	fullAddr := c.RemoteMultiaddr().Encapsulate(ipfsAddr)
-	return fullAddr
-}
-
-// FullAddressFromHost returns the full peer multi address containing ip4, tcp and ipfs protocols
-func FullAddressFromHost(host host.Host) ma.Multiaddr {
-	if host == nil {
-		return nil
-	}
-	if len(host.Addrs()) == 0 {
-		return nil
-	}
-	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
-	fullAddr := host.Addrs()[0].Encapsulate(ipfsAddr)
-	return fullAddr
+	return NodeAddr(fullAddr.String())
 }
 
 // IDFromAddr extracts and returns the peer ID
@@ -146,4 +135,142 @@ func ShortID(id peer.ID) string {
 	}
 
 	return address[0:12] + ".." + address[40:52]
+}
+
+// NodeAddr represents address that points
+// to a node on a network. The address are
+// represented as Multiaddr.
+type NodeAddr string
+
+// AddressFromHost gets address of an host
+func AddressFromHost(host host.Host) NodeAddr {
+	if host == nil {
+		return ""
+	}
+	if len(host.Addrs()) == 0 {
+		return ""
+	}
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
+	fullAddr := host.Addrs()[0].Encapsulate(ipfsAddr)
+	return NodeAddr(fullAddr.String())
+}
+
+// AddressFromConnString creates a NodeAddress
+// from a given connection string
+func AddressFromConnString(str string) NodeAddr {
+	if !IsValidConnectionString(str) {
+		return ""
+	}
+
+	connData := ParseConnString(str)
+
+	host := connData["address"]
+	port := connData["port"]
+	tcpIPAddr := fmt.Sprintf("/ip4/%s/tcp/%s", host, port)
+	if net.ParseIP(host).To4() == nil {
+		tcpIPAddr = fmt.Sprintf("/ip6/%s/tcp/%s", host, port)
+	}
+
+	addr, _ := ma.NewMultiaddr(tcpIPAddr)
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", connData["id"]))
+	return NodeAddr(addr.Encapsulate(ipfsAddr).String())
+}
+
+// IsValid checks whether the address
+// is valid Multiaddr
+func (a NodeAddr) IsValid() bool {
+	return IsValidAddr(string(a))
+}
+
+// GetMultiaddr gets the address. It will panic
+// if the address is not a valid Multiaddr
+func (a NodeAddr) GetMultiaddr() ma.Multiaddr {
+	if !a.IsValid() {
+		panic(fmt.Errorf("invalid multiaddress"))
+	}
+	mAddr, _ := ma.NewMultiaddr(string(a))
+	return mAddr
+}
+
+func (a NodeAddr) String() string {
+	return string(a)
+}
+
+// Equal checks whether a and b match
+func (a NodeAddr) Equal(b NodeAddr) bool {
+	return a.GetMultiaddr().String() ==
+		b.GetMultiaddr().String()
+}
+
+// ID gets the address unique ID
+func (a NodeAddr) ID() peer.ID {
+	return IDFromAddr(a.GetMultiaddr())
+}
+
+// StringID the address unique ID as a string
+func (a NodeAddr) StringID() string {
+	return IDFromAddr(a.GetMultiaddr()).Pretty()
+}
+
+// IsRoutable checks whether the
+// address is routable
+func (a NodeAddr) IsRoutable() bool {
+	return IsRoutableAddr(string(a))
+}
+
+// IP gets the IP from the address
+func (a NodeAddr) IP() net.IP {
+	return GetIPFromAddr(string(a))
+}
+
+// DecapIPFS gets the address without the
+// IPFS part
+func (a NodeAddr) DecapIPFS() ma.Multiaddr {
+	ipfsPart := fmt.Sprintf("/ipfs/%s", a.ID().Pretty())
+	ipfsAddr, _ := ma.NewMultiaddr(ipfsPart)
+	return a.GetMultiaddr().Decapsulate(ipfsAddr)
+}
+
+// ConnectionString returns an address similar
+// to database connection string with a branded
+// schema
+func (a NodeAddr) ConnectionString() string {
+	addrData := ParseAddr(a.String())
+	ip := addrData["ip4"]
+	if ip == "" {
+		ip = addrData["ip6"]
+	}
+	return fmt.Sprintf("ellcrys://%s@%s:%s",
+		addrData["ipfs"],
+		ip,
+		addrData["tcp"])
+}
+
+// IsValidConnectionString checks whether
+// a connection string is valid
+func IsValidConnectionString(str string) bool {
+	p := "^ell(crys)?://[a-zA-Z0-9]+@.*:[0-9]+$"
+	matched, _ := regexp.MatchString(p, str)
+	return matched
+}
+
+// ParseConnString breaksdown a connection string
+func ParseConnString(str string) (m map[string]string) {
+	if !IsValidConnectionString(str) {
+		return nil
+	}
+
+	m = make(map[string]string)
+	mainPart := strings.Split(str, "//")[1]
+	idAddrPart := strings.Split(mainPart, "@")
+	host, port, err := net.SplitHostPort(idAddrPart[1])
+	if err != nil {
+		return nil
+	}
+
+	m["id"] = idAddrPart[0]
+	m["address"] = host
+	m["port"] = port
+
+	return
 }

@@ -101,4 +101,75 @@ type GenerateBlockParams struct {
 	// AddFeeAlloc if set to true, will calculate the
 	// miner fee reward and add an Alloc transaction
 	AddFeeAlloc bool
+
+	// NoPoolAdditionInTest prevents the transactions
+	// from automatically added to the pool. Only used
+	// during block generation in tests
+	NoPoolAdditionInTest bool
 }
+
+const (
+	// NamespaceState is the namespace
+	// for RPC methods that access the database
+	NamespaceState = "state"
+
+	// NamespaceEll is the namespace for RPC methods
+	// that interact with the native currency
+	NamespaceEll = "ell"
+
+	// NamespaceNode is the namespace for RPC methods
+	// that interact and access the node/client properties
+	NamespaceNode = "node"
+
+	// NamespacePool is the namespace for RPC methods
+	// that access the transaction pool
+	NamespacePool = "pool"
+
+	// NamespaceMiner is the namespace for RPC methods
+	// that interact with the miner
+	NamespaceMiner = "miner"
+
+	// NamespacePersonal is the namespace for RPC methods
+	// that interact with private and sensitive data of the
+	// client
+	NamespacePersonal = "personal"
+
+	// NamespaceAdmin is the namespace for RPC methods
+	// that perform administrative actions
+	NamespaceAdmin = "admin"
+
+	// NamespaceNet is the namespace for RPC methods
+	// that perform network actions
+	NamespaceNet = "net"
+
+	// NamespaceRPC is the namespace for RPC methods
+	// that perform rpc  actions
+	NamespaceRPC = "rpc"
+)
+
+// ValidationContext is used to
+// represent a validation behaviour
+type ValidationContext int
+
+const (
+	// ContextBlock represents validation
+	// context of which the intent is to validate
+	// a block that needs to be appended to a chain
+	ContextBlock ValidationContext = iota + 1
+
+	// ContextBranch represents validation
+	// context of which the intent is to validate
+	// a block that needs to be appended to a branch chain
+	ContextBranch
+
+	// ContextTxPool represents validation context
+	// in which the intent is to validate a
+	// transaction that needs to be included in
+	// the transaction pool.
+	ContextTxPool
+
+	// ContextBlockSync represents validation context
+	// in which the intent is to validate a block
+	// received during block synchronization
+	ContextBlockSync
+)

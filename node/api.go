@@ -2,7 +2,7 @@ package node
 
 import (
 	"encoding/base64"
-	"time"
+	"fmt"
 
 	"github.com/ellcrys/elld/config"
 
@@ -27,7 +27,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 
 	return jsonrpc.Success(map[string]interface{}{
 		"id":                n.ID().Pretty(),
-		"address":           n.GetMultiAddr(),
+		"address":           n.GetAddress().ConnectionString(),
 		"mode":              mode,
 		"netVersion":        config.ProtocolVersion,
 		"syncing":           n.isSyncing(),
@@ -43,25 +43,52 @@ func (n *Node) apiGetConfig(arg interface{}) *jsonrpc.Response {
 // apiJoin attempts to establish connection
 // with a node at the specified address.
 func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
-	address, ok := arg.(string)
-	if !ok {
+
+	var addrs = []string{}
+
+	// Expect a string or slice
+	address, isStr := arg.(string)
+	addresses, isSlice := arg.([]interface{})
+	if !isStr && !isSlice {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-			rpc.ErrMethodArgType("String").Error(), nil)
+			rpc.ErrMethodArgType("String or Array{String}").Error(), nil)
 	}
 
-	rp, err := n.NodeFromAddr(address, true)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
+	// When a slice is provided as argument,
+	// Check that all values are string type
+	if isSlice {
+		for _, val := range addresses {
+			if _, isStr := val.(string); !isStr {
+				return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+					rpc.ErrMethodArgType(`String or Array{String}`).Error(), nil)
+			}
+			addrs = append(addrs, val.(string))
+		}
+	} else {
+		addrs = append(addrs, address)
 	}
 
-	if rp.IsSame(n) {
-		return jsonrpc.Error(types.ErrCodeAddress,
-			"can't add own address as a peer", nil)
-	}
+	for _, address := range addrs {
 
-	go func(rp *Node) {
-		n.connectToNode(rp)
-	}(rp)
+		if !util.IsValidConnectionString(address) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"address ("+address+") format is invalid", nil)
+		}
+
+		rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
+		if err != nil {
+			return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
+		}
+
+		if rp.IsSame(n) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"can't add self ("+address+") as a peer", nil)
+		}
+
+		go func(rp *Node) {
+			n.connectToNode(rp)
+		}(rp)
+	}
 
 	return jsonrpc.Success(nil)
 }
@@ -71,33 +98,67 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 // addresses. Unlike apiJoin it does
 // not initiate a connection.
 func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
-	address, ok := arg.(string)
-	if !ok {
+	var addrs = []string{}
+
+	// Expect a string or slice
+	address, isStr := arg.(string)
+	addresses, isSlice := arg.([]interface{})
+	if !isStr && !isSlice {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-			rpc.ErrMethodArgType("String").Error(), nil)
+			rpc.ErrMethodArgType("String or Array{String}").Error(), nil)
 	}
 
-	rp, err := n.NodeFromAddr(address, true)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
+	// When a slice is provided as argument,
+	// Check that all values are string type
+	if isSlice {
+		for _, val := range addresses {
+			if _, isStr := val.(string); !isStr {
+				return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+					rpc.ErrMethodArgType(`String or Array{String}`).Error(), nil)
+			}
+			addrs = append(addrs, val.(string))
+		}
+	} else {
+		addrs = append(addrs, address)
 	}
 
-	rp.lastSeen = time.Now().UTC()
+	for _, address := range addrs {
 
-	if rp.IsSame(n) {
-		return jsonrpc.Error(types.ErrCodeAddress,
-			"can't add self as a peer", nil)
+		if !util.IsValidConnectionString(address) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"address ("+address+") format is invalid", nil)
+		}
+
+		rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
+		if err != nil {
+			return jsonrpc.Error(types.ErrCodeAddress, err.Error()+" ("+address+")", nil)
+		}
+
+		if rp.IsSame(n) {
+			return jsonrpc.Error(types.ErrCodeAddress,
+				"can't add self ("+address+") as a peer", nil)
+		}
+
+		n.PM().AddPeer(rp)
 	}
-
-	n.PM().AddPeer(rp)
 
 	return jsonrpc.Success(nil)
 }
 
-// apiNumConnections returns the
+// apiNetInfo returns the
 // number of peers connected to
-func (n *Node) apiNumConnections(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.peerManager.connMgr.connectionCount())
+func (n *Node) apiNetInfo(arg interface{}) *jsonrpc.Response {
+	var connsInfo = n.peerManager.connMgr.GetConnsCount()
+	for _, i := range n.intros.Keys() {
+		fmt.Println(n.intros.Get(i), i)
+	}
+	var result = map[string]int{
+		"total":    connsInfo.Outbound + connsInfo.Inbound,
+		"inbound":  connsInfo.Inbound,
+		"outbound": connsInfo.Outbound,
+		"intros":   n.CountIntros(),
+	}
+	return jsonrpc.Success(result)
 }
 
 // apiGetSyncQueueSize returns the
@@ -150,7 +211,7 @@ func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
 // of the transaction pool
 func (n *Node) apiTxPoolSizeInfo(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(map[string]int64{
-		"byteSize": n.GetTxPool().ByteSize(),
+		"byteSize": n.GetBlockchain().GetTxPool().ByteSize(),
 		"numTxs":   n.GetTxPool().Size(),
 	})
 }
@@ -185,7 +246,7 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(map[string]interface{}{
-		"id": tx.ID(),
+		"id": tx.GetID(),
 	})
 }
 
@@ -202,73 +263,81 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
+
+		// namespace: "node"
 		"config": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceNode,
 			Description: "Get node configurations",
 			Private:     true,
 			Func:        n.apiGetConfig,
 		},
 		"info": {
-			Namespace:   "node",
+			Namespace:   core.NamespaceNode,
 			Description: "Get basic information of the node",
 			Func:        n.apiBasicNodeInfo,
 		},
+		"isSyncing": {
+			Namespace:   core.NamespaceNode,
+			Description: "Check whether blockchain synchronization is active",
+			Func:        n.apiIsSyncing,
+		},
+		"getSyncState": {
+			Namespace:   core.NamespaceNode,
+			Description: "Get blockchain synchronization status",
+			Func:        n.apiGetSyncState,
+		},
+		"getSyncQueueSize": {
+			Namespace:   core.NamespaceNode,
+			Description: "Get number of block hashes in the sync queue",
+			Func:        n.apiGetSyncQueueSize,
+		},
+
+		// namespace: "ell"
 		"send": {
-			Namespace:   "ell",
+			Namespace:   core.NamespaceEll,
 			Description: "Create a balance transaction",
 			Private:     true,
 			Func:        n.apiSend,
 		},
+
+		// namespace: "net"
 		"join": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Connect to a peer",
 			Private:     true,
 			Func:        n.apiJoin,
 		},
 		"addPeer": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Add a peer address",
 			Private:     true,
 			Func:        n.apiAddPeer,
 		},
-		"numConnections": {
-			Namespace:   "net",
-			Description: "Get number of active connections",
-			Func:        n.apiNumConnections,
+		"counts": {
+			Namespace:   core.NamespaceNet,
+			Description: "Get number connections and network nodes",
+			Func:        n.apiNetInfo,
 		},
 		"getPeers": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Get a list of all peers",
 			Func:        n.apiGetPeers,
 		},
 		"getActivePeers": {
-			Namespace:   "net",
+			Namespace:   core.NamespaceNet,
 			Description: "Get a list of active peers",
 			Func:        n.apiGetActivePeers,
 		},
-		"isSyncing": {
-			Namespace:   "node",
-			Description: "Check whether blockchain synchronization is active",
-			Func:        n.apiIsSyncing,
-		},
-		"getSyncState": {
-			Namespace:   "node",
-			Description: "Get blockchain synchronization status",
-			Func:        n.apiGetSyncState,
-		},
-		"getPoolSize": {
-			Namespace:   "node",
+
+		// namespace: "pool"
+		"getSize": {
+			Namespace:   core.NamespacePool,
 			Description: "Get size information of the transaction pool",
 			Func:        n.apiTxPoolSizeInfo,
 		},
-		"getSyncQueueSize": {
-			Namespace:   "node",
-			Description: "Get number of block hashes in the sync queue",
-			Func:        n.apiGetSyncQueueSize,
-		},
-		"fetchPool": {
-			Namespace:   "node",
-			Description: "Get the transactions in the pool",
+		"getAll": {
+			Namespace:   core.NamespacePool,
+			Description: "Get transactions in the pool",
 			Func:        n.apiFetchPool,
 		},
 	}

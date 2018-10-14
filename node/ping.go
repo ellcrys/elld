@@ -56,7 +56,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 		return fmt.Errorf("ping failed. failed to write to stream")
 	}
 
-	g.PM().UpdateLastSeen(remotePeer)
+	g.PM().UpdateLastSeenTime(remotePeer)
 	g.log.Debug("Sent ping to peer",
 		"PeerID", remotePeerIDShort)
 
@@ -69,7 +69,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	}
 
 	// update the remote peer's timestamp
-	g.PM().UpdateLastSeen(remotePeer)
+	g.PM().UpdateLastSeenTime(remotePeer)
 
 	g.log.Info("Received pong response from peer",
 		"PeerID", remotePeerIDShort)
@@ -109,7 +109,7 @@ func (g *Gossip) SendPing(remotePeers []types.Engine) {
 		sent++
 		go func() {
 			if err := g.SendPingToPeer(_remotePeer); err != nil {
-				g.PM().HasDisconnected(_remotePeer)
+				g.PM().HasDisconnected(_remotePeer.GetAddress())
 			}
 		}()
 	}
@@ -128,7 +128,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	defer s.Close()
 
-	remotePeer := NewRemoteNode(util.RemoteAddressFromStream(s), g.engine)
+	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 	remotePeerIDShort := remotePeer.ShortID()
 
 	g.log.Info("Received ping message", "PeerID", remotePeerIDShort)
@@ -164,7 +164,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	}
 
 	// update the remote peer's timestamp
-	g.PM().UpdateLastSeen(remotePeer)
+	g.PM().UpdateLastSeenTime(remotePeer)
 
 	g.log.Debug("Sent pong response to peer", "PeerID", remotePeerIDShort)
 

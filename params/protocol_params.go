@@ -48,7 +48,12 @@ var (
 	// a block's timestamp can have beyond the current timestamp
 	AllowedFutureBlockTime = 15 * time.Second
 
-	// MaxBlockTransactionsSize is the total size of
+	// MaxBlockNonTxsSize is the maximum size
+	// of the non-transactional data a block
+	// can have (headers, signature, hash).
+	MaxBlockNonTxsSize = int64(1024)
+
+	// MaxBlockTxsSize is the maximum size of
 	// transactions that can fit in a block
-	MaxBlockTransactionsSize = int64(10000000)
+	MaxBlockTxsSize = int64(10000000)
 )

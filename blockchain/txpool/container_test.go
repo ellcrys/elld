@@ -310,7 +310,7 @@ var _ = Describe("TxContainer", func() {
 			Expect(q.container[0].Tx).To(Equal(tx4))
 			Expect(q.container[1].Tx).To(Equal(tx))
 			Expect(q.len).To(Equal(int64(2)))
-			Expect(q.byteSize).To(Equal(int64(tx.SizeNoFee() + tx4.SizeNoFee())))
+			Expect(q.byteSize).To(Equal(int64(tx.GetSizeNoFee() + tx4.GetSizeNoFee())))
 		})
 	})
 

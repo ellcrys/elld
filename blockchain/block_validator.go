@@ -20,35 +20,13 @@ import (
 	"github.com/ellcrys/elld/util/logger"
 )
 
-// ValidationContext is used to
-// represent a validation behaviour
-type ValidationContext int
-
-const (
-	// ContextBlock represents validation
-	// context of which the intent is to validate
-	// a block that needs to be appended to a chain
-	ContextBlock ValidationContext = iota + 1
-
-	// ContextBranch represents validation
-	// context of which the intent is to validate
-	// a block that needs to be appended to a branch chain
-	ContextBranch
-
-	// ContextTxPool represents validation context
-	// in which the intent is to validate a
-	// transaction that needs to be included in
-	// the transaction pool.
-	ContextTxPool
-)
-
 // VContexts manages validation contexts
 type VContexts struct {
-	contexts []ValidationContext
+	contexts []core.ValidationContext
 }
 
 // Has checks whether a context exists
-func (c *VContexts) has(ctx ValidationContext) bool {
+func (c *VContexts) has(ctx core.ValidationContext) bool {
 	for _, c := range c.contexts {
 		if c == ctx {
 			return true
@@ -59,11 +37,11 @@ func (c *VContexts) has(ctx ValidationContext) bool {
 
 // clearContexts clears removes all validation contexts
 func (c *VContexts) clearContexts() {
-	c.contexts = []ValidationContext{}
+	c.contexts = []core.ValidationContext{}
 }
 
 // addContext adds a validation context
-func (c *VContexts) addContext(contexts ...ValidationContext) {
+func (c *VContexts) addContext(contexts ...core.ValidationContext) {
 	c.contexts = append(c.contexts, contexts...)
 }
 
@@ -80,7 +58,8 @@ func fieldErrorWithIndex(index int, field, err string) error {
 	if field == "" {
 		fieldArg = "%s"
 	}
-	return fmt.Errorf(fmt.Sprintf("index:%d, "+fieldArg+"error:%s", index, field, err))
+	return fmt.Errorf(fmt.Sprintf("index:%d, "+
+		fieldArg+"error:%s", index, field, err))
 }
 
 // BlockValidator implements a validator for checking
@@ -105,7 +84,8 @@ type BlockValidator struct {
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block core.Block, txPool core.TxPool,
-	bchain core.Blockchain, cfg *config.EngineConfig, log logger.Logger) *BlockValidator {
+	bchain core.Blockchain, cfg *config.EngineConfig,
+	log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:     block,
 		txpool:    txPool,
@@ -115,8 +95,10 @@ func NewBlockValidator(block core.Block, txPool core.TxPool,
 }
 
 // setContext sets the validation context
-func (v *BlockValidator) setContext(ctx ValidationContext) {
-	v.contexts = append(v.contexts, ctx)
+func (v *BlockValidator) setContext(ctx core.ValidationContext) {
+	if !v.has(ctx) {
+		v.contexts = append(v.contexts, ctx)
+	}
 }
 
 // validateHeader checks that an header fields and
@@ -128,30 +110,36 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 		errs = append(errs, fieldError("parentHash", "parent hash is required"))
 	} else if h.GetNumber() == 1 && !h.GetParentHash().IsEmpty() {
 		// For genesis block, parent hash is not required
-		errs = append(errs, fieldError("parentHash", "parent hash is not expected in a genesis block"))
+		errs = append(errs, fieldError("parentHash",
+			"parent hash is not expected in a genesis block"))
 	}
 
 	// Number cannot be 0 or less
 	if h.GetNumber() < 1 {
-		errs = append(errs, fieldError("number", "number must be greater or equal to 1"))
+		errs = append(errs, fieldError("number",
+			"number must be greater or equal to 1"))
 	}
 
 	// Creator's public key must be provided
 	// and must be decodeable
 	if len(h.GetCreatorPubKey()) == 0 {
-		errs = append(errs, fieldError("creatorPubKey", "creator's public key is required"))
-	} else if _, err := crypto.PubKeyFromBase58(h.GetCreatorPubKey().String()); err != nil {
+		errs = append(errs, fieldError("creatorPubKey",
+			"creator's public key is required"))
+	} else if _, err := crypto.
+		PubKeyFromBase58(h.GetCreatorPubKey().String()); err != nil {
 		errs = append(errs, fieldError("creatorPubKey", err.Error()))
 	}
 
 	// Transactions root must be provided
 	if h.GetTransactionsRoot() == util.EmptyHash {
-		errs = append(errs, fieldError("transactionsRoot", "transaction root is required"))
+		errs = append(errs, fieldError("transactionsRoot",
+			"transaction root is required"))
 	}
 
 	// Transactions root must be valid
 	if !h.GetTransactionsRoot().Equal(common.ComputeTxsRoot(v.block.GetTransactions())) {
-		errs = append(errs, fieldError("transactionsRoot", "transactions root is not valid"))
+		errs = append(errs, fieldError("transactionsRoot",
+			"transactions root is not valid"))
 	}
 
 	// State root must be provided
@@ -163,7 +151,8 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 	// and greater than zero
 	if !h.GetParentHash().IsEmpty() {
 		if h.GetDifficulty() == nil || h.GetDifficulty().Cmp(util.Big0) == 0 {
-			errs = append(errs, fieldError("difficulty", "difficulty must be greater than zero"))
+			errs = append(errs, fieldError("difficulty",
+				"difficulty must be greater than zero"))
 		}
 	}
 
@@ -171,8 +160,10 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 	// 15 seconds in the future
 	if h.GetTimestamp() == 0 {
 		errs = append(errs, fieldError("timestamp", "timestamp is required"))
-	} else if time.Unix(h.GetTimestamp(), 0).After(time.Now().Add(15 * time.Second).UTC()) {
-		errs = append(errs, fieldError("timestamp", "timestamp is too far in the future"))
+	} else if time.Unix(h.GetTimestamp(), 0).After(time.Now().
+		Add(15 * time.Second).UTC()) {
+		errs = append(errs, fieldError("timestamp",
+			"timestamp is too far in the future"))
 	}
 
 	return
@@ -184,14 +175,27 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 func (v *BlockValidator) CheckPoW(opts ...core.CallOp) (errs []error) {
 
 	// find the parent header
-	parentHeader, err := v.bchain.GetBlockByHash(v.block.GetHeader().GetParentHash(), opts...)
+	parentHeader, err := v.bchain.GetBlockByHash(v.block.GetHeader().
+		GetParentHash(), opts...)
 	if err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
 		return errs
 	}
 
-	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(), parentHeader.GetHeader(), true); err != nil {
+	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(),
+		parentHeader.GetHeader(), true); err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
+	}
+
+	return
+}
+
+// CheckSize checks the size of the blocks
+func (v *BlockValidator) CheckSize() (errs []error) {
+
+	maxBlockSize := params.MaxBlockTxsSize + params.MaxBlockNonTxsSize
+	if v.block.GetSize() > maxBlockSize {
+		errs = append(errs, fmt.Errorf("block size exceeded"))
 	}
 
 	return
@@ -220,7 +224,8 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 		return
 	}
 	for _, err := range v.validateHeader(v.block.GetHeader()) {
-		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "field:", "field:header.", -1)))
+		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(),
+			"field:", "field:header.", -1)))
 	}
 	if len(errs) > 0 {
 		return
@@ -228,15 +233,20 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 
 	// Must have at least one transaction
 	if v.block.GetNumber() > 1 && txCount == 0 {
-		errs = append(errs, fieldError("transactions", "at least one transaction is required"))
+		errs = append(errs, fieldError("transactions",
+			"at least one transaction is required"))
 	}
 
 	// Hash must be provided
 	if v.block.GetHash() == util.EmptyHash {
 		errs = append(errs, fieldError("hash", "hash is required"))
-	} else if v.block.GetHeader() != nil && !v.block.GetHash().Equal(v.block.ComputeHash()) {
+	} else if v.block.GetHeader() != nil && !v.block.GetHash().
+		Equal(v.block.ComputeHash()) {
 		errs = append(errs, fieldError("hash", "hash is not correct"))
 	}
+
+	// Check the size of the block
+	errs = append(errs, v.CheckSize()...)
 
 	// Signature must be provided
 	if len(v.block.GetSignature()) == 0 {
@@ -283,7 +293,8 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 	// Compute the expected allocations we
 	// expect the block to include.
 	// 1. Accumulated fee addressed to the block creator.
-	minerPubKey, _ := crypto.PubKeyFromBase58(v.block.GetHeader().GetCreatorPubKey().String())
+	minerPubKey, _ := crypto.PubKeyFromBase58(v.block.GetHeader().
+		GetCreatorPubKey().String())
 	expectedAllocs = append(expectedAllocs, []interface{}{
 		util.String(minerPubKey.Addr()),
 		util.String(minerPubKey.Addr()),
@@ -294,7 +305,8 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 	// with the computed expected allocations.
 	// If they don't match, then add an error
 	if !reflect.DeepEqual(blockAllocs, expectedAllocs) {
-		errs = append(errs, fieldError("transactions", "block allocations and expected allocations do not match"))
+		errs = append(errs, fieldError("transactions",
+			"block allocations and expected allocations do not match"))
 		return
 	}
 
@@ -314,7 +326,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 		return
 	}
 
-	valid, err := pubKey.Verify(v.block.Bytes(),
+	valid, err := pubKey.Verify(v.block.GetBytesNoHashSig(),
 		v.block.GetSignature())
 	if err != nil {
 		errs = append(errs, fieldError("sig", err.Error()))

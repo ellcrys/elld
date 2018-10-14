@@ -39,6 +39,9 @@ type ChainStorer interface {
 	// GetAccount gets an account
 	GetAccount(address util.String, opts ...CallOp) (Account, error)
 
+	// GetAccounts gets an account
+	GetAccounts(opts ...CallOp) ([]Account, error)
+
 	// PutTransactions stores a collection of transactions
 	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 

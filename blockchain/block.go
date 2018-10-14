@@ -80,7 +80,7 @@ func (b *Blockchain) getFeeAllocTx(block *objects.Block, beneficiary *crypto.Key
 		To:           util.String(beneficiary.PubKey().Addr()),
 		SenderPubKey: util.String(beneficiary.PubKey().Base58()),
 		Value:        util.String(totalMinerFee.StringFixed(p.Decimals)),
-		Fee:          "",
+		Fee:          "0",
 		Timestamp:    time.Now().Unix(),
 	}
 	tx.Hash = tx.ComputeHash()
@@ -196,7 +196,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// select transactions and compute transaction root
 	if len(params.Transactions) == 0 {
-		selectedTxs, err := b.SelectTransactions(p.MaxBlockTransactionsSize)
+		selectedTxs, err := b.SelectTransactions(p.MaxBlockTxsSize)
 		if err != nil {
 			return nil, err
 		}

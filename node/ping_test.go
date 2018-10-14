@@ -73,7 +73,7 @@ var _ = Describe("Ping", func() {
 			var rpBeforePingTime int64
 
 			BeforeEach(func() {
-				lp.PM().UpdateLastSeen(rp)
+				lp.PM().UpdateLastSeenTime(rp)
 				rp.SetLastSeen(time.Now().Add(-2 * time.Hour))
 				rpBeforePingTime = rp.GetLastSeen().Unix()
 			})

@@ -2,7 +2,11 @@ package console
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
+	"strings"
+
+	goprompt "github.com/segmentio/go-prompt"
 
 	"github.com/ellcrys/elld/rpc"
 	"github.com/gobuffalo/packr"
@@ -64,7 +68,25 @@ func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
 	return e
 }
 
-func (e *Executor) login(username, password string) interface{} {
+func (e *Executor) login(credentials ...string) interface{} {
+
+	var username, password string
+	if len(credentials) == 1 {
+		username = credentials[0]
+	} else if len(credentials) > 1 {
+		username = credentials[0]
+		password = credentials[1]
+	}
+
+	// When password is not provided, we assume the
+	// caller intends to enter interactive mode.
+	// Prompt user to enter password util she does.
+	if len(password) == 0 {
+		fmt.Println("Please enter your password below:")
+		for len(password) == 0 {
+			password = goprompt.Password("Password")
+		}
+	}
 
 	var arg = map[string]interface{}{
 		"username": username,
@@ -125,9 +147,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	}
 
 	// Add some methods to namespaces
-	nsObj["rpc"]["started"] = e.isRPCServerStarted
 	nsObj["rpc"]["start"] = e.startRPCServer
-	nsObj["rpc"]["stop"] = e.stopRPCServer
 	nsObj["admin"]["login"] = e.login
 	nsObj["personal"]["loadAccount"] = e.loadAccount
 	nsObj["personal"]["loadedAccount"] = e.loadedAccount
@@ -150,8 +170,6 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 
 	// Add some methods to the suggestions
 	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.start", Description: "Start RPC Server"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.stop", Description: "Stop RPC Server"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.started", Description: "Check whether RPC server has started"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
 	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
@@ -174,39 +192,35 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 		return suggestions, err
 	}
 
-	// Create console suggestions and collect methods info
-	var methodsInfo = []jsonrpc.MethodInfo{}
-	for _, m := range resp.Result.([]interface{}) {
+	for _, r := range resp.Result.([]interface{}) {
 		var mInfo jsonrpc.MethodInfo
-		util.MapDecode(m, &mInfo)
+		util.MapDecode(r, &mInfo)
+		methodInfoParts := strings.Split(mInfo.Name, "_")
+		mName := methodInfoParts[1]
+		ns := methodInfoParts[0]
+
+		// Add suggestions
 		suggestions = append(suggestions, prompt.Suggest{
-			Text:        fmt.Sprintf("%s.%s", mInfo.Namespace, mInfo.Name),
+			Text:        fmt.Sprintf("%s.%s", ns, mName),
 			Description: mInfo.Description,
 		})
-		methodsInfo = append(methodsInfo, mInfo)
-	}
 
-	// Add supported methods to the namespace object
-	if len(methodsInfo) == 0 {
-		return suggestions, nil
-	}
-
-	for _, methodInfo := range methodsInfo {
-		mName := methodInfo.Name
-		ns := methodInfo.Namespace
 		if nsObj[ns] == nil {
 			nsObj[ns] = map[string]interface{}{}
 		}
+
 		nsObj[ns][mName] = func(args ...interface{}) interface{} {
 
 			// parse arguments.
 			// App RPC functions can have zero or one argument
 			var arg interface{}
-			if len(args) > 0 {
+			if len(args) == 1 {
 				arg = args[0]
+			} else {
+				arg = args
 			}
 
-			result, err := e.callRPCMethod(ns+"_"+mName, arg)
+			result, err := e.callRPCMethod(mInfo.Name, arg)
 			if err != nil {
 				e.log.Error(color.RedString(RPCClientError(err.Error()).Error()))
 				v, _ := otto.ToValue(nil)
@@ -227,15 +241,12 @@ func (e *Executor) runScript(file string) {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
 
-	script, err := e.vm.Compile(fullPath, nil)
+	content, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		panic(e.vm.MakeCustomError("ExecError", err.Error()))
 	}
 
-	_, err = e.vm.Run(script)
-	if err != nil {
-		panic(e.vm.MakeCustomError("ExecError", err.Error()))
-	}
+	e.runRaw(content)
 }
 
 func (e *Executor) runRaw(src interface{}) {

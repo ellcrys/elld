@@ -141,8 +141,8 @@ func (h *Header) EncodeMsgpack(enc *msgpack.Encoder) error {
 		h.ParentHash, h.StateRoot, h.TransactionsRoot, h.Extra, difficultyStr, tdStr)
 }
 
-// Bytes return the bytes representation of the header
-func (h *Header) Bytes() []byte {
+// GetBytes return the bytes representation of the header
+func (h *Header) GetBytes() []byte {
 	return getBytes([]interface{}{
 		h.ParentHash,
 		h.Number,
@@ -159,7 +159,7 @@ func (h *Header) Bytes() []byte {
 
 // ComputeHash returns the SHA256 hash of the header
 func (h *Header) ComputeHash() util.Hash {
-	bs := h.Bytes()
+	bs := h.GetBytes()
 	hash := sha256.Sum256(bs)
 	return util.BytesToHash(hash[:])
 }
@@ -186,6 +186,10 @@ type Block struct {
 	// Broadcaster is the peer responsible
 	// for sending this block.
 	Broadcaster types.Engine `json:"-" msgpack:"-"`
+
+	// ValidationContext can be used to alter
+	// the way the block is validated
+	ValidationContexts []core.ValidationContext `json:"-" msgpack:"-"`
 }
 
 // SetBroadcaster sets the originator
@@ -207,9 +211,9 @@ func (b *Block) GetHash() util.Hash {
 	return b.Hash
 }
 
-// HashToHex returns the block's hex equivalent of its hash
+// GetHashAsHex returns the block's hex equivalent of its hash
 // preceded by 0x
-func (b *Block) HashToHex() string {
+func (b *Block) GetHashAsHex() string {
 	return b.GetHash().HexStr()
 }
 
@@ -223,8 +227,9 @@ func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return dec.Decode(&b.Hash, &b.Sig, &b.Header, &b.Transactions)
 }
 
-// HashNoNonce returns the hash which is used as input for the proof-of-work search.
-func (h *Header) HashNoNonce() util.Hash {
+// GetHashNoNonce gets the hash of the header
+// without the nonce included in the computation
+func (h *Header) GetHashNoNonce() util.Hash {
 	result := getBytes([]interface{}{
 		h.ParentHash,
 		h.Number,
@@ -239,27 +244,22 @@ func (h *Header) HashNoNonce() util.Hash {
 	return sha256.Sum256(result)
 }
 
-// Bytes returns the ANS1 bytes equivalent of the block data.
-// The block signature and hash are not included in this computation.
-func (b *Block) Bytes() []byte {
-
-	var txBytes [][]byte
-	for _, tx := range b.Transactions {
-		txBytes = append(txBytes, tx.Bytes())
-	}
-
-	return getBytes([]interface{}{
-		b.Header.Bytes(),
-		txBytes,
-	})
-}
-
 // GetTransactions gets the transactions
 func (b *Block) GetTransactions() (txs []core.Transaction) {
 	for _, tx := range b.Transactions {
 		txs = append(txs, tx)
 	}
 	return
+}
+
+// GetValidationContexts gets the validation contexts
+func (b *Block) GetValidationContexts() []core.ValidationContext {
+	return b.ValidationContexts
+}
+
+// SetValidationContexts sets the validation contexts
+func (b *Block) SetValidationContexts(ctxs ...core.ValidationContext) {
+	b.ValidationContexts = ctxs
 }
 
 // GetHeader gets the block's header
@@ -271,7 +271,7 @@ func (b *Block) SetHeader(h core.Header) { b.Header = h.(*Header) }
 // ComputeHash returns the SHA256 hash of the header as a hex string
 // prefixed by '0x'
 func (b *Block) ComputeHash() util.Hash {
-	bs := b.Bytes()
+	bs := b.GetBytesNoHashSig()
 	hash := sha256.Sum256(bs)
 	return util.BytesToHash(hash[:])
 }
@@ -302,6 +302,67 @@ func (b *Block) WithSeal(header core.Header) core.Block {
 	}
 }
 
+// GetBytes gets the bytes representation
+// of the block.
+func (b *Block) GetBytes() []byte {
+
+	txsBytes := []byte{}
+	for _, tx := range b.Transactions {
+		txsBytes = append(txsBytes, tx.Bytes()...)
+	}
+
+	data := []interface{}{
+		b.Header.GetBytes(),
+		txsBytes,
+		b.Hash,
+		b.Sig,
+	}
+
+	return getBytes(data)
+}
+
+// GetBytesNoTxs gets the bytes representation
+// of the block without the adding the
+// transactions' bytes
+func (b *Block) GetBytesNoTxs() []byte {
+
+	data := []interface{}{
+		b.Header.GetBytes(),
+		b.Hash,
+		b.Sig,
+	}
+
+	return getBytes(data)
+}
+
+// GetSize gets the byte size
+func (b *Block) GetSize() int64 {
+	return int64(len(b.GetBytes()))
+}
+
+// GetSizeNoTxs gets the byte size
+func (b *Block) GetSizeNoTxs() int64 {
+	return int64(len(b.GetBytesNoTxs()))
+}
+
+// GetBytesNoHashSig gets the bytes representation
+// of the block without the hash and signature
+// included.
+func (b *Block) GetBytesNoHashSig() []byte {
+
+	txsBytes := []byte{}
+	for _, tx := range b.Transactions {
+		txsBytes = append(txsBytes, tx.Bytes()...)
+	}
+
+	data := []interface{}{
+		b.Header.GetBytes(),
+		txsBytes,
+	}
+
+	return getBytes(data)
+}
+
 // BlockSign signs a block.
 // Expects private key in base58Check encoding
 func BlockSign(b core.Block, privKey string) ([]byte, error) {
@@ -315,7 +376,7 @@ func BlockSign(b core.Block, privKey string) ([]byte, error) {
 		return nil, err
 	}
 
-	sig, err := pKey.Sign(b.Bytes())
+	sig, err := pKey.Sign(b.GetBytesNoHashSig())
 	if err != nil {
 		return nil, err
 	}
@@ -344,7 +405,7 @@ func BlockVerify(block *Block) error {
 		return fieldError("header.creatorPubKey", err.Error())
 	}
 
-	valid, err := pubKey.Verify(block.Bytes(), block.Sig)
+	valid, err := pubKey.Verify(block.GetBytesNoHashSig(), block.Sig)
 	if err != nil {
 		return fieldError("sig", err.Error())
 	}

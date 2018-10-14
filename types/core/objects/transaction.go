@@ -53,7 +53,9 @@ type Transaction struct {
 }
 
 // NewTransaction creates a new transaction
-func NewTransaction(txType int64, nonce uint64, to util.String, senderPubKey util.String, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
+func NewTransaction(txType int64, nonce uint64, to util.String,
+	senderPubKey util.String, value util.String,
+	fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
@@ -116,6 +118,11 @@ func (tx *Transaction) GetTimestamp() int64 {
 	return tx.Timestamp
 }
 
+// SetTimestamp set the unix timestamp
+func (tx *Transaction) SetTimestamp(t int64) {
+	tx.Timestamp = t
+}
+
 // GetNonce gets the nonce
 func (tx *Transaction) GetNonce() uint64 {
 	return tx.Nonce
@@ -161,8 +168,10 @@ func (tx *Transaction) GetType() int64 {
 	return tx.Type
 }
 
-// Bytes return the ASN.1 marshalled representation of the transaction.
-func (tx *Transaction) Bytes() []byte {
+// GetBytesNoHashAndSig converts a transaction
+// to bytes equivalent but omits the hash and
+// signature in the result.
+func (tx *Transaction) GetBytesNoHashAndSig() []byte {
 
 	var invokeArgsBs []byte
 	if tx.InvokeArgs != nil {
@@ -184,14 +193,40 @@ func (tx *Transaction) Bytes() []byte {
 	return getBytes(data)
 }
 
-// SizeNoFee returns the virtual size of the
+// Bytes converts a transaction
+// to bytes equivalent
+func (tx *Transaction) Bytes() []byte {
+
+	var invokeArgsBs []byte
+	if tx.InvokeArgs != nil {
+		invokeArgsBs = tx.InvokeArgs.Bytes()
+	}
+
+	data := []interface{}{
+		tx.Type,
+		tx.Nonce,
+		tx.To,
+		tx.SenderPubKey,
+		tx.From,
+		tx.Value,
+		tx.Fee,
+		tx.Timestamp,
+		invokeArgsBs,
+		tx.Hash,
+		tx.Sig,
+	}
+
+	return getBytes(data)
+}
+
+// GetSizeNoFee returns the virtual size of the
 // transaction by summing up the size of
 // field contents except the `fee` field.
 // The value does not represent the true size
 // of the transaction
 // on disk. It is main required for computing
 // minimum fees etc.
-func (tx *Transaction) SizeNoFee() int64 {
+func (tx *Transaction) GetSizeNoFee() int64 {
 
 	var invokeArgsBs []byte
 	if tx.InvokeArgs != nil {
@@ -214,15 +249,16 @@ func (tx *Transaction) SizeNoFee() int64 {
 	return int64(len(getBytes(data)))
 }
 
-// ComputeHash returns the SHA256 hash of the transaction.
+// ComputeHash returns the SHA256
+// hash of the transaction.
 func (tx *Transaction) ComputeHash() util.Hash {
-	bs := tx.Bytes()
+	bs := tx.GetBytesNoHashAndSig()
 	hash := sha256.Sum256(bs)
 	return util.BytesToHash(hash[:])
 }
 
-// ID returns the hex representation of Hash()
-func (tx *Transaction) ID() string {
+// GetID returns the hex representation of Hash()
+func (tx *Transaction) GetID() string {
 	return tx.ComputeHash().HexStr()
 }
 
@@ -252,7 +288,7 @@ func TxVerify(tx *Transaction) error {
 		return fieldError("senderPubKey", err.Error())
 	}
 
-	valid, err := pubKey.Verify(tx.Bytes(), tx.Sig)
+	valid, err := pubKey.Verify(tx.GetBytesNoHashAndSig(), tx.Sig)
 	if err != nil {
 		return fieldError("sig", err.Error())
 	}
@@ -277,7 +313,7 @@ func TxSign(tx core.Transaction, privKey string) ([]byte, error) {
 		return nil, err
 	}
 
-	sig, err := pKey.Sign(tx.Bytes())
+	sig, err := pKey.Sign(tx.GetBytesNoHashAndSig())
 	if err != nil {
 		return nil, err
 	}

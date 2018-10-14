@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -62,7 +61,7 @@ type SyncStateInfo struct {
 type Node struct {
 	mtx                 *sync.RWMutex
 	cfg                 *config.EngineConfig // node config
-	address             ma.Multiaddr         // node multiaddr
+	address             util.NodeAddr        // node address
 	IP                  net.IP               // node ip
 	host                host.Host            // node libp2p host
 	wg                  sync.WaitGroup       // wait group for preventing the main thread from exiting
@@ -75,23 +74,26 @@ type Node struct {
 	isHardcodedSeed     bool                 // whether the node was hardcoded as a seed
 	stopped             bool                 // flag to tell if node has stopped
 	log                 logger.Logger        // node logger
-	rSeed               []byte               // random 256 bit seed to be used for seed random operations
-	db                  elldb.DB             // used to access and modify local database
-	signatory           *d_crypto.Key        // signatory address used to get node ID and for signing
-	history             *cache.Cache         // Used to track things we want to remember
-	event               *emitter.Emitter     // Provides access event emitting service
-	transactionsPool    *txpool.TxPool       // the transaction pool for transactions
-	txsRelayQueue       *txpool.TxContainer  // stores transactions waiting to be relayed
-	bchain              core.Blockchain      // The blockchain manager
-	blockHashQueue      *lane.Deque          // Contains headers collected during block syncing
-	bestRemoteBlockInfo *BestBlockInfo       // Holds information about the best known block heard from peers
-	syncing             bool                 // Indicates the process of syncing the blockchain with peers
-	acquainted          bool                 // Indicates that the node has "handshooked" the local node
+	txsPool             *txpool.TxPool
+	rSeed               []byte              // random 256 bit seed to be used for seed random operations
+	db                  elldb.DB            // used to access and modify local database
+	signatory           *d_crypto.Key       // signatory address used to get node ID and for signing
+	history             *cache.Cache        // Used to track things we want to remember
+	event               *emitter.Emitter    // Provides access event emitting service
+	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
+	bchain              core.Blockchain     // The blockchain manager
+	blockHashQueue      *lane.Deque         // Contains headers collected during block syncing
+	bestRemoteBlockInfo *BestBlockInfo      // Holds information about the best known block heard from peers
+	syncing             bool                // Indicates the process of syncing the blockchain with peers
+	acquainted          bool                // Indicates that the node has "handshooked" the local node
+	inbound             bool                // Indicates this that this node initiated the connection with the local node
+	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
 }
 
 // NewNode creates a node instance at the specified port
-func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
+func newNode(db elldb.DB, config *config.EngineConfig, address string,
+	coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
 
 	if coinbase == nil {
 		return nil, fmt.Errorf("signatory address required")
@@ -112,35 +114,33 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string, coinbase 
 		h = "127.0.0.1"
 	}
 
-	// construct host options
 	opts := []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/%s/tcp/%s", h, port)),
 		libp2p.Identity(priv),
 	}
 
-	// create host
 	host, err := libp2p.New(context.Background(), opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create host > %s", err)
 	}
 
 	node := &Node{
-		mtx:              &sync.RWMutex{},
-		cfg:              config,
-		address:          util.FullAddressFromHost(host),
-		host:             host,
-		wg:               sync.WaitGroup{},
-		log:              log,
-		rSeed:            util.RandBytes(64),
-		signatory:        coinbase,
-		db:               db,
-		event:            &emitter.Emitter{},
-		transactionsPool: txpool.New(config.TxPool.Capacity),
-		txsRelayQueue:    txpool.NewQueueNoSort(config.TxPool.Capacity),
-		blockHashQueue:   lane.NewDeque(),
-		history:          cache.NewActiveCache(5000),
-		tickerDone:       make(chan bool),
-		createdAt:        time.Now().UTC(),
+		mtx:            &sync.RWMutex{},
+		cfg:            config,
+		address:        util.AddressFromHost(host),
+		host:           host,
+		wg:             sync.WaitGroup{},
+		log:            log,
+		rSeed:          util.RandBytes(64),
+		signatory:      coinbase,
+		db:             db,
+		event:          &emitter.Emitter{},
+		txsRelayQueue:  txpool.NewQueueNoSort(config.TxPool.Capacity),
+		blockHashQueue: lane.NewDeque(),
+		history:        cache.NewActiveCache(5000),
+		intros:         cache.NewActiveCache(50000),
+		tickerDone:     make(chan bool),
+		createdAt:      time.Now().UTC(),
 	}
 
 	node.localNode = node
@@ -165,7 +165,7 @@ func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string,
 }
 
 // NewRemoteNode creates a Node that represents a remote node
-func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
+func NewRemoteNode(address util.NodeAddr, localNode *Node) *Node {
 	node := &Node{
 		address:   address,
 		localNode: localNode,
@@ -175,6 +175,12 @@ func NewRemoteNode(address ma.Multiaddr, localNode *Node) *Node {
 	}
 	node.IP = node.ip()
 	return node
+}
+
+// NewRemoteNodeFromMultiAddr is like NewRemoteNode
+// excepts it accepts a Multiaddr
+func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
+	return NewRemoteNode(util.NodeAddr(address.String()), localNode)
 }
 
 // NewAlmostEmptyNode returns a node with
@@ -192,7 +198,7 @@ func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	return &Node{
 		createdAt: time.Now().UTC(),
 		mtx:       &sync.RWMutex{},
-		address:   address,
+		address:   util.NodeAddr(address.String()),
 	}
 }
 
@@ -235,6 +241,16 @@ func (n *Node) SetCfg(cfg *config.EngineConfig) {
 // GetCfg returns the config
 func (n *Node) GetCfg() *config.EngineConfig {
 	return n.cfg
+}
+
+// SetInbound set the connection as inbound or not
+func (n *Node) SetInbound(v bool) {
+	n.inbound = v
+}
+
+// IsInbound checks whether the connection is inbound
+func (n *Node) IsInbound() bool {
+	return n.inbound
 }
 
 // updateSyncInfo sets a given remote best
@@ -433,14 +449,19 @@ func (n *Node) IsSameID(id string) bool {
 // SetEventEmitter set the event bus
 // used to broadcast events across
 // the engine
-func (n *Node) SetEventEmitter(ee *emitter.Emitter) {
-	n.event = ee
-	n.transactionsPool.SetEventEmitter(ee)
+func (n *Node) SetEventEmitter(e *emitter.Emitter) {
+	n.event = e
 }
 
 // SetLocalNode sets the local peer
 func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
+}
+
+// CountIntros counts the number of
+// intros received
+func (n *Node) CountIntros() int {
+	return n.intros.Len()
 }
 
 // canAcceptPeer determines whether we
@@ -449,12 +470,17 @@ func (n *Node) SetLocalNode(node *Node) {
 // to check if a remote node has been
 // blacklisted etc
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
-	// In non-production mode, we cannot interact with a remote peer with a public IP
+
+	// In non-production mode, we cannot
+	// interact with a remote peer
+	// with a public IP
 	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
-		return false, fmt.Errorf("in development mode, we cannot interact with peers with public IP")
+		return false, fmt.Errorf("in development mode, we " +
+			"cannot interact with peers with public IP")
 	}
 
-	// If the local peer does not know the remotePeer, it cannot interact with it.
+	// If the local peer does not know the
+	// remotePeer, it cannot interact with it.
 	// This only applies in production mode.
 	if n.ProdMode() && !remotePeer.IsKnown() {
 		return false, fmt.Errorf("remote peer is unknown")
@@ -466,19 +492,17 @@ func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
 // addToPeerStore adds a remote node
 // to the host's peerstore
 func (n *Node) addToPeerStore(remote types.Engine) *Node {
-	n.localNode.Peerstore().AddAddr(remote.ID(), remote.GetIP4TCPAddr(), pstore.PermanentAddrTTL)
+	addr := remote.GetAddress()
+	n.localNode.Peerstore().AddAddr(remote.ID(),
+		addr.DecapIPFS(),
+		pstore.PermanentAddrTTL)
 	return n
 }
 
 // newStream creates a stream to a peer
-func (n *Node) newStream(ctx context.Context, peerID peer.ID, protocolID string) (inet.Stream, error) {
+func (n *Node) newStream(ctx context.Context,
+	peerID peer.ID, protocolID string) (inet.Stream, error) {
 	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
-}
-
-// SetTransactionPool sets the
-// transaction pool
-func (n *Node) SetTransactionPool(txp *txpool.TxPool) {
-	n.transactionsPool = txp
 }
 
 // SetGossipProtocol sets the
@@ -520,32 +544,27 @@ func (n *Node) Host() host.Host {
 
 // ID returns the peer id of the host
 func (n *Node) ID() peer.ID {
-	if n.address == nil {
-		return ""
+	if n.address == "" {
+		return peer.ID("")
 	}
-
-	pid, _ := n.address.ValueForProtocol(ma.P_IPFS)
-	id, _ := peer.IDB58Decode(pid)
-	return id
+	return n.address.ID()
 }
 
 // StringID is like ID() but
 // it returns string
 func (n *Node) StringID() string {
-	if n.address == nil {
+	if n.address == "" {
 		return ""
 	}
-
-	pid, _ := n.address.ValueForProtocol(ma.P_IPFS)
-	return pid
+	return n.ID().Pretty()
 }
 
 // ShortID is like IDPretty but shorter
 func (n *Node) ShortID() string {
-	id := n.StringID()
-	if len(id) == 0 {
+	if n.address == "" {
 		return ""
 	}
+	id := n.StringID()
 	return id[0:12] + ".." + id[40:52]
 }
 
@@ -553,18 +572,12 @@ func (n *Node) ShortID() string {
 // is connected to the local node.
 // Returns false if node is the local node.
 func (n *Node) Connected() bool {
-	if n.localNode == nil {
-		return false
-	}
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
 }
 
 // IsKnown checks whether a peer is
 // known to the local node
 func (n *Node) IsKnown() bool {
-	if n.localNode == nil {
-		return false
-	}
 	return n.localNode.PM().GetPeer(n.StringID()) != nil
 }
 
@@ -585,59 +598,42 @@ func (n *Node) SetProtocolHandler(version string,
 	n.host.SetStreamHandler(protocol.ID(version), handler)
 }
 
-// GetMultiAddr returns the full multi address of the node
-func (n *Node) GetMultiAddr() string {
+// GetAddress returns the node's address
+func (n *Node) GetAddress() util.NodeAddr {
 	if n.host == nil && !n.remote {
 		return ""
-	} else if n.remote {
-		return n.address.String()
 	}
-	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s",
-		n.host.ID().Pretty()))
-	return n.host.Addrs()[0].Encapsulate(hostAddr).String()
-}
-
-// GetAddr returns the host and port
-// of the node as "host:port"
-func (n *Node) GetAddr() string {
-	hostAddr := n.host.Addrs()[0].String()
-	parts := strings.Split(strings.Trim(hostAddr, "/"), "/")
-	return fmt.Sprintf("%s:%s", parts[1], parts[3])
-}
-
-// GetIP4TCPAddr returns ip4 and tcp
-// parts of the host's multi address
-func (n *Node) GetIP4TCPAddr() ma.Multiaddr {
-	ipfsPart := fmt.Sprintf("/ipfs/%s", n.ID().Pretty())
-	ipfsAddr, _ := ma.NewMultiaddr(ipfsPart)
-	return n.address.Decapsulate(ipfsAddr)
-}
-
-// GetBindAddress returns the bind address
-func (n *Node) GetBindAddress() string {
-	return n.address.String()
-}
-
-// validateAddress checks whether
-// an address is valid for the
-// current engine mode.
-func validateAddress(engine types.Engine, address string) error {
-
-	// Check whether the address is valid
-	if !util.IsValidAddr(address) {
-		return fmt.Errorf("not a valid multiaddr")
+	if n.remote {
+		return n.address
 	}
+	ipfsPart := fmt.Sprintf("/ipfs/%s", n.host.ID().Pretty())
+	hostAddr, _ := ma.NewMultiaddr(ipfsPart)
+	fullAddr := n.host.Addrs()[0].Encapsulate(hostAddr).String()
+	return util.NodeAddr(fullAddr)
+}
+
+// checkConnString checks whether a connection
+// string is valid for the current engine mode.
+func checkConnString(engine types.Engine, address string) error {
+
+	// Check whether the address is
+	// a valid connection string
+	if !util.IsValidConnectionString(address) {
+		return fmt.Errorf("not a valid connection address")
+	}
+
+	addr := util.AddressFromConnString(address)
 
 	// In non-production mode, only
 	// local/private addresses are allowed
-	if !engine.ProdMode() && !util.IsDevAddr(util.GetIPFromAddr(address)) {
+	if !engine.ProdMode() && !util.IsDevAddr(addr.IP()) {
 		return fmt.Errorf("public addresses are " +
 			"not allowed in development mode")
 	}
 
 	// In production mode, only routable
 	// addresses are allowed
-	if engine.ProdMode() && !util.IsRoutableAddr(address) {
+	if engine.ProdMode() && !addr.IsRoutable() {
 		return fmt.Errorf("local or private addresses " +
 			"are not allowed in production mode")
 	}
@@ -648,18 +644,21 @@ func validateAddress(engine types.Engine, address string) error {
 // AddAddresses adds addresses that can be
 // connected to when new connections need to
 // be established.
-func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
+func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 
-	for _, addr := range peerAddresses {
+	for _, connStr := range connStrings {
 
-		if err := validateAddress(n, addr); err != nil {
-			n.log.Info("Invalid Bootstrap Address",
-				"Err", err.Error(), "Address", addr)
+		// Check whether the connection string is valid.
+		// If not valid, proceed to the next immediately.
+		if err := checkConnString(n, connStr); err != nil {
+			n.log.Info("Invalid bootstrap address",
+				"Err", err.Error(), "Address", connStr)
 			continue
 		}
 
-		pAddr, _ := ma.NewMultiaddr(addr)
-		rp := NewRemoteNode(pAddr, n)
+		// Convert the connection string to a valid
+		// IPFS Multiaddr format
+		rp := NewRemoteNode(util.AddressFromConnString(connStr), n)
 		rp.isHardcodedSeed = hardcoded
 		rp.gProtoc = n.gProtoc
 		n.peerManager.AddPeer(rp)
@@ -667,9 +666,9 @@ func (n *Node) AddAddresses(peerAddresses []string, hardcoded bool) error {
 	return nil
 }
 
-// connectToNode handshake to each bootstrap
-// peer. Then send GetAddr message if
-// handshake is successful
+// connectToNode sends Handshake message a
+// given remote node. Then it sends a
+// GetAddr message afterwards
 func (n *Node) connectToNode(remote types.Engine) error {
 	if n.gProtoc.SendHandshake(remote) == nil {
 		n.gProtoc.SendGetAddr([]types.Engine{remote})
@@ -896,7 +895,6 @@ func (n *Node) Stop() {
 		n.host.Close()
 	}
 
-	// Close the database.
 	if n.db != nil {
 
 		// Wait a few seconds for active
@@ -920,32 +918,24 @@ func (n *Node) Stop() {
 }
 
 // NodeFromAddr creates a Node from a multiaddr
-func (n *Node) NodeFromAddr(addr string, remote bool) (*Node, error) {
-	if !util.IsValidAddr(addr) {
-		return nil, fmt.Errorf("invalid address provided")
+func (n *Node) NodeFromAddr(addr util.NodeAddr, remote bool) (*Node, error) {
+	if !addr.IsValid() {
+		return nil, fmt.Errorf("invalid address (" + addr.String() + ") provided")
 	}
-	nAddr, _ := ma.NewMultiaddr(addr)
 	return &Node{
-		createdAt: time.Now().UTC(),
-		address:   nAddr,
+		address:   addr,
 		localNode: n,
 		gProtoc:   n.gProtoc,
 		remote:    remote,
 		mtx:       &sync.RWMutex{},
+		createdAt: time.Now().UTC(),
+		lastSeen:  time.Now().UTC(),
 	}, nil
 }
 
 // ip returns the IP address
 func (n *Node) ip() net.IP {
-	addr := n.GetIP4TCPAddr()
-	if addr == nil {
-		return nil
-	}
-	ip, _ := addr.ValueForProtocol(ma.P_IP6)
-	if ip == "" {
-		ip, _ = addr.ValueForProtocol(ma.P_IP4)
-	}
-	return net.ParseIP(ip)
+	return n.address.IP()
 }
 
 // IsBadTimestamp checks whether the timestamp of the node is bad.
@@ -977,5 +967,10 @@ func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
 
 // GetTxPool returns the unsigned transaction pool
 func (n *Node) GetTxPool() core.TxPool {
-	return n.transactionsPool
+	return n.txsPool
+}
+
+// SetTxsPool sets the transaction pool
+func (n *Node) SetTxsPool(txp *txpool.TxPool) {
+	n.txsPool = txp
 }

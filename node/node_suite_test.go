@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
+
+	"github.com/olebedev/emitter"
 
 	"github.com/phayes/freeport"
 	"github.com/shopspring/decimal"
@@ -77,6 +80,7 @@ func makeTestNode(port int) *node.Node {
 // makeTestNode creates a node with
 // a blockchain attached to it.
 func makeTestNodeWith(port int, seed int) *node.Node {
+
 	cfg, err := testutil.SetTestCfg()
 	if err != nil {
 		panic(err)
@@ -88,8 +92,12 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 		panic(err)
 	}
 
-	txPool := txpool.New(100)
-	bc := blockchain.New(txPool, cfg, log)
+	evtEmitter := &emitter.Emitter{}
+	txp := txpool.New(100)
+	txp.SetEventEmitter(evtEmitter)
+
+	bc := blockchain.New(txp, cfg, log)
+	bc.SetEventEmitter(evtEmitter)
 	bc.SetDB(db)
 	genesisBlock, err := blockchain.LoadBlockFromFile("genesis-test.json")
 	Expect(err).To(BeNil())
@@ -98,12 +106,15 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	if seed < 0 {
 		seed = funk.RandomInt(1, 5000000)
 	}
+
 	sk := crypto.NewKeyFromIntSeed(seed)
 	n, err := node.NewNodeWithDB(db, cfg, fmt.Sprintf("127.0.0.1:%d", port), sk, log)
 	if err != nil {
 		panic(err)
 	}
+	n.SetLastSeen(time.Now().UTC())
 
+	n.SetTxsPool(txp)
 	gossip := node.NewGossip(n, log)
 	n.SetGossipProtocol(gossip)
 	n.SetBlockchain(bc)

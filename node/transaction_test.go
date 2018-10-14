@@ -127,7 +127,7 @@ var _ = Describe("Transaction", func() {
 
 			var eventArgs emitter.Event
 			BeforeEach(func(done Done) {
-				rp.SetTransactionPool(txpool.New(0))
+				rp.SetTxsPool(txpool.New(0))
 				err := lp.Gossip().RelayTx(tx, []types.Engine{rp})
 				Expect(err).To(BeNil())
 

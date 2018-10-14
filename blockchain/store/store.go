@@ -371,7 +371,7 @@ func (s *ChainStore) CreateAccount(targetBlockNum uint64, account core.Account, 
 	return s.put(key, util.ObjectToBytes(account), opts...)
 }
 
-// GetAccount fetches the account with highest block number prefix.
+// GetAccount gets an account
 func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
 
 	var r *elldb.KVObject
@@ -406,12 +406,46 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 	}
 
 	var account objects.Account
-	if err := r.Scan(&account); err != nil {
-		txOp.Rollback()
-		return nil, err
-	}
+	r.Scan(&account)
 
 	return &account, txOp.Commit()
+}
+
+// GetAccounts gets all accounts
+func (s *ChainStore) GetAccounts(opts ...core.CallOp) ([]core.Account, error) {
+
+	var accounts []core.Account
+	var index = map[util.String]struct{}{}
+	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
+	queryKey := common.MakeQueryKeyAccounts(s.chainID.Bytes())
+	var blockRangeOp = common.GetBlockQueryRangeOp(opts...)
+	txOp.Tx.Iterate(queryKey, false, func(kv *elldb.KVObject) bool {
+		var bn = util.DecodeNumber(kv.Key)
+
+		// Check block range constraint.
+		// if the block number is less that the minimum
+		// block number specified in the block range, skip to next.
+		// Likewise, if the block number of the key is greater than
+		// the maximum block number specified in the block range, skip object.
+		if (blockRangeOp.Min > 0 && bn < blockRangeOp.Min) || blockRangeOp.Max > 0 && bn > blockRangeOp.Max {
+			return false
+		}
+
+		var account objects.Account
+		kv.Scan(&account)
+		if _, has := index[account.GetAddress()]; !has {
+			accounts = append(accounts, &account)
+			index[account.GetAddress()] = struct{}{}
+		}
+
+		return false
+	})
+
+	return accounts, txOp.Commit()
 }
 
 // NewTx creates and returns a transaction
