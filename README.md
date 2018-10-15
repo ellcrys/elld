@@ -10,8 +10,9 @@ Elld is the official client implemention of the Ellcrys protocol specification. 
 
 ### Tasks
 - [x] **Cryptocurrency**: 
-On complemetion of this task and it's sub-tasks, the client will be able to join a network, transfer and receive the 
-native coin, mine blocks and achieve consensus using Bitcoin's Nakamoto consensus.
+On complemetion of this task, the client will be able to join the network, mine blocks, transfer the 
+native coin, achieve consensus using Bitcoin's Nakamoto consensus and provide a Javascript environment for constructing
+custom behaviours and interacting with the client.
    - [x] Account-based Architecture
    - [x] Nakamoto Consensus
    - [x] RPC Client/Server
