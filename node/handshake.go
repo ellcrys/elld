@@ -7,6 +7,7 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/elld/wire"
 	"github.com/jinzhu/copier"
@@ -116,6 +117,9 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	copier.Copy(&bestBlockInfo, resp)
 	g.engine.updateSyncInfo(&bestBlockInfo)
 
+	// Add remote peer into the intro cache with a TTL of 1 hour.
+	g.engine.intros.AddWithExp(remotePeer.StringID(), struct{}{}, cache.Sec(3600))
+
 	return nil
 }
 
@@ -196,4 +200,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	var bestBlockInfo BestBlockInfo
 	copier.Copy(&bestBlockInfo, msg)
 	g.engine.updateSyncInfo(&bestBlockInfo)
+
+	// Add remote peer into the intro cache with a TTL of 1 hour.
+	g.engine.intros.AddWithExp(remotePeer.StringID(), struct{}{}, cache.Sec(3600))
 }

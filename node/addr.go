@@ -106,18 +106,21 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	g.engine.event.Emit(EventAddrProcessed)
 }
 
-// PickBroadcastPeers selects N random addresses from
-// the given slice of addresses and caches them such
-// that, they are returned on subsequent calls.
-// The cache expires after 24 hours.
-func (g *Gossip) PickBroadcastPeers(addresses []*wire.Address, n int) []*Node {
+// PickBroadcasters selects N random addresses from
+// the given slice of addresses and caches them to
+// be used as broadcasters.
+// They are returned on subsequent calls and only
+// renewed when there are less than N addresses or the
+// cache is over 24 hours since it was last updated.
+func (g *Gossip) PickBroadcasters(addresses []*wire.Address, n int) BroadcastPeers {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
 	now := time.Now().UTC()
-
-	if !g.lastBroadcastPeersSelectedAt.Add(24 * time.Hour).Before(now) {
-		return g.BroadcastPeers
+	// fmt.Println(g.broadcasters)
+	if g.GetBroadcasters().Len() == n && !g.broadcastersUpdatedAt.
+		Add(24*time.Hour).Before(now) {
+		return g.GetBroadcasters()
 	}
 
 	type addrInfo struct {
@@ -156,23 +159,22 @@ func (g *Gossip) PickBroadcastPeers(addresses []*wire.Address, n int) []*Node {
 
 	// Clear the cache if we have at least N cached
 	if len(candidatesInfo) >= n {
-		g.BroadcastPeers = []*Node{}
+		g.GetBroadcasters().Clear()
 	}
 
 	// Create a remote engine object from the first N addresses.
 	for _, info := range candidatesInfo {
 		node, _ := g.engine.NodeFromAddr(info.address, true)
 		node.lastSeen = time.Unix(info.timestamp, 0)
-		g.BroadcastPeers = append(g.BroadcastPeers, node)
-		if len(g.BroadcastPeers) == n {
+		g.GetBroadcasters().Add(node)
+		if g.GetBroadcasters().Len() == n {
 			break
 		}
 	}
 
-	// Update the selection time
-	g.lastBroadcastPeersSelectedAt = time.Now().UTC()
+	g.broadcastersUpdatedAt = time.Now().UTC()
 
-	return g.BroadcastPeers
+	return g.GetBroadcasters()
 
 }
 
@@ -248,13 +250,13 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 	// select two peers from the list of
 	// relayable peers that we will send the addresses to
-	relayPeers := g.PickBroadcastPeers(relayable, 2)
+	broadcasters := g.PickBroadcasters(relayable, 2)
 
 	g.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable),
-		"RelayPeers", len(relayPeers))
+		"RelayPeers", broadcasters.Len())
 
 	relayed := 0
-	for _, remotePeer := range relayPeers {
+	for _, remotePeer := range broadcasters {
 
 		// Construct the address message.
 		// Be sure to not include an address
