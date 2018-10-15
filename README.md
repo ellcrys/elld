@@ -6,14 +6,29 @@
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/ellnet)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ellcrys/elld)](https://goreportcard.com/report/github.com/ellcrys/elld)
 
-Elld is the official client that implements a full node according to the Ellcrys specification. The client is written in Go programming language.
+Elld is the official client implemention of the Ellcrys protocol specification. It will allow users run and maintain a full network node that is capable of performing all the operations described in the [whitepaper](https://storage.googleapis.com/ellcrys-docs/Ellcrys-Whitepaper-Technical.pdf). The project is actively being developed and not ready for production use. To learn more about the Ellcry project, visit our [website](https://ellcrys.co) and [blog](https://medium.com/ellcrys).
 
-This client is still very much under active development. It will allow users run a daemon that will follow the protocol of the Ellcrys network. It will connect to other nodes on the network, receive and relay transactions and other messages, maintain the ledger and more.
+### Tasks
+- [x] **Cryptocurrency**: 
+On complemetion of this task and it's sub-tasks, the client will be able to join a network, transfer and receive the 
+native coin, mine blocks and achieve consensus using Bitcoin's Nakamoto consensus.
+   - [x] Account-based Architecture
+   - [x] Nakamoto Consensus
+   - [x] RPC Client/Server
+   - [x] Javacript Console
 
-Find more documentations in the [Wiki](https://github.com/ellcrys/elld/wiki) and in specific package directories. 
+- [ ] **Hybrid PoW/PoS Consensus & Mining Protocol:**
+Introduces a new consensus mechanism that will pave the way for faster network through-put and security. Additionally, a new mining protocol ([PeopleMint](https://storage.googleapis.com/ellcrys-docs/PeopleMint.pdf)) will be implemented.
 
-### Requirement
-[Go](http://golang.org/) 1.9 or newer.
+- [ ] **Git Hosting:** 
+Brings the ability to decentralize a git repository on the Ellcrys network. 
+
+- [ ] **Self-Executing Functions:** 
+Adds support for compiling and executing self-executing functions. Must support functions written in multiple established languages.
+
+
+### Requirements
+[Go](http://golang.org/) 1.10 or newer.
 
 ### Contributing
 We use [Dep](https://github.com/golang/dep) tool to manage project dependencies. You will need it to create deterministic builds with other developers.
@@ -21,12 +36,24 @@ We use [Dep](https://github.com/golang/dep) tool to manage project dependencies.
 #### Get the Dep
 Checkout the Dep [documentation](https://github.com/golang/dep#installation) for installation guide.
 
+### Tests
+
+Run all tests
+```
+make test
+```
+
+Run individual tests
+```
+go test ./<path to module>/...
+```
+
 #### Get the source and build
 ```
 git clone https://github.com/ellcrys/elld $GOPATH/src/github.com/ellcrys/elld
 cd $GOPATH/src/github.com/ellcrys/elld
-dep ensure
-go install
+make dep-ensure
+make release
 ```
 
 ## Contact
