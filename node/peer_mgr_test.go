@@ -309,7 +309,7 @@ var _ = Describe("Peer Manager", func() {
 		})
 
 		It("", func() {
-			
+
 		})
 	})
 
