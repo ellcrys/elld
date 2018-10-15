@@ -24,9 +24,8 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 		})
 	}
 
-	// Randomly pick 2 addresses from the list
-	// of addresses the local node is connected to.
-	var broadcastNodes = g.PickBroadcastPeers(connectedAddresses, 2)
+	// From our peer list, randomly pick 2 peers to broad cast to.
+	broadcasters := g.PickBroadcasters(connectedAddresses, 2)
 
 	var msg = intro
 	if msg == nil {
@@ -36,7 +35,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 	// Send intro message to the selected
 	// broadcast nodes.
 	sent := 0
-	for _, peer := range broadcastNodes {
+	for _, peer := range broadcasters {
 
 		// Don't relay an intro back to the
 		// peer that authored it
@@ -76,7 +75,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 	}
 
 	g.log.Debug("Sent Intro to peer(s)",
-		"NumBroadcastPeers", len(broadcastNodes),
+		"NumBroadcastPeers", broadcasters.Len(),
 		"NumSentTo", sent)
 }
 
@@ -95,6 +94,8 @@ func (g *Gossip) OnIntro(s net.Stream) {
 		return
 	}
 
+	// Add remote peer into the intro cache
+	// with a TTL of 1 hour.
 	g.engine.intros.AddWithExp(msg.PeerID, struct{}{}, cache.Sec(3600))
 
 	g.log.Debug("Received and cached intro message",

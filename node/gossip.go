@@ -48,6 +48,32 @@ const (
 	EventIntroReceived = "event.receivedIntro"
 )
 
+// BroadcastPeers is a type that contains
+// randomly chosen peers that messages will be
+// broadcast to.
+type BroadcastPeers map[string]*Node
+
+// Has checks whether a peer exists
+func (b BroadcastPeers) Has(p *Node) bool {
+	_, has := b[p.StringID()]
+	return has
+}
+
+// Add adds a peer
+func (b BroadcastPeers) Add(p *Node) {
+	b[p.StringID()] = p
+}
+
+// Clear removes all peers
+func (b BroadcastPeers) Clear() {
+	b = make(map[string]*Node)
+}
+
+// Len returns the number of peers
+func (b BroadcastPeers) Len() int {
+	return len(b)
+}
+
 // Gossip represents the peer protocol
 type Gossip struct {
 
@@ -60,21 +86,22 @@ type Gossip struct {
 	// log is used for logging events
 	log logger.Logger
 
-	// lastBroadcastPeersSelectedAt is the time the
+	// broadcastersUpdatedAt is the time the
 	// last relay peers where selected
-	lastBroadcastPeersSelectedAt time.Time
+	broadcastersUpdatedAt time.Time
 
-	// BroadcastPeers contains the selected relay
-	// peers to broadcast addresses to.
-	BroadcastPeers []*Node
+	// broadcasters contains randomly selected
+	// peers to broadcast messages to.
+	broadcasters BroadcastPeers
 }
 
 // NewGossip creates a new instance of the Gossip protocol
 func NewGossip(p *Node, log logger.Logger) *Gossip {
 	return &Gossip{
-		engine: p,
-		log:    log,
-		mtx:    &sync.Mutex{},
+		engine:       p,
+		log:          log,
+		mtx:          &sync.Mutex{},
+		broadcasters: make(map[string]*Node),
 	}
 }
 
@@ -114,6 +141,11 @@ func WriteStream(s net.Stream, msg interface{}) error {
 // Engine returns the local node
 func (g *Gossip) Engine() *Node {
 	return g.engine
+}
+
+// GetBroadcasters returns the broadcasters
+func (g *Gossip) GetBroadcasters() BroadcastPeers {
+	return g.broadcasters
 }
 
 // PM returns the local peer's peer manager

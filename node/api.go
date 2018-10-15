@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/base64"
-	"fmt"
 
 	"github.com/ellcrys/elld/config"
 
@@ -149,9 +148,6 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 // number of peers connected to
 func (n *Node) apiNetInfo(arg interface{}) *jsonrpc.Response {
 	var connsInfo = n.peerManager.connMgr.GetConnsCount()
-	for _, i := range n.intros.Keys() {
-		fmt.Println(n.intros.Get(i), i)
-	}
 	var result = map[string]int{
 		"total":    connsInfo.Outbound + connsInfo.Inbound,
 		"inbound":  connsInfo.Inbound,
