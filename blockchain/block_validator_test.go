@@ -141,12 +141,6 @@ var _ = Describe("BlockValidator", func() {
 				Expect(errs).To(ContainElement(fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing")))
 			})
 
-			It("should return error when transactions root is not provided", func() {
-				block.Header.TransactionsRoot = util.Hash{}
-				errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
-				Expect(errs).To(ContainElement(fmt.Errorf("field:header.transactionsRoot, error:transaction root is required")))
-			})
-
 			It("should return error when transactions root is invalid", func() {
 				block.Header.TransactionsRoot = util.Hash{1, 2, 3}
 				errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
@@ -184,20 +178,6 @@ var _ = Describe("BlockValidator", func() {
 
 			BeforeEach(func() {
 				block = MakeBlock(bc, genesisChain, sender, receiver)
-			})
-
-			Context("Transactions", func() {
-				When("only allocation transactions are in the block", func() {
-					BeforeEach(func() {
-						block = MakeBlockWithOnlyAllocTx(bc, genesisChain, sender, receiver)
-					})
-
-					It("should return error about the lack of transactions", func() {
-						errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
-						Expect(errs).To(HaveLen(1))
-						Expect(errs).To(ContainElement(fmt.Errorf("field:transactions, error:at least one transaction is required")))
-					})
-				})
 			})
 
 			Context("Hash", func() {
@@ -373,6 +353,24 @@ var _ = Describe("BlockValidator", func() {
 			It("should return no error", func() {
 				errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).CheckAllocs()
 				Expect(errs).To(BeEmpty())
+			})
+		})
+
+		When("block has no transactions", func() {
+			var block core.Block
+			BeforeEach(func() {
+				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+					Transactions:      []core.Transaction{},
+					Creator:           sender,
+					Nonce:             util.EncodeNonce(1),
+					Difficulty:        new(big.Int).SetInt64(131136),
+					OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
+				})
+			})
+
+			It("should not return error", func() {
+				errs := NewBlockValidator(block, nil, bc, cfg, log).CheckAllocs()
+				Expect(errs).To(HaveLen(0))
 			})
 		})
 

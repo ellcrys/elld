@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ellcrys/elld/blockchain/txpool"
+	"github.com/ellcrys/elld/params"
+
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
@@ -200,6 +203,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if n.DevMode() {
 		log.SetToDebug()
 	}
+
+	// Configure transactions pool
+	pool := txpool.New(params.PoolCapacity)
+	n.SetTxsPool(pool)
 
 	// Add hardcoded bootstrap addresses
 	if err := n.AddAddresses(boostrapAddresses, true); err != nil {

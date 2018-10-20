@@ -15,7 +15,7 @@ var (
 
 	// DurationLimit is the decision boundary on the blocktime duration used to
 	// determine whether difficulty should go up or not.
-	DurationLimit = big.NewInt(13)
+	DurationLimit = big.NewInt(120)
 
 	// GenesisDifficulty is the difficulty of the Genesis block.
 	GenesisDifficulty = big.NewInt(131072)
@@ -56,4 +56,9 @@ var (
 	// MaxBlockTxsSize is the maximum size of
 	// transactions that can fit in a block
 	MaxBlockTxsSize = int64(10000000)
+
+	// PoolCapacity is the max. number of transaction
+	// that can be added to the transaction pool at
+	// any given time.
+	PoolCapacity = int64(10000)
 )
