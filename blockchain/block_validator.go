@@ -130,12 +130,6 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 		errs = append(errs, fieldError("creatorPubKey", err.Error()))
 	}
 
-	// Transactions root must be provided
-	if h.GetTransactionsRoot() == util.EmptyHash {
-		errs = append(errs, fieldError("transactionsRoot",
-			"transaction root is required"))
-	}
-
 	// Transactions root must be valid
 	if !h.GetTransactionsRoot().Equal(common.ComputeTxsRoot(v.block.GetTransactions())) {
 		errs = append(errs, fieldError("transactionsRoot",
@@ -210,13 +204,6 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 		return
 	}
 
-	txCount := 0
-	for _, tx := range v.block.GetTransactions() {
-		if tx.GetType() != objects.TxTypeAlloc {
-			txCount++
-		}
-	}
-
 	// Header is required
 	header := v.block.GetHeader().(*objects.Header)
 	if header == nil {
@@ -229,12 +216,6 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 	}
 	if len(errs) > 0 {
 		return
-	}
-
-	// Must have at least one transaction
-	if v.block.GetNumber() > 1 && txCount == 0 {
-		errs = append(errs, fieldError("transactions",
-			"at least one transaction is required"))
 	}
 
 	// Hash must be provided
@@ -273,12 +254,13 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 
 	var blockAllocs = [][]interface{}{}
 	var expectedAllocs = [][]interface{}{}
+	var transactions = v.block.GetTransactions()
 	var totalFees = decimal.New(0, 0)
 
 	// collect all the allocations transactions
 	// and in doing so, calculate the total fees
 	// for non-allocation transactions
-	for _, tx := range v.block.GetTransactions() {
+	for _, tx := range transactions {
 		if tx.GetType() == objects.TxTypeAlloc {
 			blockAllocs = append(blockAllocs, []interface{}{
 				tx.GetFrom(),
@@ -304,7 +286,7 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 	// Compare the allocations in the block
 	// with the computed expected allocations.
 	// If they don't match, then add an error
-	if !reflect.DeepEqual(blockAllocs, expectedAllocs) {
+	if len(transactions) > 0 && !reflect.DeepEqual(blockAllocs, expectedAllocs) {
 		errs = append(errs, fieldError("transactions",
 			"block allocations and expected allocations do not match"))
 		return
