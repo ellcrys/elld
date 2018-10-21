@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -14,6 +15,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/types/core/objects"
@@ -36,6 +38,10 @@ func init() {
 func main() {
 	defer os.RemoveAll(cfg.ConfigDir())
 
+	maxTxs := flag.Int64("numTxs", 1000, "number of transaction")
+	difficulty := flag.Int64("diff", params.GenesisDifficulty.Int64(), "Block difficulty")
+	flag.Parse()
+
 	// create temporary database
 	db := elldb.NewDB(cfg.ConfigDir())
 	err = db.Open(util.RandString(5))
@@ -54,11 +60,9 @@ func main() {
 	// generate some allocation transactions
 	var txs = []core.Transaction{}
 	var addrsPrivateKey = make(map[string]string)
-	var maxTx = 1000
-	var difficulty = int64(100000)
 
-	for i := 1; i < maxTx+1; i++ {
-		recipient := crypto.NewKeyFromIntSeed(i)
+	for i := int64(1); i < *maxTxs+1; i++ {
+		recipient := crypto.NewKeyFromIntSeed(int(i))
 		allocTx := objects.NewTx(objects.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().Unix())
 		txs = append(txs, allocTx)
 		addrsPrivateKey[recipient.Addr()] = recipient.PrivKey().Base58()
@@ -68,8 +72,8 @@ func main() {
 		Transactions:            txs,
 		Creator:                 creator,
 		Nonce:                   util.EncodeNonce(1),
-		Difficulty:              new(big.Int).SetInt64(difficulty),
-		OverrideTotalDifficulty: new(big.Int).SetInt64(difficulty),
+		Difficulty:              new(big.Int).SetInt64(*difficulty),
+		OverrideTotalDifficulty: new(big.Int).SetInt64(*difficulty),
 		OverrideTimestamp:       time.Now().Unix(),
 	}
 
