@@ -149,7 +149,7 @@ func (b *Blockchain) Up() error {
 	// If there are no known chains described in the metadata and none
 	// in the cache, then we create a new chain and save it
 	if len(chains) == 0 {
-		b.log.Debug("No existing genesis block found. Creating genesis block")
+		b.log.Debug("No chain found. Create root chain and block.")
 
 		// If at this point the genesis block has not
 		// been set, we attempt to load it from the

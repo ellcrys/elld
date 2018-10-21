@@ -2,16 +2,27 @@
 # Make sure to check the documentation at http://goreleaser.com
 project_name: elld
 builds:
-  -
+  - binary: elld
+    main: ./main.go
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+    goarm:
+      - "6"
+    ldflags: -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.goversion={{.Env.GOVERSION}}
+    hooks:
+      pre: packr
+      post: packr clean
+  - binary: elld-race
     flags:
       -race
     env:
       - CGO_ENABLED=1
-      - GOVERSION=go1.10.4
     goos:
-      # - linux
       - darwin
-      # - windows
     goarch:
       - amd64
     goarm:
