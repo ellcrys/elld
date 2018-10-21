@@ -155,6 +155,12 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
 
+	// When password is not set, get it from the
+	// environment variable
+	if len(password) == 0 {
+		password = os.Getenv("ELLD_ACCOUNT_PASSWORD")
+	}
+
 	// Set configurations
 	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 60)
 	cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, bootstrapAddresses...)
