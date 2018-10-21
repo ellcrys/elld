@@ -1,5 +1,5 @@
 GOVERSION := $(shell go version | cut -d" " -f3)
-ELLD_ACCOUNT_PASSWORD = abcdef		# NOTE: Replace this password 
+ELLD_ACCOUNT_PASS = ${ELLD_ACCOUNT_PASSWORD}
 
 # Run some tests
 test:
@@ -36,7 +36,7 @@ start:
 	docker volume create elld-datadir
 	docker run -d \
 	 	--name elld \
-		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASSWORD) \
+		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASS) \
 		-p 0.0.0.0:9000:9000 \
 		-p 0.0.0.0:8999:8999 \
 		--mount "src=elld-datadir,dst=/root/.ellcrys" \
