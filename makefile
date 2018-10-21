@@ -1,4 +1,5 @@
 GOVERSION := $(shell go version | cut -d" " -f3)
+ELLD_ACCOUNT_PASSWORD = abcdef		# NOTE: Replace this password 
 
 # Run some tests
 test:
@@ -34,11 +35,25 @@ dockerize:
 start:
 	docker volume create elld-datadir
 	docker run -d \
+	 	--name elld \
+		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASSWORD) \
 		-p 0.0.0.0:9000:9000 \
 		-p 0.0.0.0:8999:8999 \
 		--mount "src=elld-datadir,dst=/root/.ellcrys" \
 		elld-node
+		
+# Gracefully stop the node
+stop: 
+	docker stop elld
+
+remove: stop
+	docker rm -f elld
 
 # Attach to elld running locally
 attach:
 	elld attach
+	
+# Execute commands in the client's container
+exec:
+	docker exec -it elld bash
+	
