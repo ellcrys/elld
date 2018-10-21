@@ -221,15 +221,6 @@ func (m *Miner) Mine() {
 		}
 		m.Unlock()
 
-		// if no transactions in the proposed block,
-		// do not mine the block, sleep for a few seconds
-		// and continue.
-		if len(m.proposedBlock.GetTransactions()) == 0 {
-			m.log.Debug("Proposed block has no transactions")
-			time.Sleep(3 * time.Second)
-			continue
-		}
-
 		// Prepare the proposed block. It will calculate
 		// the difficulty and update the proposed block difficulty
 		// field in its header
