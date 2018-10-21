@@ -34,7 +34,7 @@ dockerize:
 start:
 	docker volume create elld-datadir
 	docker run -d \
-	 	--name elld
+	 	--name elld \
 		-p 0.0.0.0:9000:9000 \
 		-p 0.0.0.0:8999:8999 \
 		--mount "src=elld-datadir,dst=/root/.ellcrys" \
