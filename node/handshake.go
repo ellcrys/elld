@@ -19,7 +19,7 @@ func createHandshakeMsg(bestChain core.ChainReader,
 	log logger.Logger) (*wire.Handshake, error) {
 
 	msg := &wire.Handshake{
-		SubVersion: config.ClientVersion,
+		Version: config.ClientVersion,
 	}
 
 	// determine the best block and the total
@@ -70,8 +70,8 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	}
 
 	g.log.Info("Sent handshake with current main chain state", "PeerID",
-		remotePeerIDShort, "SubVersion",
-		engineHandshakeMsg.SubVersion, "TotalDifficulty",
+		remotePeerIDShort, "ClientVersion",
+		engineHandshakeMsg.Version, "TotalDifficulty",
 		engineHandshakeMsg.BestBlockTotalDifficulty)
 
 	// receive handshake message from the remote peer.
@@ -91,7 +91,7 @@ func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 	remotePeer.Acquainted()
 
 	g.log.Info("Received handshake response", "PeerID", remotePeerIDShort,
-		"SubVersion", resp.SubVersion, "Height", resp.BestBlockNumber,
+		"ClientVersion", resp.Version, "Height", resp.BestBlockNumber,
 		"TotalDifficulty", resp.BestBlockTotalDifficulty)
 
 	// compare best chain.
@@ -147,7 +147,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 
 	g.log.Info("Received handshake",
 		"PeerID", remotePeerIDShort,
-		"SubVersion", msg.SubVersion,
+		"ClientVersion", msg.Version,
 		"Height", msg.BestBlockNumber,
 		"TotalDifficulty", msg.BestBlockTotalDifficulty)
 
@@ -176,8 +176,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	remotePeer.Acquainted()
 
 	g.log.Info("Responded to handshake with chain state", "PeerID",
-		remotePeerIDShort, "SubVersion",
-		engineHandshakeMsg.SubVersion, "TotalDifficulty",
+		remotePeerIDShort, "ClientVersion",
+		engineHandshakeMsg.Version, "TotalDifficulty",
 		engineHandshakeMsg.BestBlockTotalDifficulty)
 
 	// compare best chain.

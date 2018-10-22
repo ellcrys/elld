@@ -68,8 +68,7 @@ func (m *Manager) GetPeer(peerID string) types.Engine {
 		return nil
 	}
 
-	peer, _ := m.peers[peerID]
-	return peer
+	return m.peers[peerID]
 }
 
 // AddPeer adds a peer
@@ -189,7 +188,7 @@ func (m *Manager) doCleanUp(done chan bool) {
 		case <-ticker.C:
 			nCleaned := m.CleanPeers()
 			m.log.Debug("Cleaned up old peers",
-				"NumKnownPeers", len(m.peers),
+				"NumKnownPeers", len(m.GetPeers()),
 				"NumPeersCleaned", nCleaned)
 		case <-done:
 			ticker.Stop()
@@ -263,7 +262,7 @@ func (m *Manager) SetPeers(d map[string]types.Engine) {
 // local peer has reached its outgoing
 // connection limit
 func (m *Manager) hasReachedOutConnLimit() bool {
-	outbound := m.connMgr.GetConnsCount().Outbound
+	_, outbound := m.connMgr.GetConnsCount().Info()
 	return int64(outbound) >= m.config.Node.MaxOutboundConnections
 }
 
@@ -322,19 +321,20 @@ func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
 // they were seen.
 // It returns the number of peers removed
 func (m *Manager) CleanPeers() int {
-	peers := m.GetPeers()
-	before := len(peers)
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
+	before := len(m.peers)
 	newKnownPeers := make(map[string]types.Engine)
+
 	for k, p := range m.peers {
 		if m.IsActive(p) {
 			newKnownPeers[k] = p
 		}
 	}
 
-	m.mtx.Lock()
 	after := len(newKnownPeers)
 	m.peers = newKnownPeers
-	m.mtx.Unlock()
 
 	return before - after
 }

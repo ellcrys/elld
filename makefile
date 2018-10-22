@@ -30,6 +30,13 @@ release:
 # Build an elld image 
 dockerize: 
 	docker build -t elld-node -f ./docker/node/Dockerfile .
+dockerize-force: 
+	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile .
+	
+# Remove volumes and containers
+docker-prune-container-volume:
+	docker container prune 
+	docker volume prune 
 	
 # Start a node
 start:
@@ -46,9 +53,17 @@ start:
 stop: 
 	docker stop elld
 
+# Restart a node	
+restart:
+	docker restart elld
+
 remove: stop
 	docker rm -f elld
 
+# Follow logs
+logs: 
+	docker logs elld -f
+	
 # Attach to elld running locally
 attach:
 	elld attach

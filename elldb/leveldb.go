@@ -3,6 +3,7 @@ package elldb
 import (
 	"fmt"
 	path "path/filepath"
+	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -17,6 +18,7 @@ const dbfile = "data%s.db"
 // LevelDB provides local data storage and functionalities for various purpose.
 // It implements DB interface
 type LevelDB struct {
+	sync.Mutex
 	dataDir string
 	ldb     *leveldb.DB
 }
@@ -58,9 +60,15 @@ func (db *LevelDB) Open(namespace string) error {
 
 // Close closes the database
 func (db *LevelDB) Close() error {
+	db.Lock()
+	db.Unlock()
+
 	if db.ldb != nil {
 		return db.ldb.Close()
 	}
+
+	db.ldb = nil
+
 	return nil
 }
 

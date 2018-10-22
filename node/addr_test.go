@@ -62,9 +62,9 @@ var _ = Describe("Addr", func() {
 			When("many candidate addresses is passed", func() {
 				It("should return N nodes", func() {
 					broadcasters := lp.Gossip().PickBroadcasters(candidateAddrs, 2)
-					Expect(broadcasters).To(HaveLen(2))
-					Expect(broadcasters).To(HaveKey(candidateAddrs[2].Address.StringID()))
-					Expect(broadcasters).To(HaveKey(candidateAddrs[1].Address.StringID()))
+					Expect(broadcasters.Len()).To(Equal(2))
+					Expect(broadcasters.PeersID()).To(ContainElement(candidateAddrs[2].Address.StringID()))
+					Expect(broadcasters.PeersID()).To(ContainElement(candidateAddrs[1].Address.StringID()))
 				})
 			})
 
@@ -75,24 +75,27 @@ var _ = Describe("Addr", func() {
 
 				It("Should return the only candidate node", func() {
 					broadcasters := lp.Gossip().PickBroadcasters(candidateAddrs, 2)
-					Expect(broadcasters).To(HaveLen(1))
-					Expect(broadcasters).To(HaveKey(candidateAddrs[0].Address.StringID()))
+					Expect(broadcasters.Len()).To(Equal(1))
+					Expect(broadcasters.PeersID()).To(ContainElement(candidateAddrs[0].Address.StringID()))
 				})
 			})
 		})
 
 		When("cache has one address and multiple candidate addresses", func() {
 			var addr = util.NodeAddr("/ip4/172.16.238.14/tcp/9000/ipfs/12D3KooWE4qDcRrueTuRYWUdQZgcy7APZqBngVeXRt4Y6ytHizKV")
+			var broadcasters *node.BroadcastPeers
 
 			BeforeEach(func() {
 				n, _ := rp.NodeFromAddr(addr, true)
-				lp.Gossip().GetBroadcasters().Add(n)
+				broadcasters = lp.Gossip().GetBroadcasters()
+				broadcasters.Add(n)
+				Expect(broadcasters.Len()).To(Equal(1))
 			})
 
 			It("should clear the cache and select new addresses", func() {
-				broadcasters := lp.Gossip().PickBroadcasters(candidateAddrs, 2)
-				Expect(broadcasters).To(HaveLen(2))
-				Expect(broadcasters).To(HaveKey(addr.StringID()))
+				broadcasters = lp.Gossip().PickBroadcasters(candidateAddrs, 2)
+				Expect(broadcasters.Len()).To(Equal(2))
+				Expect(broadcasters.PeersID()).ToNot(ContainElement(addr.StringID()))
 			})
 		})
 
@@ -109,14 +112,14 @@ var _ = Describe("Addr", func() {
 
 			It("should leave the cache untouched and add the only candidate address", func() {
 				broadcasters := lp.Gossip().PickBroadcasters(candidateAddrs, 2)
-				Expect(broadcasters).To(HaveLen(2))
-				Expect(broadcasters).To(HaveKey(addr.StringID()))
-				Expect(broadcasters).To(HaveKey(candidateAddrs[0].Address.StringID()))
+				Expect(broadcasters.Len()).To(Equal(2))
+				Expect(broadcasters.PeersID()).To(ContainElement(addr.StringID()))
+				Expect(broadcasters.PeersID()).To(ContainElement(candidateAddrs[0].Address.StringID()))
 			})
 		})
 
 		When("cache has not expired", func() {
-			var broadcasters node.BroadcastPeers
+			var broadcasters *node.BroadcastPeers
 			var candidateAddrs = []*wire.Address{
 				{Address: "/ip4/172.16.238.10/tcp/9000/ipfs/12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
 				{Address: "/ip4/172.16.238.12/tcp/9000/ipfs/12D3KooWPgam4TzSVCRa4AbhxQnM9abCYR4E9hV57SN7eAjEYn1j"},
@@ -127,7 +130,7 @@ var _ = Describe("Addr", func() {
 
 			BeforeEach(func() {
 				broadcasters = lp.Gossip().PickBroadcasters(candidateAddrs, 2)
-				Expect(broadcasters).To(HaveLen(2))
+				Expect(broadcasters.Len()).To(Equal(2))
 			})
 
 			It("should return current cache values", func() {
