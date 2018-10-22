@@ -149,7 +149,7 @@ func (b *Blockchain) Up() error {
 	// If there are no known chains described in the metadata and none
 	// in the cache, then we create a new chain and save it
 	if len(chains) == 0 {
-		b.log.Debug("No chain found. Create root chain and block.")
+		b.log.Info("No branch found. Creating genesis state")
 
 		// If at this point the genesis block has not
 		// been set, we attempt to load it from the
@@ -179,7 +179,9 @@ func (b *Blockchain) Up() error {
 			return fmt.Errorf("genesis block error: %s", err)
 		}
 
-		b.log.Debug("Genesis block successfully created", "Hash", gBlock.GetHash().SS())
+		b.log.Info("Genesis state created",
+			"Hash", gBlock.GetHash().SS(),
+			"Difficulty", gBlock.GetHeader().GetDifficulty())
 		return nil
 	}
 
@@ -191,7 +193,7 @@ func (b *Blockchain) Up() error {
 	}
 
 	if numChains := len(chains); numChains > 0 {
-		b.log.Info("All known chains have been loaded", "NumChains", numChains)
+		b.log.Info("Known branches have been loaded", "NumBranches", numChains)
 	}
 
 	// Using the best chain rule, we mush select the best chain

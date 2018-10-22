@@ -18,7 +18,7 @@ var (
 	DurationLimit = big.NewInt(120)
 
 	// GenesisDifficulty is the difficulty of the Genesis block.
-	GenesisDifficulty = big.NewInt(131072)
+	GenesisDifficulty = big.NewInt(10000000)
 
 	// MinimumDifficulty is the minimum that the difficulty may ever be.
 	MinimumDifficulty = big.NewInt(100000)
