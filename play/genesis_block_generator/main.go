@@ -36,14 +36,14 @@ func init() {
 }
 
 func main() {
-	defer os.RemoveAll(cfg.ConfigDir())
+	defer os.RemoveAll(cfg.DataDir())
 
 	maxTxs := flag.Int64("numTxs", 1000, "number of transaction")
 	difficulty := flag.Int64("diff", params.GenesisDifficulty.Int64(), "Block difficulty")
 	flag.Parse()
 
 	// create temporary database
-	db := elldb.NewDB(cfg.ConfigDir())
+	db := elldb.NewDB(cfg.DataDir())
 	err = db.Open(util.RandString(5))
 	if err != nil {
 		panic(err)

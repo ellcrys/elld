@@ -142,8 +142,8 @@ func (c *EngineConfig) SetConfigDir(d string) {
 	c.configDir = d
 }
 
-// ConfigDir returns the config directory
-func (c *EngineConfig) ConfigDir() string {
+// DataDir returns the config directory
+func (c *EngineConfig) DataDir() string {
 	return c.configDir
 }
 

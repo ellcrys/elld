@@ -212,7 +212,7 @@ func (n *Node) OpenDB() error {
 		return fmt.Errorf("db already open")
 	}
 
-	n.db = elldb.NewDB(n.cfg.ConfigDir())
+	n.db = elldb.NewDB(n.cfg.DataDir())
 	var namespace string
 	if n.DevMode() {
 		namespace = n.StringID()

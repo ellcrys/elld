@@ -100,14 +100,14 @@ func (cd *Config) Load() (*EngineConfig, error) {
 }
 
 // LoadCfg loads the config file
-func LoadCfg(cfgDirPath string) (*EngineConfig, error) {
+func LoadCfg(dataDirPath string) (*EngineConfig, error) {
 
-	cfgDir, err := NewConfig(cfgDirPath)
+	dataDir, err := NewConfig(dataDirPath)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := cfgDir.Init(); err != nil {
+	if err := dataDir.Init(); err != nil {
 		if err != nil {
 			return nil, err
 		}
@@ -115,7 +115,7 @@ func LoadCfg(cfgDirPath string) (*EngineConfig, error) {
 		return nil, err
 	}
 
-	cfg, err := cfgDir.Load()
+	cfg, err := dataDir.Load()
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func LoadCfg(cfgDirPath string) (*EngineConfig, error) {
 		return nil, err
 	}
 
-	cfg.SetConfigDir(cfgDir.Path())
+	cfg.SetConfigDir(dataDir.Path())
 
 	return cfg, nil
 }

@@ -86,7 +86,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 		panic(err)
 	}
 
-	db := elldb.NewDB(cfg.ConfigDir())
+	db := elldb.NewDB(cfg.DataDir())
 	err = db.Open(util.RandString(5))
 	if err != nil {
 		panic(err)
@@ -130,6 +130,6 @@ func TestNodeSuite(t *testing.T) {
 
 func closeNode(n *node.Node) {
 	n.Host().Close()
-	err := os.RemoveAll(n.GetCfg().ConfigDir())
+	err := os.RemoveAll(n.GetCfg().DataDir())
 	Expect(err).To(BeNil())
 }

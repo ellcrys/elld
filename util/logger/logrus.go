@@ -3,13 +3,17 @@ package logger
 import (
 	"fmt"
 	"io/ioutil"
+	"time"
 
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 )
 
 // Logrus implements Logger
 type Logrus struct {
-	log *logrus.Logger
+	log      *logrus.Logger
+	filePath string
 }
 
 // NewLogrus creates a logrus backed logger
@@ -22,6 +26,48 @@ func NewLogrus() Logger {
 		ForceColors: true,
 	}
 	l.log.SetLevel(logrus.InfoLevel)
+
+	return l
+}
+
+// NewLogrusWithFileRotation creates a logger
+// with file backend and file rotation enabled.
+// Two log file are created:
+// - filePath.out stores DEBUG and INFO
+// - filePath.err stores ERROR
+func NewLogrusWithFileRotation(filePath string) Logger {
+
+	l := &Logrus{
+		log:      logrus.New(),
+		filePath: filePath,
+	}
+
+	l.log.Formatter = &logrus.TextFormatter{ForceColors: true}
+	l.log.SetLevel(logrus.InfoLevel)
+
+	writer, _ := rotatelogs.New(
+		l.filePath+".out.%Y%m%d%H%M",
+		rotatelogs.WithLinkName(l.filePath),
+		rotatelogs.WithMaxAge(time.Duration(86400)*time.Second),
+		rotatelogs.WithRotationTime(time.Duration(604800)*time.Second),
+	)
+
+	writerErr, _ := rotatelogs.New(
+		l.filePath+".err.%Y%m%d%H%M",
+		rotatelogs.WithLinkName(l.filePath),
+		rotatelogs.WithMaxAge(time.Duration(86400)*time.Second),
+		rotatelogs.WithRotationTime(time.Duration(604800)*time.Second),
+	)
+
+	l.log.Hooks.Add(lfshook.NewHook(
+		lfshook.WriterMap{
+			logrus.InfoLevel:  writer,
+			logrus.DebugLevel: writer,
+			logrus.ErrorLevel: writerErr,
+		},
+		&logrus.JSONFormatter{},
+	))
+
 	return l
 }
 

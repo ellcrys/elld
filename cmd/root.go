@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	golog "log"
 	"os"
 	"os/signal"
 	path "path/filepath"
@@ -99,7 +100,7 @@ func init() {
 		}
 	}()
 
-	rootCmd.PersistentFlags().String("cfgdir", "", "Set configuration directory")
+	rootCmd.PersistentFlags().String("datadir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	cobra.OnInitialize(initConfig)
 }
@@ -109,26 +110,40 @@ func initConfig() {
 
 	var err error
 
-	log = logger.NewLogrus()
-
+	// Parse flags
 	devMode, _ = rootCmd.Flags().GetBool("dev")
-	cfgDirPath, _ := rootCmd.Root().PersistentFlags().GetString("cfgdir")
+	dataDirPath, _ := rootCmd.Root().PersistentFlags().GetString("datadir")
 
-	if devMode && cfgDirPath == "" {
-		cfgDirPath, _ = homedir.Expand(path.Join("~", "ellcrys_dev"))
-		os.MkdirAll(cfgDirPath, 0700)
+	// When in dev mode and data directory path is not
+	// provided, set the default dev mode data directory
+	if devMode && dataDirPath == "" {
+		dataDirPath, _ = homedir.Expand(path.Join("~", "ellcrys_dev"))
+		os.MkdirAll(dataDirPath, 0700)
 	}
 
-	cfg, err = config.LoadCfg(cfgDirPath)
+	// Load configuration
+	cfg, err = config.LoadCfg(dataDirPath)
 	if err != nil {
-		log.Fatal(err.Error())
+		golog.Fatal(err.Error())
 	}
 
+	dataDir := cfg.DataDir()
+
+	// Create logger with file rotation enabled
+	logPath := path.Join(dataDir, "logs")
+	os.MkdirAll(logPath, 0700)
+	logFile := path.Join(logPath, "elld.log")
+	log = logger.NewLogrusWithFileRotation(logFile)
+
+	// Set version information
 	cfg.VersionInfo.BuildCommit = BuildCommit
 	cfg.VersionInfo.BuildDate = BuildDate
 	cfg.VersionInfo.GoVersion = GoVersion
 	cfg.VersionInfo.BuildVersion = BuildVersion
 
-	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
-	consoleHistoryFilePath = path.Join(cfg.ConfigDir(), ".console_history")
+	// Create account manager
+	accountMgr = accountmgr.New(path.Join(dataDir, "accounts"))
+
+	// Set the path where console history will be stored
+	consoleHistoryFilePath = path.Join(dataDir, ".console_history")
 }

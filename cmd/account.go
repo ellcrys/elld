@@ -67,7 +67,7 @@ var accountCreateCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.CreateCmd(seed, pwd)
 	},
 }
@@ -82,7 +82,7 @@ var accountListCmd = &cobra.Command{
   list is lexicographically ordered, the most recently created account will the last on the list.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.ListCmd()
 	},
 }
@@ -101,7 +101,7 @@ var accountUpdateCmd = &cobra.Command{
 			address = args[0]
 		}
 
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.UpdateCmd(address)
 	},
 }
@@ -130,7 +130,7 @@ var accountImportCmd = &cobra.Command{
 		}
 
 		pwd, _ := cmd.Flags().GetString("pwd")
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.ImportCmd(keyfile, pwd)
 	},
 }
@@ -153,7 +153,7 @@ var accountRevealCmd = &cobra.Command{
 		}
 
 		pwd, _ := cmd.Flags().GetString("pwd")
-		am := accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.RevealCmd(address, pwd)
 	},
 }
