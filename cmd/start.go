@@ -198,6 +198,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	log.Info("Elld has started", "Version", config.ClientVersion, "DevMode", devMode)
 
+	// Create event the global event handler
+	event := &emitter.Emitter{}
+
 	// Create the local node.
 	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
 	if err != nil {
@@ -210,8 +213,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.SetToDebug()
 	}
 
-	// Configure transactions pool
+	// Configure transactions pool and assign to node
 	pool := txpool.New(params.PoolCapacity)
+	pool.SetEventEmitter(event)
 	n.SetTxsPool(pool)
 
 	// Add hardcoded bootstrap addresses
@@ -245,9 +249,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
 	n.SetProtocolHandler(config.GetBlockHashesVersion, protocol.OnGetBlockHashes)
 	n.SetProtocolHandler(config.GetBlockBodiesVersion, protocol.OnGetBlockBodies)
-
-	// Create event the global event handler
-	event := &emitter.Emitter{}
 
 	// Instantiate the blockchain manager,
 	// set db, event emitter and pass it to the engine
