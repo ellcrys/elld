@@ -18,28 +18,27 @@ import (
 // AccountDirName is the name of the directory for storing accounts
 var AccountDirName = "accounts"
 
-// Config represents the clients configuration director and
-// provides methods for creating, accessing and manipulating its content
+// Config holds configuration information
 type Config struct {
 	path string
 }
 
-// NewConfig creates a new ConfigDir object
-func NewConfig(dirPath string) (cfgDir *Config, err error) {
+// NewConfig creates a new Config object
+func NewConfig(dirPath string) (cfg *Config, err error) {
 
 	// check if dirPath exists
 	if len(strings.TrimSpace(dirPath)) > 0 && !util.IsPathOk(dirPath) {
 		return nil, fmt.Errorf("config directory is not ok; may not exist or we don't have enough permission")
 	}
 
-	cfgDir = new(Config)
-	cfgDir.path = dirPath
+	cfg = new(Config)
+	cfg.path = dirPath
 
 	// set default config directory if not provided and attempt to create it
-	if len(cfgDir.path) == 0 {
+	if len(cfg.path) == 0 {
 		hd, _ := homedir.Dir()
-		cfgDir.path = fmt.Sprintf("%s/.ellcrys", hd)
-		os.Mkdir(cfgDir.path, 0700)
+		cfg.path = fmt.Sprintf("%s/.ellcrys", hd)
+		os.Mkdir(cfg.path, 0700)
 	}
 
 	return
@@ -120,6 +119,8 @@ func LoadCfg(cfgDirPath string) (*EngineConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	cfg.VersionInfo = new(VersionInfo)
 
 	if err := mergo.Merge(cfg, defaultConfig); err != nil {
 		return nil, err

@@ -100,6 +100,15 @@ type MinerConfig struct {
 	Mode blakimoto.Mode `json:"-"`
 }
 
+// VersionInfo describes the clients
+// components and runtime version information
+type VersionInfo struct {
+	BuildVersion string
+	BuildCommit  string
+	BuildDate    string
+	GoVersion    string
+}
+
 // EngineConfig represents the client's configuration
 type EngineConfig struct {
 
@@ -123,6 +132,9 @@ type EngineConfig struct {
 
 	// configDir is where the node's config and data is stored
 	configDir string
+
+	// VersionInfo holds version information
+	VersionInfo *VersionInfo `json:"-"`
 }
 
 // SetConfigDir sets the config directory

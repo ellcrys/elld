@@ -32,6 +32,10 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		"syncing":           n.isSyncing(),
 		"coinbasePublicKey": n.signatory.PubKey().Base58(),
 		"coinbase":          n.signatory.Addr(),
+		"buildVersion":      n.cfg.VersionInfo.BuildVersion,
+		"buildCommit":       n.cfg.VersionInfo.BuildCommit,
+		"buildDate":         n.cfg.VersionInfo.BuildDate,
+		"goVersion":         n.cfg.VersionInfo.GoVersion,
 	})
 }
 

@@ -124,6 +124,11 @@ func initConfig() {
 		log.Fatal(err.Error())
 	}
 
+	cfg.VersionInfo.BuildCommit = BuildCommit
+	cfg.VersionInfo.BuildDate = BuildDate
+	cfg.VersionInfo.GoVersion = GoVersion
+	cfg.VersionInfo.BuildVersion = BuildVersion
+
 	accountMgr = accountmgr.New(path.Join(cfg.ConfigDir(), "accounts"))
 	consoleHistoryFilePath = path.Join(cfg.ConfigDir(), ".console_history")
 }
