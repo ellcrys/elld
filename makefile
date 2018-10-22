@@ -31,7 +31,7 @@ release:
 dockerize: 
 	docker build -t elld-node -f ./docker/node/Dockerfile .
 dockerize-force: 
-	docker build -t --no-cache elld-node -f ./docker/node/Dockerfile .
+	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile .
 	
 # Start a node
 start:
