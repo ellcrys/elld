@@ -33,6 +33,11 @@ dockerize:
 dockerize-force: 
 	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile .
 	
+# Remove volumes and containers
+docker-prune-container-volume:
+	docker container prune 
+	docker container volume 
+	
 # Start a node
 start:
 	docker volume create elld-datadir
@@ -55,6 +60,10 @@ restart:
 remove: stop
 	docker rm -f elld
 
+# Follow logs
+logs: 
+	docker logs elld -f
+	
 # Attach to elld running locally
 attach:
 	elld attach
