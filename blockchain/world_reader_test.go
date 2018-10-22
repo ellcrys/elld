@@ -31,7 +31,7 @@ var _ = Describe("Process", func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.ConfigDir())
+		db = elldb.NewDB(cfg.DataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 
@@ -54,7 +54,7 @@ var _ = Describe("Process", func() {
 
 	AfterEach(func() {
 		db.Close()
-		err = os.RemoveAll(cfg.ConfigDir())
+		err = os.RemoveAll(cfg.DataDir())
 		Expect(err).To(BeNil())
 	})
 

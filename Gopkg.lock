@@ -461,6 +461,33 @@
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
 
 [[projects]]
+  digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
+  version = "v1.0.1"
+
+[[projects]]
+  digest = "1:8f5579a88f14ca4029f38f7491f12f578e38d942d9343e63aaa68f14c31df053"
+  name = "github.com/lestrrat-go/file-rotatelogs"
+  packages = [
+    ".",
+    "internal/option",
+  ]
+  pruneopts = "UT"
+  revision = "3b4f34a036f374c18d604e1b8006d9fbb9593c06"
+  version = "v2.2.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:8654122ef85f2bc03859b0a7ea2d36c9965888689cdac7640cceaa6edb11cff6"
+  name = "github.com/lestrrat-go/strftime"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "8b31f9c59b0feb56c456ce49a7b3d2b2e93a6f18"
+
+[[projects]]
   digest = "1:d38d6658922388905ca5d129ee4af7893efaa66f1f96e962dfed931acd8b3eb8"
   name = "github.com/libp2p/go-addr-util"
   packages = ["."]
@@ -958,6 +985,14 @@
   revision = "cda20d4ac917ad418d86e151eff439648b06185b"
 
 [[projects]]
+  digest = "1:1a23fdd843129ef761ffe7651bc5fe7c5b09fbe933e92783ab06cc11c37b7b37"
+  name = "github.com/rifflock/lfshook"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b9218ef580f59a2e72dad1aa33d660150445d05a"
+  version = "v2.4"
+
+[[projects]]
   digest = "1:0e5c9074fa7b5a79fa2fd19945c7964d077b7bb6f09e41d053ff97e7e1127601"
   name = "github.com/robertkrimen/otto"
   packages = [
@@ -997,11 +1032,12 @@
   revision = "2df3e6ddaf6e9531dd02d7b6337f2d310f5e4f22"
 
 [[projects]]
-  digest = "1:7ab696eb65eef48aa01c255ce3979e716259987e1af2a69891d47b17c6127819"
+  digest = "1:3f53e9e4dfbb664cd62940c9c4b65a2171c66acd0b7621a1a6b8e78513525a52"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   pruneopts = "UT"
-  revision = "778f2e774c725116edbc3d039dc0dfc1cc62aae8"
+  revision = "ad15b42461921f1fb3529b058c6786c6a45d5162"
+  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
@@ -1132,36 +1168,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "63d22127b261bf7014885d25fabe034bed14f04b"
-
-[[projects]]
-  digest = "1:9d5cf6f23377cc24f00ba9a7b0c83fe070171c094e42eece262c6252a392ec33"
-  name = "go.uber.org/atomic"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "8474b86a5a6f79c443ce4b2992817ff32cf208b8"
-  version = "v1.3.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:98635ff323cb8afc13c863cc0d2e5ec00d2839fdb71627c4262eb8690e4d9cbc"
-  name = "go.uber.org/multierr"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "ddea229ff1dff9e6fe8a6c0344ac73b09e81fce5"
-
-[[projects]]
-  digest = "1:07853d37736d3f630740d434a623de697d0a863fca0e40b2c859995045d8941e"
-  name = "go.uber.org/zap"
-  packages = [
-    ".",
-    "buffer",
-    "internal/bufferpool",
-    "internal/color",
-    "internal/exit",
-    "zapcore",
-  ]
-  pruneopts = "UT"
-  revision = "f85c78b1dd998214c5f2138155b320a4a43fbe36"
 
 [[projects]]
   digest = "1:ed8d0349caed04ecdc74667d9cf5a7b21f3d2bfffeb6e14c50e14821f102aa7b"
@@ -1309,6 +1315,7 @@
     "github.com/imdario/mergo",
     "github.com/jinzhu/configor",
     "github.com/jinzhu/copier",
+    "github.com/lestrrat-go/file-rotatelogs",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
     "github.com/libp2p/go-libp2p-crypto/pb",
@@ -1327,6 +1334,7 @@
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/phayes/freeport",
+    "github.com/rifflock/lfshook",
     "github.com/robertkrimen/otto",
     "github.com/segmentio/go-prompt",
     "github.com/shopspring/decimal",
@@ -1340,7 +1348,6 @@
     "github.com/syndtr/goleveldb/leveldb/util",
     "github.com/thoas/go-funk",
     "github.com/vmihailenco/msgpack",
-    "go.uber.org/zap",
     "golang.org/x/crypto/blake2b",
     "golang.org/x/crypto/ripemd160",
     "golang.org/x/crypto/scrypt",

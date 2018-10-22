@@ -29,12 +29,12 @@ var _ = Describe("Store", func() {
 
 	AfterEach(func() {
 		db.Close()
-		err = os.RemoveAll(cfg.ConfigDir())
+		err = os.RemoveAll(cfg.DataDir())
 		Expect(err).To(BeNil())
 	})
 
 	BeforeEach(func() {
-		db = elldb.NewDB(cfg.ConfigDir())
+		db = elldb.NewDB(cfg.DataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 	})

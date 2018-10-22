@@ -78,7 +78,7 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 	c.executor = newExecutor(coinbase, log)
 	c.suggestMgr = newSuggestionManager(initialSuggestions)
 	c.coinbase = coinbase
-	c.executor.acctMgr = accountmgr.New(path.Join(cfg.ConfigDir(), config.AccountDirName))
+	c.executor.acctMgr = accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 	c.executor.console = c
 	c.cfg = cfg
 

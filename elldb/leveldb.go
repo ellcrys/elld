@@ -17,14 +17,14 @@ const dbfile = "data%s.db"
 // LevelDB provides local data storage and functionalities for various purpose.
 // It implements DB interface
 type LevelDB struct {
-	cfgDir string
-	ldb    *leveldb.DB
+	dataDir string
+	ldb     *leveldb.DB
 }
 
 // NewDB creates a new instance of the Ellcrys DB
-func NewDB(cfgDir string) *LevelDB {
+func NewDB(dataDir string) *LevelDB {
 	db := new(LevelDB)
-	db.cfgDir = cfgDir
+	db.dataDir = dataDir
 	return db
 }
 
@@ -40,7 +40,7 @@ func (db *LevelDB) Open(namespace string) error {
 		Filter: filter.NewBloomFilter(20),
 	}
 
-	file := path.Join(db.cfgDir, fmt.Sprintf(dbfile, namespace))
+	file := path.Join(db.dataDir, fmt.Sprintf(dbfile, namespace))
 	ldb, err := leveldb.OpenFile(file, o)
 
 	// If database file is corrupted, attempt to recover

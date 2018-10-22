@@ -40,9 +40,9 @@ var _ = Describe("Configdir", func() {
 
 		It("should return the default directory path", func() {
 			dirName := fmt.Sprintf("%s/.ellcrys", homeDir)
-			cfgDir, err := NewConfig("")
+			dataDir, err := NewConfig("")
 			Expect(err).To(BeNil())
-			Expect(cfgDir.path).To(Equal(dirName))
+			Expect(dataDir.path).To(Equal(dirName))
 		})
 	})
 
@@ -61,8 +61,8 @@ var _ = Describe("Configdir", func() {
 				Expect(err).To(BeNil())
 				Expect(existed).To(BeFalse())
 
-				cfgDirPath := path.Join(cfg.path, "ellcrys.json")
-				d, err := ioutil.ReadFile(cfgDirPath)
+				dataDirPath := path.Join(cfg.path, "ellcrys.json")
+				d, err := ioutil.ReadFile(dataDirPath)
 				Expect(err).To(BeNil())
 				Expect(len(d)).NotTo(BeZero())
 			})
@@ -104,13 +104,13 @@ var _ = Describe("Configdir", func() {
 					},
 				}
 
-				cfgDir, err := NewConfig(dirName)
+				dataDir, err := NewConfig(dirName)
 				Expect(err).To(BeNil())
-				existed, err := cfgDir.createConfigFileInNotExist()
+				existed, err := dataDir.createConfigFileInNotExist()
 				Expect(err).To(BeNil())
 				Expect(existed).To(BeFalse())
 
-				cfg, err := cfgDir.Load()
+				cfg, err := dataDir.Load()
 				Expect(err).To(BeNil())
 				Expect(cfg).To(Equal(&EngineConfig{
 					Node: &PeerConfig{
@@ -138,9 +138,9 @@ var _ = Describe("Configdir", func() {
 				err = ioutil.WriteFile(filePath, []byte("invalid content"), 0600)
 				Expect(err).To(BeNil())
 
-				cfgDir, err := NewConfig(dirName)
+				dataDir, err := NewConfig(dirName)
 				Expect(err).To(BeNil())
-				_, err = cfgDir.Load()
+				_, err = dataDir.Load()
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("failed to parse config file -> invalid character 'i' looking for beginning of value"))
 			})

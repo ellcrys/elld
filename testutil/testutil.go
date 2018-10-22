@@ -58,9 +58,9 @@ func RandomHost(seed int64, port int) (host.Host, error) {
 func SetTestCfg() (*config.EngineConfig, error) {
 	var err error
 	dir, _ := homedir.Dir()
-	cfgDir := path.Join(dir, util.RandString(5))
-	os.MkdirAll(cfgDir, 0700)
-	cfg, err := config.LoadCfg(cfgDir)
+	dataDir := path.Join(dir, util.RandString(5))
+	os.MkdirAll(dataDir, 0700)
+	cfg, err := config.LoadCfg(dataDir)
 	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5
 	return cfg, err

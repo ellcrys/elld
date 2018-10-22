@@ -25,13 +25,18 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(map[string]interface{}{
-		"id":                n.ID().Pretty(),
-		"address":           n.GetAddress().ConnectionString(),
-		"mode":              mode,
-		"netVersion":        config.ProtocolVersion,
-		"syncing":           n.isSyncing(),
-		"coinbasePublicKey": n.signatory.PubKey().Base58(),
-		"coinbase":          n.signatory.Addr(),
+		"id":                 n.ID().Pretty(),
+		"address":            n.GetAddress().ConnectionString(),
+		"mode":               mode,
+		"netVersion":         config.ProtocolVersion,
+		"syncing":            n.isSyncing(),
+		"coinbasePublicKey":  n.signatory.PubKey().Base58(),
+		"coinbase":           n.signatory.Addr(),
+		"buildVersion":       n.cfg.VersionInfo.BuildVersion,
+		"buildCommit":        n.cfg.VersionInfo.BuildCommit,
+		"buildDate":          n.cfg.VersionInfo.BuildDate,
+		"goVersion":          n.cfg.VersionInfo.GoVersion,
+		"listeningAddresses": n.GetListenAddresses(),
 	})
 }
 
@@ -270,6 +275,7 @@ func (n *Node) APIs() jsonrpc.APISet {
 		"info": {
 			Namespace:   core.NamespaceNode,
 			Description: "Get basic information of the node",
+			Private:     true,
 			Func:        n.apiBasicNodeInfo,
 		},
 		"isSyncing": {
