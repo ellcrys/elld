@@ -25,7 +25,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 	}
 
 	// From our peer list, randomly pick 2 peers to broad cast to.
-	broadcasters := g.PickBroadcasters(connectedAddresses, 2)
+	g.PickBroadcasters(connectedAddresses, 2)
 
 	var msg = intro
 	if msg == nil {
@@ -35,7 +35,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 	// Send intro message to the selected
 	// broadcast nodes.
 	sent := 0
-	for _, peer := range broadcasters {
+	for _, peer := range g.broadcasters.Peers() {
 
 		// Don't relay an intro back to the
 		// peer that authored it
@@ -75,7 +75,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 	}
 
 	g.log.Debug("Sent Intro to peer(s)",
-		"NumBroadcastPeers", broadcasters.Len(),
+		"NumBroadcastPeers", g.broadcasters.Len(),
 		"NumSentTo", sent)
 }
 

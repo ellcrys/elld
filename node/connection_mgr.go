@@ -15,8 +15,52 @@ import (
 // such as the number of inbound and outbound
 // connections, etc
 type ConnsInfo struct {
-	Inbound  int
-	Outbound int
+	sync.RWMutex
+	inbound  int
+	outbound int
+}
+
+// NewConnsInfo creates an instance of ConnsInfo
+func NewConnsInfo(inbound, outbound int) *ConnsInfo {
+	return &ConnsInfo{
+		inbound:  inbound,
+		outbound: outbound,
+	}
+}
+
+// Info returns the number of inbound and outbound connections
+func (i *ConnsInfo) Info() (inbound int, outbound int) {
+	i.RLock()
+	defer i.RUnlock()
+	return i.inbound, i.outbound
+}
+
+// IncOutbound increments outbound count
+func (i *ConnsInfo) IncOutbound() {
+	i.Lock()
+	defer i.Unlock()
+	i.outbound++
+}
+
+// DecrOutbound decrements outbound count
+func (i *ConnsInfo) DecrOutbound() {
+	i.Lock()
+	defer i.Unlock()
+	i.outbound--
+}
+
+// IncInbound increments inbound count
+func (i *ConnsInfo) IncInbound() {
+	i.Lock()
+	defer i.Unlock()
+	i.inbound++
+}
+
+// DecrInbound decrements outbound count
+func (i *ConnsInfo) DecrInbound() {
+	i.Lock()
+	defer i.Unlock()
+	i.inbound--
 }
 
 // ConnectionManager manages the active connections
@@ -35,7 +79,7 @@ func NewConnMrg(m *Manager, log logger.Logger) *ConnectionManager {
 	return &ConnectionManager{
 		pm:        m,
 		log:       log,
-		connsInfo: &ConnsInfo{},
+		connsInfo: NewConnsInfo(0, 0),
 	}
 }
 
@@ -95,26 +139,29 @@ func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {}
 // Check inbound and outbound connection count state
 // and close connections when limits are reached.
 func (m *ConnectionManager) Connected(n net.Network, conn net.Conn) {
-	m.Lock()
-	defer m.Unlock()
 
-	if conn.Stat().Direction == net.DirInbound {
-		m.connsInfo.Inbound++
-		if int64(m.connsInfo.Inbound) > m.pm.config.Node.MaxInboundConnections {
-			m.log.Debug("Closed inbound connection. Max. limit reached",
-				"MaxAllowed", m.pm.config.Node.MaxInboundConnections)
-			conn.Close()
-		}
-	}
+	go func(n net.Network, conn net.Conn) {
+		curInboundConns, curOutboundConns := m.connsInfo.Info()
 
-	if conn.Stat().Direction == net.DirOutbound {
-		m.connsInfo.Outbound++
-		if int64(m.connsInfo.Outbound) > m.pm.config.Node.MaxOutboundConnections {
-			m.log.Debug("Closed outbound connection. Max. limit reached",
-				"MaxAllowed", m.pm.config.Node.MaxOutboundConnections)
-			conn.Close()
+		if conn.Stat().Direction == net.DirInbound {
+			m.connsInfo.IncInbound()
+			if int64(curInboundConns) > m.pm.config.Node.MaxInboundConnections {
+				m.log.Debug("Closed inbound connection. Max. limit reached",
+					"MaxAllowed", m.pm.config.Node.MaxInboundConnections)
+				conn.Close()
+			}
 		}
-	}
+
+		if conn.Stat().Direction == net.DirOutbound {
+			m.connsInfo.IncOutbound()
+			if int64(curOutboundConns) > m.pm.config.Node.MaxOutboundConnections {
+				m.log.Debug("Closed outbound connection. Max. limit reached",
+					"MaxAllowed", m.pm.config.Node.MaxOutboundConnections)
+				conn.Close()
+			}
+		}
+	}(n, conn)
+
 }
 
 // Disconnected is called when a connection is closed.
@@ -122,15 +169,13 @@ func (m *ConnectionManager) Connected(n net.Network, conn net.Conn) {
 // manager of the disconnection event.
 func (m *ConnectionManager) Disconnected(n net.Network, conn net.Conn) {
 
-	m.Lock()
 	if conn.Stat().Direction == net.DirInbound {
-		m.connsInfo.Inbound--
+		m.connsInfo.DecrInbound()
 	}
 
 	if conn.Stat().Direction == net.DirOutbound {
-		m.connsInfo.Outbound--
+		m.connsInfo.DecrOutbound()
 	}
-	m.Unlock()
 
 	addr := util.RemoteAddrFromConn(conn)
 	m.pm.HasDisconnected(addr)
