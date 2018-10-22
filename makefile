@@ -57,3 +57,7 @@ attach:
 exec:
 	docker exec -it elld bash
 	
+# Start elld in console mode with RPC enabled
+run-console: 
+	./dist/darwin_amd64/elld console --rpc
+	
