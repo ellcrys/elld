@@ -357,12 +357,12 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
-	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on")
-	startCmd.Flags().Bool("rpc", false, "Launch RPC server")
-	startCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
-	startCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
-	startCmd.Flags().String("pwd", "", "Used as password during initial account creation or to unlock an account")
-	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for account creation (not recommended)")
+	startCmd.Flags().StringSliceP("addnode", "j", nil, "Add the address of a node to connect to.")
+	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on.")
+	startCmd.Flags().Bool("rpc", false, "Enables the RPC server")
+	startCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on.")
+	startCmd.Flags().String("account", "", "The node's network account. The default account will be used if not set.")
+	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
+	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
 }
