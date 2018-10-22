@@ -48,6 +48,10 @@ start:
 stop: 
 	docker stop elld
 
+# Restart a node	
+restart:
+	docker restart elld
+
 remove: stop
 	docker rm -f elld
 
