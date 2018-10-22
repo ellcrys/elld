@@ -441,7 +441,7 @@ var _ = Describe("Peer Manager", func() {
 			Context("when max outbound connection has been reached", func() {
 				It("should return false", func() {
 					cfg.Node.MaxOutboundConnections = 10
-					mgr.ConnMgr().SetConnsInfo(&node.ConnsInfo{Outbound: 10})
+					mgr.ConnMgr().SetConnsInfo(node.NewConnsInfo(0, 10))
 					peer1 := emptyNodeWithLastSeenTime(time.Now().Add(-1 * (60 * 60) * time.Second))
 					mgr.SetPeers(map[string]types.Engine{"peer1": peer1})
 					Expect(mgr.RequirePeers()).To(BeFalse())

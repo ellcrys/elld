@@ -51,34 +51,65 @@ const (
 // BroadcastPeers is a type that contains
 // randomly chosen peers that messages will be
 // broadcast to.
-type BroadcastPeers map[string]*Node
+type BroadcastPeers struct {
+	sync.RWMutex
+	peers map[string]*Node
+}
 
 // Has checks whether a peer exists
-func (b BroadcastPeers) Has(p *Node) bool {
-	_, has := b[p.StringID()]
+func (b *BroadcastPeers) Has(p *Node) bool {
+	b.RLock()
+	defer b.RUnlock()
+	_, has := b.peers[p.StringID()]
 	return has
 }
 
 // Add adds a peer
-func (b BroadcastPeers) Add(p *Node) {
-	b[p.StringID()] = p
+func (b *BroadcastPeers) Add(p *Node) {
+	b.Lock()
+	defer b.Unlock()
+	b.peers[p.StringID()] = p
 }
 
 // Clear removes all peers
-func (b BroadcastPeers) Clear() {
-	b = make(map[string]*Node)
+func (b *BroadcastPeers) Clear() {
+	b.Lock()
+	defer b.Unlock()
+	b.peers = make(map[string]*Node)
 }
 
 // Len returns the number of peers
-func (b BroadcastPeers) Len() int {
-	return len(b)
+func (b *BroadcastPeers) Len() int {
+	b.RLock()
+	defer b.RUnlock()
+	return len(b.peers)
+}
+
+// Peers returns the stored peers
+func (b *BroadcastPeers) Peers() (peers []*Node) {
+	b.RLock()
+	defer b.RUnlock()
+	for _, p := range b.peers {
+		peers = append(peers, p)
+	}
+	return
+}
+
+// PeersID returns the id of the stored peers
+func (b *BroadcastPeers) PeersID() (ids []string) {
+	b.RLock()
+	defer b.RUnlock()
+	for id := range b.peers {
+		ids = append(ids, id)
+	}
+	return
 }
 
 // Gossip represents the peer protocol
 type Gossip struct {
 
 	// mtx is the general mutex
-	mtx *sync.Mutex
+	mtx *sync.RWMutex
 
 	// engine represents the local node
 	engine *Node
@@ -92,16 +123,18 @@ type Gossip struct {
 
 	// broadcasters contains randomly selected
 	// peers to broadcast messages to.
-	broadcasters BroadcastPeers
+	broadcasters *BroadcastPeers
 }
 
 // NewGossip creates a new instance of the Gossip protocol
 func NewGossip(p *Node, log logger.Logger) *Gossip {
 	return &Gossip{
-		engine:       p,
-		log:          log,
-		mtx:          &sync.Mutex{},
-		broadcasters: make(map[string]*Node),
+		engine: p,
+		log:    log,
+		mtx:    &sync.RWMutex{},
+		broadcasters: &BroadcastPeers{
+			peers: make(map[string]*Node),
+		},
 	}
 }
 
@@ -144,7 +177,7 @@ func (g *Gossip) Engine() *Node {
 }
 
 // GetBroadcasters returns the broadcasters
-func (g *Gossip) GetBroadcasters() BroadcastPeers {
+func (g *Gossip) GetBroadcasters() *BroadcastPeers {
 	return g.broadcasters
 }
 

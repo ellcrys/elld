@@ -112,15 +112,14 @@ func (g *Gossip) OnAddr(s net.Stream) {
 // They are returned on subsequent calls and only
 // renewed when there are less than N addresses or the
 // cache is over 24 hours since it was last updated.
-func (g *Gossip) PickBroadcasters(addresses []*wire.Address, n int) BroadcastPeers {
+func (g *Gossip) PickBroadcasters(addresses []*wire.Address, n int) *BroadcastPeers {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
 	now := time.Now().UTC()
-	// fmt.Println(g.broadcasters)
-	if g.GetBroadcasters().Len() == n && !g.broadcastersUpdatedAt.
+	if g.broadcasters.Len() == n && !g.broadcastersUpdatedAt.
 		Add(24*time.Hour).Before(now) {
-		return g.GetBroadcasters()
+		return g.broadcasters
 	}
 
 	type addrInfo struct {
@@ -159,22 +158,22 @@ func (g *Gossip) PickBroadcasters(addresses []*wire.Address, n int) BroadcastPee
 
 	// Clear the cache if we have at least N cached
 	if len(candidatesInfo) >= n {
-		g.GetBroadcasters().Clear()
+		g.broadcasters.Clear()
 	}
 
 	// Create a remote engine object from the first N addresses.
 	for _, info := range candidatesInfo {
 		node, _ := g.engine.NodeFromAddr(info.address, true)
 		node.lastSeen = time.Unix(info.timestamp, 0)
-		g.GetBroadcasters().Add(node)
-		if g.GetBroadcasters().Len() == n {
+		g.broadcasters.Add(node)
+		if g.broadcasters.Len() == n {
 			break
 		}
 	}
 
 	g.broadcastersUpdatedAt = time.Now().UTC()
 
-	return g.GetBroadcasters()
+	return g.broadcasters
 
 }
 
@@ -256,7 +255,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		"RelayPeers", broadcasters.Len())
 
 	relayed := 0
-	for _, remotePeer := range broadcasters {
+	for _, remotePeer := range broadcasters.Peers() {
 
 		// Construct the address message.
 		// Be sure to not include an address
