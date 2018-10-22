@@ -152,6 +152,18 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string,
 	return node, nil
 }
 
+// GetListenAddresses gets the address at which the node listens
+func (n *Node) GetListenAddresses() (addrs []util.NodeAddr) {
+	lAddrs, _ := n.host.Network().InterfaceListenAddresses()
+	for _, addr := range lAddrs {
+		ipfsPart := fmt.Sprintf("/ipfs/%s", n.host.ID().Pretty())
+		hostAddr, _ := ma.NewMultiaddr(ipfsPart)
+		fullAddr := addr.Encapsulate(hostAddr).String()
+		addrs = append(addrs, util.NodeAddr(fullAddr))
+	}
+	return
+}
+
 // NewNode creates a Node instance
 func NewNode(config *config.EngineConfig, address string,
 	signatory *d_crypto.Key, log logger.Logger) (*Node, error) {
