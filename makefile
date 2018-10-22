@@ -30,6 +30,8 @@ release:
 # Build an elld image 
 dockerize: 
 	docker build -t elld-node -f ./docker/node/Dockerfile .
+dockerize-force: 
+	docker build -t --no-cache elld-node -f ./docker/node/Dockerfile .
 	
 # Start a node
 start:
