@@ -36,7 +36,7 @@ dockerize-force:
 # Remove volumes and containers
 docker-prune-container-volume:
 	docker container prune 
-	docker container volume 
+	docker volume prune 
 	
 # Start a node
 start:
