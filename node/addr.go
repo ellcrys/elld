@@ -18,7 +18,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	remoteAddr := util.RemoteAddrFromStream(s)
 	rp := NewRemoteNode(remoteAddr, g.engine)
-	remotePeerIDShort := rp.ShortID()
+	rpIDStr := rp.ShortID()
 
 	resp := &wire.Addr{}
 	if err := ReadStream(s, resp); err != nil {
@@ -32,25 +32,22 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 	// maximum address expected
 	if int64(len(resp.Addresses)) > g.engine.cfg.Node.MaxAddrsExpected {
 		g.log.Debug("Too many addresses received. Ignoring addresses",
-			"PeerID", remotePeerIDShort,
+			"PeerID", rpIDStr,
 			"NumAddrReceived", len(resp.Addresses))
 		return nil, fmt.Errorf("too many addresses received. Ignoring addresses")
 	}
 
 	invalidAddrs := 0
 
-	// Validate each address before we add them to the peer
-	// list maintained by the peer manager
+	// Validate each address before we add
+	// them to the peer list maintained by
+	// the peer manager
 	for _, addr := range resp.Addresses {
 
-		// first construct a remote node and set the node's timestamp
 		p, _ := g.engine.NodeFromAddr(addr.Address, true)
-		p.lastSeen = time.Unix(addr.Timestamp, 0)
 
-		// Check if the timestamp us acceptable according to
-		// the discovery protocol rules
-		if p.IsBadTimestamp() {
-			p.lastSeen = time.Now().Add(-1 * time.Hour * 24 * 5)
+		if !addr.Address.IsValid() || (!g.engine.TestMode() && !addr.Address.IsRoutable()) {
+			continue
 		}
 
 		// Add the remote peer to the peer manager's list
@@ -60,8 +57,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		}
 	}
 
-	g.log.Info("Received Addr message from peer",
-		"PeerID", remotePeerIDShort,
+	g.log.Info("Received Addr message from peer", "PeerID", rpIDStr,
 		"NumAddrs", len(resp.Addresses),
 		"InvalidAddrs", invalidAddrs)
 
@@ -190,8 +186,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 	var relayable []*wire.Address
 	now := time.Now()
 
-	// Do not proceed if there are more
-	// than 10 addresses
+	// Do not proceed if there are more than 10 addresses
 	if len(addrs) > 10 {
 		errs = append(errs, fmt.Errorf("too many addresses in the message"))
 		return errs
@@ -248,25 +243,22 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 	relayed := 0
 	for _, rp := range broadcasters.Peers() {
 
-		// Construct the address message.
-		// Be sure to not include an address
-		// matching the remote peer's
-		addrMsg := &wire.Addr{}
+		msg := &wire.Addr{}
 		for _, p := range relayable {
-			if !p.Address.Equal(rp.GetAddress()) {
-				addrMsg.Addresses = append(addrMsg.Addresses, p)
+
+			// We must have no history sending/receiving this
+			// address to/from this peer in recent time
+			hk := []interface{}{p.Address.String(), rp.StringID()}
+			if g.engine.history.HasMulti(hk) {
+				continue
 			}
-		}
 
-		historyKey := makeAddrRelayHistoryKey(addrMsg, rp)
+			// Remote peer address must be same as p
+			if p.Address.Equal(rp.GetAddress()) {
+				continue
+			}
 
-		// ensure we have not relayed same
-		// message to this peer before
-		if g.engine.history.HasMulti(historyKey...) {
-			errs = append(errs, fmt.Errorf("already sent same Addr to node"))
-			g.log.Debug("Already sent same Addr to node. Skipping.",
-				"PeerID", rp.ShortID())
-			continue
+			msg.Addresses = append(msg.Addresses, p)
 		}
 
 		s, c, err := g.NewStream(rp, config.AddrVersion)
@@ -278,7 +270,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		defer c()
 		defer s.Close()
 
-		if err := WriteStream(s, addrMsg); err != nil {
+		if err := WriteStream(s, msg); err != nil {
 			err := g.logErr(err, rp, "[RelayAddresses] Failed to write to peer")
 			errs = append(errs, err)
 			continue
@@ -286,7 +278,10 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 		g.PM().UpdateLastSeenTime(rp)
 
-		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
+		for _, p := range relayable {
+			hk := []interface{}{p.Address.String(), rp.StringID()}
+			g.engine.history.AddMulti(cache.Sec(600), hk)
+		}
 
 		relayed++
 	}

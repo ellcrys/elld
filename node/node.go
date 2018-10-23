@@ -944,7 +944,6 @@ func (n *Node) ip() net.IP {
 // It is bad when:
 // - It has no timestamp
 // - The timestamp is 10 minutes in the future or over 3 hours ago
-// TODO: Also check of history of failed connection attempts
 func (n *Node) IsBadTimestamp() bool {
 	n.mtx.RLock()
 	defer n.mtx.RUnlock()

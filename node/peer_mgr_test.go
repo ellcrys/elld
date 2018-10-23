@@ -1,10 +1,12 @@
 package node_test
 
 import (
+	"context"
 	"reflect"
 	"time"
 
 	"github.com/imdario/mergo"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
@@ -69,14 +71,14 @@ var _ = Describe("Peer Manager", func() {
 				Expect(err).To(BeNil())
 			})
 
-			It("should add peer with time set to the current time", func() {
+			It("should add peer with time set to an hour ago", func() {
 				Expect(mgr.Peers()).To(HaveLen(1))
 				Expect(p2.GetLastSeen().IsZero()).To(BeFalse())
-				Expect(p2.GetLastSeen().Unix()).To(Equal(time.Now().Unix()))
+				Expect(p2.GetLastSeen().Unix()).To(Equal(time.Now().Add(-1 * time.Hour).Unix()))
 			})
 		})
 
-		When("peer previously existed", func() {
+		When("peer previously existed and not currently connected to the local node", func() {
 			var existingPeer *node.Node
 			var err error
 
@@ -89,8 +91,36 @@ var _ = Describe("Peer Manager", func() {
 				Expect(err).To(BeNil())
 			})
 
+			It("should update the last seen to one hour ago", func() {
+				Expect(existingPeer.GetLastSeen().Unix()).To(Equal(time.Now().Add(-1 * time.Hour).Unix()))
+			})
+		})
+
+		When("peer previously existed and currently connected to the local node", func() {
+			var existingPeer *node.Node
+			var err error
+
+			BeforeEach(func() {
+				existingPeer, err = node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
+				Expect(err).To(BeNil())
+				existingPeer.SetLocalNode(lp)
+
+				lp.Host().Peerstore().AddAddr(existingPeer.ID(), existingPeer.GetAddress().DecapIPFS(), pstore.PermanentAddrTTL)
+				err := lp.Host().Connect(context.TODO(), lp.Host().Peerstore().PeerInfo(existingPeer.ID()))
+				Expect(err).To(BeNil())
+
+				mgr.AddPeer(existingPeer)
+			})
+
+			AfterEach(func() {
+				closeNode(existingPeer)
+			})
+
 			It("should update the last seen to current time", func() {
-				Expect(existingPeer.GetLastSeen().Unix()).To(Equal(time.Now().Unix()))
+				now := time.Now().Unix()
+				err = mgr.UpdateLastSeenTime(existingPeer)
+				Expect(err).To(BeNil())
+				Expect(existingPeer.GetLastSeen().Unix()).To(Equal(now))
 			})
 		})
 	})

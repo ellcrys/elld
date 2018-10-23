@@ -61,27 +61,6 @@ var _ = Describe("GetAddr", func() {
 			Expect(err.Error()).To(Equal("dial to self attempted"))
 		})
 
-		Context("when a remote peer knows an address with timestamp of 3 hours ago", func() {
-			var remoteAddr *node.Node
-
-			BeforeEach(func() {
-				remoteAddr = makeTestNode(getPort())
-				remoteAddr.SetLastSeen(time.Now().Add(-3 * time.Hour))
-				err := rp.PM().UpdateLastSeenTime(remoteAddr)
-				Expect(err).To(BeNil())
-			})
-
-			AfterEach(func() {
-				closeNode(remoteAddr)
-			})
-
-			It("should not be returned", func() {
-				addrs, err := lp.Gossip().SendGetAddrToPeer(rp)
-				Expect(err).To(BeNil())
-				Expect(addrs).To(HaveLen(0))
-			})
-		})
-
 		Context("when a remote peer knowns an address that is the same as the requesting peer", func() {
 
 			BeforeEach(func() {

@@ -235,30 +235,29 @@ func (m *Manager) doIntro(done chan bool) {
 
 // UpdateLastSeenTime updates a peer's
 // last seen time to the current time
-func (m *Manager) UpdateLastSeenTime(p types.Engine) error {
+func (m *Manager) UpdateLastSeenTime(_peer types.Engine) error {
 
 	defer func() {
 		m.CleanPeers()
 		m.SavePeers()
 	}()
 
-	// Get a peer matching the ID from the
-	// list of peers. if it does not
-	// exist, we add it immediately
-	existingPeer := m.GetPeer(p.StringID())
-	if existingPeer == nil {
+	peer := m.GetPeer(_peer.StringID())
 
-		// Update the timestamp only if
-		// the address is not set
-		if p.GetLastSeen().IsZero() {
-			p.SetLastSeen(time.Now())
-		}
-
-		m.AddPeer(p)
+	// For unknown peers, set 'last seen' time to an hour ago
+	if peer == nil {
+		_peer.SetLastSeen(time.Now().Add(-1 * time.Hour))
+		m.AddPeer(_peer)
 		return nil
 	}
 
-	existingPeer.SetLastSeen(time.Now())
+	// For connected peers, set 'last seen' time to the current time
+	if peer.Connected() {
+		peer.SetLastSeen(time.Now())
+		return nil
+	}
+
+	peer.SetLastSeen(time.Now().Add(-1 * time.Hour))
 
 	return nil
 }
