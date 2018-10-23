@@ -63,7 +63,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 			continue
 		}
 
-		g.PM().UpdateLastSeenTime(peer)
+		g.PM().AddOrUpdatePeer(peer)
 
 		sent++
 

@@ -47,7 +47,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to write message")
 	}
 
-	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().AddOrUpdatePeer(remotePeer)
 	g.log.Debug("Sent ping to peer",
 		"PeerID", remotePeerIDShort)
 
@@ -58,7 +58,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	}
 
 	// update the remote peer's timestamp
-	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().AddOrUpdatePeer(remotePeer)
 
 	g.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
 
@@ -153,7 +153,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	}
 
 	// update the remote peer's timestamp
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	g.log.Debug("Sent pong response to peer", "PeerID", remotePeerIDShort)
 

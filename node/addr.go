@@ -25,7 +25,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	// we need to ensure the amount of
 	// addresses does not exceed the
@@ -51,7 +51,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		}
 
 		// Add the remote peer to the peer manager's list
-		if g.PM().UpdateLastSeenTime(p) != nil {
+		if g.PM().AddOrUpdatePeer(p) != nil {
 			invalidAddrs++
 			continue
 		}
@@ -276,7 +276,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			continue
 		}
 
-		g.PM().UpdateLastSeenTime(rp)
+		g.PM().AddOrUpdatePeer(rp)
 
 		for _, p := range relayable {
 			hk := []interface{}{p.Address.String(), rp.StringID()}

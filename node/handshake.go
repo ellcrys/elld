@@ -75,14 +75,14 @@ func (g *Gossip) SendHandshake(rp types.Engine) error {
 		return g.logErr(err, rp, "[SendHandshake] Failed to read from stream")
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	// Set new peer as acquainted so that
 	// it will be allowed to send future messages
 	g.PM().AddAcquainted(rp)
 
 	// Add or update peer 'last seen' timestamp
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	// Add remote peer into the intro cache with a TTL of 1 hour.
 	g.engine.intros.AddWithExp(rp.StringID(), struct{}{}, cache.Sec(3600))
@@ -153,7 +153,7 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	g.PM().AddAcquainted(rp)
 
 	// Add or update peer 'last seen' timestamp
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	// Set the peer as an inbound connection
 	g.PM().GetPeer(rp.StringID()).SetInbound(true)

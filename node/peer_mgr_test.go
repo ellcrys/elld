@@ -58,7 +58,7 @@ var _ = Describe("Peer Manager", func() {
 		closeNode(lp)
 	})
 
-	Describe(".UpdateLastSeen", func() {
+	Describe(".AddOrUpdatePeer", func() {
 		var p2 *node.Node
 		var err error
 
@@ -67,7 +67,7 @@ var _ = Describe("Peer Manager", func() {
 			BeforeEach(func() {
 				p2, err = node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 				defer closeNode(p2)
-				err = mgr.UpdateLastSeenTime(p2)
+				err = mgr.AddOrUpdatePeer(p2)
 				Expect(err).To(BeNil())
 			})
 
@@ -85,13 +85,14 @@ var _ = Describe("Peer Manager", func() {
 			BeforeEach(func() {
 				existingPeer, err = node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
+				existingPeer.SetLastSeen(time.Now())
 				defer closeNode(existingPeer)
 				mgr.AddPeer(existingPeer)
-				err = mgr.UpdateLastSeenTime(existingPeer)
+				err = mgr.AddOrUpdatePeer(existingPeer)
 				Expect(err).To(BeNil())
 			})
 
-			It("should update the last seen to one hour ago", func() {
+			It("should deduct one hour ago from its current time", func() {
 				Expect(existingPeer.GetLastSeen().Unix()).To(Equal(time.Now().Add(-1 * time.Hour).Unix()))
 			})
 		})
@@ -118,7 +119,7 @@ var _ = Describe("Peer Manager", func() {
 
 			It("should update the last seen to current time", func() {
 				now := time.Now().Unix()
-				err = mgr.UpdateLastSeenTime(existingPeer)
+				err = mgr.AddOrUpdatePeer(existingPeer)
 				Expect(err).To(BeNil())
 				Expect(existingPeer.GetLastSeen().Unix()).To(Equal(now))
 			})
@@ -269,7 +270,7 @@ var _ = Describe("Peer Manager", func() {
 		It("should return peer when peer is in known peer list", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40003", crypto.NewKeyFromIntSeed(3), log)
 			defer closeNode(p2)
-			mgr.UpdateLastSeenTime(p2)
+			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
 			actual := mgr.GetPeer(p2.StringID())
 			Expect(actual).NotTo(BeNil())
@@ -290,7 +291,7 @@ var _ = Describe("Peer Manager", func() {
 		It("peer exists, must return true", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			defer closeNode(p2)
-			mgr.UpdateLastSeenTime(p2)
+			mgr.AddOrUpdatePeer(p2)
 			Expect(err).To(BeNil())
 			Expect(mgr.PeerExist(p2.StringID())).To(BeTrue())
 			closeNode(p2)
@@ -302,7 +303,7 @@ var _ = Describe("Peer Manager", func() {
 			p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 			Expect(err).To(BeNil())
 			defer closeNode(p2)
-			mgr.UpdateLastSeenTime(p2)
+			mgr.AddOrUpdatePeer(p2)
 			actual := mgr.GetPeers()
 			Expect(actual).To(HaveLen(1))
 			Expect(actual).To(ContainElement(p2))

@@ -233,9 +233,10 @@ func (m *Manager) doIntro(done chan bool) {
 	}
 }
 
-// UpdateLastSeenTime updates a peer's
-// last seen time to the current time
-func (m *Manager) UpdateLastSeenTime(_peer types.Engine) error {
+// AddOrUpdatePeer adds a peer to peer list if
+// it hasn't been added. It updates the timestamp
+// of existing peers.
+func (m *Manager) AddOrUpdatePeer(_peer types.Engine) error {
 
 	defer func() {
 		m.CleanPeers()
@@ -257,7 +258,10 @@ func (m *Manager) UpdateLastSeenTime(_peer types.Engine) error {
 		return nil
 	}
 
-	peer.SetLastSeen(time.Now().Add(-1 * time.Hour))
+	// At this point, we know the peer but we are not
+	// currently connected to it. To accelerate its removal,
+	// deduct 1 hour from its current time
+	peer.SetLastSeen(peer.GetLastSeen().Add(-1 * time.Hour))
 
 	return nil
 }

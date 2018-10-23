@@ -28,7 +28,7 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 		return nil, g.logErr(err, remotePeer, "[SendGetAddrToPeer] Failed to write")
 	}
 
-	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().AddOrUpdatePeer(remotePeer)
 	g.log.Debug("GetAddr message sent to peer", "PeerID", rpIDShort)
 
 	addr, err := g.onAddr(s)
@@ -96,7 +96,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 	g.log.Debug("Received GetAddr message", "PeerID", rpIDShort)
 
 	// get active addresses we know about. If we have more 2500

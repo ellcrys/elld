@@ -47,7 +47,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 			continue
 		}
 
-		g.PM().UpdateLastSeenTime(peer)
+		g.PM().AddOrUpdatePeer(peer)
 
 		sent++
 	}

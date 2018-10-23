@@ -63,7 +63,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 			continue
 		}
 
-		g.PM().UpdateLastSeenTime(peer)
+		g.PM().AddOrUpdatePeer(peer)
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++
@@ -97,7 +97,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	var block objects.Block
 	copier.Copy(&block, blockBody)
@@ -164,7 +164,7 @@ func (g *Gossip) RequestBlock(rp types.Engine, blockHash util.Hash) error {
 		return err
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	return nil
@@ -192,7 +192,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 	g.log.Debug("Received request for block",
 		"RequestedBlockHash", util.StrToHash(msg.Hash).SS())
 
@@ -285,7 +285,7 @@ func (g *Gossip) SendGetBlockHashes(rp types.Engine, locators []util.Hash) error
 		return g.logErr(err, rp, "[SendGetBlockHashes] Failed to read")
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	// add all the hashes to the hash queue
 	for _, h := range blockHashes.Hashes {
@@ -332,7 +332,7 @@ func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	var blockHashes = wire.BlockHashes{}
 	var startBlock core.Block
@@ -432,7 +432,7 @@ func (g *Gossip) SendGetBlockBodies(rp types.Engine,
 		return g.logErr(err, rp, "[SendGetBlockBodies] Failed to read")
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 	g.log.Info("Received block bodies",
 		"NumBlocks", len(blockBodies.Blocks))
 
@@ -500,7 +500,7 @@ func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 		return
 	}
 
-	g.PM().UpdateLastSeenTime(rp)
+	g.PM().AddOrUpdatePeer(rp)
 
 	var bestChain = g.GetBlockchain().ChainReader()
 	var blockBodies = new(wire.BlockBodies)
