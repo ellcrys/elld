@@ -40,46 +40,41 @@ func createHandshakeMsg(bestChain core.ChainReader,
 	return msg, nil
 }
 
-// SendHandshake sends an introduction message to a peer
+func (g *Gossip) logErr(err error, remotePeer types.Engine, msg string) error {
+	g.log.Debug(msg, "Err", err, "PeerID", remotePeer.ShortID())
+	return err
+}
+
+// SendHandshake sends an introductory message to a peer
 func (g *Gossip) SendHandshake(remotePeer types.Engine) error {
 
 	remotePeerIDShort := remotePeer.ShortID()
 
-	g.log.Info("Sending handshake to peer", "PeerID", remotePeerIDShort)
 	s, c, err := g.NewStream(remotePeer, config.HandshakeVersion)
 	if err != nil {
-		g.log.Debug("Handshake failed. failed to connect to peer",
-			"Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("handshake failed. failed to "+
-			"connect to peer. %s", err.Error())
+		return g.logErr(err, remotePeer, "[SendHandshake] Failed to connect to peer")
 	}
 	defer c()
 	defer s.Close()
 
-	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().
-		ChainReader(), g.log)
+	g.log.Info("Sent handshake to peer", "PeerID", remotePeerIDShort)
+
+	nodeMsg, err := createHandshakeMsg(g.GetBlockchain().ChainReader(), g.log)
 	if err != nil {
 		return err
 	}
 
-	// write to the stream
-	if err := WriteStream(s, engineHandshakeMsg); err != nil {
-		g.log.Debug("Handshake failed. failed to write to stream",
-			"Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("handshake failed. failed to write to stream")
+	if err := WriteStream(s, nodeMsg); err != nil {
+		return g.logErr(err, remotePeer, "[SendHandshake] Failed to write to stream")
 	}
 
-	g.log.Info("Sent handshake with current main chain state", "PeerID",
-		remotePeerIDShort, "ClientVersion",
-		engineHandshakeMsg.Version, "TotalDifficulty",
-		engineHandshakeMsg.BestBlockTotalDifficulty)
+	g.log.Info("Handshake sent to peer", "PeerID", remotePeerIDShort, "ClientVersion",
+		nodeMsg.Version, "TotalDifficulty",
+		nodeMsg.BestBlockTotalDifficulty)
 
-	// receive handshake message from the remote peer.
 	resp := &wire.Handshake{}
 	if err := ReadStream(s, resp); err != nil {
-		g.log.Debug("Failed to read handshake response", "Err", err,
-			"PeerID", remotePeerIDShort)
-		return fmt.Errorf("failed to read handshake response")
+		return g.logErr(err, remotePeer, "[SendHandshake] Failed to read from stream")
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
@@ -140,26 +135,24 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	// read the message from the stream
 	msg := &wire.Handshake{}
 	if err := ReadStream(s, msg); err != nil {
-		g.log.Error("failed to read handshake message", "Err",
-			err, "PeerID", remotePeerIDShort)
+		g.logErr(err, remotePeer, "[OnHandshake] Failed to read message")
 		return
 	}
 
-	g.log.Info("Received handshake",
-		"PeerID", remotePeerIDShort,
+	g.log.Info("Received handshake", "PeerID", remotePeerIDShort,
 		"ClientVersion", msg.Version,
 		"Height", msg.BestBlockNumber,
 		"TotalDifficulty", msg.BestBlockTotalDifficulty)
 
-	engineHandshakeMsg, err := createHandshakeMsg(g.GetBlockchain().
+	nodeMsg, err := createHandshakeMsg(g.GetBlockchain().
 		ChainReader(), g.log)
 	if err != nil {
 		return
 	}
 
 	// send back a Handshake as response
-	if err := WriteStream(s, engineHandshakeMsg); err != nil {
-		g.log.Error("failed to send handshake response", "Err", err.Error())
+	if err := WriteStream(s, nodeMsg); err != nil {
+		g.logErr(err, remotePeer, "[OnHandshake] Failed to send response")
 		return
 	}
 
@@ -177,8 +170,8 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 
 	g.log.Info("Responded to handshake with chain state", "PeerID",
 		remotePeerIDShort, "ClientVersion",
-		engineHandshakeMsg.Version, "TotalDifficulty",
-		engineHandshakeMsg.BestBlockTotalDifficulty)
+		nodeMsg.Version, "TotalDifficulty",
+		nodeMsg.BestBlockTotalDifficulty)
 
 	// compare best chain.
 	// If the blockchain best block has a less

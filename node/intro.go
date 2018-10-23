@@ -24,7 +24,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 		})
 	}
 
-	// From our peer list, randomly pick 2 peers to broad cast to.
+	// Select up to 2 peers to act as broadcasters
 	g.PickBroadcasters(connectedAddresses, 2)
 
 	var msg = intro
@@ -51,9 +51,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 
 		s, c, err := g.NewStream(peer, config.IntroVersion)
 		if err != nil {
-			g.log.Error("Intro message failed. Unable to connect to peer",
-				"Err", err,
-				"PeerID", peer.ShortID())
+			g.logErr(err, peer, "[SendIntro] Failed to connect")
 			continue
 		}
 		defer c()
@@ -61,9 +59,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 
 		if err := WriteStream(s, msg); err != nil {
 			s.Reset()
-			g.log.Error("Intro message failed. Unable to write to stream",
-				"Err", err,
-				"PeerID", peer.ShortID())
+			g.logErr(err, peer, "[SendIntro] Failed to write")
 			continue
 		}
 
@@ -74,8 +70,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 		g.engine.history.AddMulti(cache.Sec(3600), peer.StringID(), msg.Hash().HexStr())
 	}
 
-	g.log.Debug("Sent Intro to peer(s)",
-		"NumBroadcastPeers", g.broadcasters.Len(),
+	g.log.Debug("Sent Intro to peer(s)", "NumBroadcastPeers", g.broadcasters.Len(),
 		"NumSentTo", sent)
 }
 
@@ -89,8 +84,7 @@ func (g *Gossip) OnIntro(s net.Stream) {
 
 	var msg wire.Intro
 	if err := ReadStream(s, &msg); err != nil {
-		g.log.Debug("Failed to read Intro message", "Err", err, "PeerID",
-			remotePeer.ShortID())
+		g.logErr(err, remotePeer, "[OnIntro] Failed to read")
 		return
 	}
 
@@ -98,8 +92,7 @@ func (g *Gossip) OnIntro(s net.Stream) {
 	// with a TTL of 1 hour.
 	g.engine.intros.AddWithExp(msg.PeerID, struct{}{}, cache.Sec(3600))
 
-	g.log.Debug("Received and cached intro message",
-		"TotalIntros", g.engine.intros.Len())
+	g.log.Debug("Received and cached intro message", "Total", g.engine.intros.Len())
 
 	g.engine.event.Emit(EventIntroReceived)
 

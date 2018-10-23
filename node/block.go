@@ -1,8 +1,6 @@
 package node
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/jinzhu/copier"
@@ -51,8 +49,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 
 		s, c, err := g.NewStream(peer, config.BlockBodyVersion)
 		if err != nil {
-			g.log.Error("Block message failed. failed to connect to peer",
-				"Err", err, "PeerID", peer.ShortID())
+			g.logErr(err, peer, "[RelayBlock] Failed to connect to peer")
 			continue
 		}
 		defer c()
@@ -62,8 +59,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 		copier.Copy(&blockBody, block)
 		if err := WriteStream(s, blockBody); err != nil {
 			s.Reset()
-			g.log.Error("Block message failed. failed to write to stream",
-				"Err", err, "PeerID", peer.ShortID())
+			g.logErr(err, peer, "[RelayBlock] Failed to write to peer")
 			continue
 		}
 
@@ -87,13 +83,11 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 
 	defer s.Close()
 	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
-	rpID := remotePeer.ShortID()
 
 	blockBody := &wire.BlockBody{}
 	if err := ReadStream(s, &blockBody); err != nil {
 		s.Reset()
-		g.log.Error("Failed to read block message",
-			"Err", err, "PeerID", rpID)
+		g.logErr(err, remotePeer, "[OnBlockBody] Failed to read")
 		return
 	}
 
@@ -137,9 +131,7 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine, blockHash util.Hash) erro
 
 	s, c, err := g.NewStream(remotePeer, config.RequestBlockVersion)
 	if err != nil {
-		g.log.Error("RequestBlock message failed. failed to connect to peer",
-			"Err", err, "PeerID", remotePeer.ShortID())
-		return err
+		return g.logErr(err, remotePeer, "[RequestBlock] Failed to connect to peer")
 	}
 	defer c()
 	defer s.Reset()
@@ -147,17 +139,13 @@ func (g *Gossip) RequestBlock(remotePeer types.Engine, blockHash util.Hash) erro
 	msg := &wire.RequestBlock{Hash: blockHash.HexStr()}
 	if err := WriteStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("RequestBlock message failed. failed to write to stream",
-			"Err", err, "PeerID", remotePeer.ShortID())
-		return err
+		return g.logErr(err, remotePeer, "[RequestBlock] Failed to write to peer")
 	}
 
 	var blockBody wire.BlockBody
 	if err := ReadStream(s, &blockBody); err != nil {
 		s.Reset()
-		g.log.Error("RequestBlock message failed. cound not read from stream",
-			"Err", err, "PeerID", remotePeer.ShortID())
-		return err
+		return g.logErr(err, remotePeer, "[RequestBlock] Failed to read")
 	}
 
 	var block objects.Block
@@ -188,8 +176,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 	msg := &wire.RequestBlock{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("Failed to read requestblock message",
-			"Err", err, "PeerID", rpID)
+		g.logErr(err, remotePeer, "[OnRequestBlock] Failed to read")
 		return
 	}
 
@@ -199,8 +186,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 
 	if msg.Hash == "" {
 		s.Reset()
-		g.log.Warn("Invalid requestblock message: "+
-			"Empty 'Hash'", "PeerID", rpID)
+		g.log.Debug("Invalid requestblock message: Empty 'Hash' field", "PeerID", rpID)
 		return
 	}
 
@@ -210,8 +196,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 	blockHash, err := util.HexToHash(msg.Hash)
 	if err != nil {
 		s.Reset()
-		g.log.Debug("Invalid hash supplied in "+
-			"requestblock message",
+		g.log.Debug("Invalid hash supplied in requestblock message",
 			"PeerID", rpID, "Hash", msg.Hash)
 		return
 	}
@@ -225,8 +210,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 			return
 		}
 		s.Reset()
-		g.log.Debug("Requested block is not found",
-			"PeerID", rpID,
+		g.log.Debug("Requested block is not found", "PeerID", rpID,
 			"Hash", util.StrToHash(msg.Hash).SS())
 		return
 	}
@@ -235,8 +219,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 	copier.Copy(&blockBody, block)
 	if err := WriteStream(s, blockBody); err != nil {
 		s.Reset()
-		g.log.Error("Block message failed. failed to write to stream",
-			"Err", err, "PeerID", remotePeer.ShortID())
+		g.logErr(err, remotePeer, "[OnRequestBlock] Failed to write")
 	}
 }
 
@@ -250,17 +233,14 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 //
 // If the locators is not provided via the locator argument,
 // they will be collected from the main chain.
-func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
-	locators []util.Hash) error {
+func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine, locators []util.Hash) error {
 
 	rpID := remotePeer.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
 
 	s, c, err := g.NewStream(remotePeer, config.GetBlockHashesVersion)
 	if err != nil {
-		g.log.Error("GetBlockHashes message failed. Failed "+
-			"to connect to peer", "Err", err, "PeerID", rpID)
-		return err
+		return g.logErr(err, remotePeer, "[SendGetBlockHashes] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -270,8 +250,7 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 	if len(locators) == 0 {
 		locators, err = g.GetBlockchain().GetLocators()
 		if err != nil {
-			g.log.Error("GetBlockHashes message failed. "+
-				"Failed to gather locators", "Err", err)
+			g.log.Error("failed to get locators", "Err", err)
 			return err
 		}
 	}
@@ -282,10 +261,7 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 	}
 
 	if err := WriteStream(s, msg); err != nil {
-		errMsg := fmt.Errorf("GetBlockHashes message failed. " +
-			"Failed to write to stream")
-		g.log.Error(errMsg.Error(), "Err", err, "PeerID", rpID)
-		return fmt.Errorf("%s: %s", errMsg, err)
+		return g.logErr(err, remotePeer, "[SendGetBlockHashes] Failed to write")
 	}
 
 	g.engine.event.Emit(EventRequestedBlockHashes,
@@ -294,10 +270,7 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 	// Read the return block hashes
 	var blockHashes wire.BlockHashes
 	if err := ReadStream(s, &blockHashes); err != nil {
-		errMsg := fmt.Errorf("GetBlockHashes message failed. " +
-			"Failed to read stream")
-		g.log.Error(errMsg.Error(), "Err", err, "PeerID", rpID)
-		return fmt.Errorf("%s: %s", errMsg, err)
+		return g.logErr(err, remotePeer, "[SendGetBlockHashes] Failed to read")
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
@@ -311,8 +284,8 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 	}
 
 	g.engine.event.Emit(EventReceivedBlockHashes)
-	g.log.Info("Successfully requested block headers",
-		"PeerID", rpID, "NumLocators", len(msg.Locators))
+	g.log.Info("Successfully requested block headers", "PeerID", rpID, "NumLocators",
+		len(msg.Locators))
 
 	return nil
 }
@@ -332,13 +305,11 @@ func (g *Gossip) SendGetBlockHashes(remotePeer types.Engine,
 func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 	defer s.Close()
 	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
-	rpID := remotePeer.ShortID()
 
 	// Read the message
 	msg := &wire.GetBlockHashes{}
 	if err := ReadStream(s, msg); err != nil {
-		g.log.Error("Failed to read block message",
-			"Err", err, "PeerID", rpID)
+		g.logErr(err, remotePeer, "[OnGetBlockHashes] Failed to read")
 		return
 	}
 
@@ -400,8 +371,7 @@ func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 
 send:
 	if err := WriteStream(s, blockHashes); err != nil {
-		errMsg := fmt.Errorf("Failed to write BlockHeader message to stream")
-		g.log.Error(errMsg.Error(), "Err", err, "PeerID", rpID)
+		g.logErr(err, remotePeer, "[OnGetBlockHashes] Failed to write")
 		return
 	}
 }
@@ -418,10 +388,7 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 
 	s, c, err := g.NewStream(remotePeer, config.GetBlockBodiesVersion)
 	if err != nil {
-		g.log.Error("GetBlockBodies message failed. "+
-			"Failed to connect to peer", "Err", err, "PeerID", rpID)
-		return fmt.Errorf("GetBlockBodies message failed. "+
-			"Failed to connect to peer: %s", err)
+		return g.logErr(err, remotePeer, "[SendGetBlockBodies] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -437,19 +404,13 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 
 	// write to the stream
 	if err := WriteStream(s, msg); err != nil {
-		g.log.Error("GetBlockBodies message failed. "+
-			"Failed to write to stream", "Err", err, "PeerID", rpID)
-		return fmt.Errorf("GetBlockBodies message failed. "+
-			"Failed to write to stream: %s", err)
+		return g.logErr(err, remotePeer, "[SendGetBlockBodies] Failed to write")
 	}
 
 	// Read the return block bodies
 	var blockBodies wire.BlockBodies
 	if err := ReadStream(s, &blockBodies); err != nil {
-		g.log.Error("Unable to retrieve BlockBodies. "+
-			"Failed to read stream", "Err", err, "PeerID", rpID)
-		return fmt.Errorf("Unable to retrieve BlockBodies. "+
-			"Failed to read stream: %s", err)
+		return g.logErr(err, remotePeer, "[SendGetBlockBodies] Failed to read")
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
@@ -504,12 +465,11 @@ func (g *Gossip) SendGetBlockBodies(remotePeer types.Engine,
 // OnGetBlockBodies handles GetBlockBodies requests
 func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
-	rpID := remotePeer.ShortID()
 
 	// Read the message
 	msg := &wire.GetBlockBodies{}
 	if err := ReadStream(s, msg); err != nil {
-		g.log.Error("Failed to read block message", "Err", err, "PeerID", rpID)
+		g.logErr(err, remotePeer, "[OnGetBlockBodies] Failed to read")
 		return
 	}
 
@@ -521,8 +481,8 @@ func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 		block, err := bestChain.GetBlockByHash(hash)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
-				g.log.Error("Failed fetch block body of a given hash",
-					"Err", err, "Hash", hash)
+				g.log.Error("Failed fetch block body of a given hash", "Err", err,
+					"Hash", hash)
 				return
 			}
 			continue
@@ -534,8 +494,7 @@ func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 
 	// send the block bodies
 	if err := WriteStream(s, blockBodies); err != nil {
-		errMsg := fmt.Errorf("Failed to write BlockBodies message to stream")
-		g.log.Error(errMsg.Error(), "Err", err, "PeerID", rpID)
+		g.logErr(err, remotePeer, "[OnGetBlockBodies] Failed to write")
 		return
 	}
 }

@@ -15,14 +15,11 @@ import (
 // must be processed using the OnAddr handler and return the response.
 func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, error) {
 
-	remotePeerIDShort := remotePeer.ShortID()
+	rpIDShort := remotePeer.ShortID()
 
 	s, c, err := g.NewStream(remotePeer, config.GetAddrVersion)
 	if err != nil {
-		g.log.Debug("GetAddr message failed. failed to connect to peer",
-			"Err", err, "PeerID", remotePeerIDShort)
-		return nil, fmt.Errorf("getaddr failed. failed to connect to peer. %s",
-			err)
+		return nil, g.logErr(err, remotePeer, "[SendGetAddrToPeer] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -30,13 +27,11 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 	msg := &wire.GetAddr{}
 	if err := WriteStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Debug("GetAddr failed. failed to write to stream",
-			"Err", err, "PeerID", remotePeerIDShort)
-		return nil, fmt.Errorf("getaddr failed. failed to write to stream")
+		return nil, g.logErr(err, remotePeer, "[SendGetAddrToPeer] Failed to write")
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
-	g.log.Debug("GetAddr message sent to peer", "PeerID", remotePeerIDShort)
+	g.log.Debug("GetAddr message sent to peer", "PeerID", rpIDShort)
 
 	addr, err := g.onAddr(s)
 	if err != nil {
@@ -53,7 +48,7 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer types.Engine) ([]*wire.Address, er
 // of address that should be relayed to other peers.
 func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 
-	// we need to know if wee need more peers before we requests
+	// we need to know if we need more peers before we requests
 	// more addresses from other peers.
 	if !g.PM().RequirePeers() {
 		return nil
@@ -61,6 +56,7 @@ func (g *Gossip) SendGetAddr(remotePeers []types.Engine) error {
 
 	for _, remotePeer := range remotePeers {
 		go func(rp types.Engine) {
+
 			// send GetAddr and receive a list of address
 			addressToRelay, err := g.SendGetAddrToPeer(rp)
 			if err != nil {
@@ -84,7 +80,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 
 	defer s.Close()
 
-	remotePeerIDShort := util.ShortID(s.Conn().RemotePeer())
+	rpIDShort := util.ShortID(s.Conn().RemotePeer())
 	remoteAddr := util.RemoteAddrFromStream(s)
 	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 
@@ -101,13 +97,12 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	msg := &wire.GetAddr{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("failed to read getaddr message", "Err",
-			err, "PeerID", remotePeerIDShort)
+		g.logErr(err, remotePeer, "[OnGetAddr] Failed to read")
 		return
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
-	g.log.Debug("Received GetAddr message", "PeerID", remotePeerIDShort)
+	g.log.Debug("Received GetAddr message", "PeerID", rpIDShort)
 
 	// get active addresses we know about. If we have more 2500
 	// addresses, then we select 2500 randomly
@@ -133,9 +128,9 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 
 	if err := WriteStream(s, addr); err != nil {
 		s.Reset()
-		g.log.Error("failed to send GetAddr response", "Err", err)
+		g.logErr(err, remotePeer, "[OnGetAddr] Failed to write")
 		return
 	}
 
-	g.log.Debug("Sent GetAddr response to peer", "PeerID", remotePeerIDShort)
+	g.log.Debug("Sent GetAddr response to peer", "PeerID", rpIDShort)
 }

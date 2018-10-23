@@ -22,10 +22,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	resp := &wire.Addr{}
 	if err := ReadStream(s, resp); err != nil {
-		g.log.Debug("Failed to read Addr response response",
-			"Err", err,
-			"PeerID", remotePeerIDShort)
-		return nil, fmt.Errorf("failed to read Addr response: %s", err)
+		return nil, g.logErr(err, remotePeer, "[OnAddr] Failed to read stream")
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
@@ -81,10 +78,9 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	remotePeer := NewRemoteNode(remoteAddr, g.engine)
 
 	// check whether we are are allowed to
-	//  interact with the remote peer
+	// interact with the remote peer
 	if ok, err := g.engine.canAcceptPeer(remotePeer); !ok {
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s",
-			err.Error()),
+		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", err.Error()),
 			"Addr", remotePeer.GetAddress(), "Msg", "GetAddr")
 		return
 	}
@@ -199,8 +195,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 	// Do not proceed if there are more
 	// than 10 addresses
 	if len(addrs) > 10 {
-		errs = append(errs, fmt.Errorf("too many addresses"+
-			" in the message"))
+		errs = append(errs, fmt.Errorf("too many addresses in the message"))
 		return errs
 	}
 
@@ -208,15 +203,14 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 		// We must ensure we don't relay invalid addresses
 		if !addr.Address.IsValid() {
-			errs = append(errs, fmt.Errorf("address {%s} is not valid",
-				addr.Address))
+			errs = append(errs, fmt.Errorf("address {%s} is not valid", addr.Address))
 			continue
 		}
 
 		// Ignore an address that matches the local
 		if g.engine.IsSameID(addr.Address.ID().Pretty()) {
-			errs = append(errs, fmt.Errorf("address {%s} is the same"+
-				" as local peer's", addr.Address))
+			errs = append(errs, fmt.Errorf("address {%s} is the same as local peer's",
+				addr.Address))
 			continue
 		}
 
@@ -247,12 +241,11 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		return errs
 	}
 
-	// select two peers from the list of
-	// relayable peers that we will send the addresses to
+	// Select up to 2 peers to act as broadcasters
 	broadcasters := g.PickBroadcasters(relayable, 2)
 
-	g.log.Debug("Relaying addresses", "NumAddrsToRelay", len(relayable),
-		"RelayPeers", broadcasters.Len())
+	g.log.Debug("Relaying addresses", "NumAddrs", len(relayable),
+		"NumBroadcasters", broadcasters.Len())
 
 	relayed := 0
 	for _, remotePeer := range broadcasters.Peers() {
@@ -280,20 +273,16 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 		s, c, err := g.NewStream(remotePeer, config.AddrVersion)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("Addr message failed."+
-				" failed to connect to peer {%s}", remotePeer.ShortID()))
-			g.log.Debug("Addr message failed. failed to connect to peer",
-				"Err", err, "PeerID", remotePeer.ShortID())
+			err := g.logErr(err, remotePeer, "[RelayAddresses] Failed to connect to peer")
+			errs = append(errs, err)
 			continue
 		}
 		defer c()
 		defer s.Close()
 
 		if err := WriteStream(s, addrMsg); err != nil {
-			errs = append(errs, fmt.Errorf("Addr failed. failed to "+
-				"write to stream to peer {%s}", remotePeer.ShortID()))
-			g.log.Debug("Addr failed. failed to write to stream",
-				"Err", err, "PeerID", remotePeer.ShortID())
+			err := g.logErr(err, remotePeer, "[RelayAddresses] Failed to write to peer")
+			errs = append(errs, err)
 			continue
 		}
 
@@ -304,8 +293,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		relayed++
 	}
 
-	g.log.Debug("Relay completed", "NumAddrsToRelay",
-		len(relayable), "NumRelayed", relayed)
+	g.log.Debug("Address relayed", "NumAddrs", len(relayable), "NumRelayed", relayed)
 	defer g.engine.event.Emit(EventAddressesRelayed)
 
 	return errs

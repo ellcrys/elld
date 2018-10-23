@@ -8,9 +8,8 @@ import (
 	"github.com/ellcrys/elld/wire"
 )
 
-// SelfAdvertise sends an Addr message
-// containing the address of the local peer
-// to all connected peers.
+// SelfAdvertise sends an Addr message containing
+// the address of the local peer to all connected peers.
 func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 	msg := &wire.Addr{
@@ -19,13 +18,24 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 		},
 	}
 
+	// Get the address of connected peers into a wire.Address
+	var peersAddress = []*wire.Address{}
+	for _, p := range connectedPeers {
+		peersAddress = append(peersAddress, &wire.Address{
+			Address:   p.GetAddress(),
+			Timestamp: p.GetLastSeen().Unix(),
+		})
+	}
+
+	// Select up to 2 peers to act as broadcasters
+	g.PickBroadcasters(peersAddress, 2)
+
 	sent := 0
-	for _, peer := range connectedPeers {
+	for _, peer := range g.broadcasters.Peers() {
 
 		s, c, err := g.NewStream(peer, config.AddrVersion)
 		if err != nil {
-			g.log.Error("SelfAdvertise failed. Failed to connect to peer",
-				"Err", err, "PeerID", peer.ShortID())
+			g.logErr(err, peer, "[SelfAdvertise] Failed to connect")
 			continue
 		}
 		defer c()
@@ -33,8 +43,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 		if err := WriteStream(s, msg); err != nil {
 			s.Reset()
-			g.log.Error("SelfAdvertise failed. failed to write to stream",
-				"Err", err, "PeerID", peer.ShortID())
+			g.logErr(err, peer, "[SelfAdvertise] Failed to write")
 			continue
 		}
 
@@ -43,8 +52,8 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 		sent++
 	}
 
-	g.log.Debug("Self advertisement completed",
-		"ConnectedPeers", len(connectedPeers), "NumAdvertisedTo", sent)
+	g.log.Debug("Self advertisement completed", "ConnectedPeers", len(connectedPeers),
+		"NumAdvertisedTo", sent)
 
 	return sent
 }

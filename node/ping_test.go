@@ -62,10 +62,10 @@ var _ = Describe("Ping", func() {
 
 	Describe(".sendPing", func() {
 
-		It("should return error.Error('ping failed. failed to connect to peer. dial to self attempted')", func() {
+		It("should return err when connection fail", func() {
 			err := rp.Gossip().SendPingToPeer(rp)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("ping failed. failed to connect to peer. dial to self attempted"))
+			Expect(err.Error()).To(Equal("dial to self attempted"))
 		})
 
 		Context("when remote peer is known to the local peer and the local peer is responsive", func() {

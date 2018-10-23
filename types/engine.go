@@ -36,4 +36,6 @@ type Engine interface {
 	IsAcquainted() bool                   // Returns the acquainted status
 	IsInbound() bool                      // Checks whether the engine's connection is inbound
 	SetInbound(v bool)                    // Sets the inbound flag
+	AddBanTime(dur time.Duration)         // AddBanTime adds more time to the current ban time
+	IsBanned() bool                       // IsBanned checks whether the node is serving a ban period.
 }

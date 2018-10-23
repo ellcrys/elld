@@ -55,10 +55,10 @@ var _ = Describe("GetAddr", func() {
 
 	Describe(".SendGetAddrToPeer", func() {
 
-		It("should return err='getaddr failed. failed to connect to peer. dial to self attempted'", func() {
+		It("should return error if connection fail", func() {
 			_, err := rp.Gossip().SendGetAddrToPeer(rp)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("getaddr failed. failed to connect to peer. dial to self attempted"))
+			Expect(err.Error()).To(Equal("dial to self attempted"))
 		})
 
 		Context("when a remote peer knows an address with timestamp of 3 hours ago", func() {

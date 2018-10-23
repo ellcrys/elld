@@ -23,23 +23,17 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 
 	s, c, err := g.NewStream(remotePeer, config.PingVersion)
 	if err != nil {
-		g.log.Debug("Ping failed. failed to connect to peer",
-			"Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("ping failed. failed to connect to peer. %s",
-			err.Error())
+		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
 
-	// determine the best block an the total
-	// difficulty of the block. Add these info
-	// to the ping message.
+	// Determine the best block and the total difficulty of the block.
+	// Add the info to the ping message.
 	bestBlock, err := g.GetBlockchain().ChainReader().GetBlock(0)
 	if err != nil {
-		g.log.Error("Ping failed. Failed to determine best block",
-			"Err", err)
-		return fmt.Errorf("ping failed: failed to determine best block: %s",
-			err)
+		g.logErr(err, remotePeer, "[SendPingToPeer] Failed to determine best block")
+		return fmt.Errorf("failed to determine best block: %s", err)
 	}
 
 	msg := &wire.Ping{
@@ -50,10 +44,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 
 	// construct the message and write it to the stream
 	if err := WriteStream(s, msg); err != nil {
-		g.log.Debug("ping failed. failed to write to stream",
-			"Err", err,
-			"PeerID", remotePeerIDShort)
-		return fmt.Errorf("ping failed. failed to write to stream")
+		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to write message")
 	}
 
 	g.PM().UpdateLastSeenTime(remotePeer)
@@ -63,16 +54,13 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	// receive pong response from the remote peer
 	pongMsg := &wire.Pong{}
 	if err := ReadStream(s, pongMsg); err != nil {
-		g.log.Debug("Failed to read pong response",
-			"Err", err, "PeerID", remotePeerIDShort)
-		return fmt.Errorf("failed to read pong response")
+		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to read message")
 	}
 
 	// update the remote peer's timestamp
 	g.PM().UpdateLastSeenTime(remotePeer)
 
-	g.log.Info("Received pong response from peer",
-		"PeerID", remotePeerIDShort)
+	g.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
 
 	// compare best chain.
 	// If the blockchain best block has a less
@@ -84,8 +72,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 			"PeerID", remotePeerIDShort,
 			"Height", pongMsg.BestBlockNumber,
 			"TotalDifficulty", pongMsg.BestBlockTotalDifficulty)
-		g.log.Info("Attempting to sync blockchain with peer",
-			"PeerID", remotePeerIDShort)
+		g.log.Info("Attempting to sync blockchain with peer", "PeerID", remotePeerIDShort)
 		go g.SendGetBlockHashes(remotePeer, nil)
 	}
 
@@ -136,8 +123,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	// read the message from the stream
 	msg := &wire.Ping{}
 	if err := ReadStream(s, msg); err != nil {
-		g.log.Error("failed to read ping message",
-			"Err", err, "PeerID", remotePeerIDShort)
+		g.logErr(err, remotePeer, "[OnPing] Failed to read message")
 		return
 	}
 
@@ -146,8 +132,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	// to the pong message.
 	bestBlock, err := g.GetBlockchain().ChainReader().GetBlock(0)
 	if err != nil {
-		g.log.Error("Pong failed. Failed to determine best block",
-			"Err", err)
+		g.log.Error("Pong failed. Failed to determine best block", "Err", err)
 		return
 	}
 
@@ -159,7 +144,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	// send pong message
 	if err := WriteStream(s, pongMsg); err != nil {
-		g.log.Error("failed to send pong response", "Err", err)
+		g.logErr(err, remotePeer, "[OnPing] Failed to write message")
 		return
 	}
 

@@ -22,9 +22,7 @@ func MakeTxHistoryKey(tx core.Transaction, peer types.Engine) []interface{} {
 // addTransaction adds a transaction to the transaction pool.
 func (n *Node) addTransaction(tx core.Transaction) error {
 
-	// Validate the transactions
-	txValidator := blockchain.NewTxValidator(tx,
-		n.GetTxPool(), n.GetBlockchain())
+	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain())
 	if errs := txValidator.Validate(); len(errs) > 0 {
 		return errs[0]
 	}
@@ -42,8 +40,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	msg := &objects.Transaction{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("failed to read tx message",
-			"Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("failed to read tx message", "Err", err, "PeerID", remotePeerIDShort)
 		return
 	}
 
@@ -102,8 +99,8 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 
 	txID := util.String(tx.GetID()).SS()
 	sent := 0
-	g.log.Debug("Relaying transaction to peers",
-		"TxID", txID, "NumPeers", len(remotePeers))
+	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers",
+		len(remotePeers))
 
 	for _, peer := range remotePeers {
 		historyKey := MakeTxHistoryKey(tx, peer)

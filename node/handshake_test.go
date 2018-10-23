@@ -59,7 +59,7 @@ var _ = Describe("Handshake", func() {
 		It("should return err when connection to peer failed", func() {
 			err := rp.Gossip().SendHandshake(rp)
 			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("handshake failed. failed to connect to peer. dial to self attempted"))
+			Expect(err.Error()).To(Equal("dial to self attempted"))
 		})
 
 		Context("when local and remote peer have no active addresses", func() {
