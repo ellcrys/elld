@@ -112,7 +112,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	if err != nil {
 		panic(err)
 	}
-	n.SetLastSeen(time.Now().UTC())
+	n.SetLastSeen(time.Now())
 
 	n.SetTxsPool(txp)
 	gossip := node.NewGossip(n, log)

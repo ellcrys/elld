@@ -34,19 +34,25 @@ func (n *Node) addTransaction(tx core.Transaction) error {
 func (g *Gossip) OnTx(s net.Stream) {
 	defer s.Close()
 
-	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
-	remotePeerIDShort := remotePeer.ShortID()
+	rp := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
+	rpIDShort := rp.ShortID()
+
+	// check whether we are allowed to receive this peer's message
+	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+		g.logErr(err, rp, "message unaccepted")
+		return
+	}
 
 	msg := &objects.Transaction{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("failed to read tx message", "Err", err, "PeerID", remotePeerIDShort)
+		g.log.Error("Failed to read tx message", "Err", err, "PeerID", rpIDShort)
 		return
 	}
 
-	g.log.Info("Received new transaction", "PeerID", remotePeerIDShort)
+	g.log.Info("Received new transaction", "PeerID", rpIDShort)
 
-	historyKey := MakeTxHistoryKey(msg, remotePeer)
+	historyKey := MakeTxHistoryKey(msg, rp)
 	if g.engine.history.HasMulti(historyKey...) {
 		return
 	}
@@ -82,13 +88,12 @@ func (g *Gossip) OnTx(s net.Stream) {
 	// Add the transaction to the transaction
 	// pool and wait for error response
 	if err := g.engine.addTransaction(msg); err != nil {
-		g.log.Error("failed to add transaction to pool", "Err", msg)
+		g.log.Error("Failed to add transaction to pool", "Err", msg)
 		g.engine.event.Emit(EventTransactionProcessed, err)
 		return
 	}
 
 	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
-
 	g.engine.event.Emit(EventTransactionProcessed)
 
 	g.log.Info("Added new transaction to pool", "TxID", msg.GetID())
@@ -130,7 +135,6 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 		sent++
 	}
 
-	g.log.Info("Finished relaying transaction",
-		"TxID", txID, "NumPeersSentTo", sent)
+	g.log.Info("Finished relaying transaction", "TxID", txID, "NumPeersSentTo", sent)
 	return nil
 }

@@ -32,8 +32,6 @@ type Engine interface {
 	GetBlockchain() core.Blockchain       // Returns the blockchain manager
 	SetBlockchain(bchain core.Blockchain) // Set the blockchain manager
 	ProdMode() bool                       // Checks whether the current mode is ModeProd
-	Acquainted()                          // Sets the acquainted status to true
-	IsAcquainted() bool                   // Returns the acquainted status
 	IsInbound() bool                      // Checks whether the engine's connection is inbound
 	SetInbound(v bool)                    // Sets the inbound flag
 	AddBanTime(dur time.Duration)         // AddBanTime adds more time to the current ban time

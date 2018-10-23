@@ -26,6 +26,7 @@ type Manager struct {
 	config      *config.EngineConfig    // manager's configuration
 	connMgr     *ConnectionManager      // connection manager
 	stop        bool                    // signifies the start of the manager
+	acquainted  map[string]struct{}
 	tickersDone chan bool
 }
 
@@ -44,6 +45,7 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 		peers:       make(map[string]types.Engine),
 		config:      cfg,
 		tickersDone: make(chan bool),
+		acquainted:  make(map[string]struct{}),
 	}
 
 	m.connMgr = NewConnMrg(m, log)
@@ -69,6 +71,23 @@ func (m *Manager) GetPeer(peerID string) types.Engine {
 	}
 
 	return m.peers[peerID]
+}
+
+// AddAcquainted marks a peer has haven gone passed the
+// handshake step
+func (m *Manager) AddAcquainted(peer types.Engine) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.acquainted[peer.StringID()] = struct{}{}
+}
+
+// IsAcquainted checks whether the peer passed through
+// the handshake step
+func (m *Manager) IsAcquainted(peer types.Engine) bool {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	_, has := m.acquainted[peer.StringID()]
+	return has
 }
 
 // AddPeer adds a peer
@@ -290,7 +309,7 @@ func (m *Manager) SetLocalNode(n *Node) {
 // First rule:
 // - Its timestamp must be within the last 3 hours
 func (m *Manager) IsActive(p types.Engine) bool {
-	return time.Now().UTC().Add(-3 * (60 * 60) * time.Second).
+	return time.Now().Add(-3 * (60 * 60) * time.Second).
 		Before(p.GetLastSeen())
 }
 
@@ -330,7 +349,10 @@ func (m *Manager) CleanPeers() int {
 	for k, p := range m.peers {
 		if m.IsActive(p) {
 			newKnownPeers[k] = p
+			continue
 		}
+
+		delete(m.acquainted, k)
 	}
 
 	after := len(newKnownPeers)
@@ -413,7 +435,7 @@ func (m *Manager) SavePeers() error {
 	// not up to 20 minutes old are also not saved.
 	peers := m.CopyActivePeers(0)
 	for _, p := range peers {
-		isOldEnough := time.Now().UTC().Sub(p.CreatedAt().UTC()).Minutes() >= 20
+		isOldEnough := time.Now().Sub(p.CreatedAt()).Minutes() >= 20
 		if !p.IsHardcodedSeed() && isOldEnough {
 			key := []byte(p.StringID())
 			value := util.ObjectToBytes(map[string]interface{}{

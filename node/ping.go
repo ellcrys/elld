@@ -88,20 +88,18 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 // SendPing sends a ping message
 func (g *Gossip) SendPing(remotePeers []types.Engine) {
 	sent := 0
-	for _, remotePeer := range remotePeers {
-		_remotePeer := remotePeer
-		if !_remotePeer.IsAcquainted() {
+	for _, peer := range remotePeers {
+		if g.PM().IsAcquainted(peer) {
 			continue
 		}
 		sent++
-		go func() {
-			if err := g.SendPingToPeer(_remotePeer); err != nil {
-				g.PM().HasDisconnected(_remotePeer.GetAddress())
+		go func(peer types.Engine) {
+			if err := g.SendPingToPeer(peer); err != nil {
+				g.PM().HasDisconnected(peer.GetAddress())
 			}
-		}()
+		}(peer)
 	}
-	g.log.Debug("Sent ping to peer(s)",
-		"NumPeers", len(remotePeers),
+	g.log.Debug("Sent ping to peer(s)", "NumPeers", len(remotePeers),
 		"NumSentTo", sent)
 }
 
@@ -115,15 +113,21 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	defer s.Close()
 
-	remotePeer := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
-	remotePeerIDShort := remotePeer.ShortID()
+	rp := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
+	remotePeerIDShort := rp.ShortID()
+
+	// check whether we are allowed to receive this peer's message
+	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+		g.logErr(err, rp, "message unaccepted")
+		return
+	}
 
 	g.log.Info("Received ping message", "PeerID", remotePeerIDShort)
 
 	// read the message from the stream
 	msg := &wire.Ping{}
 	if err := ReadStream(s, msg); err != nil {
-		g.logErr(err, remotePeer, "[OnPing] Failed to read message")
+		g.logErr(err, rp, "[OnPing] Failed to read message")
 		return
 	}
 
@@ -144,12 +148,12 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	// send pong message
 	if err := WriteStream(s, pongMsg); err != nil {
-		g.logErr(err, remotePeer, "[OnPing] Failed to write message")
+		g.logErr(err, rp, "[OnPing] Failed to write message")
 		return
 	}
 
 	// update the remote peer's timestamp
-	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().UpdateLastSeenTime(rp)
 
 	g.log.Debug("Sent pong response to peer", "PeerID", remotePeerIDShort)
 
@@ -166,7 +170,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 			"TotalDifficulty", msg.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer",
 			"PeerID", remotePeerIDShort)
-		go g.SendGetBlockHashes(remotePeer, nil)
+		go g.SendGetBlockHashes(rp, nil)
 	}
 
 	// Update the current known best

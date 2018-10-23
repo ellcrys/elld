@@ -85,7 +85,6 @@ type Node struct {
 	blockHashQueue      *lane.Deque         // Contains headers collected during block syncing
 	bestRemoteBlockInfo *BestBlockInfo      // Holds information about the best known block heard from peers
 	syncing             bool                // Indicates the process of syncing the blockchain with peers
-	acquainted          bool                // Indicates that the node has "handshooked" the local node
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
@@ -141,7 +140,7 @@ func newNode(db elldb.DB, config *config.EngineConfig, address string,
 		history:        cache.NewActiveCache(5000),
 		intros:         cache.NewActiveCache(50000),
 		tickerDone:     make(chan bool),
-		createdAt:      time.Now().UTC(),
+		createdAt:      time.Now(),
 	}
 
 	node.localNode = node
@@ -161,7 +160,7 @@ func (n *Node) AddBanTime(dur time.Duration) {
 // IsBanned checks whether the node is serving
 // a ban period.
 func (n *Node) IsBanned() bool {
-	return n.banTime.UTC().After(time.Now().UTC())
+	return n.banTime.After(time.Now())
 }
 
 // GetListenAddresses gets the address at which the node listens
@@ -195,7 +194,7 @@ func NewRemoteNode(address util.NodeAddr, localNode *Node) *Node {
 		localNode: localNode,
 		remote:    true,
 		mtx:       &sync.RWMutex{},
-		createdAt: time.Now().UTC(),
+		createdAt: time.Now(),
 	}
 	node.IP = node.ip()
 	return node
@@ -211,7 +210,7 @@ func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
 // almost all its field uninitialized.
 func NewAlmostEmptyNode() *Node {
 	return &Node{
-		createdAt: time.Now().UTC(),
+		createdAt: time.Now(),
 		mtx:       &sync.RWMutex{},
 	}
 }
@@ -220,7 +219,7 @@ func NewAlmostEmptyNode() *Node {
 // with the given address set
 func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	return &Node{
-		createdAt: time.Now().UTC(),
+		createdAt: time.Now(),
 		mtx:       &sync.RWMutex{},
 		address:   util.NodeAddr(address.String()),
 	}
@@ -413,7 +412,7 @@ func (n *Node) MakeHardcoded() {
 func (n *Node) SetLastSeen(newTime time.Time) {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
-	n.lastSeen = newTime.UTC()
+	n.lastSeen = newTime
 }
 
 // CreatedAt returns the node's time
@@ -429,7 +428,7 @@ func (n *Node) CreatedAt() time.Time {
 func (n *Node) SetCreatedAt(t time.Time) {
 	n.mtx.Lock()
 	defer n.mtx.Unlock()
-	n.createdAt = t.UTC()
+	n.createdAt = t
 }
 
 // GetEventEmitter gets the event emitter
@@ -488,26 +487,25 @@ func (n *Node) CountIntros() int {
 	return n.intros.Len()
 }
 
-// canAcceptPeer determines whether we
-// can continue to interact with a
-// remote node. This is a good place
-// to check if a remote node has been
-// blacklisted etc
+// canAcceptPeer determines whether we can continue to
+// interact with a given node.
 func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
 
-	// In non-production mode, we cannot
-	// interact with a remote peer
-	// with a public IP
-	if !n.ProdMode() && !util.IsDevAddr(remotePeer.IP) {
-		return false, fmt.Errorf("in development mode, we " +
-			"cannot interact with peers with public IP")
+	// Don't do this in test mode
+	if n.TestMode() {
+		return true, nil
 	}
 
-	// If the local peer does not know the
-	// remotePeer, it cannot interact with it.
-	// This only applies in production mode.
-	if n.ProdMode() && !remotePeer.IsKnown() {
-		return false, fmt.Errorf("remote peer is unknown")
+	// When the remote and local peer have not performed
+	// the handshake ritual, other messages can't be accepted.
+	if !n.PM().IsAcquainted(remotePeer) {
+		return false, fmt.Errorf("unacquainted peer")
+	}
+
+	// When a remote peer is has an active ban time
+	// period, we can receive messages from it.
+	if remotePeer.IsBanned() {
+		return false, fmt.Errorf("currently serving ban time")
 	}
 
 	return true, nil
@@ -597,12 +595,6 @@ func (n *Node) ShortID() string {
 // Returns false if node is the local node.
 func (n *Node) Connected() bool {
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
-}
-
-// IsKnown checks whether a peer is
-// known to the local node
-func (n *Node) IsKnown() bool {
-	return n.localNode.PM().GetPeer(n.StringID()) != nil
 }
 
 // PrivKey returns the node's private key
@@ -718,20 +710,6 @@ func (n *Node) relayTx() {
 			return
 		}
 	}
-}
-
-// Acquainted indicates that a node
-// has undergone the handshake ritual
-func (n *Node) Acquainted() {
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
-	n.acquainted = true
-}
-
-// IsAcquainted checks whether the node
-// is acquainted with its local node.
-func (n *Node) IsAcquainted() bool {
-	return n.acquainted
 }
 
 // Start starts the node.
@@ -952,8 +930,8 @@ func (n *Node) NodeFromAddr(addr util.NodeAddr, remote bool) (*Node, error) {
 		gProtoc:   n.gProtoc,
 		remote:    remote,
 		mtx:       &sync.RWMutex{},
-		createdAt: time.Now().UTC(),
-		lastSeen:  time.Now().UTC(),
+		createdAt: time.Now(),
+		lastSeen:  time.Now(),
 	}, nil
 }
 
@@ -975,7 +953,7 @@ func (n *Node) IsBadTimestamp() bool {
 		return true
 	}
 
-	now := time.Now().UTC()
+	now := time.Now()
 	if n.lastSeen.After(now.Add(time.Minute*10)) ||
 		n.lastSeen.Before(now.Add(-3*time.Hour)) {
 		return true

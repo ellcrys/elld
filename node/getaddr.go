@@ -1,8 +1,6 @@
 package node
 
 import (
-	"fmt"
-
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
@@ -80,16 +78,13 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 
 	defer s.Close()
 
-	rpIDShort := util.ShortID(s.Conn().RemotePeer())
 	remoteAddr := util.RemoteAddrFromStream(s)
-	remotePeer := NewRemoteNode(remoteAddr, g.engine)
+	rp := NewRemoteNode(remoteAddr, g.engine)
+	rpIDShort := rp.ShortID()
 
-	// check whether we can interact with this remote peer
-	if ok, err := g.engine.canAcceptPeer(remotePeer); !ok {
-		s.Reset()
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s",
-			err.Error()),
-			"Addr", remotePeer.GetAddress(), "Msg", "GetAddr")
+	// check whether we are allowed to receive this peer's message
+	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+		g.logErr(err, rp, "message unaccepted")
 		return
 	}
 
@@ -97,11 +92,11 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	msg := &wire.GetAddr{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.logErr(err, remotePeer, "[OnGetAddr] Failed to read")
+		g.logErr(err, rp, "[OnGetAddr] Failed to read")
 		return
 	}
 
-	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().UpdateLastSeenTime(rp)
 	g.log.Debug("Received GetAddr message", "PeerID", rpIDShort)
 
 	// get active addresses we know about. If we have more 2500
@@ -116,7 +111,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	for _, peer := range activePeers {
 		// Ignore an address if it is the same with the local node
 		// and if it is an hardcoded seed address
-		if g.PM().IsLocalNode(peer) || peer.IsSame(remotePeer) ||
+		if g.PM().IsLocalNode(peer) || peer.IsSame(rp) ||
 			peer.IsHardcodedSeed() {
 			continue
 		}
@@ -128,7 +123,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 
 	if err := WriteStream(s, addr); err != nil {
 		s.Reset()
-		g.logErr(err, remotePeer, "[OnGetAddr] Failed to write")
+		g.logErr(err, rp, "[OnGetAddr] Failed to write")
 		return
 	}
 

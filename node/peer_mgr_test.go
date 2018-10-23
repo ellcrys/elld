@@ -102,33 +102,50 @@ var _ = Describe("Peer Manager", func() {
 			Expect(n).To(BeZero())
 		})
 
-		It("should return 0 when no peer was removed", func() {
-			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
-			p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
-			p2.SetLastSeen(time.Now())
-			mgr.Peers()[p2.StringID()] = p2
+		When("all peers are active", func() {
+			It("should remove 0 peers", func() {
+				addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+				p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
+				p2.SetLastSeen(time.Now())
+				mgr.Peers()[p2.StringID()] = p2
 
-			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := node.NewRemoteNodeFromMultiAddr(addr2, lp)
-			p3.SetLastSeen(time.Now())
-			mgr.Peers()[p3.StringID()] = p3
+				addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+				p3 := node.NewRemoteNodeFromMultiAddr(addr2, lp)
+				p3.SetLastSeen(time.Now())
+				mgr.Peers()[p3.StringID()] = p3
 
-			n := mgr.CleanPeers()
-			Expect(n).To(BeZero())
+				n := mgr.CleanPeers()
+				Expect(n).To(BeZero())
+			})
 		})
 
-		It("should return 1 when a peer was removed", func() {
-			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
-			p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
-			p2.SetLastSeen(time.Now())
-			mgr.Peers()[p2.StringID()] = p2
+		When("one peer is not active and one is active", func() {
 
-			addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
-			p3 := node.NewRemoteNodeFromMultiAddr(addr2, lp)
-			mgr.Peers()[p3.StringID()] = p3
+			var p3 *node.Node
 
-			n := mgr.CleanPeers()
-			Expect(n).To(Equal(1))
+			BeforeEach(func() {
+				addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+				p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
+				p2.SetLastSeen(time.Now())
+				mgr.Peers()[p2.StringID()] = p2
+
+				addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+				p3 = node.NewRemoteNodeFromMultiAddr(addr2, lp)
+				mgr.Peers()[p3.StringID()] = p3
+				mgr.AddAcquainted(p3)
+				Expect(mgr.IsAcquainted(p3)).To(BeTrue())
+			})
+
+			It("should remove 1 peer", func() {
+				n := mgr.CleanPeers()
+				Expect(n).To(Equal(1))
+			})
+
+			It("should remove the peer from acquainted cache", func() {
+				n := mgr.CleanPeers()
+				Expect(n).To(Equal(1))
+				Expect(mgr.IsAcquainted(p3)).To(BeFalse())
+			})
 		})
 	})
 
@@ -185,8 +202,8 @@ var _ = Describe("Peer Manager", func() {
 		var peer *node.Node
 
 		BeforeEach(func() {
-			createdAt = time.Now().Add(-21 * time.Minute).UTC()
-			lastSeen = time.Now().UTC()
+			createdAt = time.Now().Add(-21 * time.Minute)
+			lastSeen = time.Now()
 			addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
 
 			peer = node.NewRemoteNodeFromMultiAddr(addr, lp)
@@ -464,7 +481,7 @@ var _ = Describe("Peer Manager", func() {
 
 		Context("when address contain a known peer id", func() {
 			It("should set 'last seen' time to 1 hour ago", func() {
-				lp.SetLastSeen(time.Now().UTC())
+				lp.SetLastSeen(time.Now())
 				mgr.SetPeers(map[string]types.Engine{lp.GetAddress().StringID(): lp})
 				currentTime := lp.GetLastSeen().Unix()
 				err := mgr.HasDisconnected(lp.GetAddress())

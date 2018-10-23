@@ -80,11 +80,17 @@ func (g *Gossip) OnIntro(s net.Stream) {
 
 	defer s.Reset()
 	remoteAddr := util.RemoteAddrFromStream(s)
-	remotePeer := NewRemoteNode(remoteAddr, g.engine)
+	rp := NewRemoteNode(remoteAddr, g.engine)
+
+	// check whether we are allowed to receive this peer's message
+	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+		g.logErr(err, rp, "message unaccepted")
+		return
+	}
 
 	var msg wire.Intro
 	if err := ReadStream(s, &msg); err != nil {
-		g.logErr(err, remotePeer, "[OnIntro] Failed to read")
+		g.logErr(err, rp, "[OnIntro] Failed to read")
 		return
 	}
 

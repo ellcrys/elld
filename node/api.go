@@ -178,7 +178,8 @@ func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 			"lastSeen":     p.GetLastSeen(),
 			"connected":    p.Connected(),
 			"isHardcoded":  p.IsHardcodedSeed(),
-			"isAcquainted": p.IsAcquainted(),
+			"isAcquainted": n.PM().IsAcquainted(p),
+			"isInbound":    p.IsInbound(),
 		})
 	}
 	return jsonrpc.Success(peers)
@@ -192,8 +193,8 @@ func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
 			"id":           p.StringID(),
 			"lastSeen":     p.GetLastSeen(),
 			"connected":    p.Connected(),
-			"isHardcoded":  p.IsHardcodedSeed(),
-			"isAcquainted": p.IsAcquainted(),
+			"isAcquainted": n.PM().IsAcquainted(p),
+			"isInbound":    p.IsInbound(),
 		})
 	}
 	return jsonrpc.Success(peers)

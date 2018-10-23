@@ -196,7 +196,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	log.Info("Elld has started", "Version", config.ClientVersion, "DevMode", devMode)
+	log.Info("Elld has started", "Version", cfg.VersionInfo.BuildVersion, "DevMode", devMode)
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}

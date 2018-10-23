@@ -17,15 +17,15 @@ import (
 func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	remoteAddr := util.RemoteAddrFromStream(s)
-	remotePeer := NewRemoteNode(remoteAddr, g.engine)
-	remotePeerIDShort := remotePeer.ShortID()
+	rp := NewRemoteNode(remoteAddr, g.engine)
+	remotePeerIDShort := rp.ShortID()
 
 	resp := &wire.Addr{}
 	if err := ReadStream(s, resp); err != nil {
-		return nil, g.logErr(err, remotePeer, "[OnAddr] Failed to read stream")
+		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
 	}
 
-	g.PM().UpdateLastSeenTime(remotePeer)
+	g.PM().UpdateLastSeenTime(rp)
 
 	// we need to ensure the amount of
 	// addresses does not exceed the
@@ -50,7 +50,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		// Check if the timestamp us acceptable according to
 		// the discovery protocol rules
 		if p.IsBadTimestamp() {
-			p.lastSeen = time.Now().UTC().Add(-1 * time.Hour * 24 * 5)
+			p.lastSeen = time.Now().Add(-1 * time.Hour * 24 * 5)
 		}
 
 		// Add the remote peer to the peer manager's list
@@ -75,13 +75,11 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	defer s.Close()
 
 	remoteAddr := util.RemoteAddrFromStream(s)
-	remotePeer := NewRemoteNode(remoteAddr, g.engine)
+	rp := NewRemoteNode(remoteAddr, g.engine)
 
-	// check whether we are are allowed to
-	// interact with the remote peer
-	if ok, err := g.engine.canAcceptPeer(remotePeer); !ok {
-		g.log.Debug(fmt.Sprintf("Can't accept message from peer: %s", err.Error()),
-			"Addr", remotePeer.GetAddress(), "Msg", "GetAddr")
+	// check whether we are allowed to receive this peer's message
+	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+		g.logErr(err, rp, "message unaccepted")
 		return
 	}
 
@@ -112,7 +110,7 @@ func (g *Gossip) PickBroadcasters(addresses []*wire.Address, n int) *BroadcastPe
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
-	now := time.Now().UTC()
+	now := time.Now()
 	if g.broadcasters.Len() == n && !g.broadcastersUpdatedAt.
 		Add(24*time.Hour).Before(now) {
 		return g.broadcasters
@@ -167,7 +165,7 @@ func (g *Gossip) PickBroadcasters(addresses []*wire.Address, n int) *BroadcastPe
 		}
 	}
 
-	g.broadcastersUpdatedAt = time.Now().UTC()
+	g.broadcastersUpdatedAt = time.Now()
 
 	return g.broadcasters
 
@@ -190,7 +188,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 
 	var errs []error
 	var relayable []*wire.Address
-	now := time.Now().UTC()
+	now := time.Now()
 
 	// Do not proceed if there are more
 	// than 10 addresses
@@ -248,32 +246,32 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		"NumBroadcasters", broadcasters.Len())
 
 	relayed := 0
-	for _, remotePeer := range broadcasters.Peers() {
+	for _, rp := range broadcasters.Peers() {
 
 		// Construct the address message.
 		// Be sure to not include an address
 		// matching the remote peer's
 		addrMsg := &wire.Addr{}
 		for _, p := range relayable {
-			if !p.Address.Equal(remotePeer.GetAddress()) {
+			if !p.Address.Equal(rp.GetAddress()) {
 				addrMsg.Addresses = append(addrMsg.Addresses, p)
 			}
 		}
 
-		historyKey := makeAddrRelayHistoryKey(addrMsg, remotePeer)
+		historyKey := makeAddrRelayHistoryKey(addrMsg, rp)
 
 		// ensure we have not relayed same
 		// message to this peer before
 		if g.engine.history.HasMulti(historyKey...) {
 			errs = append(errs, fmt.Errorf("already sent same Addr to node"))
 			g.log.Debug("Already sent same Addr to node. Skipping.",
-				"PeerID", remotePeer.ShortID())
+				"PeerID", rp.ShortID())
 			continue
 		}
 
-		s, c, err := g.NewStream(remotePeer, config.AddrVersion)
+		s, c, err := g.NewStream(rp, config.AddrVersion)
 		if err != nil {
-			err := g.logErr(err, remotePeer, "[RelayAddresses] Failed to connect to peer")
+			err := g.logErr(err, rp, "[RelayAddresses] Failed to connect to peer")
 			errs = append(errs, err)
 			continue
 		}
@@ -281,12 +279,12 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 		defer s.Close()
 
 		if err := WriteStream(s, addrMsg); err != nil {
-			err := g.logErr(err, remotePeer, "[RelayAddresses] Failed to write to peer")
+			err := g.logErr(err, rp, "[RelayAddresses] Failed to write to peer")
 			errs = append(errs, err)
 			continue
 		}
 
-		g.PM().UpdateLastSeenTime(remotePeer)
+		g.PM().UpdateLastSeenTime(rp)
 
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
