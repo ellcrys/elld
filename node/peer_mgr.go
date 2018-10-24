@@ -20,6 +20,7 @@ import (
 // according to the current protocol and engine rules.
 type Manager struct {
 	mtx              *sync.RWMutex           // general mutex
+	cacheMtx         *sync.RWMutex           // Cache mutex
 	localNode        *Node                   // local node
 	peers            map[string]types.Engine // peers known to the peer manager
 	log              logger.Logger           // manager's logger
@@ -42,6 +43,7 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 
 	m := &Manager{
 		mtx:              new(sync.RWMutex),
+		cacheMtx:         new(sync.RWMutex),
 		localNode:        localPeer,
 		log:              log,
 		peers:            make(map[string]types.Engine),
@@ -59,8 +61,8 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 
 // TimeBanIndex get the time ban index
 func (m *Manager) TimeBanIndex() map[string]time.Time {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.cacheMtx.RLock()
+	defer m.cacheMtx.RUnlock()
 	return m.timeBan
 }
 
@@ -69,8 +71,8 @@ func (m *Manager) TimeBanIndex() map[string]time.Time {
 // If an existing entry exist for peer, add dur
 // to it.
 func (m *Manager) AddTimeBan(peer types.Engine, dur time.Duration) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+	m.cacheMtx.Lock()
+	defer m.cacheMtx.Unlock()
 	curBanTime := m.timeBan[peer.StringID()]
 
 	// If the cur ban time of the peer is in the
@@ -85,8 +87,8 @@ func (m *Manager) AddTimeBan(peer types.Engine, dur time.Duration) {
 
 // IsBanned checks whether a peer has been banned.
 func (m *Manager) IsBanned(peer types.Engine) bool {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.cacheMtx.RLock()
+	defer m.cacheMtx.RUnlock()
 
 	// Check if peer has been time banned
 	curBanTime := m.timeBan[peer.GetAddress().IP().String()]
@@ -99,24 +101,24 @@ func (m *Manager) IsBanned(peer types.Engine) bool {
 
 // IncrConnFailCount increases the connection failure count of n
 func (m *Manager) IncrConnFailCount(n types.Engine) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+	m.cacheMtx.Lock()
+	defer m.cacheMtx.Unlock()
 	ip := n.GetAddress().IP().String()
 	m.connectFailCount[ip]++
 }
 
 // ClearConnFailCount clears the connection failure count of n
 func (m *Manager) ClearConnFailCount(n types.Engine) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+	m.cacheMtx.Lock()
+	defer m.cacheMtx.Unlock()
 	ip := n.GetAddress().IP().String()
 	m.connectFailCount[ip] = 0
 }
 
 // GetConnFailCount returns the connection failure count of n
 func (m *Manager) GetConnFailCount(n types.Engine) int {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.cacheMtx.RLock()
+	defer m.cacheMtx.RUnlock()
 	ip := n.GetAddress().IP().String()
 	return m.connectFailCount[ip]
 }
@@ -161,8 +163,8 @@ func (m *Manager) IsAcquainted(peer types.Engine) bool {
 // AddPeer adds a peer
 func (m *Manager) AddPeer(peer types.Engine) {
 	m.mtx.Lock()
-	defer m.mtx.Unlock()
 	m.peers[peer.StringID()] = peer
+	m.mtx.Unlock()
 }
 
 // ConnectToPeer attempts to establish
@@ -330,10 +332,8 @@ func (m *Manager) CanAcceptNode(node *Node) (bool, error) {
 // of existing peers.
 func (m *Manager) AddOrUpdateNode(_peer types.Engine) error {
 
-	defer func() {
-		m.CleanPeers()
-		m.SavePeers()
-	}()
+	defer m.CleanPeers()
+	defer m.SavePeers()
 
 	peer := m.GetPeer(_peer.StringID())
 
@@ -401,8 +401,6 @@ func (m *Manager) SetLocalNode(n *Node) {
 }
 
 // IsActive returns true of a peer is considered active.
-// First rule:
-// - Its timestamp must be within the last 3 hours
 func (m *Manager) IsActive(p types.Engine) bool {
 	return time.Now().Add(-3*(60*60)*time.Second).Before(p.GetLastSeen()) &&
 		!m.IsBanned(p)
@@ -522,6 +520,8 @@ func (m *Manager) GetRandomActivePeers(limit int) []types.Engine {
 
 // SavePeers stores active peer addresses
 func (m *Manager) SavePeers() error {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
 
 	var numAddrs = 0
 	var kvObjs []*elldb.KVObject
