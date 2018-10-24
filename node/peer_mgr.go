@@ -407,8 +407,21 @@ func (m *Manager) SetLocalNode(n *Node) {
 
 // IsActive returns true of a peer is considered active.
 func (m *Manager) IsActive(p types.Engine) bool {
-	return time.Now().Add(-3*(60*60)*time.Second).Before(p.GetLastSeen()) &&
-		!m.IsBanned(p)
+
+	// If last communication was received within 3 hours
+	// ago, we consider the peer active
+	if !m.IsBanned(p) && time.Now().Add(-3*(60*60)*time.Second).
+		Before(p.GetLastSeen()) {
+		return true
+	}
+
+	// If peer has been banned but have a ban time
+	// that is <= 3 hours in the future, we can keep the peer
+	if m.IsBanned(p) && m.GetBanTime(p).Before(time.Now().Add(3*time.Hour)) {
+		return true
+	}
+
+	return false
 }
 
 // HasDisconnected is called with a address belonging
@@ -445,17 +458,7 @@ func (m *Manager) CleanPeers() int {
 
 	for k, p := range m.peers {
 
-		// If last communication was received within 3 hours
-		// ago, we can keep the peer
-		if !m.IsBanned(p) && time.Now().Add(-3*(60*60)*time.Second).
-			Before(p.GetLastSeen()) {
-			newKnownPeers[k] = p
-			continue
-		}
-
-		// If peer has been banned but have a ban time
-		// that is less than <= 3 hours from now, we can keep the peer
-		if m.IsBanned(p) && m.GetBanTime(p).Before(time.Now().Add(3*time.Hour)) {
+		if m.IsActive(p) {
 			newKnownPeers[k] = p
 			continue
 		}
@@ -549,14 +552,20 @@ func (m *Manager) SavePeers() error {
 	peers := m.CopyActivePeers(0)
 	for _, p := range peers {
 		isOldEnough := time.Now().Sub(p.CreatedAt()).Minutes() >= 20
+
 		if !p.IsHardcodedSeed() && isOldEnough {
 			key := []byte(p.StringID())
-			value := util.ObjectToBytes(map[string]interface{}{
+			value := map[string]interface{}{
 				"address":   p.GetAddress(),
 				"createdAt": p.CreatedAt().Unix(),
 				"lastSeen":  p.GetLastSeen().Unix(),
-			})
-			obj := elldb.NewKVObject(key, value, []byte("address"))
+			}
+
+			if banTime := m.GetBanTime(p); !banTime.IsZero() {
+				value["banTime"] = banTime.Unix()
+			}
+
+			obj := elldb.NewKVObject(key, util.ObjectToBytes(value), []byte("address"))
 			kvObjs = append(kvObjs, obj)
 			numAddrs++
 		}
@@ -591,7 +600,15 @@ func (m *Manager) LoadPeers() error {
 		peer := NewRemoteNode(addr, m.localNode)
 		peer.createdAt = time.Unix(int64(addrData["createdAt"].(uint32)), 0)
 		peer.lastSeen = time.Unix(int64(addrData["lastSeen"].(uint32)), 0)
+
 		m.AddPeer(peer)
+
+		if addrData["banTime"] != nil {
+			banTime := time.Unix(int64(addrData["banTime"].(uint32)), 0)
+			m.cacheMtx.Lock()
+			m.timeBan[addr.IP().String()] = banTime
+			m.cacheMtx.Unlock()
+		}
 	}
 
 	return nil

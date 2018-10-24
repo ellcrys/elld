@@ -422,6 +422,33 @@ func TestPeerManager(t *testing.T) {
 				})
 			})
 
+			g.When("peer has a ban time", func() {
+
+				var p2 *node.Node
+
+				g.BeforeEach(func() {
+					addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+					p2 = node.NewRemoteNodeFromMultiAddr(addr, lp)
+					p2.SetLastSeen(time.Now())
+					p2.SetCreatedAt(time.Now().Add(-21 * time.Minute))
+					mgr.AddTimeBan(p2, 20*time.Minute)
+					mgr.Peers()[p2.StringID()] = p2
+				})
+
+				g.It("should be saved along with other data", func() {
+
+					err := mgr.SavePeers()
+					Expect(err).To(BeNil())
+
+					result := lp.DB().GetByPrefix([]byte("address"))
+					Expect(result).To(HaveLen(1))
+
+					var m map[string]interface{}
+					result[0].Scan(&m)
+					Expect(int64(m["banTime"].(uint32))).To(Equal(mgr.GetBanTime(p2).Unix()))
+				})
+			})
+
 		})
 
 		g.Describe(".loadPeers", func() {
@@ -453,6 +480,26 @@ func TestPeerManager(t *testing.T) {
 				peer := mgr.Peers()[peer.StringID()]
 				Expect(peer.GetLastSeen().Unix()).To(Equal(lastSeen.Unix()))
 				Expect(peer.CreatedAt().Unix()).To(Equal(createdAt.Unix()))
+			})
+
+			g.Context("with ban time saved", func() {
+
+				var banTime int64
+				g.BeforeEach(func() {
+					mgr.AddTimeBan(peer, 20*time.Minute)
+					banTime = mgr.GetBanTime(peer).Unix()
+				})
+
+				g.It("should fetch 1 address including its ban time", func() {
+					mgr.SetPeers(map[string]types.Engine{})
+					err := mgr.LoadPeers()
+					Expect(err).To(BeNil())
+					Expect(mgr.Peers()).To(HaveKey(peer.StringID()))
+					peer := mgr.Peers()[peer.StringID()]
+					Expect(peer.GetLastSeen().Unix()).To(Equal(lastSeen.Unix()))
+					Expect(peer.CreatedAt().Unix()).To(Equal(createdAt.Unix()))
+					Expect(mgr.GetBanTime(peer).Unix()).To(Equal(banTime))
+				})
 			})
 		})
 
