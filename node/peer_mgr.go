@@ -330,7 +330,7 @@ func (m *Manager) CanAcceptNode(node *Node) (bool, error) {
 // AddOrUpdateNode adds a peer to peer list if
 // it hasn't been added. It updates the timestamp
 // of existing peers.
-func (m *Manager) AddOrUpdateNode(_peer types.Engine) error {
+func (m *Manager) AddOrUpdateNode(_peer types.Engine) {
 
 	defer m.CleanPeers()
 	defer m.SavePeers()
@@ -341,21 +341,19 @@ func (m *Manager) AddOrUpdateNode(_peer types.Engine) error {
 	if peer == nil {
 		_peer.SetLastSeen(time.Now().Add(-1 * time.Hour))
 		m.AddPeer(_peer)
-		return nil
+		return
 	}
 
 	// For connected peers, set 'last seen' time to the current time
 	if peer.Connected() {
 		peer.SetLastSeen(time.Now())
-		return nil
+		return
 	}
 
 	// At this point, we know the peer but we are not
 	// currently connected to it. To accelerate its removal,
 	// deduct 1 hour from its current time
 	peer.SetLastSeen(peer.GetLastSeen().Add(-1 * time.Hour))
-
-	return nil
 }
 
 // Peers returns the map of known peers

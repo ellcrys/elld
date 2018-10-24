@@ -21,6 +21,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 	remoteAddr := util.RemoteAddrFromStream(s)
 	rp := NewRemoteNode(remoteAddr, g.engine)
 	rpIDStr := rp.ShortID()
+
 	resp := &wire.Addr{}
 	if err := ReadStream(s, resp); err != nil {
 		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
@@ -28,9 +29,8 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	g.PM().AddOrUpdateNode(rp)
 
-	// we need to ensure the amount of
-	// addresses does not exceed the
-	// maximum address expected
+	// we need to ensure the amount of addresses does
+	// not exceed the maximum expected
 	if int64(len(resp.Addresses)) > g.engine.cfg.Node.MaxAddrsExpected {
 		g.log.Debug("Too many addresses received. Ignoring addresses",
 			"PeerID", rpIDStr,
@@ -40,25 +40,27 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 
 	invalidAddrs := 0
 
-	// Validate each address before we add
-	// them to the peer list maintained by
-	// the peer manager
+	// Validate each address before we addthem to the peer list
 	for _, addr := range resp.Addresses {
 
 		p, _ := g.engine.NodeFromAddr(addr.Address, true)
 
 		if !addr.Address.IsValid() || (!g.engine.TestMode() && !addr.Address.IsRoutable()) {
+			invalidAddrs++
+			continue
+		}
+
+		// Check whether we know this node as a banned peer
+		if g.PM().IsBanned(p) {
+			invalidAddrs++
 			continue
 		}
 
 		// Add the remote peer to the peer manager's list
-		if g.PM().AddOrUpdateNode(p) != nil {
-			invalidAddrs++
-			continue
-		}
+		g.PM().AddOrUpdateNode(p)
 	}
 
-	g.log.Info("Received Addr message from peer", "PeerID", rpIDStr,
+	g.log.Info("Received addresses", "PeerID", rpIDStr,
 		"NumAddrs", len(resp.Addresses),
 		"InvalidAddrs", invalidAddrs)
 

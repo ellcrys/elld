@@ -75,8 +75,7 @@ func TestPeerManager(t *testing.T) {
 				g.BeforeEach(func() {
 					p2, err = node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 					defer closeNode(p2)
-					err = mgr.AddOrUpdateNode(p2)
-					Expect(err).To(BeNil())
+					mgr.AddOrUpdateNode(p2)
 				})
 
 				g.It("should add peer with time set to an hour ago", func() {
@@ -96,8 +95,7 @@ func TestPeerManager(t *testing.T) {
 					existingPeer.SetLastSeen(time.Now())
 					defer closeNode(existingPeer)
 					mgr.AddPeer(existingPeer)
-					err = mgr.AddOrUpdateNode(existingPeer)
-					Expect(err).To(BeNil())
+					mgr.AddOrUpdateNode(existingPeer)
 				})
 
 				g.It("should deduct one hour ago from its current time", func() {
@@ -127,8 +125,7 @@ func TestPeerManager(t *testing.T) {
 
 				g.It("should update the last seen to current time", func() {
 					now := time.Now().Unix()
-					err = mgr.AddOrUpdateNode(existingPeer)
-					Expect(err).To(BeNil())
+					mgr.AddOrUpdateNode(existingPeer)
 					Expect(existingPeer.GetLastSeen().Unix()).To(Equal(now))
 				})
 			})
