@@ -85,6 +85,13 @@ func (m *Manager) AddTimeBan(peer types.Engine, dur time.Duration) {
 	m.timeBan[peer.GetAddress().IP().String()] = curBanTime.Add(dur)
 }
 
+// GetBanTime gets the ban end time of peer
+func (m *Manager) GetBanTime(peer types.Engine) time.Time {
+	m.cacheMtx.RLock()
+	defer m.cacheMtx.RUnlock()
+	return m.timeBan[peer.GetAddress().IP().String()]
+}
+
 // IsBanned checks whether a peer has been banned.
 func (m *Manager) IsBanned(peer types.Engine) bool {
 	m.cacheMtx.RLock()
@@ -427,8 +434,7 @@ func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
 
 // CleanPeers removes old peers from the list
 // of peers known by the local peer. Typically,
-// we remove peers based on the last time
-// they were seen.
+// we remove peers based on their active status.
 // It returns the number of peers removed
 func (m *Manager) CleanPeers() int {
 	m.mtx.Lock()
@@ -438,7 +444,18 @@ func (m *Manager) CleanPeers() int {
 	newKnownPeers := make(map[string]types.Engine)
 
 	for k, p := range m.peers {
-		if m.IsActive(p) {
+
+		// If last communication was received within 3 hours
+		// ago, we can keep the peer
+		if !m.IsBanned(p) && time.Now().Add(-3*(60*60)*time.Second).
+			Before(p.GetLastSeen()) {
+			newKnownPeers[k] = p
+			continue
+		}
+
+		// If peer has been banned but have a ban time
+		// that is less than <= 3 hours from now, we can keep the peer
+		if m.IsBanned(p) && m.GetBanTime(p).Before(time.Now().Add(3*time.Hour)) {
 			newKnownPeers[k] = p
 			continue
 		}

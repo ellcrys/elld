@@ -352,6 +352,30 @@ func TestPeerManager(t *testing.T) {
 					Expect(mgr.IsAcquainted(p3)).To(BeFalse())
 				})
 			})
+
+			g.When("one peer is banned for over 3 hours", func() {
+
+				var p3 *node.Node
+
+				g.BeforeEach(func() {
+					addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21o")
+					p2 := node.NewRemoteNodeFromMultiAddr(addr, lp)
+					p2.SetLastSeen(time.Now())
+					mgr.Peers()[p2.StringID()] = p2
+					mgr.AddTimeBan(p2, 4*time.Hour)
+
+					addr2, _ := ma.NewMultiaddr("/ip4/127.0.0.2/tcp/9000/ipfs/12D3KooWM4yJB31d4hF2F9Vdwuj9WFo1qonoySyw4bVAQ9a9d21d")
+					p3 = node.NewRemoteNodeFromMultiAddr(addr2, lp)
+					p3.SetLastSeen(time.Now())
+					mgr.Peers()[p3.StringID()] = p3
+				})
+
+				g.It("should remove 1 peer", func() {
+					n := mgr.CleanPeers()
+					Expect(n).To(Equal(1))
+					Expect(mgr.PeerExist(p3.StringID())).To(BeTrue())
+				})
+			})
 		})
 
 		g.Describe(".SavePeers", func() {
