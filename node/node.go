@@ -593,16 +593,7 @@ func (n *Node) SetProtocolHandler(version string,
 
 // GetAddress returns the node's address
 func (n *Node) GetAddress() util.NodeAddr {
-	if n.host == nil && !n.remote {
-		return ""
-	}
-	if n.remote {
-		return n.address
-	}
-	ipfsPart := fmt.Sprintf("/ipfs/%s", n.host.ID().Pretty())
-	hostAddr, _ := ma.NewMultiaddr(ipfsPart)
-	fullAddr := n.host.Addrs()[0].Encapsulate(hostAddr).String()
-	return util.NodeAddr(fullAddr)
+	return n.address
 }
 
 // checkConnString checks whether a connection

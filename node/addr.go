@@ -21,7 +21,6 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 	remoteAddr := util.RemoteAddrFromStream(s)
 	rp := NewRemoteNode(remoteAddr, g.engine)
 	rpIDStr := rp.ShortID()
-
 	resp := &wire.Addr{}
 	if err := ReadStream(s, resp); err != nil {
 		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
