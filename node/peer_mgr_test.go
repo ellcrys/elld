@@ -75,7 +75,7 @@ func TestPeerManager(t *testing.T) {
 				g.BeforeEach(func() {
 					p2, err = node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 					defer closeNode(p2)
-					err = mgr.AddOrUpdatePeer(p2)
+					err = mgr.AddOrUpdateNode(p2)
 					Expect(err).To(BeNil())
 				})
 
@@ -96,7 +96,7 @@ func TestPeerManager(t *testing.T) {
 					existingPeer.SetLastSeen(time.Now())
 					defer closeNode(existingPeer)
 					mgr.AddPeer(existingPeer)
-					err = mgr.AddOrUpdatePeer(existingPeer)
+					err = mgr.AddOrUpdateNode(existingPeer)
 					Expect(err).To(BeNil())
 				})
 
@@ -127,9 +127,178 @@ func TestPeerManager(t *testing.T) {
 
 				g.It("should update the last seen to current time", func() {
 					now := time.Now().Unix()
-					err = mgr.AddOrUpdatePeer(existingPeer)
+					err = mgr.AddOrUpdateNode(existingPeer)
 					Expect(err).To(BeNil())
 					Expect(existingPeer.GetLastSeen().Unix()).To(Equal(now))
+				})
+			})
+		})
+
+		g.Describe(".AddTimeBan", func() {
+			g.When("peer has not been time banned before", func() {
+				g.It("should add peer with non-zero time", func() {
+					mgr.AddTimeBan(lp, 20*time.Second)
+					entry := mgr.TimeBanIndex()[lp.GetAddress().IP().String()]
+					Expect(entry.IsZero()).To(BeFalse())
+				})
+			})
+
+			g.When("peer has been added with a later ban time", func() {
+				g.BeforeEach(func() {
+					mgr.AddTimeBan(lp, -20*time.Second)
+					entry := mgr.TimeBanIndex()[lp.GetAddress().IP().String()]
+					Expect(entry.Before(time.Now())).To(BeTrue())
+				})
+
+				g.It("should update the time to the current time before adding ban time", func() {
+					mgr.AddTimeBan(lp, 20*time.Minute)
+					entry := mgr.TimeBanIndex()[lp.GetAddress().IP().String()]
+					Expect(entry.After(time.Now())).To(BeTrue())
+				})
+			})
+		})
+
+		g.Describe(".IsBanned", func() {
+			g.When("peer has not been added to the time ban index", func() {
+				g.It("should return false", func() {
+					Expect(mgr.IsBanned(lp)).To(BeFalse())
+				})
+			})
+
+			g.When("peer has been added to the time ban index", func() {
+				g.When("peer ban end time is ahead of current time", func() {
+					g.It("should return true", func() {
+						mgr.AddTimeBan(lp, 20*time.Minute)
+						Expect(mgr.IsBanned(lp)).To(BeTrue())
+					})
+				})
+
+				g.When("peer ban end time is before the current time", func() {
+					g.It("should return false", func() {
+						mgr.AddTimeBan(lp, -20*time.Minute)
+						Expect(mgr.IsBanned(lp)).To(BeFalse())
+					})
+				})
+			})
+		})
+
+		g.Describe(".GetUnconnectedPeers", func() {
+
+			var n *node.Node
+
+			g.BeforeEach(func() {
+				n = makeTestNode(getPort())
+				lp.PM().AddPeer(n)
+			})
+
+			g.AfterEach(func() {
+				closeNode(n)
+			})
+
+			g.It("should get correct unconnected peer", func() {
+				ucp := lp.PM().GetUnconnectedPeers()
+				Expect(ucp).To(HaveLen(1))
+				Expect(ucp[0]).To(Equal(n))
+			})
+		})
+
+		g.Describe(".canAcceptNode", func() {
+
+			var n *node.Node
+
+			g.BeforeEach(func() {
+				n = makeTestNode(getPort())
+				lp.PM().AddPeer(n)
+			})
+
+			g.AfterEach(func() {
+				closeNode(n)
+			})
+
+			g.When("in test mode", func() {
+				g.It("should return true", func() {
+					cfg.Node.Mode = config.ModeTest
+					accept, err := lp.PM().CanAcceptNode(n)
+					Expect(err).To(BeNil())
+					Expect(accept).To(BeTrue())
+				})
+			})
+
+			g.When("node is not acquainted", func() {
+				g.It("should return false and err", func() {
+					cfg.Node.Mode = config.ModeProd
+					accept, err := lp.PM().CanAcceptNode(n)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("unacquainted node"))
+					Expect(accept).To(BeFalse())
+				})
+			})
+
+			g.When("node is serving ban time", func() {
+				g.It("should return false and err", func() {
+					cfg.Node.Mode = config.ModeProd
+					lp.PM().AddAcquainted(n)
+					lp.PM().AddTimeBan(n, 10*time.Minute)
+
+					accept, err := lp.PM().CanAcceptNode(n)
+					Expect(err).ToNot(BeNil())
+					Expect(err.Error()).To(Equal("currently serving ban time"))
+					Expect(accept).To(BeFalse())
+				})
+			})
+
+			g.When("node is acquainted and not serving ban time", func() {
+				g.It("should return true", func() {
+					cfg.Node.Mode = config.ModeProd
+					lp.PM().AddAcquainted(n)
+
+					accept, err := lp.PM().CanAcceptNode(n)
+					Expect(err).To(BeNil())
+					Expect(accept).To(BeTrue())
+				})
+			})
+		})
+
+		g.Describe("connection failure count", func() {
+
+			var n *node.Node
+
+			g.BeforeEach(func() {
+				n = makeTestNode(getPort())
+				lp.PM().AddPeer(n)
+			})
+
+			g.AfterEach(func() {
+				closeNode(n)
+			})
+
+			g.Describe(".GetConnFailCount", func() {
+				g.When("no failure record", func() {
+					g.It("should return zero", func() {
+						Expect(lp.PM().GetConnFailCount(n)).To(Equal(0))
+					})
+				})
+
+				g.When("1 failure had been recorded", func() {
+					g.It("should return 1", func() {
+						lp.PM().IncrConnFailCount(n)
+						Expect(lp.PM().GetConnFailCount(n)).To(Equal(1))
+					})
+				})
+
+				g.When("1 failure had been recorded", func() {
+
+					g.BeforeEach(func() {
+						lp.PM().IncrConnFailCount(n)
+						Expect(lp.PM().GetConnFailCount(n)).To(Equal(1))
+					})
+
+					g.When(".ClearConnFailCount is called", func() {
+						g.It("should return 0", func() {
+							lp.PM().ClearConnFailCount(n)
+							Expect(lp.PM().GetConnFailCount(n)).To(Equal(0))
+						})
+					})
 				})
 			})
 		})
@@ -278,7 +447,7 @@ func TestPeerManager(t *testing.T) {
 			g.It("should return peer when peer is in known peer list", func() {
 				p2, err := node.NewNode(cfg, "127.0.0.1:40003", crypto.NewKeyFromIntSeed(3), log)
 				defer closeNode(p2)
-				mgr.AddOrUpdatePeer(p2)
+				mgr.AddOrUpdateNode(p2)
 				Expect(err).To(BeNil())
 				actual := mgr.GetPeer(p2.StringID())
 				Expect(actual).NotTo(BeNil())
@@ -299,7 +468,7 @@ func TestPeerManager(t *testing.T) {
 			g.It("peer exists, must return true", func() {
 				p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 				defer closeNode(p2)
-				mgr.AddOrUpdatePeer(p2)
+				mgr.AddOrUpdateNode(p2)
 				Expect(err).To(BeNil())
 				Expect(mgr.PeerExist(p2.StringID())).To(BeTrue())
 				closeNode(p2)
@@ -311,7 +480,7 @@ func TestPeerManager(t *testing.T) {
 				p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())
 				defer closeNode(p2)
-				mgr.AddOrUpdatePeer(p2)
+				mgr.AddOrUpdateNode(p2)
 				actual := mgr.GetPeers()
 				Expect(actual).To(HaveLen(1))
 				Expect(actual).To(ContainElement(p2))

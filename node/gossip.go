@@ -171,6 +171,28 @@ func WriteStream(s net.Stream, msg interface{}) error {
 	return nil
 }
 
+func (g *Gossip) logErr(err error, rp types.Engine, msg string) error {
+	g.log.Debug(msg, "Err", err, "PeerID", rp.ShortID())
+	return err
+}
+
+// logConnectErr updates the failure count record of a node
+// that failed to connect. It will also add a 1 hour ban time
+// if the node failed to connect after n tries.
+func (g *Gossip) logConnectErr(err error, rp types.Engine, msg string) error {
+
+	// Increase connection fail count
+	g.PM().IncrConnFailCount(rp)
+
+	// When the peer reaches the max allowed
+	// failure count, add a ban time fo 3 hours
+	if g.PM().GetConnFailCount(rp) >= 3 {
+		g.PM().AddTimeBan(rp, 1*time.Hour)
+	}
+
+	return g.logErr(err, rp, msg)
+}
+
 // Engine returns the local node
 func (g *Gossip) Engine() *Node {
 	return g.engine

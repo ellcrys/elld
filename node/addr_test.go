@@ -264,7 +264,7 @@ func TestAddr(t *testing.T) {
 				})
 			})
 
-			g.XContext("when the number of addresses is above max address expected", func() {
+			g.Context("when the number of addresses is above max address expected", func() {
 				g.It("should return no error", func(done Done) {
 					rp.GetCfg().Node.MaxAddrsExpected = 1
 					stream, c, err := lp.Gossip().NewStream(rp, config.AddrVersion)

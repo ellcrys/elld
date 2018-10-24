@@ -19,15 +19,17 @@ import (
 // It is responsible for initiating and managing peers
 // according to the current protocol and engine rules.
 type Manager struct {
-	mtx         *sync.RWMutex           // general mutex
-	localNode   *Node                   // local node
-	peers       map[string]types.Engine // peers known to the peer manager
-	log         logger.Logger           // manager's logger
-	config      *config.EngineConfig    // manager's configuration
-	connMgr     *ConnectionManager      // connection manager
-	stop        bool                    // signifies the start of the manager
-	acquainted  map[string]struct{}
-	tickersDone chan bool
+	mtx              *sync.RWMutex           // general mutex
+	localNode        *Node                   // local node
+	peers            map[string]types.Engine // peers known to the peer manager
+	log              logger.Logger           // manager's logger
+	config           *config.EngineConfig    // manager's configuration
+	connMgr          *ConnectionManager      // connection manager
+	stop             bool                    // signifies the start of the manager
+	timeBan          map[string]time.Time    // Stores the time where time banned peers are free
+	acquainted       map[string]struct{}     // Store peers that sent and acknowledged handshake messages
+	connectFailCount map[string]int          // Keeps count of connection attempt failure
+	tickersDone      chan bool
 }
 
 // NewManager creates an instance of the peer manager
@@ -39,18 +41,84 @@ func NewManager(cfg *config.EngineConfig, localPeer *Node, log logger.Logger) *M
 	}
 
 	m := &Manager{
-		mtx:         new(sync.RWMutex),
-		localNode:   localPeer,
-		log:         log,
-		peers:       make(map[string]types.Engine),
-		config:      cfg,
-		tickersDone: make(chan bool),
-		acquainted:  make(map[string]struct{}),
+		mtx:              new(sync.RWMutex),
+		localNode:        localPeer,
+		log:              log,
+		peers:            make(map[string]types.Engine),
+		config:           cfg,
+		tickersDone:      make(chan bool),
+		acquainted:       make(map[string]struct{}),
+		timeBan:          make(map[string]time.Time),
+		connectFailCount: make(map[string]int),
 	}
 
 	m.connMgr = NewConnMrg(m, log)
 	m.localNode.host.Network().Notify(m.connMgr)
 	return m
+}
+
+// TimeBanIndex get the time ban index
+func (m *Manager) TimeBanIndex() map[string]time.Time {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	return m.timeBan
+}
+
+// AddTimeBan stores a time a peer is considered
+// banned from outbound or inbound communication.
+// If an existing entry exist for peer, add dur
+// to it.
+func (m *Manager) AddTimeBan(peer types.Engine, dur time.Duration) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	curBanTime := m.timeBan[peer.StringID()]
+
+	// If the cur ban time of the peer is in the
+	// past, set it to now before updating it with dur
+	now := time.Now()
+	if curBanTime.Before(now) {
+		curBanTime = now
+	}
+
+	m.timeBan[peer.GetAddress().IP().String()] = curBanTime.Add(dur)
+}
+
+// IsBanned checks whether a peer has been banned.
+func (m *Manager) IsBanned(peer types.Engine) bool {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+
+	// Check if peer has been time banned
+	curBanTime := m.timeBan[peer.GetAddress().IP().String()]
+	if !curBanTime.IsZero() && curBanTime.After(time.Now()) {
+		return true
+	}
+
+	return false
+}
+
+// IncrConnFailCount increases the connection failure count of n
+func (m *Manager) IncrConnFailCount(n types.Engine) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	ip := n.GetAddress().IP().String()
+	m.connectFailCount[ip]++
+}
+
+// ClearConnFailCount clears the connection failure count of n
+func (m *Manager) ClearConnFailCount(n types.Engine) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	ip := n.GetAddress().IP().String()
+	m.connectFailCount[ip] = 0
+}
+
+// GetConnFailCount returns the connection failure count of n
+func (m *Manager) GetConnFailCount(n types.Engine) int {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	ip := n.GetAddress().IP().String()
+	return m.connectFailCount[ip]
 }
 
 // PeerExist checks whether a peer is a known peer
@@ -233,10 +301,34 @@ func (m *Manager) doIntro(done chan bool) {
 	}
 }
 
-// AddOrUpdatePeer adds a peer to peer list if
+// CanAcceptNode determines whether we can continue to
+// interact with a given node.
+func (m *Manager) CanAcceptNode(node *Node) (bool, error) {
+
+	// Don't do this in test mode
+	if m.localNode.TestMode() {
+		return true, nil
+	}
+
+	// When the remote and local peer have not performed
+	// the handshake ritual, other messages can't be accepted.
+	if !m.IsAcquainted(node) {
+		return false, fmt.Errorf("unacquainted node")
+	}
+
+	// When a remote peer is has an active ban time
+	// period, we can receive messages from it.
+	if m.IsBanned(node) {
+		return false, fmt.Errorf("currently serving ban time")
+	}
+
+	return true, nil
+}
+
+// AddOrUpdateNode adds a peer to peer list if
 // it hasn't been added. It updates the timestamp
 // of existing peers.
-func (m *Manager) AddOrUpdatePeer(_peer types.Engine) error {
+func (m *Manager) AddOrUpdateNode(_peer types.Engine) error {
 
 	defer func() {
 		m.CleanPeers()
@@ -312,8 +404,8 @@ func (m *Manager) SetLocalNode(n *Node) {
 // First rule:
 // - Its timestamp must be within the last 3 hours
 func (m *Manager) IsActive(p types.Engine) bool {
-	return time.Now().Add(-3 * (60 * 60) * time.Second).
-		Before(p.GetLastSeen())
+	return time.Now().Add(-3*(60*60)*time.Second).Before(p.GetLastSeen()) &&
+		!m.IsBanned(p)
 }
 
 // HasDisconnected is called with a address belonging

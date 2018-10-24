@@ -66,7 +66,7 @@ func TestIntro(t *testing.T) {
 				lp.Host().Peerstore().AddAddr(rp.ID(), rp.GetAddress().DecapIPFS(), pstore.PermanentAddrTTL)
 				err := lp.Host().Connect(context.TODO(), lp.Host().Peerstore().PeerInfo(rp.ID()))
 				Expect(err).To(BeNil())
-				lp.PM().AddOrUpdatePeer(rp)
+				lp.PM().AddOrUpdateNode(rp)
 				rp.SetLocalNode(lp)
 			})
 

@@ -23,7 +23,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 
 	s, c, err := g.NewStream(remotePeer, config.PingVersion)
 	if err != nil {
-		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to connect")
+		return g.logConnectErr(err, remotePeer, "[SendPingToPeer] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -47,7 +47,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to write message")
 	}
 
-	g.PM().AddOrUpdatePeer(remotePeer)
+	g.PM().AddOrUpdateNode(remotePeer)
 	g.log.Debug("Sent ping to peer",
 		"PeerID", remotePeerIDShort)
 
@@ -58,7 +58,7 @@ func (g *Gossip) SendPingToPeer(remotePeer types.Engine) error {
 	}
 
 	// update the remote peer's timestamp
-	g.PM().AddOrUpdatePeer(remotePeer)
+	g.PM().AddOrUpdateNode(remotePeer)
 
 	g.log.Info("Received pong response from peer", "PeerID", remotePeerIDShort)
 
@@ -117,7 +117,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	remotePeerIDShort := rp.ShortID()
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -153,7 +153,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	}
 
 	// update the remote peer's timestamp
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 
 	g.log.Debug("Sent pong response to peer", "PeerID", remotePeerIDShort)
 

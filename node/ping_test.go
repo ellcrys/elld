@@ -81,7 +81,7 @@ func TestPing(t *testing.T) {
 				var rpBeforePingTime int64
 
 				g.BeforeEach(func() {
-					lp.PM().AddOrUpdatePeer(rp)
+					lp.PM().AddOrUpdateNode(rp)
 					rp.SetLastSeen(time.Now().Add(-2 * time.Hour))
 					rpBeforePingTime = rp.GetLastSeen().Unix()
 				})

@@ -27,7 +27,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 
 	// we need to ensure the amount of
 	// addresses does not exceed the
@@ -53,7 +53,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*wire.Address, error) {
 		}
 
 		// Add the remote peer to the peer manager's list
-		if g.PM().AddOrUpdatePeer(p) != nil {
+		if g.PM().AddOrUpdateNode(p) != nil {
 			invalidAddrs++
 			continue
 		}
@@ -75,7 +75,7 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	rp := NewRemoteNode(remoteAddr, g.engine)
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -269,7 +269,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			s, c, err := g.NewStream(rp, config.AddrVersion)
 			if err != nil {
 				rMtx.Lock()
-				err := g.logErr(err, rp, "[RelayAddresses] Failed to connect to peer")
+				err := g.logConnectErr(err, rp, "[RelayAddresses] Failed to connect to peer")
 				errs = append(errs, err)
 				rMtx.Unlock()
 				return
@@ -285,7 +285,7 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 				return
 			}
 
-			g.PM().AddOrUpdatePeer(rp)
+			g.PM().AddOrUpdateNode(rp)
 
 			for _, p := range relayable {
 				hk := []interface{}{p.Address.String(), rp.StringID()}

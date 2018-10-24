@@ -51,7 +51,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 
 		s, c, err := g.NewStream(peer, config.IntroVersion)
 		if err != nil {
-			g.logErr(err, peer, "[SendIntro] Failed to connect")
+			g.logConnectErr(err, peer, "[SendIntro] Failed to connect")
 			continue
 		}
 		defer c()
@@ -63,7 +63,7 @@ func (g *Gossip) SendIntro(intro *wire.Intro) {
 			continue
 		}
 
-		g.PM().AddOrUpdatePeer(peer)
+		g.PM().AddOrUpdateNode(peer)
 
 		sent++
 
@@ -83,7 +83,7 @@ func (g *Gossip) OnIntro(s net.Stream) {
 	rp := NewRemoteNode(remoteAddr, g.engine)
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}

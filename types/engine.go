@@ -34,6 +34,4 @@ type Engine interface {
 	ProdMode() bool                       // Checks whether the current mode is ModeProd
 	IsInbound() bool                      // Checks whether the engine's connection is inbound
 	SetInbound(v bool)                    // Sets the inbound flag
-	AddBanTime(dur time.Duration)         // AddBanTime adds more time to the current ban time
-	IsBanned() bool                       // IsBanned checks whether the node is serving a ban period.
 }

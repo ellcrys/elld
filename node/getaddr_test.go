@@ -72,7 +72,7 @@ func TestGetAddr(t *testing.T) {
 			g.Context("when a remote peer knowns an address that is the same as the requesting peer", func() {
 
 				g.BeforeEach(func() {
-					err := rp.PM().AddOrUpdatePeer(lp)
+					err := rp.PM().AddOrUpdateNode(lp)
 					Expect(err).To(BeNil())
 				})
 
@@ -89,7 +89,7 @@ func TestGetAddr(t *testing.T) {
 				g.BeforeEach(func() {
 					remoteAddr = makeTestNode(getPort())
 					remoteAddr.SetLastSeen(time.Now())
-					err := rp.PM().AddOrUpdatePeer(remoteAddr)
+					err := rp.PM().AddOrUpdateNode(remoteAddr)
 					Expect(err).To(BeNil())
 				})
 
@@ -112,7 +112,7 @@ func TestGetAddr(t *testing.T) {
 					remoteAddr = makeTestNode(getPort())
 					remoteAddr.MakeHardcoded()
 					remoteAddr.SetLastSeen(time.Now())
-					err := rp.PM().AddOrUpdatePeer(remoteAddr)
+					err := rp.PM().AddOrUpdateNode(remoteAddr)
 					Expect(err).To(BeNil())
 				})
 
@@ -134,7 +134,7 @@ func TestGetAddr(t *testing.T) {
 					lp.GetCfg().Node.MaxAddrsExpected = 0
 					remoteAddr = makeTestNode(getPort())
 					remoteAddr.SetLastSeen(time.Now())
-					err := rp.PM().AddOrUpdatePeer(remoteAddr)
+					err := rp.PM().AddOrUpdateNode(remoteAddr)
 					Expect(err).To(BeNil())
 				})
 

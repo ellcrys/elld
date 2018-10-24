@@ -88,7 +88,6 @@ type Node struct {
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
-	banTime             time.Time
 }
 
 // NewNode creates a node instance at the specified port
@@ -163,17 +162,6 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	log.Info("Opened local database", "Backend", "LevelDB")
 
 	return node, nil
-}
-
-// AddBanTime adds more time to the current ban time
-func (n *Node) AddBanTime(dur time.Duration) {
-	n.banTime = n.banTime.Add(dur)
-}
-
-// IsBanned checks whether the node is serving
-// a ban period.
-func (n *Node) IsBanned() bool {
-	return n.banTime.After(time.Now())
 }
 
 // GetListenAddresses gets the address at which the node listens
@@ -498,30 +486,6 @@ func (n *Node) SetLocalNode(node *Node) {
 // intros received
 func (n *Node) CountIntros() int {
 	return n.intros.Len()
-}
-
-// canAcceptPeer determines whether we can continue to
-// interact with a given node.
-func (n *Node) canAcceptPeer(remotePeer *Node) (bool, error) {
-
-	// Don't do this in test mode
-	if n.TestMode() {
-		return true, nil
-	}
-
-	// When the remote and local peer have not performed
-	// the handshake ritual, other messages can't be accepted.
-	if !n.PM().IsAcquainted(remotePeer) {
-		return false, fmt.Errorf("unacquainted peer")
-	}
-
-	// When a remote peer is has an active ban time
-	// period, we can receive messages from it.
-	if remotePeer.IsBanned() {
-		return false, fmt.Errorf("currently serving ban time")
-	}
-
-	return true, nil
 }
 
 // addToPeerStore adds a remote node

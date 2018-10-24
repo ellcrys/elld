@@ -38,7 +38,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 	rpIDShort := rp.ShortID()
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -116,8 +116,7 @@ func (g *Gossip) RelayTx(tx core.Transaction, remotePeers []types.Engine) error 
 
 		s, c, err := g.NewStream(peer, config.TxVersion)
 		if err != nil {
-			g.log.Debug("Tx message failed. failed to connect to peer",
-				"Err", err, "PeerID", peer.ShortID())
+			g.logConnectErr(err, peer, "[RelayTx] Failed to connect")
 			continue
 		}
 		defer c()

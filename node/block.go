@@ -49,7 +49,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 
 		s, c, err := g.NewStream(peer, config.BlockBodyVersion)
 		if err != nil {
-			g.logErr(err, peer, "[RelayBlock] Failed to connect to peer")
+			g.logConnectErr(err, peer, "[RelayBlock] Failed to connect to peer")
 			continue
 		}
 		defer c()
@@ -63,7 +63,7 @@ func (g *Gossip) RelayBlock(block core.Block,
 			continue
 		}
 
-		g.PM().AddOrUpdatePeer(peer)
+		g.PM().AddOrUpdateNode(peer)
 		g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 		sent++
@@ -85,7 +85,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 	rp := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -97,7 +97,7 @@ func (g *Gossip) OnBlockBody(s net.Stream) {
 		return
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 
 	var block objects.Block
 	copier.Copy(&block, blockBody)
@@ -137,7 +137,7 @@ func (g *Gossip) RequestBlock(rp types.Engine, blockHash util.Hash) error {
 
 	s, c, err := g.NewStream(rp, config.RequestBlockVersion)
 	if err != nil {
-		return g.logErr(err, rp, "[RequestBlock] Failed to connect to peer")
+		return g.logConnectErr(err, rp, "[RequestBlock] Failed to connect to peer")
 	}
 	defer c()
 	defer s.Reset()
@@ -164,7 +164,7 @@ func (g *Gossip) RequestBlock(rp types.Engine, blockHash util.Hash) error {
 		return err
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 	g.engine.history.AddMulti(cache.Sec(600), historyKey...)
 
 	return nil
@@ -180,7 +180,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 	rpID := rp.ShortID()
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -192,7 +192,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) {
 		return
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 	g.log.Debug("Received request for block",
 		"RequestedBlockHash", util.StrToHash(msg.Hash).SS())
 
@@ -252,7 +252,7 @@ func (g *Gossip) SendGetBlockHashes(rp types.Engine, locators []util.Hash) error
 
 	s, c, err := g.NewStream(rp, config.GetBlockHashesVersion)
 	if err != nil {
-		return g.logErr(err, rp, "[SendGetBlockHashes] Failed to connect")
+		return g.logConnectErr(err, rp, "[SendGetBlockHashes] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -285,7 +285,7 @@ func (g *Gossip) SendGetBlockHashes(rp types.Engine, locators []util.Hash) error
 		return g.logErr(err, rp, "[SendGetBlockHashes] Failed to read")
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 
 	// add all the hashes to the hash queue
 	for _, h := range blockHashes.Hashes {
@@ -320,7 +320,7 @@ func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 	rp := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -332,7 +332,7 @@ func (g *Gossip) OnGetBlockHashes(s net.Stream) {
 		return
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 
 	var blockHashes = wire.BlockHashes{}
 	var startBlock core.Block
@@ -407,7 +407,7 @@ func (g *Gossip) SendGetBlockBodies(rp types.Engine,
 
 	s, c, err := g.NewStream(rp, config.GetBlockBodiesVersion)
 	if err != nil {
-		return g.logErr(err, rp, "[SendGetBlockBodies] Failed to connect")
+		return g.logConnectErr(err, rp, "[SendGetBlockBodies] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -432,7 +432,7 @@ func (g *Gossip) SendGetBlockBodies(rp types.Engine,
 		return g.logErr(err, rp, "[SendGetBlockBodies] Failed to read")
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 	g.log.Info("Received block bodies",
 		"NumBlocks", len(blockBodies.Blocks))
 
@@ -488,7 +488,7 @@ func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 	rp := NewRemoteNode(util.RemoteAddrFromStream(s), g.engine)
 
 	// check whether we are allowed to receive this peer's message
-	if ok, err := g.engine.canAcceptPeer(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
 		g.logErr(err, rp, "message unaccepted")
 		return
 	}
@@ -500,7 +500,7 @@ func (g *Gossip) OnGetBlockBodies(s net.Stream) {
 		return
 	}
 
-	g.PM().AddOrUpdatePeer(rp)
+	g.PM().AddOrUpdateNode(rp)
 
 	var bestChain = g.GetBlockchain().ChainReader()
 	var blockBodies = new(wire.BlockBodies)

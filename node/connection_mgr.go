@@ -140,6 +140,7 @@ func (m *ConnectionManager) ListenClose(net.Network, ma.Multiaddr) {}
 // and close connections when limits are reached.
 func (m *ConnectionManager) Connected(n net.Network, conn net.Conn) {
 
+	// Update inbound/outbound connection count
 	go func(n net.Network, conn net.Conn) {
 		curInboundConns, curOutboundConns := m.connsInfo.Info()
 
@@ -162,6 +163,11 @@ func (m *ConnectionManager) Connected(n net.Network, conn net.Conn) {
 		}
 	}(n, conn)
 
+	// Reset connection failure count
+	rn := NewRemoteNodeFromMultiAddr(
+		util.RemoteAddrFromConn(conn).GetMultiaddr(),
+		m.pm.localNode)
+	m.pm.ClearConnFailCount(rn)
 }
 
 // Disconnected is called when a connection is closed.
@@ -189,6 +195,12 @@ func (m *ConnectionManager) OpenedStream(n net.Network, s net.Stream) {
 	if m.pm.localNode.HasStopped() {
 		s.Reset()
 	}
+
+	// Reset connection failure count
+	rn := NewRemoteNodeFromMultiAddr(
+		util.RemoteAddrFromConn(s.Conn()).GetMultiaddr(),
+		m.pm.localNode)
+	m.pm.ClearConnFailCount(rn)
 }
 
 // ClosedStream is called when a stream is openned

@@ -35,7 +35,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 
 		s, c, err := g.NewStream(peer, config.AddrVersion)
 		if err != nil {
-			g.logErr(err, peer, "[SelfAdvertise] Failed to connect")
+			g.logConnectErr(err, peer, "[SelfAdvertise] Failed to connect")
 			continue
 		}
 		defer c()
@@ -47,7 +47,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []types.Engine) int {
 			continue
 		}
 
-		g.PM().AddOrUpdatePeer(peer)
+		g.PM().AddOrUpdateNode(peer)
 
 		sent++
 	}
