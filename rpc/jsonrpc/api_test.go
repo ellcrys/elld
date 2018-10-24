@@ -1,36 +1,43 @@
 package jsonrpc
 
 import (
-	. "github.com/onsi/ginkgo"
+	"testing"
+
+	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("API", func() {
-	Describe("Params", func() {
+func TestAPI(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
-		type Person struct {
-			Name string
-			Age  int
-		}
+	g.Describe("API", func() {
+		g.Describe("Params", func() {
 
-		It("should decode successfully", func() {
-			var param = Params(map[string]interface{}{
-				"name": "Ben",
-				"age":  10,
+			type Person struct {
+				Name string
+				Age  int
+			}
+
+			g.It("should decode successfully", func() {
+				var param = Params(map[string]interface{}{
+					"name": "Ben",
+					"age":  10,
+				})
+				var person Person
+				err := param.Scan(&person)
+				Expect(err).To(BeNil())
+				Expect(person.Name).To(Equal("Ben"))
+				Expect(person.Age).To(Equal(10))
 			})
-			var person Person
-			err := param.Scan(&person)
-			Expect(err).To(BeNil())
-			Expect(person.Name).To(Equal("Ben"))
-			Expect(person.Age).To(Equal(10))
 		})
-	})
 
-	Describe("APISet", func() {
-		It("should return nil if api is not in the set", func() {
-			apiSet := APISet(map[string]APIInfo{})
-			expected := apiSet.Get("unknown")
-			Expect(expected).To(BeNil())
+		g.Describe("APISet", func() {
+			g.It("should return nil if api is not in the set", func() {
+				apiSet := APISet(map[string]APIInfo{})
+				expected := apiSet.Get("unknown")
+				Expect(expected).To(BeNil())
+			})
 		})
 	})
-})
+}

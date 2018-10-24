@@ -2,24 +2,30 @@ package vm
 
 import (
 	"path/filepath"
+	"testing"
 
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/mitchellh/go-homedir"
-	. "github.com/onsi/ginkgo"
+	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Vm", func() {
-	hdir, _ := homedir.Dir()
-	log := logger.NewLogrus()
-	var vm *VM
+func TestVM(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
-	BeforeEach(func() {
-		vm = New(log, filepath.Join(hdir, "mountdir"))
-	})
+	g.Describe("VM", func() {
+		hdir, _ := homedir.Dir()
+		log := logger.NewLogrus()
+		var vm *VM
 
-	BeforeEach(func() {
-		err := vm.Init()
-		Expect(err).To(BeNil())
+		g.BeforeEach(func() {
+			vm = New(log, filepath.Join(hdir, "mountdir"))
+		})
+
+		g.BeforeEach(func() {
+			err := vm.Init()
+			Expect(err).To(BeNil())
+		})
 	})
-})
+}
