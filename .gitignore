@@ -5,6 +5,5 @@ CacheFile
 scribleDB
 DagFile
 scripts
-.*
-!/.gitignore
-!/.circleci
+.*vscode
+.*DS_Store
