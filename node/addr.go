@@ -227,6 +227,14 @@ func (g *Gossip) RelayAddresses(addrs []*wire.Address) []error {
 			continue
 		}
 
+		// Check whether the node is associated with a banned peer
+		rn, _ := g.engine.NodeFromAddr(addr.Address, true)
+		if g.PM().IsBanned(rn) {
+			errs = append(errs, fmt.Errorf("address {%s} associated with a banned peer",
+				addr.Address))
+			continue
+		}
+
 		relayable = append(relayable, addr)
 	}
 

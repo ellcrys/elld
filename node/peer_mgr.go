@@ -453,13 +453,16 @@ func (m *Manager) CleanPeers() int {
 }
 
 // GetPeers gets all the known
-// peers (active or inactive)
+// peers (connected or unconnected).
+// Banned peers are exempted.
 func (m *Manager) GetPeers() (peers []types.Engine) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 
 	for _, p := range m.peers {
-		peers = append(peers, p)
+		if !m.IsBanned(p) {
+			peers = append(peers, p)
+		}
 	}
 
 	return
