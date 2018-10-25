@@ -187,7 +187,7 @@ func (m *Manager) ConnectToPeer(peerID string) error {
 // GetUnconnectedPeers returns the peers that
 // are currently not connected to the local peer.
 func (m *Manager) GetUnconnectedPeers() (peers []types.Engine) {
-	for _, p := range m.GetActivePeers(0) {
+	for _, p := range m.GetPeers() {
 		if !p.Connected() {
 			peers = append(peers, p)
 		}
@@ -197,7 +197,7 @@ func (m *Manager) GetUnconnectedPeers() (peers []types.Engine) {
 
 // GetConnectedPeers returns the connected peers
 func (m *Manager) GetConnectedPeers() (peers []types.Engine) {
-	for _, p := range m.GetActivePeers(0) {
+	for _, p := range m.GetPeers() {
 		if p.Connected() {
 			peers = append(peers, p)
 		}

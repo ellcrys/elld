@@ -709,7 +709,7 @@ func (n *Node) Start() {
 //  a block to active peers.
 func (n *Node) relayBlock(block core.Block) {
 	if block.GetNumber() > 1 {
-		n.gProtoc.RelayBlock(block, n.peerManager.GetActivePeers(0))
+		n.gProtoc.RelayBlock(block, n.peerManager.GetConnectedPeers())
 	}
 }
 
