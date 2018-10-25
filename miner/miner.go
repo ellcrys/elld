@@ -241,9 +241,12 @@ func (m *Miner) Mine() {
 
 		// abort due to new winning block being discovered
 		// or due to Stop() being called.
+		m.RLock()
 		if block == nil || m.stop {
+			m.RUnlock()
 			continue
 		}
+		m.RUnlock()
 
 		// Recompute hash and signature
 		block.SetHash(block.ComputeHash())
