@@ -154,6 +154,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	password, _ := cmd.Flags().GetString("pwd")
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
+	numMiners, _ := cmd.Flags().GetInt("miners")
 
 	// When password is not set, get it from the
 	// environment variable
@@ -257,6 +258,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Initialized and start the miner if
 	// enabled via the cli flag.
 	miner := miner.New(coinbase, bchain, event, cfg, log)
+	miner.SetNumThreads(numMiners)
 	if mine {
 		go miner.Mine()
 	}
@@ -352,4 +354,5 @@ func init() {
 	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
+	startCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 }

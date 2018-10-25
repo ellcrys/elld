@@ -50,7 +50,7 @@ var (
 var (
 	// AllowedFutureBlockTime is the number of seconds
 	// a block's timestamp can have beyond the current timestamp
-	AllowedFutureBlockTime = 115 * time.Second
+	AllowedFutureBlockTime = 15 * time.Second
 
 	// MaxBlockNonTxsSize is the maximum size
 	// of the non-transactional data a block

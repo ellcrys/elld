@@ -95,6 +95,11 @@ func (m *Miner) setFakeDelay(d time.Duration) {
 	m.blakimoto.SetFakeDelay(d)
 }
 
+// SetNumThreads sets the number of miner threads
+func (m *Miner) SetNumThreads(n int) {
+	m.blakimoto.SetThreads(n)
+}
+
 // getProposedBlock creates a full
 // valid block compatible with the
 // main chain.
