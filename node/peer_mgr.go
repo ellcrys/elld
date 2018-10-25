@@ -247,7 +247,7 @@ func (m *Manager) doPingMsgs(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
-			m.localNode.gProtoc.SendPing(m.GetPeers())
+			m.localNode.gProtoc.SendPing(m.GetActivePeers(0))
 		case <-done:
 			ticker.Stop()
 			return
