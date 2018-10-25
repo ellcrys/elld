@@ -326,8 +326,8 @@ func (m *Manager) CanAcceptNode(node *Node) (bool, error) {
 	}
 
 	// When a remote peer is has an active ban time
-	// period, we can receive messages from it.
-	if m.IsBanned(node) {
+	// period which is over 3 hours, we cannot receive messages from it.
+	if m.IsBanned(node) && m.GetBanTime(node).After(time.Now().Add(3*time.Hour)) {
 		return false, fmt.Errorf("currently serving ban time")
 	}
 

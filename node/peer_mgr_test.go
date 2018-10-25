@@ -232,15 +232,29 @@ func TestPeerManager(t *testing.T) {
 			})
 
 			g.When("node is serving ban time", func() {
-				g.It("should return false and err", func() {
-					cfg.Node.Mode = config.ModeProd
-					lp.PM().AddAcquainted(n)
-					lp.PM().AddTimeBan(n, 10*time.Minute)
+				g.When("ban time is over 3 hours ago", func() {
+					g.It("should return false and err", func() {
+						cfg.Node.Mode = config.ModeProd
+						lp.PM().AddAcquainted(n)
+						lp.PM().AddTimeBan(n, 4*time.Hour)
 
-					accept, err := lp.PM().CanAcceptNode(n)
-					Expect(err).ToNot(BeNil())
-					Expect(err.Error()).To(Equal("currently serving ban time"))
-					Expect(accept).To(BeFalse())
+						accept, err := lp.PM().CanAcceptNode(n)
+						Expect(err).ToNot(BeNil())
+						Expect(err.Error()).To(Equal("currently serving ban time"))
+						Expect(accept).To(BeFalse())
+					})
+				})
+
+				g.When("ban time is less than 3 hours ago", func() {
+					g.It("should return false and err", func() {
+						cfg.Node.Mode = config.ModeProd
+						lp.PM().AddAcquainted(n)
+						lp.PM().AddTimeBan(n, 2*time.Hour)
+
+						accept, err := lp.PM().CanAcceptNode(n)
+						Expect(err).To(BeNil())
+						Expect(accept).To(BeTrue())
+					})
 				})
 			})
 
