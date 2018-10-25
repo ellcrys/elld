@@ -806,16 +806,20 @@ func (n *Node) ProcessBlockHashes() {
 			// in the queue when we have collected some hashes
 			for !n.blockHashQueue.Empty() && int64(len(hashes)) <
 				params.MaxGetBlockBodiesHashes {
-				bh := n.blockHashQueue.Shift().(*BlockHash)
 
-				if broadcaster != nil && bh.Broadcaster.StringID() !=
+				bh := n.blockHashQueue.Shift()
+				if bh == nil {
+					continue
+				}
+
+				if broadcaster != nil && bh.(*BlockHash).Broadcaster.StringID() !=
 					broadcaster.StringID() {
 					otherBlockHashes = append(otherBlockHashes, bh)
 					continue
 				}
 
-				hashes = append(hashes, bh.Hash)
-				broadcaster = bh.Broadcaster
+				hashes = append(hashes, bh.(*BlockHash).Hash)
+				broadcaster = bh.(*BlockHash).Broadcaster
 			}
 
 			// append the others that were not selected
@@ -825,7 +829,9 @@ func (n *Node) ProcessBlockHashes() {
 			}
 
 			// send block body request
-			go n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+			if len(hashes) > 0 {
+				go n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+			}
 
 		case <-n.tickerDone:
 			ticker.Stop()
