@@ -106,51 +106,88 @@ func (b *Blakimoto) CalcDifficulty(time uint64, parent core.Header) *big.Int {
 // block should have when created at time
 // given the parent block's time and difficulty.
 func CalcDifficulty(time uint64, parent core.Header) *big.Int {
-	return calcDifficultyFrontier(time, parent)
+	return calcDifficultyInception(time, parent)
 }
 
 // Some weird constants to avoid constant memory
 // allocs for them.
 var (
-	// expDiffPeriod = big.NewInt(100000)
 	expDiffPeriod = big.NewInt(3)
 	big0          = big.NewInt(0)
 	big1          = big.NewInt(1)
 	big2          = big.NewInt(2)
+	big100F       = big.NewFloat(100)
 )
 
-// calcDifficultyFrontier is the difficulty adjustment
-// algorithm. It returns the difficulty that a new block
-// should have when created at time given the parent
-// block's time and difficulty. The calculation uses
-// the Frontier rules.
-func calcDifficultyFrontier(time uint64, parent core.Header) *big.Int {
+func calcDifficultyInception(time uint64, parent core.Header) *big.Int {
+
 	diff := new(big.Int)
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).Set(new(big.Int).
+		SetInt64(parent.GetTimestamp()))
+
+	// Define the value to adjust difficulty by
+	// when the block time is within or above the duration limit.
 	adjust := new(big.Int).Div(parent.GetDifficulty(), params.DifficultyBoundDivisor)
-	bigTime := new(big.Int)
-	bigParentTime := new(big.Int)
 
-	bigTime.SetUint64(time)
-	bigParentTime.Set(new(big.Int).SetInt64(parent.GetTimestamp()))
+	// Calculate the time difference between the
+	// new block time and parent block time. We'll
+	// use this to determine whether on not to increase
+	// or decrease difficulty
+	blockTimeDiff := bigTime.Sub(bigTime, bigParentTime)
 
-	if bigTime.Sub(bigTime, bigParentTime).Cmp(params.DurationLimit) < 0 {
+	// When block time difference is within the expected
+	// block duration limit, we increasse difficulty
+	if blockTimeDiff.Cmp(params.DurationLimit) < 0 {
 		diff.Add(parent.GetDifficulty(), adjust)
-	} else {
-		diff.Sub(parent.GetDifficulty(), adjust)
 	}
+
+	// When block time difference is equal or greater than
+	// the expected block duration limit, we decrease difficulty
+	if blockTimeDiff.Cmp(params.DurationLimit) >= 0 {
+
+		// We need to determine the percentage increase of the
+		// new block time compared to the duration limit
+		durLimitF := new(big.Float).SetInt(params.DurationLimit)
+		blockTimeF := new(big.Float).SetInt(bigTime)
+		timeDiff := new(big.Float).Sub(blockTimeF, durLimitF)
+		pctDiff := new(big.Float).Mul(new(big.Float).Quo(timeDiff, durLimitF), big100F)
+
+		// If the percentage difference is below the allowed mimimum
+		// reset to the minimum
+		if pctDiff.Cmp(params.MinimumDurationIncrease) < 0 {
+			pctDiff = new(big.Float).Set(params.MinimumDurationIncrease)
+		}
+
+		// Calculate the new adjustment based on time difference percentage
+		pctDiff = pctDiff.Quo(pctDiff, big100F)
+		timeDiffAdjust, _ := new(big.Float).Mul(pctDiff, new(big.Float).SetInt(adjust)).Int(nil)
+		diff.Sub(parent.GetDifficulty(), timeDiffAdjust)
+	}
+
+	// Ensure difficulty does not go below the required minimum
 	if diff.Cmp(params.MinimumDifficulty) < 0 {
 		diff.Set(params.MinimumDifficulty)
 	}
 
+	// Here, we exponentially increase the difficulty
+	// when the block time is within expected duration.
+	// Otherwise, exponentially reduce the difficulty
 	periodCount := new(big.Int).Add(new(big.Int).SetUint64(parent.GetNumber()), big1)
 	periodCount.Div(periodCount, expDiffPeriod)
 	if periodCount.Cmp(big1) > 0 {
-		// diff = diff + 2^(periodCount - 2)
 		expDiff := periodCount.Sub(periodCount, big2)
 		expDiff.Exp(big2, expDiff, nil)
-		diff.Add(diff, expDiff)
+
+		if blockTimeDiff.Cmp(params.DurationLimit) < 0 {
+			diff.Add(diff, expDiff)
+		} else {
+			diff.Sub(diff, expDiff)
+		}
+
 		diff = math.BigMax(diff, params.MinimumDifficulty)
 	}
+
 	return diff
 }
 
@@ -158,10 +195,11 @@ func calcDifficultyFrontier(time uint64, parent core.Header) *big.Int {
 // block satisfies the PoW difficulty
 // requirements.
 func (b *Blakimoto) VerifySeal(header core.Header) error {
+
 	// If we're running a fake PoW, accept any seal as valid
 	if b.config.PowMode == ModeTest {
 		time.Sleep(b.fakeDelay)
-		// if ethash.fakeFail == header.Number {
+		// if b.fakeFail == header.Number {
 		// 	return errInvalidPoW
 		// }
 		return nil
@@ -172,13 +210,15 @@ func (b *Blakimoto) VerifySeal(header core.Header) error {
 		return errInvalidDifficulty
 	}
 
-	// Recompute the digest and PoW value and verify against the header
+	// Recompute the digest and PoW value and
+	// verify against the header
 	result := blakimoto(header.GetHashNoNonce().Bytes(), header.GetNonce().Uint64())
 
 	target := new(big.Int).Div(maxUint256, header.GetDifficulty())
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
 		return errInvalidPoW
 	}
+
 	return nil
 }
 
@@ -200,13 +240,4 @@ func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
 	header.SetTotalDifficulty(new(big.Int).Add(parent.GetTotalDifficulty(),
 		header.GetDifficulty()))
 	return nil
-}
-
-// Finalize accumulates rewards, computes the
-// final state and assembling the block.
-func (b *Blakimoto) Finalize(chain core.BlockMaker,
-	block core.Block) (core.Block, error) {
-	// TODO: accumulate rewards, recompute
-	// state and update block header
-	return block, nil
 }

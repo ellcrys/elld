@@ -15,13 +15,17 @@ var (
 
 	// DurationLimit is the decision boundary on the blocktime duration used to
 	// determine whether difficulty should go up or not.
-	DurationLimit = big.NewInt(120)
+	DurationLimit = big.NewInt(60)
 
 	// GenesisDifficulty is the difficulty of the Genesis block.
 	GenesisDifficulty = big.NewInt(10000000)
 
 	// MinimumDifficulty is the minimum that the difficulty may ever be.
 	MinimumDifficulty = big.NewInt(100000)
+
+	// MinimumDurationIncrease is the minimum percent increase
+	// a block's time can be when compared to its parent's
+	MinimumDurationIncrease = big.NewFloat(2)
 )
 
 var (
@@ -35,7 +39,7 @@ var (
 
 	// NumBlockBodiesRequesters is the number of workers that will
 	// fetch block bodies
-	NumBlockBodiesRequesters = 1
+	NumBlockBodiesRequesters = 5
 )
 
 var (
