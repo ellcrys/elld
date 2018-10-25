@@ -405,19 +405,18 @@ func (m *Manager) SetLocalNode(n *Node) {
 	m.localNode = n
 }
 
+// hasSeenRecently checks whether the peer has been
+// seen within a given duration
+func (m *Manager) hasSeenRecently(p types.Engine) bool {
+	return time.Now().Add(-3 * (60 * 60) * time.Second).Before(p.GetLastSeen())
+}
+
 // IsActive returns true of a peer is considered active.
 func (m *Manager) IsActive(p types.Engine) bool {
 
-	// If last communication was received within 3 hours
-	// ago, we consider the peer active
-	if !m.IsBanned(p) && time.Now().Add(-3*(60*60)*time.Second).
-		Before(p.GetLastSeen()) {
-		return true
-	}
-
-	// If peer has been banned but have a ban time
-	// that is <= 3 hours in the future, we can keep the peer
-	if m.IsBanned(p) && m.GetBanTime(p).Before(time.Now().Add(3*time.Hour)) {
+	// If not banned and last communication was received
+	// within 3 hours ago, we consider the peer active
+	if !m.IsBanned(p) && m.hasSeenRecently(p) {
 		return true
 	}
 
@@ -458,7 +457,17 @@ func (m *Manager) CleanPeers() int {
 
 	for k, p := range m.peers {
 
-		if m.IsActive(p) {
+		// If last communication was received within 3 hours
+		// ago, we consider the peer active
+		if !m.IsBanned(p) && time.Now().Add(-3*(60*60)*time.Second).
+			Before(p.GetLastSeen()) {
+			newKnownPeers[k] = p
+			continue
+		}
+
+		// If peer has been banned but have a ban time
+		// that is <= 3 hours in the future, we can keep the peer
+		if m.IsBanned(p) && m.GetBanTime(p).Before(time.Now().Add(3*time.Hour)) {
 			newKnownPeers[k] = p
 			continue
 		}
@@ -474,15 +483,12 @@ func (m *Manager) CleanPeers() int {
 
 // GetPeers gets all the known
 // peers (connected or unconnected).
-// Banned peers are exempted.
 func (m *Manager) GetPeers() (peers []types.Engine) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
 
 	for _, p := range m.peers {
-		if !m.IsBanned(p) {
-			peers = append(peers, p)
-		}
+		peers = append(peers, p)
 	}
 
 	return
@@ -549,26 +555,28 @@ func (m *Manager) SavePeers() error {
 
 	// Hardcoded seed peers and peers that are
 	// not up to 20 minutes old are also not saved.
-	peers := m.CopyActivePeers(0)
+	peers := m.Peers()
 	for _, p := range peers {
+
 		isOldEnough := time.Now().Sub(p.CreatedAt()).Minutes() >= 20
-
-		if !p.IsHardcodedSeed() && isOldEnough {
-			key := []byte(p.StringID())
-			value := map[string]interface{}{
-				"address":   p.GetAddress(),
-				"createdAt": p.CreatedAt().Unix(),
-				"lastSeen":  p.GetLastSeen().Unix(),
-			}
-
-			if banTime := m.GetBanTime(p); !banTime.IsZero() {
-				value["banTime"] = banTime.Unix()
-			}
-
-			obj := elldb.NewKVObject(key, util.ObjectToBytes(value), []byte("address"))
-			kvObjs = append(kvObjs, obj)
-			numAddrs++
+		if !isOldEnough || !m.hasSeenRecently(p) || p.IsHardcodedSeed() {
+			continue
 		}
+
+		key := []byte(p.StringID())
+		value := map[string]interface{}{
+			"address":   p.GetAddress(),
+			"createdAt": p.CreatedAt().Unix(),
+			"lastSeen":  p.GetLastSeen().Unix(),
+		}
+
+		if banTime := m.GetBanTime(p); !banTime.IsZero() {
+			value["banTime"] = banTime.Unix()
+		}
+
+		obj := elldb.NewKVObject(key, util.ObjectToBytes(value), []byte("address"))
+		kvObjs = append(kvObjs, obj)
+		numAddrs++
 	}
 
 	if err := m.localNode.db.Put(kvObjs); err != nil {

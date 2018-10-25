@@ -543,7 +543,7 @@ func TestPeerManager(t *testing.T) {
 			})
 		})
 
-		g.Describe(".GetKnownPeers", func() {
+		g.Describe(".GetPeers", func() {
 			g.It("should return peer1 as the only known peer", func() {
 				p2, err := node.NewNode(cfg, "127.0.0.1:40002", crypto.NewKeyFromIntSeed(0), log)
 				Expect(err).To(BeNil())

@@ -195,6 +195,8 @@ func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
 			"connected":    p.Connected(),
 			"isAcquainted": n.PM().IsAcquainted(p),
 			"isInbound":    p.IsInbound(),
+			"isBanned":     n.peerManager.IsBanned(p),
+			"banEndTime":   n.peerManager.GetBanTime(p),
 		})
 	}
 	return jsonrpc.Success(peers)

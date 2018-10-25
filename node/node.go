@@ -687,7 +687,7 @@ func (n *Node) Start() {
 	n.PM().Manage()
 
 	// Attempt to connect to peers
-	for _, node := range n.PM().Peers() {
+	for _, node := range n.PM().GetActivePeers(0) {
 		go n.connectToNode(node)
 	}
 

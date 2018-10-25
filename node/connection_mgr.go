@@ -111,13 +111,23 @@ func (m *ConnectionManager) makeConnections(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			// Get unconnected peers
 			unconnectedPeers := m.pm.GetUnconnectedPeers()
 			if !m.pm.RequirePeers() || len(unconnectedPeers) == 0 {
 				continue
 			}
-			m.log.Info("Establishing connection with more peers",
-				"UnconnectedPeers", len(unconnectedPeers))
+
+			m.log.Info("Establishing connection with more peers", "UnconnectedPeers",
+				len(unconnectedPeers))
+
 			for _, p := range unconnectedPeers {
+
+				// Do not establish connection with banned peers
+				if m.pm.IsBanned(p) {
+					continue
+				}
+
 				m.pm.ConnectToPeer(p.StringID())
 			}
 		case <-done:
