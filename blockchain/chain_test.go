@@ -11,8 +11,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -28,7 +29,7 @@ func TestChain(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
 
@@ -84,7 +85,7 @@ func TestChain(t *testing.T) {
 
 			g.Context("with empty chain", func() {
 
-				var tree core.Tree
+				var tree types.Tree
 				var err error
 
 				g.BeforeEach(func() {
@@ -106,7 +107,7 @@ func TestChain(t *testing.T) {
 
 			g.Context("with a non-empty chain", func() {
 
-				var tree core.Tree
+				var tree types.Tree
 				var initialRoot util.Hash
 				var err error
 
@@ -263,7 +264,7 @@ func TestChain(t *testing.T) {
 
 		g.Describe(".removeBlock", func() {
 
-			var block2 core.Block
+			var block2 types.Block
 
 			g.BeforeEach(func() {
 				block2 = MakeBlock(bc, genesisChain, sender, receiver)
@@ -341,8 +342,8 @@ func TestChain(t *testing.T) {
 				err = chain2.save()
 				Expect(err).To(BeNil())
 
-				Expect(bc.CreateAccount(1, chain, &objects.Account{
-					Type:    objects.AccountTypeBalance,
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
 					Address: util.String(sender.Addr()),
 					Balance: "1000",
 				})).To(BeNil())
@@ -378,7 +379,7 @@ func TestChain(t *testing.T) {
 
 			g.Context("when the chain's parent chain and parent block exist", func() {
 
-				var block core.Block
+				var block types.Block
 
 				g.BeforeEach(func() {
 					block = MakeBlock(bc, chain, sender, receiver)
@@ -434,7 +435,7 @@ func TestChain(t *testing.T) {
 		g.Describe(".GetRoot", func() {
 
 			var chainB, chainC *Chain
-			var block2Main core.Block
+			var block2Main types.Block
 
 			g.BeforeEach(func() {
 				tip, _ := genesisChain.Current()

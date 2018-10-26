@@ -9,7 +9,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -63,7 +63,7 @@ func TestChainTraverser(t *testing.T) {
 			})
 
 			g.It("should return error if query function returned an error", func() {
-				err := trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
+				err := trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
 					return false, fmt.Errorf("something bad")
 				})
 				Expect(err).ToNot(BeNil())
@@ -71,7 +71,7 @@ func TestChainTraverser(t *testing.T) {
 			})
 
 			g.It("should return nil when true is returned", func() {
-				err := trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
+				err := trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
 					return true, nil
 				})
 				Expect(err).To(BeNil())
@@ -103,7 +103,7 @@ func TestChainTraverser(t *testing.T) {
 
 					g.BeforeEach(func() {
 						ancestors = []string{}
-						err = trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
+						err = trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
 							ancestors = append(ancestors, c.GetID().String())
 							return false, nil
 						})
@@ -129,7 +129,7 @@ func TestChainTraverser(t *testing.T) {
 					})
 
 					var result []*elldb.KVObject
-					err = trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
+					err = trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
 						key := elldb.MakeKey(nil, []byte(c.GetID()), []byte("stuff"))
 						if result = db.GetByPrefix(key); len(result) > 0 {
 							return true, nil

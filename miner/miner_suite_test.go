@@ -3,7 +3,7 @@ package miner
 import (
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -14,7 +14,7 @@ func init() {
 	log.SetToDebug()
 }
 
-func MakeTestBlock(bc core.BlockMaker, chain *blockchain.Chain, gp *core.GenerateBlockParams) core.Block {
+func MakeTestBlock(bc types.BlockMaker, chain *blockchain.Chain, gp *types.GenerateBlockParams) types.Block {
 	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
 	if err != nil {
 		panic(err)

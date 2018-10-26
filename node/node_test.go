@@ -4,12 +4,12 @@ import (
 	"testing"
 
 	. "github.com/ellcrys/elld/blockchain/testutil"
-	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/node/gossip"
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -33,25 +33,20 @@ func TestNode(t *testing.T) {
 
 			lp = makeTestNode(lpPort)
 			Expect(lp.GetBlockchain().Up()).To(BeNil())
-			lp.SetProtocolHandler(config.HandshakeVersion, lp.Gossip().OnHandshake)
-			lp.SetProtocolHandler(config.GetBlockHashesVersion, lp.Gossip().OnGetBlockHashes)
 
 			rp = makeTestNode(rpPort)
 			Expect(rp.GetBlockchain().Up()).To(BeNil())
-			rp.SetProtocolHandler(config.HandshakeVersion, rp.Gossip().OnHandshake)
-			rp.SetProtocolHandler(config.GetBlockHashesVersion, rp.Gossip().OnGetBlockHashes)
-			rp.SetProtocolHandler(config.GetBlockBodiesVersion, rp.Gossip().OnGetBlockBodies)
 
 			// Create sender account on the remote peer
-			Expect(rp.GetBlockchain().CreateAccount(1, rp.GetBlockchain().GetBestChain(), &objects.Account{
-				Type:    objects.AccountTypeBalance,
+			Expect(rp.GetBlockchain().CreateAccount(1, rp.GetBlockchain().GetBestChain(), &core.Account{
+				Type:    core.AccountTypeBalance,
 				Address: util.String(sender.Addr()),
 				Balance: "100",
 			})).To(BeNil())
 
 			// Create sender account on the local peer
-			Expect(lp.GetBlockchain().CreateAccount(1, lp.GetBlockchain().GetBestChain(), &objects.Account{
-				Type:    objects.AccountTypeBalance,
+			Expect(lp.GetBlockchain().CreateAccount(1, lp.GetBlockchain().GetBestChain(), &core.Account{
+				Type:    core.AccountTypeBalance,
 				Address: util.String(sender.Addr()),
 				Balance: "100",
 			})).To(BeNil())
@@ -63,7 +58,7 @@ func TestNode(t *testing.T) {
 		})
 
 		g.Describe(".ProcessBlockHashes", func() {
-			var block2, block3 core.Block
+			var block2, block3 types.Block
 
 			// Target shape:
 			// Remote Peer
@@ -95,7 +90,7 @@ func TestNode(t *testing.T) {
 					g.Specify("local peer blockchain height should equal remote peer blockchain height", func(done Done) {
 
 						go func() {
-							<-lp.GetEventEmitter().Once(node.EventBlockBodiesProcessed)
+							<-lp.GetEventEmitter().Once(gossip.EventBlockBodiesProcessed)
 
 							lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
 							Expect(err).To(BeNil())

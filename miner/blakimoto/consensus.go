@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/math"
 )
@@ -40,7 +41,7 @@ var (
 
 // VerifyHeader checks whether a header
 // conforms to the consensus rules
-func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
+func (b *Blakimoto) VerifyHeader(header, parent types.Header, seal bool) error {
 
 	// Ensure that the header's extra-data
 	// section is of a reasonable size
@@ -97,7 +98,7 @@ func (b *Blakimoto) VerifyHeader(header, parent core.Header, seal bool) error {
 // algorithm. It returns the difficulty that a
 // new block should have when created at time
 // given the parent block's time and difficulty.
-func (b *Blakimoto) CalcDifficulty(time uint64, parent core.Header) *big.Int {
+func (b *Blakimoto) CalcDifficulty(time uint64, parent types.Header) *big.Int {
 	return CalcDifficulty(time, parent)
 }
 
@@ -105,7 +106,7 @@ func (b *Blakimoto) CalcDifficulty(time uint64, parent core.Header) *big.Int {
 // algorithm. It returns the difficulty that a new
 // block should have when created at time
 // given the parent block's time and difficulty.
-func CalcDifficulty(time uint64, parent core.Header) *big.Int {
+func CalcDifficulty(time uint64, parent types.Header) *big.Int {
 	return calcDifficultyInception(time, parent)
 }
 
@@ -119,7 +120,7 @@ var (
 	big100F       = big.NewFloat(100)
 )
 
-func calcDifficultyInception(time uint64, parent core.Header) *big.Int {
+func calcDifficultyInception(time uint64, parent types.Header) *big.Int {
 
 	diff := new(big.Int)
 	bigTime := new(big.Int).SetUint64(time)
@@ -194,7 +195,7 @@ func calcDifficultyInception(time uint64, parent core.Header) *big.Int {
 // VerifySeal checks whether the given
 // block satisfies the PoW difficulty
 // requirements.
-func (b *Blakimoto) VerifySeal(header core.Header) error {
+func (b *Blakimoto) VerifySeal(header types.Header) error {
 
 	// If we're running a fake PoW, accept any seal as valid
 	if b.config.PowMode == ModeTest {
@@ -225,7 +226,7 @@ func (b *Blakimoto) VerifySeal(header core.Header) error {
 // Prepare initializes the difficulty and
 // total difficulty fields of a header to
 // conform to the protocol
-func (b *Blakimoto) Prepare(chain core.ChainReader, header core.Header) error {
+func (b *Blakimoto) Prepare(chain types.ChainReader, header types.Header) error {
 
 	// Get the header of the block's parent.
 	parent, err := chain.GetHeaderByHash(header.GetParentHash())

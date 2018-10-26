@@ -89,7 +89,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 }
 
 func closeNode(n *node.Node) {
-	go n.Host().Close()
+	go n.GetHost().Close()
 	err := os.RemoveAll(n.GetCfg().DataDir())
 	Expect(err).To(BeNil())
 }

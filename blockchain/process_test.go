@@ -14,8 +14,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	"github.com/jinzhu/copier"
 	. "github.com/ncodes/goblin"
@@ -32,7 +33,7 @@ func TestProcess(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
 
@@ -71,7 +72,7 @@ func TestProcess(t *testing.T) {
 			var curOps = []common.Transition{
 				&common.OpNewAccountBalance{
 					OpBase: &common.OpBase{Addr: "addr1"},
-					Account: &objects.Account{
+					Account: &core.Account{
 						Balance: "10",
 					},
 				},
@@ -80,7 +81,7 @@ func TestProcess(t *testing.T) {
 			g.It("should add an additional op successfully", func() {
 				op := &common.OpNewAccountBalance{
 					OpBase: &common.OpBase{Addr: "addr2"},
-					Account: &objects.Account{
+					Account: &core.Account{
 						Balance: "10",
 					},
 				}
@@ -91,7 +92,7 @@ func TestProcess(t *testing.T) {
 			g.It("should replace any equal op found", func() {
 				op := &common.OpNewAccountBalance{
 					OpBase: &common.OpBase{Addr: "addr1"},
-					Account: &objects.Account{
+					Account: &core.Account{
 						Balance: "30",
 					},
 				}
@@ -104,17 +105,17 @@ func TestProcess(t *testing.T) {
 
 		g.Describe(".processTransactions (only TxTypeBalance transactions)", func() {
 
-			var account *objects.Account
+			var account types.Account
 
 			g.BeforeEach(func() {
-				account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(sender.Addr()), Balance: "10"}
+				account = &core.Account{Type: core.AccountTypeBalance, Address: util.String(sender.Addr()), Balance: "10"}
 				err = bc.CreateAccount(1, genesisChain, account)
 				Expect(err).To(BeNil())
 			})
 
 			g.It("should return error if sender does not exist on the best chain", func() {
-				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				var txs = []types.Transaction{
+					&core.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "1", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
@@ -127,8 +128,8 @@ func TestProcess(t *testing.T) {
 			})
 
 			g.It("should return error if sender account has insufficient value", func() {
-				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				var txs = []types.Transaction{
+					&core.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "10000000", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
@@ -141,8 +142,8 @@ func TestProcess(t *testing.T) {
 			})
 
 			g.It("should panic if sender value is could not be converted to decimal", func() {
-				var txs = []core.Transaction{
-					&objects.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+				var txs = []types.Transaction{
+					&core.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 						Value: "100_333", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
@@ -156,12 +157,12 @@ func TestProcess(t *testing.T) {
 			g.Context("recipient does not have an account", func() {
 
 				var ops []common.Transition
-				var txs []core.Transaction
+				var txs []types.Transaction
 				var err error
 
 				g.BeforeEach(func() {
-					txs = []core.Transaction{
-						&objects.Transaction{
+					txs = []types.Transaction{
+						&core.Transaction{
 							Type: 1, Nonce: 1,
 							To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
 							From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
@@ -201,16 +202,16 @@ func TestProcess(t *testing.T) {
 			g.Context("recipient has an account", func() {
 				var receiver = crypto.NewKeyFromIntSeed(3)
 				var ops []common.Transition
-				var txs []core.Transaction
+				var txs []types.Transaction
 				var err error
 
 				g.BeforeEach(func() {
-					account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
+					account = &core.Account{Type: core.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
 					err = bc.CreateAccount(1, genesisChain, account)
 					Expect(err).To(BeNil())
 
-					txs = []core.Transaction{
-						&objects.Transaction{
+					txs = []types.Transaction{
+						&core.Transaction{
 							Type: 1, Nonce: 1,
 							To:           util.String(receiver.Addr()),
 							From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
@@ -247,21 +248,21 @@ func TestProcess(t *testing.T) {
 				g.Context("recipient has an account", func() {
 					var receiver = crypto.NewKeyFromIntSeed(3)
 					var ops []common.Transition
-					var txs []core.Transaction
+					var txs []types.Transaction
 					var err error
 
 					g.BeforeEach(func() {
-						account = &objects.Account{Type: objects.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
+						account = &core.Account{Type: core.AccountTypeBalance, Address: util.String(receiver.Addr()), Balance: "0"}
 						err = bc.CreateAccount(1, genesisChain, account)
 						Expect(err).To(BeNil())
 
-						txs = []core.Transaction{
-							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						txs = []types.Transaction{
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -290,17 +291,17 @@ func TestProcess(t *testing.T) {
 
 				g.Context("recipient does not have an account", func() {
 					var ops []common.Transition
-					var txs []core.Transaction
+					var txs []types.Transaction
 					var err error
 
 					g.BeforeEach(func() {
-						txs = []core.Transaction{
-							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						txs = []types.Transaction{
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&objects.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -337,8 +338,8 @@ func TestProcess(t *testing.T) {
 		g.Describe(".processTransactions (only TxTypeAllocCoin transactions)", func() {
 			g.When("recipient account does not exist", func() {
 				g.It("should successfully return one state object = OpNewAccountBalance", func() {
-					var txs = []core.Transaction{
-						&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					var txs = []types.Transaction{
+						&core.Transaction{Type: core.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "10", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
@@ -355,16 +356,16 @@ func TestProcess(t *testing.T) {
 
 			g.When("recipient account already exists with account balance = 100", func() {
 				g.BeforeEach(func() {
-					Expect(bc.CreateAccount(1, genesisChain, &objects.Account{
-						Type:    objects.AccountTypeBalance,
+					Expect(bc.CreateAccount(1, genesisChain, &core.Account{
+						Type:    core.AccountTypeBalance,
 						Address: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
 						Balance: "100",
 					})).To(BeNil())
 				})
 
 				g.It("should successfully return one state object = OpNewAccountBalance and Balance = 110.000000000000000000", func() {
-					var txs = []core.Transaction{
-						&objects.Transaction{Type: objects.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+					var txs = []types.Transaction{
+						&core.Transaction{Type: core.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "10", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
@@ -381,9 +382,9 @@ func TestProcess(t *testing.T) {
 
 		g.Describe(".ComputeTxsRoot", func() {
 			g.It("should return expected root", func() {
-				txs := []core.Transaction{
-					&objects.Transaction{Sig: []byte("b"), Hash: util.StrToHash("hash_1")},
-					&objects.Transaction{Sig: []byte("a"), Hash: util.StrToHash("hash_2")},
+				txs := []types.Transaction{
+					&core.Transaction{Sig: []byte("b"), Hash: util.StrToHash("hash_1")},
+					&core.Transaction{Sig: []byte("a"), Hash: util.StrToHash("hash_2")},
 				}
 				root := common.ComputeTxsRoot(txs)
 				expected := util.Hash{
@@ -396,7 +397,7 @@ func TestProcess(t *testing.T) {
 		})
 
 		g.Describe(".execBlock", func() {
-			var block core.Block
+			var block types.Block
 
 			g.BeforeEach(func() {
 				block = MakeBlock(bc, genesisChain, sender, receiver)
@@ -415,9 +416,9 @@ func TestProcess(t *testing.T) {
 			g.Context("block does not include fee allocation transaction", func() {
 
 				g.BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      util.EncodeNonce(1),
@@ -439,9 +440,9 @@ func TestProcess(t *testing.T) {
 			g.When("block includes a fee allocation transaction", func() {
 
 				g.BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 						},
 						Creator:     sender,
 						Nonce:       util.EncodeNonce(1),
@@ -464,13 +465,13 @@ func TestProcess(t *testing.T) {
 
 		g.Describe(".ProcessBlock", func() {
 
-			var block core.Block
+			var block types.Block
 
 			g.BeforeEach(func() {
-				block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730722),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730722),
+				block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730722),
+						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730722),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -505,7 +506,7 @@ func TestProcess(t *testing.T) {
 				g.BeforeEach(func() {
 					block.GetHeader().SetParentHash(util.StrToHash("unknown"))
 					block.SetHash(block.ComputeHash())
-					blockSig, _ := objects.BlockSign(block, sender.PrivKey().Base58())
+					blockSig, _ := core.BlockSign(block, sender.PrivKey().Base58())
 					block.SetSignature(blockSig)
 				})
 
@@ -520,13 +521,13 @@ func TestProcess(t *testing.T) {
 
 				g.When("block's timestamp is lesser than its parent's timestamp", func() {
 
-					var block2 core.Block
+					var block2 types.Block
 
 					g.BeforeEach(func() {
-						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
+						block2 = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 							},
 							Creator:           sender,
 							Nonce:             util.EncodeNonce(1),
@@ -545,13 +546,13 @@ func TestProcess(t *testing.T) {
 
 				g.When("block number is less than the chain tip block number", func() {
 
-					var staleBlock2 objects.Block
+					var staleBlock2 core.Block
 
 					g.BeforeEach(func() {
-						block2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
+						block2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 							},
 							Creator:           sender,
 							Nonce:             util.EncodeNonce(1),
@@ -561,10 +562,10 @@ func TestProcess(t *testing.T) {
 						err = genesisChain.append(block2)
 						Expect(err).To(BeNil())
 
-						block3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+						block3 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 							},
 							Creator:           sender,
 							Nonce:             util.EncodeNonce(2),
@@ -578,7 +579,7 @@ func TestProcess(t *testing.T) {
 						staleBlock2.GetHeader().SetNumber(2)
 						staleBlock2.GetHeader().SetNonce(util.EncodeNonce(3))
 						staleBlock2.Hash = staleBlock2.ComputeHash()
-						staleBlock2.Sig, _ = objects.BlockSign(&staleBlock2, sender.PrivKey().Base58())
+						staleBlock2.Sig, _ = core.BlockSign(&staleBlock2, sender.PrivKey().Base58())
 					})
 
 					g.It("should return nil and create a new chain", func() {
@@ -590,22 +591,22 @@ func TestProcess(t *testing.T) {
 				})
 
 				g.When("a block has same number as the chainTip", func() {
-					var block2, block2_2 core.Block
+					var block2, block2_2 types.Block
 					g.BeforeEach(func() {
-						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+						block2 = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      util.EncodeNonce(1),
 							Difficulty: new(big.Int).SetInt64(131072),
 						})
 
-						block2_2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+						block2_2 = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      util.EncodeNonce(4),
@@ -629,14 +630,14 @@ func TestProcess(t *testing.T) {
 
 				g.When("a block number is the same as the chain height", func() {
 
-					var block2 core.Block
+					var block2 types.Block
 
 					g.BeforeEach(func() {
 
-						block2 = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+						block2 = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 							},
 							Creator:    sender,
 							Nonce:      util.EncodeNonce(1),
@@ -645,7 +646,7 @@ func TestProcess(t *testing.T) {
 
 						block2.GetHeader().SetNumber(2)
 						block2.SetHash(block2.ComputeHash())
-						block3Sig, _ := objects.BlockSign(block2, sender.PrivKey().Base58())
+						block3Sig, _ := core.BlockSign(block2, sender.PrivKey().Base58())
 						block2.SetSignature(block3Sig)
 
 						err = genesisChain.append(block)
@@ -663,13 +664,13 @@ func TestProcess(t *testing.T) {
 
 			g.Context("state root comparison", func() {
 
-				var blockInvalidStateRoot, okStateRoot core.Block
+				var blockInvalidStateRoot, okStateRoot types.Block
 
 				g.BeforeEach(func() {
-					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+					blockInvalidStateRoot = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      util.EncodeNonce(1),
@@ -678,13 +679,13 @@ func TestProcess(t *testing.T) {
 
 					blockInvalidStateRoot.GetHeader().SetStateRoot(util.StrToHash("incorrect"))
 					blockInvalidStateRoot.SetHash(blockInvalidStateRoot.ComputeHash())
-					blockInvalidStateRootSig, _ := objects.BlockSign(blockInvalidStateRoot, sender.PrivKey().Base58())
+					blockInvalidStateRootSig, _ := core.BlockSign(blockInvalidStateRoot, sender.PrivKey().Base58())
 					blockInvalidStateRoot.SetSignature(blockInvalidStateRootSig)
 
-					okStateRoot = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+					okStateRoot = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 						},
 						Creator:    sender,
 						Nonce:      util.EncodeNonce(1),
@@ -732,17 +733,17 @@ func TestProcess(t *testing.T) {
 			g.When("ContextBlock only is set", func() {
 
 				g.BeforeEach(func() {
-					Expect(bc.getBlockValidator(nil).has(core.ContextBlock)).To(BeTrue())
+					Expect(bc.getBlockValidator(nil).has(types.ContextBlock)).To(BeTrue())
 				})
 
 				g.When("block includes a transaction that does not exist in the pool", func() {
-					var block core.Block
+					var block types.Block
 
 					g.BeforeEach(func() {
-						block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
+						block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 							},
 							Creator:              sender,
 							Nonce:                util.EncodeNonce(1),
@@ -763,20 +764,20 @@ func TestProcess(t *testing.T) {
 			g.When("ContextBlockSync is set", func() {
 
 				g.When("block includes a transaction that does not exist in the pool", func() {
-					var block core.Block
+					var block types.Block
 
 					g.BeforeEach(func() {
-						block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
+						block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 							},
 							Creator:              sender,
 							Nonce:                util.EncodeNonce(1),
 							Difficulty:           new(big.Int).SetInt64(131072),
 							NoPoolAdditionInTest: true,
 						})
-						block.SetValidationContexts(core.ContextBlockSync)
+						block.SetValidationContexts(types.ContextBlockSync)
 					})
 
 					g.It("should be successful with no error", func() {
@@ -789,7 +790,7 @@ func TestProcess(t *testing.T) {
 
 		g.Describe(".ProcessBlock: Test internal call of .processOrphanBlocks", func() {
 
-			var parent1, orphanParent, orphan core.Block
+			var parent1, orphanParent, orphan types.Block
 			var bc2 *Blockchain
 			var db elldb.DB
 

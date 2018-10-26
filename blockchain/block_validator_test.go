@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ellcrys/elld/miner/blakimoto"
+
 	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
@@ -14,8 +16,9 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -31,7 +34,7 @@ func TestBlockValidator(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
 
@@ -100,28 +103,28 @@ func TestBlockValidator(t *testing.T) {
 
 			g.Context("Header: when it is invalid", func() {
 
-				var block *objects.Block
+				var block types.Block
 
 				g.BeforeEach(func() {
-					block = MakeBlock(bc, genesisChain, sender, receiver).(*objects.Block)
+					block = MakeBlock(bc, genesisChain, sender, receiver)
 				})
 
 				g.It("should return nil when header is not provided", func() {
-					block.Header = nil
+					block.SetHeader(nil)
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:header is required")))
 				})
 
 				g.It("should return error when number is 0", func() {
-					block.Header.Number = 0
+					block.GetHeader().SetNumber(0)
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.number, error:number must be greater or equal to 1")))
 				})
 
 				g.When("header number is not equal to 1", func() {
 					g.It("should return error when parent hash is missing", func() {
-						block.Header.Number = 2
-						block.Header.ParentHash = util.Hash{}
+						block.GetHeader().SetNumber(2)
+						block.GetHeader().SetParentHash(util.Hash{})
 						errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 						Expect(errs).To(ContainElement(fmt.Errorf("field:header.parentHash, error:parent hash is required")))
 					})
@@ -135,43 +138,43 @@ func TestBlockValidator(t *testing.T) {
 				})
 
 				g.It("should return error when creator pub key is not provided", func() {
-					block.Header.CreatorPubKey = ""
+					block.GetHeader().SetCreatorPubKey("")
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.creatorPubKey, error:creator's public key is required")))
 				})
 
 				g.It("should return error when creator pub key is not valid", func() {
-					block.Header.CreatorPubKey = "invalid"
+					block.GetHeader().SetCreatorPubKey("invalid")
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing")))
 				})
 
 				g.It("should return error when transactions root is invalid", func() {
-					block.Header.TransactionsRoot = util.Hash{1, 2, 3}
+					block.GetHeader().SetTransactionsRoot(util.Hash{1, 2, 3})
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.transactionsRoot, error:transactions root is not valid")))
 				})
 
 				g.It("should return error when state root is not provided", func() {
-					block.Header.StateRoot = util.Hash{}
+					block.GetHeader().SetStateRoot(util.Hash{})
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.stateRoot, error:state root is required")))
 				})
 
 				g.It("should return error when difficulty is lesser than 1", func() {
-					block.Header.Difficulty = new(big.Int).SetInt64(0)
+					block.GetHeader().SetDifficulty(new(big.Int).SetInt64(0))
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.difficulty, error:difficulty must be greater than zero")))
 				})
 
 				g.It("should return error when timestamp is not provided", func() {
-					block.Header.Timestamp = 0
+					block.GetHeader().SetTimestamp(0)
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.timestamp, error:timestamp is required")))
 				})
 
 				g.It("should return error when timestamp is over 15 seconds in the future", func() {
-					block.Header.Timestamp = time.Now().Add(16 * time.Second).Unix()
+					block.GetHeader().SetTimestamp(time.Now().Add(16 * time.Second).Unix())
 					errs := NewBlockValidator(block, nil, nil, cfg, log).CheckFields()
 					Expect(errs).To(ContainElement(fmt.Errorf("field:header.timestamp, error:timestamp is too far in the future")))
 				})
@@ -179,7 +182,7 @@ func TestBlockValidator(t *testing.T) {
 
 			g.Context("Header: when it is valid", func() {
 
-				var block core.Block
+				var block types.Block
 
 				g.BeforeEach(func() {
 					block = MakeBlock(bc, genesisChain, sender, receiver)
@@ -223,14 +226,14 @@ func TestBlockValidator(t *testing.T) {
 
 		g.Describe(".CheckTransactions", func() {
 
-			g.Context("core.ContextBlock is set", func() {
+			g.Context("types.ContextBlock is set", func() {
 				g.Context("when ContextBlockSync is not set", func() {
 					g.Context("when transaction does not exist in pool", func() {
-						var block core.Block
+						var block types.Block
 						g.BeforeEach(func() {
-							block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-								Transactions: []core.Transaction{
-									objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
+							block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+								Transactions: []types.Transaction{
+									core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
 								},
 								Creator:           sender,
 								Nonce:             util.EncodeNonce(1),
@@ -242,7 +245,7 @@ func TestBlockValidator(t *testing.T) {
 						g.It("should return error", func() {
 							tp := txpool.New(1)
 							validator := NewBlockValidator(block, tp, bc, cfg, log)
-							validator.setContext(core.ContextBlock)
+							validator.setContext(types.ContextBlock)
 							errs := validator.CheckTransactions()
 							Expect(errs).To(HaveLen(1))
 							err := fmt.Errorf("tx:0, error:transaction does not" +
@@ -253,20 +256,20 @@ func TestBlockValidator(t *testing.T) {
 
 					g.Context("when a sender X's current nonce is 1", func() {
 
-						var txs []core.Transaction
-						var block core.Block
+						var txs []types.Transaction
+						var block types.Block
 
 						g.BeforeEach(func() {
 							now := time.Now().Unix()
-							txs = []core.Transaction{
-								objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", now),
-								objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.4", now),
+							txs = []types.Transaction{
+								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", now),
+								core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.4", now),
 							}
 							for _, tx := range txs {
 								bc.txPool.Put(tx)
 							}
 
-							block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
+							block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 								Transactions:      txs,
 								Creator:           sender,
 								Nonce:             util.EncodeNonce(1),
@@ -278,7 +281,7 @@ func TestBlockValidator(t *testing.T) {
 						g.Context("and X has two transactions with nonce 2 and 3", func() {
 							g.It("should return error no error", func() {
 								validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
-								validator.setContext(core.ContextBlock)
+								validator.setContext(types.ContextBlock)
 								errs := validator.CheckTransactions()
 								Expect(errs).To(HaveLen(0))
 							})
@@ -289,11 +292,11 @@ func TestBlockValidator(t *testing.T) {
 		})
 
 		g.Describe(".checkPow", func() {
-			var block core.Block
+			var block types.Block
 
 			g.Context("when a block's parent is unknown", func() {
 				g.BeforeEach(func() {
-					block = MakeBlock(bc, genesisChain, sender, receiver).(*objects.Block)
+					block = MakeBlock(bc, genesisChain, sender, receiver)
 					block.GetHeader().SetParentHash(util.StrToHash("unknown"))
 				})
 
@@ -306,28 +309,50 @@ func TestBlockValidator(t *testing.T) {
 
 			g.Context("when block has an invalid difficulty", func() {
 				g.BeforeEach(func() {
-					block = MakeBlock(bc, genesisChain, sender, receiver).(*objects.Block)
+					block = MakeBlock(bc, genesisChain, sender, receiver)
 					block.GetHeader().SetDifficulty(new(big.Int).SetInt64(131))
 				})
 
 				g.It("should return error when total difficulty is invalid", func() {
 					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid difficulty: have 131, want 9995117188")))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid difficulty: have 131, want 100000")))
 				})
 			})
 
-			g.Context("when block that has an invalid total difficulty", func() {
+			g.Context("when block has a invalid total difficulty", func() {
+
+				var block types.Block
 
 				g.BeforeEach(func() {
-					block = MakeBlock(bc, genesisChain, sender, receiver).(*objects.Block)
-					block.GetHeader().SetDifficulty(new(big.Int).SetInt64(9995117188))
+					block = MakeBlock(bc, genesisChain, sender, receiver)
+					diff := blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader())
+					block.GetHeader().SetDifficulty(diff)
+					block.GetHeader().SetTotalDifficulty(new(big.Int).SetInt64(10222))
 				})
 
-				g.It("should return error when total difficulty is invalid", func() {
+				g.It("should return no error", func() {
 					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid total difficulty: have 0, want 19995117188")))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid total difficulty: have 10222, want 10000100000")))
+				})
+			})
+
+			g.Context("when block has a valid difficulty and total difficulty", func() {
+
+				var block types.Block
+
+				g.BeforeEach(func() {
+					block = MakeBlock(bc, genesisChain, sender, receiver)
+					diff := blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader())
+					block.GetHeader().SetDifficulty(diff)
+					block.GetHeader().SetTotalDifficulty(new(big.Int).Add(diff, genesisBlock.GetHeader().GetDifficulty()))
+				})
+
+				g.It("should return invalid proof-of-work error", func() {
+					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
+					Expect(errs).To(HaveLen(1))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid proof-of-work")))
 				})
 			})
 		})
@@ -335,7 +360,7 @@ func TestBlockValidator(t *testing.T) {
 		g.Describe(".checkSignature", func() {
 			g.When("block creator's public key is not valid", func() {
 				g.It("should return error", func() {
-					genesisBlock.(*objects.Block).Header.CreatorPubKey = "invalid"
+					genesisBlock.GetHeader().SetCreatorPubKey("invalid")
 					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).checkSignature()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs[0].Error()).To(Equal("field:header.creatorPubKey, error:invalid format: version and/or checksum bytes missing"))
@@ -344,7 +369,7 @@ func TestBlockValidator(t *testing.T) {
 
 			g.When("signature is not valid", func() {
 				g.It("should return error", func() {
-					genesisBlock.(*objects.Block).Sig = []byte("invalid")
+					genesisBlock.SetSig([]byte("invalid"))
 					errs := NewBlockValidator(genesisBlock, nil, bc, cfg, log).checkSignature()
 					Expect(errs).To(HaveLen(1))
 					Expect(errs[0].Error()).To(Equal("field:sig, error:signature is not valid"))
@@ -362,10 +387,10 @@ func TestBlockValidator(t *testing.T) {
 			})
 
 			g.When("block has no transactions", func() {
-				var block core.Block
+				var block types.Block
 				g.BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions:      []core.Transaction{},
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions:      []types.Transaction{},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),
 						Difficulty:        new(big.Int).SetInt64(131136),
@@ -380,13 +405,13 @@ func TestBlockValidator(t *testing.T) {
 			})
 
 			g.When("block has no fee allocation", func() {
-				var block core.Block
+				var block types.Block
 				g.BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),
@@ -403,14 +428,14 @@ func TestBlockValidator(t *testing.T) {
 			})
 
 			g.When("block has invalid/unexpected fee allocation", func() {
-				var block core.Block
+				var block types.Block
 				g.BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0", 1532730722),
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),
@@ -427,14 +452,14 @@ func TestBlockValidator(t *testing.T) {
 			})
 
 			g.When("block has valid fee allocation", func() {
-				var block core.Block
+				var block types.Block
 				g.BeforeEach(func() {
-					block = MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-						Transactions: []core.Transaction{
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "7.080000000000000000", "0", 1532730722),
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "7.080000000000000000", "0", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),

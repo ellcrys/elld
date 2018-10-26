@@ -25,13 +25,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 )
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
-func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, error) {
+func (b *Blakimoto) Seal(block types.Block, stop <-chan struct{}) (types.Block, error) {
 
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if b.config.PowMode == ModeTest {
@@ -47,7 +47,7 @@ func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, er
 
 	// Create a runner and the multiple search threads it directs
 	abort := make(chan struct{})
-	found := make(chan core.Block)
+	found := make(chan types.Block)
 
 	b.lock.Lock()
 	threads := b.threads
@@ -76,7 +76,7 @@ func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, er
 		}(i, uint64(b.rand.Int63()))
 	}
 	// Wait until sealing is terminated or a nonce is found
-	var result core.Block
+	var result types.Block
 	select {
 	case <-stop:
 		// Outside abort, stop all miner threads
@@ -97,8 +97,8 @@ func (b *Blakimoto) Seal(block core.Block, stop <-chan struct{}) (core.Block, er
 
 // mine is the actual proof-of-work miner that searches for a nonce starting from
 // seed that results in correct final block difficulty.
-func (b *Blakimoto) mine(block core.Block, id int, seed uint64,
-	abort chan struct{}, found chan core.Block) {
+func (b *Blakimoto) mine(block types.Block, id int, seed uint64,
+	abort chan struct{}, found chan types.Block) {
 
 	// Extract some data from the header
 	var (

@@ -11,7 +11,7 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/miner/blakimoto"
@@ -30,7 +30,7 @@ func TestMiner(t *testing.T) {
 		var bc *blockchain.Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var sender *crypto.Key
 
 		g.BeforeEach(func() {
@@ -69,7 +69,7 @@ func TestMiner(t *testing.T) {
 			})
 
 			g.BeforeEach(func() {
-				cfg.Miner.Mode = blakimoto.ModeTest
+				cfg.Miner.Mode = uint(blakimoto.ModeTest)
 				miner = New(sender, bc, bc.GetEventEmitter(), cfg, log)
 			})
 
@@ -97,7 +97,7 @@ func TestMiner(t *testing.T) {
 
 			// 	g.BeforeEach(func() {
 			// 		newBlock, err = miner.getProposedBlock([]core.Transaction{
-			// 			objects.NewTx(objects.TxTypeBalance, 125, util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
+			// 			core.NewTx(core.TxTypeBalance, 125, util.String(miner.minerKey.Addr()), miner.minerKey, "0.1", "0.1", time.Now().Unix()),
 			// 		})
 			// 		Expect(err).To(BeNil())
 			// 	})

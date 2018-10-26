@@ -10,8 +10,9 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/gomega"
 )
@@ -26,7 +27,7 @@ func TestAccount(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 
 		g.BeforeEach(func() {
@@ -61,8 +62,8 @@ func TestAccount(t *testing.T) {
 			var err error
 
 			g.BeforeEach(func() {
-				err = bc.CreateAccount(1, genesisChain, &objects.Account{
-					Type:    objects.AccountTypeBalance,
+				err = bc.CreateAccount(1, genesisChain, &core.Account{
+					Type:    core.AccountTypeBalance,
 					Address: "abc",
 					Nonce:   1,
 				})
@@ -75,10 +76,10 @@ func TestAccount(t *testing.T) {
 
 		g.Describe(".GetAccountNonce", func() {
 
-			var account *objects.Account
+			var account *core.Account
 
 			g.BeforeEach(func() {
-				account = &objects.Account{Type: objects.AccountTypeBalance, Address: "abc", Nonce: 2}
+				account = &core.Account{Type: core.AccountTypeBalance, Address: "abc", Nonce: 2}
 				err = bc.CreateAccount(1, genesisChain, account)
 				Expect(err).To(BeNil())
 			})
@@ -106,14 +107,14 @@ func TestAccount(t *testing.T) {
 			})
 
 			g.Context("with 2 accounts stored", func() {
-				var account, account2 *objects.Account
+				var account, account2 *core.Account
 
 				g.BeforeEach(func() {
-					account = &objects.Account{Type: objects.AccountTypeBalance, Address: "abc"}
+					account = &core.Account{Type: core.AccountTypeBalance, Address: "abc"}
 					err = bc.CreateAccount(1, genesisChain, account)
 					Expect(err).To(BeNil())
 
-					account2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "xyz"}
+					account2 = &core.Account{Type: core.AccountTypeBalance, Address: "xyz"}
 					err = bc.CreateAccount(2, genesisChain, account2)
 					Expect(err).To(BeNil())
 				})
@@ -127,15 +128,15 @@ func TestAccount(t *testing.T) {
 		})
 
 		g.Describe(".ListTopAccounts", func() {
-			var account, account2 *objects.Account
+			var account, account2 *core.Account
 
 			g.BeforeEach(func() {
-				account = &objects.Account{Type: objects.AccountTypeBalance,
+				account = &core.Account{Type: core.AccountTypeBalance,
 					Address: "abc", Balance: "10"}
 				err = bc.CreateAccount(1, genesisChain, account)
 				Expect(err).To(BeNil())
 
-				account2 = &objects.Account{Type: objects.AccountTypeBalance,
+				account2 = &core.Account{Type: core.AccountTypeBalance,
 					Address: "xyz", Balance: "300"}
 				err = bc.CreateAccount(2, genesisChain, account2)
 				Expect(err).To(BeNil())

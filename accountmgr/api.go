@@ -3,7 +3,6 @@ package accountmgr
 import (
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
 )
 
 func (am *AccountManager) apiListAccounts(interface{}) *jsonrpc.Response {
@@ -25,7 +24,7 @@ func (am *AccountManager) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 		// namespace: "personal"
 		"listAccounts": {
-			Namespace:   core.NamespacePersonal,
+			Namespace:   types.NamespacePersonal,
 			Description: "List all accounts",
 			Func:        am.apiListAccounts,
 		},

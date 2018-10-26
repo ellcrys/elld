@@ -2,7 +2,7 @@ package miner
 
 import (
 	"github.com/ellcrys/elld/rpc/jsonrpc"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 )
 
 // APIs returns all API handlers
@@ -11,7 +11,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 
 		// namespace: "miner"
 		"start": {
-			Namespace:   core.NamespaceMiner,
+			Namespace:   types.NamespaceMiner,
 			Description: "Start the CPU miner",
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
@@ -20,7 +20,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			},
 		},
 		"stop": {
-			Namespace:   core.NamespaceMiner,
+			Namespace:   types.NamespaceMiner,
 			Description: "Stop the CPU miner",
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
@@ -29,14 +29,14 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			},
 		},
 		"isMining": {
-			Namespace:   core.NamespaceMiner,
+			Namespace:   types.NamespaceMiner,
 			Description: "Check miner status",
 			Func: func(params interface{}) *jsonrpc.Response {
 				return jsonrpc.Success(m.IsMining())
 			},
 		},
 		"getHashrate": {
-			Namespace:   core.NamespaceMiner,
+			Namespace:   types.NamespaceMiner,
 			Description: "Get current hashrate",
 			Func: func(params interface{}) *jsonrpc.Response {
 				return jsonrpc.Success(m.blakimoto.Hashrate())

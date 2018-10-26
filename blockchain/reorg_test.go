@@ -12,8 +12,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -29,7 +30,7 @@ func TestReOrg(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
 
@@ -68,9 +69,9 @@ func TestReOrg(t *testing.T) {
 			var chainA, chainB *Chain
 
 			g.BeforeEach(func() {
-				genesisChainBlock2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+				genesisChainBlock2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
 					},
 					Creator:                 sender,
 					Nonce:                   util.EncodeNonce(1),
@@ -90,9 +91,9 @@ func TestReOrg(t *testing.T) {
 						err := bc.saveChain(chainA, "", 0)
 						Expect(err).To(BeNil())
 
-						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
+						chainABlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 							},
 							Creator:                 sender,
 							Nonce:                   util.EncodeNonce(1),
@@ -119,9 +120,9 @@ func TestReOrg(t *testing.T) {
 						err := bc.saveChain(chainB, "", 0)
 						Expect(err).To(BeNil())
 
-						chainBBlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730726),
+						chainBBlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730726),
 							},
 							Creator:                 sender,
 							Nonce:                   util.EncodeNonce(1),
@@ -152,9 +153,9 @@ func TestReOrg(t *testing.T) {
 						err := bc.saveChain(chainA, "", 0)
 						Expect(err).To(BeNil())
 
-						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
+						chainABlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 							},
 							Creator:                 sender,
 							Nonce:                   util.EncodeNonce(1),
@@ -186,9 +187,9 @@ func TestReOrg(t *testing.T) {
 						err := bc.saveChain(chainA, "", 0)
 						Expect(err).To(BeNil())
 
-						chainABlock1 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-							Transactions: []core.Transaction{
-								objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
+						chainABlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+							Transactions: []types.Transaction{
+								core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", 1532730724),
 							},
 							Creator:                 sender,
 							Nonce:                   util.EncodeNonce(1),
@@ -223,20 +224,20 @@ func TestReOrg(t *testing.T) {
 			//  |__[2] 			- forked chain 1
 			g.BeforeEach(func() {
 				// genesis block 2
-				genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
+				genesisB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
-				forkChainB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
+				forkChainB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -252,10 +253,10 @@ func TestReOrg(t *testing.T) {
 				forkedChain = bc.chains[forkedChainReader.GetID()]
 
 				// genesis block 3
-				genesisB3 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
-						objects.NewTx(objects.TxTypeAlloc, 2, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+				genesisB3 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
+						core.NewTx(core.TxTypeAlloc, 2, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -265,10 +266,10 @@ func TestReOrg(t *testing.T) {
 				Expect(err).To(BeNil())
 
 				// genesis block 4
-				genesisB4 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.5", 1532730726),
-						objects.NewTx(objects.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
+				genesisB4 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.5", 1532730726),
+						core.NewTx(core.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -343,10 +344,10 @@ func TestReOrg(t *testing.T) {
 			g.BeforeEach(func() {
 
 				// genesis block 2
-				genesisB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
+				genesisB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
+						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730723),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -354,10 +355,10 @@ func TestReOrg(t *testing.T) {
 				})
 
 				// forked chain block 2
-				forkChainB2 := MakeTestBlock(bc, genesisChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
-						objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
+				forkChainB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730724),
+						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -374,10 +375,10 @@ func TestReOrg(t *testing.T) {
 				forkedChain = bc.chains[forkedChainReader.GetID()]
 
 				// forked chain block 3
-				forkChainB3 := MakeTestBlock(bc, forkedChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
-						objects.NewTx(objects.TxTypeAlloc, 0, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+				forkChainB3 := MakeTestBlock(bc, forkedChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.5", 1532730725),
+						core.NewTx(core.TxTypeAlloc, 0, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -387,10 +388,10 @@ func TestReOrg(t *testing.T) {
 				Expect(err).To(BeNil())
 
 				// forked chain block 4
-				forkedChainB4 := MakeTestBlock(bc, forkedChain, &core.GenerateBlockParams{
-					Transactions: []core.Transaction{
-						objects.NewTx(objects.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.5", 1532730726),
-						objects.NewTx(objects.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
+				forkedChainB4 := MakeTestBlock(bc, forkedChain, &types.GenerateBlockParams{
+					Transactions: []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.5", 1532730726),
+						core.NewTx(core.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", 1532730726),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),

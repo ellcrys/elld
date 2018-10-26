@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -33,7 +33,7 @@ func (o *OpBase) Equal(t Transition) bool {
 // OpCreateAccount describes a transition to create an account
 type OpCreateAccount struct {
 	*OpBase
-	Account core.Account
+	Account types.Account
 }
 
 // Equal checks whether a Transition t is equal to o
@@ -47,7 +47,7 @@ func (o *OpCreateAccount) Equal(t Transition) bool {
 // OpNewAccountBalance represents a transition to a new account balance
 type OpNewAccountBalance struct {
 	*OpBase
-	Account core.Account
+	Account types.Account
 }
 
 // Equal checks whether a Transition t is equal to o

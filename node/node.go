@@ -3,10 +3,11 @@ package node
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/ellcrys/elld/node/peermanager"
 
 	"github.com/shopspring/decimal"
 
@@ -14,13 +15,14 @@ import (
 
 	"github.com/olebedev/emitter"
 
+	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/txpool"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/node/gossip"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
@@ -39,35 +41,18 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// BestBlockInfo represent best block
-// heard by the engine from other peers
-type BestBlockInfo struct {
-	BestBlockHash            util.Hash
-	BestBlockTotalDifficulty *big.Int
-	BestBlockNumber          uint64
-}
-
-// SyncStateInfo describes the current state
-// and progress of ongoing blockchain synchronization
-type SyncStateInfo struct {
-	TargetTD           *big.Int `json:"targetTotalDifficulty"`
-	TargetChainHeight  uint64   `json:"targetChainHeight" msgpack:"targetChainHeight"`
-	CurrentTD          *big.Int `json:"currentTotalDifficulty" msgpack:"currentTotalDifficulty"`
-	CurrentChainHeight uint64   `json:"currentChainHeight" msgpack:"currentChainHeight"`
-	ProgressPercent    float64  `json:"progressPercent" msgpack:"progressPercent"`
-}
-
 // Node represents a network node
 type Node struct {
-	mtx                 *sync.RWMutex
+	mtx                 sync.RWMutex
+	syncMtx             sync.RWMutex
 	cfg                 *config.EngineConfig // node config
 	address             util.NodeAddr        // node address
 	IP                  net.IP               // node ip
 	host                host.Host            // node libp2p host
 	wg                  sync.WaitGroup       // wait group for preventing the main thread from exiting
 	localNode           *Node                // local node
-	peerManager         *Manager             // node manager for managing connections to other remote peers
-	gProtoc             *Gossip              // gossip protocol instance
+	peerManager         *peermanager.Manager // node manager for managing connections to other remote peers
+	gProtoc             core.Gossip          // gossip protocol instance
 	remote              bool                 // remote indicates the node represents a remote peer
 	lastSeen            time.Time            // the last time this node was seen
 	createdAt           time.Time            // the first time this node was seen/added
@@ -81,9 +66,9 @@ type Node struct {
 	history             *cache.Cache        // Used to track things we want to remember
 	event               *emitter.Emitter    // Provides access event emitting service
 	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
-	bchain              core.Blockchain     // The blockchain manager
+	bchain              types.Blockchain    // The blockchain manager
 	blockHashQueue      *lane.Deque         // Contains headers collected during block syncing
-	bestRemoteBlockInfo *BestBlockInfo      // Holds information about the best known block heard from peers
+	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	syncing             bool                // Indicates the process of syncing the blockchain with peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
@@ -124,7 +109,8 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	}
 
 	node := &Node{
-		mtx:            &sync.RWMutex{},
+		mtx:            sync.RWMutex{},
+		syncMtx:        sync.RWMutex{},
 		cfg:            cfg,
 		address:        util.AddressFromHost(host),
 		host:           host,
@@ -143,21 +129,22 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	}
 
 	node.localNode = node
-	node.peerManager = NewManager(cfg, node, node.log)
+	node.peerManager = peermanager.NewManager(cfg, node, node.log)
 	node.IP = node.ip()
 
-	protocol := NewGossip(node, log)
-	node.SetGossipProtocol(protocol)
-	node.SetProtocolHandler(config.HandshakeVersion, protocol.OnHandshake)
-	node.SetProtocolHandler(config.PingVersion, protocol.OnPing)
-	node.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)
-	node.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
-	node.SetProtocolHandler(config.IntroVersion, protocol.OnIntro)
-	node.SetProtocolHandler(config.TxVersion, protocol.OnTx)
-	node.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
-	node.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
-	node.SetProtocolHandler(config.GetBlockHashesVersion, protocol.OnGetBlockHashes)
-	node.SetProtocolHandler(config.GetBlockBodiesVersion, protocol.OnGetBlockBodies)
+	g := gossip.NewGossip(node, log)
+	g.SetPeerManager(node.peerManager)
+	node.SetGossipManager(g)
+	node.SetProtocolHandler(config.HandshakeVersion, g.Handle(g.OnHandshake))
+	node.SetProtocolHandler(config.PingVersion, g.Handle(g.OnPing))
+	node.SetProtocolHandler(config.GetAddrVersion, g.Handle(g.OnGetAddr))
+	node.SetProtocolHandler(config.AddrVersion, g.Handle(g.OnAddr))
+	node.SetProtocolHandler(config.IntroVersion, g.Handle(g.OnIntro))
+	node.SetProtocolHandler(config.TxVersion, g.Handle(g.OnTx))
+	node.SetProtocolHandler(config.BlockBodyVersion, g.Handle(g.OnBlockBody))
+	node.SetProtocolHandler(config.RequestBlockVersion, g.Handle(g.OnRequestBlock))
+	node.SetProtocolHandler(config.GetBlockHashesVersion, g.Handle(g.OnGetBlockHashes))
+	node.SetProtocolHandler(config.GetBlockBodiesVersion, g.Handle(g.OnGetBlockBodies))
 
 	log.Info("Opened local database", "Backend", "LevelDB")
 
@@ -189,13 +176,16 @@ func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string,
 }
 
 // NewRemoteNode creates a Node that represents a remote node
-func NewRemoteNode(address util.NodeAddr, localNode *Node) *Node {
+func (n *Node) NewRemoteNode(address util.NodeAddr) core.Engine {
 	node := &Node{
 		address:   address,
-		localNode: localNode,
 		remote:    true,
-		mtx:       &sync.RWMutex{},
+		mtx:       sync.RWMutex{},
+		syncMtx:   sync.RWMutex{},
+		localNode: n,
+		gProtoc:   n.gProtoc,
 		createdAt: time.Now(),
+		lastSeen:  time.Now(),
 	}
 	node.IP = node.ip()
 	return node
@@ -204,7 +194,17 @@ func NewRemoteNode(address util.NodeAddr, localNode *Node) *Node {
 // NewRemoteNodeFromMultiAddr is like NewRemoteNode
 // excepts it accepts a Multiaddr
 func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
-	return NewRemoteNode(util.NodeAddr(address.String()), localNode)
+	node := &Node{
+		address:   util.NodeAddr(address.String()),
+		remote:    true,
+		mtx:       sync.RWMutex{},
+		syncMtx:   sync.RWMutex{},
+		localNode: localNode,
+		createdAt: time.Now(),
+		lastSeen:  time.Now(),
+	}
+	node.IP = node.ip()
+	return node
 }
 
 // NewAlmostEmptyNode returns a node with
@@ -212,7 +212,8 @@ func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
 func NewAlmostEmptyNode() *Node {
 	return &Node{
 		createdAt: time.Now(),
-		mtx:       &sync.RWMutex{},
+		mtx:       sync.RWMutex{},
+		syncMtx:   sync.RWMutex{},
 	}
 }
 
@@ -221,7 +222,7 @@ func NewAlmostEmptyNode() *Node {
 func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	return &Node{
 		createdAt: time.Now(),
-		mtx:       &sync.RWMutex{},
+		mtx:       sync.RWMutex{},
 		address:   util.NodeAddr(address.String()),
 	}
 }
@@ -250,10 +251,10 @@ func (n *Node) DB() elldb.DB {
 	return n.db
 }
 
-// setSyncing sets the sync status
-func (n *Node) setSyncing(syncing bool) {
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
+// SetSyncing sets the sync status
+func (n *Node) SetSyncing(syncing bool) {
+	n.syncMtx.Lock()
+	defer n.syncMtx.Unlock()
 	n.syncing = syncing
 }
 
@@ -277,14 +278,14 @@ func (n *Node) IsInbound() bool {
 	return n.inbound
 }
 
-// updateSyncInfo sets a given remote best
+// UpdateSyncInfo sets a given remote best
 // block info as the best known remote block
 // only when it is better than the local best block.
 // Using this information, it can tell when syncing
 // has stopped and as such, updates the syncing status.
-func (n *Node) updateSyncInfo(bi *BestBlockInfo) {
-	n.mtx.Lock()
-	defer n.mtx.Unlock()
+func (n *Node) UpdateSyncInfo(bi *core.BestBlockInfo) {
+	n.syncMtx.Lock()
+	defer n.syncMtx.Unlock()
 
 	if bi == nil {
 		goto compare
@@ -323,9 +324,9 @@ compare:
 	}
 }
 
-// getSyncStateInfo generates status and progress
+// GetSyncStateInfo generates status and progress
 // information about the current blockchain sync operation
-func (n *Node) getSyncStateInfo() *SyncStateInfo {
+func (n *Node) GetSyncStateInfo() *core.SyncStateInfo {
 
 	// No need to compute when we are
 	// not currently syncing
@@ -337,7 +338,7 @@ func (n *Node) getSyncStateInfo() *SyncStateInfo {
 		return nil
 	}
 
-	var syncState = &SyncStateInfo{}
+	var syncState = &core.SyncStateInfo{}
 
 	// Get the current local best chain
 	localBestBlock, _ := n.GetBlockchain().ChainReader().Current()
@@ -359,18 +360,18 @@ func (n *Node) getSyncStateInfo() *SyncStateInfo {
 // isSyncing checks whether block
 // synchronization is ongoing
 func (n *Node) isSyncing() bool {
-	n.mtx.RLock()
-	defer n.mtx.RUnlock()
+	n.syncMtx.RLock()
+	defer n.syncMtx.RUnlock()
 	return n.syncing
 }
 
 // Gossip returns the set protocol
-func (n *Node) Gossip() *Gossip {
+func (n *Node) Gossip() core.Gossip {
 	return n.gProtoc
 }
 
 // PM returns the peer manager
-func (n *Node) PM() *Manager {
+func (n *Node) PM() *peermanager.Manager {
 	return n.peerManager
 }
 
@@ -382,18 +383,18 @@ func (n *Node) GetHistory() *cache.Cache {
 }
 
 // IsSame checks if p is the same as node
-func (n *Node) IsSame(node types.Engine) bool {
+func (n *Node) IsSame(node core.Engine) bool {
 	return n.StringID() == node.StringID()
 }
 
 // GetBlockchain returns the
 // blockchain manager
-func (n *Node) GetBlockchain() core.Blockchain {
+func (n *Node) GetBlockchain() types.Blockchain {
 	return n.bchain
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain core.Blockchain) {
+func (n *Node) SetBlockchain(bchain types.Blockchain) {
 	n.bchain = bchain
 }
 
@@ -477,7 +478,8 @@ func (n *Node) SetEventEmitter(e *emitter.Emitter) {
 	n.event = e
 }
 
-// SetLocalNode sets the local peer
+// SetLocalNode sets the node as the
+// local node to n which makes n the "remote" node
 func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
 }
@@ -488,25 +490,24 @@ func (n *Node) CountIntros() int {
 	return n.intros.Len()
 }
 
-// addToPeerStore adds a remote node
-// to the host's peerstore
-func (n *Node) addToPeerStore(remote types.Engine) *Node {
-	addr := remote.GetAddress()
-	n.localNode.Peerstore().AddAddr(remote.ID(),
+// GetIntros returns the cache containing received intros
+func (n *Node) GetIntros() *cache.Cache {
+	return n.intros
+}
+
+// AddToPeerStore adds the ID of the engine
+// to the peerstore
+func (n *Node) AddToPeerStore(node core.Engine) core.Engine {
+	addr := node.GetAddress()
+	n.localNode.Peerstore().AddAddr(node.ID(),
 		addr.DecapIPFS(),
 		pstore.PermanentAddrTTL)
 	return n
 }
 
-// newStream creates a stream to a peer
-func (n *Node) newStream(ctx context.Context,
-	peerID peer.ID, protocolID string) (inet.Stream, error) {
-	return n.Host().NewStream(ctx, peerID, protocol.ID(protocolID))
-}
-
 // SetGossipProtocol sets the
 // gossip protocol implementation
-func (n *Node) SetGossipProtocol(protoc *Gossip) {
+func (n *Node) SetGossipProtocol(protoc *gossip.Gossip) {
 	n.gProtoc = protoc
 }
 
@@ -520,8 +521,7 @@ func (n *Node) SetHost(h host.Host) {
 	n.host = h
 }
 
-// GetBlockHashQueue returns
-// the block hash queue
+// GetBlockHashQueue returns the block hash queue
 func (n *Node) GetBlockHashQueue() *lane.Deque {
 	return n.blockHashQueue
 }
@@ -529,16 +529,10 @@ func (n *Node) GetBlockHashQueue() *lane.Deque {
 // Peerstore returns the Peerstore
 // of the node
 func (n *Node) Peerstore() pstore.Peerstore {
-	if h := n.Host(); h != nil {
+	if h := n.GetHost(); h != nil {
 		return h.Peerstore()
 	}
 	return nil
-}
-
-// Host returns the internal
-// host instance
-func (n *Node) Host() host.Host {
-	return n.host
 }
 
 // ID returns the peer id of the host
@@ -598,36 +592,26 @@ func (n *Node) GetAddress() util.NodeAddr {
 
 // checkConnString checks whether a connection
 // string is valid for the current engine mode.
-func checkConnString(engine types.Engine, address string) error {
+func checkConnString(engine core.Engine, address string) error {
 
-	// Check whether the address is
-	// a valid connection string
+	// Check whether the address is a valid connection string
 	if !util.IsValidConnectionString(address) {
 		return fmt.Errorf("not a valid connection address")
 	}
 
 	addr := util.AddressFromConnString(address)
 
-	// In non-production mode, only
-	// local/private addresses are allowed
-	if !engine.ProdMode() && !util.IsDevAddr(addr.IP()) {
-		return fmt.Errorf("public addresses are " +
-			"not allowed in development mode")
-	}
-
 	// In production mode, only routable
 	// addresses are allowed
 	if engine.ProdMode() && !addr.IsRoutable() {
-		return fmt.Errorf("local or private addresses " +
-			"are not allowed in production mode")
+		return fmt.Errorf("address is not routable")
 	}
 
 	return nil
 }
 
-// AddAddresses adds addresses that can be
-// connected to when new connections need to
-// be established.
+// AddAddresses adds addresses which the engine can
+// establish connections to.
 func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 
 	for _, connStr := range connStrings {
@@ -642,22 +626,24 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 
 		// Convert the connection string to a valid
 		// IPFS Multiaddr format
-		rp := NewRemoteNode(util.AddressFromConnString(connStr), n)
-		rp.isHardcodedSeed = hardcoded
-		rp.gProtoc = n.gProtoc
+		rp := n.NewRemoteNode(util.AddressFromConnString(connStr))
+		rp.IsHardCodedSeed(hardcoded)
+		rp.SetGossipManager(n.gProtoc)
 		n.peerManager.AddPeer(rp)
 	}
+
 	return nil
 }
 
-// connectToNode sends Handshake message a
-// given remote node. Then it sends a
-// GetAddr message afterwards
-func (n *Node) connectToNode(remote types.Engine) error {
-	if n.gProtoc.SendHandshake(remote) == nil {
-		n.gProtoc.SendGetAddr([]types.Engine{remote})
-	}
-	return nil
+// IsHardCodedSeed sets the hardcoded seed state
+// of the engine.
+func (n *Node) IsHardCodedSeed(v bool) {
+	n.isHardcodedSeed = v
+}
+
+// SetGossipManager sets the gossip manager
+func (n *Node) SetGossipManager(m core.Gossip) {
+	n.gProtoc = m
 }
 
 // relayTx continuously relays transactions
@@ -672,7 +658,7 @@ func (n *Node) relayTx() {
 				continue
 			}
 			tx := q.First()
-			go n.gProtoc.RelayTx(tx, n.peerManager.GetActivePeers(0))
+			go n.Gossip().RelayTx(tx, n.peerManager.GetActivePeers(0))
 		case <-n.tickerDone:
 			ticker.Stop()
 			return
@@ -688,7 +674,7 @@ func (n *Node) Start() {
 
 	// Attempt to connect to peers
 	for _, node := range n.PM().GetActivePeers(0) {
-		go n.connectToNode(node)
+		go n.peerManager.ConnectToPeer(node.StringID())
 	}
 
 	// Start the sub-routine that
@@ -707,9 +693,9 @@ func (n *Node) Start() {
 
 // relayBlock attempts to relay non-genesis
 //  a block to active peers.
-func (n *Node) relayBlock(block core.Block) {
+func (n *Node) relayBlock(block types.Block) {
 	if block.GetNumber() > 1 {
-		n.gProtoc.RelayBlock(block, n.peerManager.GetConnectedPeers())
+		n.Gossip().RelayBlock(block, n.peerManager.GetConnectedPeers())
 	}
 }
 
@@ -717,7 +703,7 @@ func (n *Node) handleNewBlockEvent() {
 	for {
 		select {
 		case evt := <-n.event.Once(core.EventNewBlock):
-			n.relayBlock(evt.Args[0].(core.Block))
+			n.relayBlock(evt.Args[0].(types.Block))
 		}
 	}
 }
@@ -726,7 +712,7 @@ func (n *Node) handleNewTransactionEvent() {
 	for {
 		select {
 		case evt := <-n.event.Once(core.EventNewTransaction):
-			if !n.GetTxRelayQueue().Add(evt.Args[0].(core.Transaction)) {
+			if !n.GetTxRelayQueue().Add(evt.Args[0].(types.Transaction)) {
 				n.log.Debug("Failed to add transaction to relay queue.",
 					"Err", "Capacity reached")
 			}
@@ -740,7 +726,7 @@ func (n *Node) handleOrphanBlockEvent() {
 		case evt := <-n.event.Once(core.EventOrphanBlock):
 			// We need to request the parent block from the
 			// peer who sent it to us (a.k.a broadcaster)
-			orphanBlock := evt.Args[0].(*objects.Block)
+			orphanBlock := evt.Args[0].(*core.Block)
 			parentHash := orphanBlock.GetHeader().GetParentHash()
 			n.log.Debug("Requesting orphan parent block from broadcaster",
 				"BlockNo", orphanBlock.GetNumber(),
@@ -757,12 +743,12 @@ func (n *Node) handleAbortedMinerBlockEvent() {
 			// handle core.EventMinerProposedBlockAborted
 			// listens for aborted miner blocks and attempt
 			// to re-add the transactions to the pool.
-			abortedBlock := evt.Args[0].(*objects.Block)
+			abortedBlock := evt.Args[0].(*core.Block)
 			n.log.Debug("Attempting to re-add transactions "+
 				"in aborted miner block",
-				"NumTx", len(abortedBlock.Transactions))
+				"NumTx", len(abortedBlock.Transactions), "BlockNo", abortedBlock.GetNumber())
 			for _, tx := range abortedBlock.Transactions {
-				if err := n.addTransaction(tx); err != nil {
+				if err := n.AddTransaction(tx); err != nil {
 					n.log.Debug("failed to re-add transaction",
 						"Err", err.Error())
 				}
@@ -797,7 +783,7 @@ func (n *Node) ProcessBlockHashes() {
 			}
 
 			hashes := []util.Hash{}
-			var broadcaster types.Engine
+			var broadcaster core.Engine
 			otherBlockHashes := []interface{}{}
 
 			// Collect hash of headers sent by a
@@ -812,14 +798,14 @@ func (n *Node) ProcessBlockHashes() {
 					continue
 				}
 
-				if broadcaster != nil && bh.(*BlockHash).Broadcaster.StringID() !=
+				if broadcaster != nil && bh.(*core.BlockHash).Broadcaster.StringID() !=
 					broadcaster.StringID() {
 					otherBlockHashes = append(otherBlockHashes, bh)
 					continue
 				}
 
-				hashes = append(hashes, bh.(*BlockHash).Hash)
-				broadcaster = bh.(*BlockHash).Broadcaster
+				hashes = append(hashes, bh.(*core.BlockHash).Hash)
+				broadcaster = bh.(*core.BlockHash).Broadcaster
 			}
 
 			// append the others that were not selected
@@ -830,7 +816,7 @@ func (n *Node) ProcessBlockHashes() {
 
 			// send block body request
 			if len(hashes) > 0 {
-				go n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+				n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
 			}
 
 		case <-n.tickerDone:
@@ -856,20 +842,27 @@ func (n *Node) HasStopped() bool {
 // Stop stops the node and releases any held resources.
 func (n *Node) Stop() {
 
+	fmt.Println("S1")
 	n.mtx.Lock()
+	fmt.Println("S2")
 	n.stopped = true
 	n.mtx.Unlock()
+	fmt.Println("S3")
 
 	// stop the peer manager
 	// and its managed routines.
 	if pm := n.PM(); pm != nil {
+		fmt.Println("S4")
 		pm.Stop()
+		fmt.Println("S5")
 	}
 
+	fmt.Println("S6")
 	// Shut down the host
 	if n.host != nil {
 		n.host.Close()
 	}
+	fmt.Println("S7")
 
 	if n.db != nil {
 
@@ -893,46 +886,9 @@ func (n *Node) Stop() {
 	}
 }
 
-// NodeFromAddr creates a Node from a multiaddr
-func (n *Node) NodeFromAddr(addr util.NodeAddr, remote bool) (*Node, error) {
-	if !addr.IsValid() {
-		return nil, fmt.Errorf("invalid address (" + addr.String() + ") provided")
-	}
-	return &Node{
-		address:   addr,
-		localNode: n,
-		gProtoc:   n.gProtoc,
-		remote:    remote,
-		mtx:       &sync.RWMutex{},
-		createdAt: time.Now(),
-		lastSeen:  time.Now(),
-	}, nil
-}
-
 // ip returns the IP address
 func (n *Node) ip() net.IP {
 	return n.address.IP()
-}
-
-// IsBadTimestamp checks whether the timestamp of the node is bad.
-// It is bad when:
-// - It has no timestamp
-// - The timestamp is 10 minutes in the future or over 3 hours ago
-func (n *Node) IsBadTimestamp() bool {
-	n.mtx.RLock()
-	defer n.mtx.RUnlock()
-
-	if n.lastSeen.IsZero() {
-		return true
-	}
-
-	now := time.Now()
-	if n.lastSeen.After(now.Add(time.Minute*10)) ||
-		n.lastSeen.Before(now.Add(-3*time.Hour)) {
-		return true
-	}
-
-	return false
 }
 
 // GetTxRelayQueue returns the transaction relay queue
@@ -941,11 +897,23 @@ func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
 }
 
 // GetTxPool returns the unsigned transaction pool
-func (n *Node) GetTxPool() core.TxPool {
+func (n *Node) GetTxPool() types.TxPool {
 	return n.txsPool
 }
 
 // SetTxsPool sets the transaction pool
 func (n *Node) SetTxsPool(txp *txpool.TxPool) {
 	n.txsPool = txp
+}
+
+// AddTransaction validates and adds a
+// transaction to the transaction pool.
+func (n *Node) AddTransaction(tx types.Transaction) error {
+
+	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain())
+	if errs := txValidator.Validate(); len(errs) > 0 {
+		return errs[0]
+	}
+
+	return n.GetTxPool().Put(tx)
 }

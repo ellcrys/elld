@@ -232,7 +232,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// open the database on the engine
 	if err = n.OpenDB(); err != nil {
-		log.Fatal("failed to open local database")
+		log.Fatal("failed to open local database", "Err", err.Error())
 	}
 
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())

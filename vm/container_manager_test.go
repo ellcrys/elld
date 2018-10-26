@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
 	docker "github.com/fsouza/go-dockerclient"
 	. "github.com/ncodes/goblin"
@@ -72,9 +72,9 @@ func TestContainerManager(t *testing.T) {
 				var output = make(chan []byte)
 				var errCh = make(chan error)
 
-				tx := &objects.Transaction{
+				tx := &core.Transaction{
 					To: "blockcode_0",
-					InvokeArgs: &objects.InvokeArgs{
+					InvokeArgs: &core.InvokeArgs{
 						Func: "some_func",
 						Params: map[string][]byte{
 							"amount": []byte("100"),

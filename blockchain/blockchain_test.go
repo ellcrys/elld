@@ -11,8 +11,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -28,7 +29,7 @@ func TestBlockchain(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
 
@@ -125,15 +126,15 @@ func TestBlockchain(t *testing.T) {
 
 			g.Describe(".findChainByLastBlockHash", func() {
 
-				var b1 core.Block
+				var b1 types.Block
 				var chain2 *Chain
 
 				g.BeforeEach(func() {
 					chain2 = NewChain("chain2", db, cfg, log)
 					bc.addChain(chain2)
 
-					err := bc.CreateAccount(1, chain2, &objects.Account{
-						Type:    objects.AccountTypeBalance,
+					err := bc.CreateAccount(1, chain2, &core.Account{
+						Type:    core.AccountTypeBalance,
 						Address: util.String(sender.Addr()),
 						Balance: "100",
 					})
@@ -174,7 +175,7 @@ func TestBlockchain(t *testing.T) {
 
 				g.Context("when the hash belongs to a block that is not the highest block", func() {
 
-					var b2 core.Block
+					var b2 types.Block
 
 					g.BeforeEach(func() {
 						b2 = MakeBlock(bc, genesisChain, sender, receiver)
@@ -194,7 +195,7 @@ func TestBlockchain(t *testing.T) {
 			})
 
 			g.Describe(".loadChain", func() {
-				var block core.Block
+				var block types.Block
 				var chain, childChain *Chain
 
 				g.BeforeEach(func() {
@@ -276,7 +277,7 @@ func TestBlockchain(t *testing.T) {
 
 			g.Describe(".newChain", func() {
 
-				var parentBlock, block, unknownParent core.Block
+				var parentBlock, block, unknownParent types.Block
 
 				g.BeforeEach(func() {
 					parentBlock = MakeBlock(bc, genesisChain, sender, receiver)
@@ -317,7 +318,7 @@ func TestBlockchain(t *testing.T) {
 			})
 
 			g.Describe(".GetTransaction", func() {
-				var block core.Block
+				var block types.Block
 				var chain *Chain
 
 				g.BeforeEach(func() {
@@ -374,11 +375,11 @@ func TestBlockchain(t *testing.T) {
 
 				g.Context("with ten blocks in the main chain", func() {
 
-					var blocks []core.Block
+					var blocks []types.Block
 					var locators []util.Hash
 
 					g.BeforeEach(func() {
-						blocks = []core.Block{}
+						blocks = []types.Block{}
 						locators = []util.Hash{}
 						blocks = append(blocks, genesisBlock)
 					})
@@ -415,11 +416,11 @@ func TestBlockchain(t *testing.T) {
 				})
 
 				g.Context("with 20 blocks in the main chain", func() {
-					var blocks []core.Block
+					var blocks []types.Block
 					var locators []util.Hash
 
 					g.BeforeEach(func() {
-						blocks = []core.Block{}
+						blocks = []types.Block{}
 						locators = []util.Hash{}
 						blocks = append(blocks, genesisBlock)
 					})
@@ -459,15 +460,15 @@ func TestBlockchain(t *testing.T) {
 
 			g.Describe(".Select", func() {
 
-				var tp core.TxPool
-				var tx, tx2, tx3 *objects.Transaction
-				var txs []core.Transaction
+				var tp types.TxPool
+				var tx, tx2, tx3 *core.Transaction
+				var txs []types.Transaction
 
 				g.Context("pool has 1 transaction and account nonce = 0", func() {
 					g.Context("transaction nonce is 2", func() {
 						g.BeforeEach(func() {
 							tp = bc.txPool
-							tx = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+							tx = core.NewTx(core.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 							tx.Hash = tx.ComputeHash()
 							tp.Put(tx)
 							maxSize := tx.GetSizeNoFee() + 100
@@ -487,16 +488,16 @@ func TestBlockchain(t *testing.T) {
 
 				g.Context("pool has 2 transactions and account nonce = 0", func() {
 					g.Context("tx(1) nonce = 1 and tx(2) nonce = 2", func() {
-						var tp core.TxPool
+						var tp types.TxPool
 
 						g.BeforeEach(func() {
 							tp = bc.txPool
-							tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+							tx = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 							tx.Hash = tx.ComputeHash()
 							err := tp.Put(tx)
 							Expect(err).To(BeNil())
 
-							tx2 = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+							tx2 = core.NewTx(core.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
 							tx2.Hash = tx2.ComputeHash()
 							err = tp.Put(tx2)
 							Expect(tp.Container().Size()).To(Equal(int64(2)))
@@ -522,12 +523,12 @@ func TestBlockchain(t *testing.T) {
 					g.Context("tx(1) nonce = 2 and tx(2) nonce = 1", func() {
 						g.BeforeEach(func() {
 							tp = bc.txPool
-							tx = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+							tx = core.NewTx(core.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 							tx.Hash = tx.ComputeHash()
 							err := tp.Put(tx)
 							Expect(err).To(BeNil())
 
-							tx2 = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+							tx2 = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
 							tx2.Hash = tx2.ComputeHash()
 							err = tp.Put(tx2)
 							Expect(tp.Container().Size()).To(Equal(int64(2)))
@@ -554,12 +555,12 @@ func TestBlockchain(t *testing.T) {
 					g.Context("tx(1) nonce = 1 and tx(2) nonce = 3", func() {
 						g.BeforeEach(func() {
 							tp = bc.txPool
-							tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+							tx = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 							tx.Hash = tx.ComputeHash()
 							err := tp.Put(tx)
 							Expect(err).To(BeNil())
 
-							tx2 = objects.NewTx(objects.TxTypeBalance, 3, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+							tx2 = core.NewTx(core.TxTypeBalance, 3, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
 							tx2.Hash = tx2.ComputeHash()
 							err = tp.Put(tx2)
 							Expect(tp.Container().Size()).To(Equal(int64(2)))
@@ -585,7 +586,7 @@ func TestBlockchain(t *testing.T) {
 					g.Context("transaction nonce is 1", func() {
 						g.BeforeEach(func() {
 							tp = bc.txPool
-							tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+							tx = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 							tx.Hash = tx.ComputeHash()
 							tp.Put(tx)
 							maxSize := tx.GetSizeNoFee() + 100
@@ -606,15 +607,15 @@ func TestBlockchain(t *testing.T) {
 				g.Context("test size validations", func() {
 					g.BeforeEach(func() {
 						tp = bc.txPool
-						tx = objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
 						tx.Hash = tx.ComputeHash()
 						tp.Put(tx)
 
-						tx2 = objects.NewTx(objects.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+						tx2 = core.NewTx(core.TxTypeBalance, 2, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
 						tx2.Hash = tx2.ComputeHash()
 						tp.Put(tx2)
 
-						tx3 = objects.NewTx(objects.TxTypeBalance, 3, util.String(sender.Addr()), sender, "0.3", "0.001", time.Now().Unix())
+						tx3 = core.NewTx(core.TxTypeBalance, 3, util.String(sender.Addr()), sender, "0.3", "0.001", time.Now().Unix())
 						tx3.Hash = tx3.ComputeHash()
 						tp.Put(tx3)
 					})

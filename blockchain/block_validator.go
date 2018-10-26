@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
 
 	"github.com/shopspring/decimal"
 
@@ -15,18 +16,17 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
 
 // VContexts manages validation contexts
 type VContexts struct {
-	contexts []core.ValidationContext
+	contexts []types.ValidationContext
 }
 
 // Has checks whether a context exists
-func (c *VContexts) has(ctx core.ValidationContext) bool {
+func (c *VContexts) has(ctx types.ValidationContext) bool {
 	for _, c := range c.contexts {
 		if c == ctx {
 			return true
@@ -37,11 +37,11 @@ func (c *VContexts) has(ctx core.ValidationContext) bool {
 
 // clearContexts clears removes all validation contexts
 func (c *VContexts) clearContexts() {
-	c.contexts = []core.ValidationContext{}
+	c.contexts = []types.ValidationContext{}
 }
 
 // addContext adds a validation context
-func (c *VContexts) addContext(contexts ...core.ValidationContext) {
+func (c *VContexts) addContext(contexts ...types.ValidationContext) {
 	c.contexts = append(c.contexts, contexts...)
 }
 
@@ -69,22 +69,22 @@ type BlockValidator struct {
 	VContexts
 
 	// block is the block to be validated
-	block core.Block
+	block types.Block
 
 	// txpool refers to the transaction pool
-	txpool core.TxPool
+	txpool types.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions and blocks
-	bchain core.Blockchain
+	bchain types.Blockchain
 
 	// blakimoto is an instance of PoW implementation
 	blakimoto *blakimoto.Blakimoto
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
-func NewBlockValidator(block core.Block, txPool core.TxPool,
-	bchain core.Blockchain, cfg *config.EngineConfig,
+func NewBlockValidator(block types.Block, txPool types.TxPool,
+	bchain types.Blockchain, cfg *config.EngineConfig,
 	log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:     block,
@@ -95,7 +95,7 @@ func NewBlockValidator(block core.Block, txPool core.TxPool,
 }
 
 // setContext sets the validation context
-func (v *BlockValidator) setContext(ctx core.ValidationContext) {
+func (v *BlockValidator) setContext(ctx types.ValidationContext) {
 	if !v.has(ctx) {
 		v.contexts = append(v.contexts, ctx)
 	}
@@ -103,7 +103,7 @@ func (v *BlockValidator) setContext(ctx core.ValidationContext) {
 
 // validateHeader checks that an header fields and
 // value format or type is valid.
-func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
+func (v *BlockValidator) validateHeader(h types.Header) (errs []error) {
 
 	// For non-genesis block, parent hash must be set
 	if h.GetNumber() != 1 && h.GetParentHash().IsEmpty() {
@@ -166,7 +166,7 @@ func (v *BlockValidator) validateHeader(h core.Header) (errs []error) {
 // CheckPoW checks the PoW and difficulty values in the header.
 // If chain is set, the parent chain is search within the provided
 // chain, otherwise, the best chain is searched
-func (v *BlockValidator) CheckPoW(opts ...core.CallOp) (errs []error) {
+func (v *BlockValidator) CheckPoW(opts ...types.CallOp) (errs []error) {
 
 	// find the parent header
 	parentHeader, err := v.bchain.GetBlockByHash(v.block.GetHeader().
@@ -205,7 +205,7 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 	}
 
 	// Header is required
-	header := v.block.GetHeader().(*objects.Header)
+	header := v.block.GetHeader().(*core.Header)
 	if header == nil {
 		errs = append(errs, fieldError("header", "header is required"))
 		return
@@ -261,7 +261,7 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 	// and in doing so, calculate the total fees
 	// for non-allocation transactions
 	for _, tx := range transactions {
-		if tx.GetType() == objects.TxTypeAlloc {
+		if tx.GetType() == core.TxTypeAlloc {
 			blockAllocs = append(blockAllocs, []interface{}{
 				tx.GetFrom(),
 				tx.GetTo(),
@@ -322,7 +322,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 
 // CheckTransactions validates all transactions in the
 // block in relation to the block's destined chain.
-func (v *BlockValidator) CheckTransactions(opts ...core.CallOp) (errs []error) {
+func (v *BlockValidator) CheckTransactions(opts ...types.CallOp) (errs []error) {
 	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain)
 	txValidator.addContext(v.contexts...)
 	for _, err := range txValidator.Validate(opts...) {

@@ -3,7 +3,6 @@ package node_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
@@ -126,31 +125,6 @@ func TestNodeUnit(t *testing.T) {
 			})
 		})
 
-		g.Describe(".NodeFromAddr", func() {
-			g.It("should return error if address is not valid", func() {
-				_, err := n.NodeFromAddr("/invalid", false)
-				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("invalid address (/invalid) provided"))
-			})
-		})
-
-		g.Describe(".IsBadTimestamp", func() {
-			g.It("should return false when time is zero", func() {
-				n.SetLastSeen(time.Time{})
-				Expect(n.IsBadTimestamp()).To(BeTrue())
-			})
-
-			g.It("should return false when time 10 minutes, 1 second in the future", func() {
-				n.SetLastSeen(time.Now().Add(10*time.Minute + 1*time.Second))
-				Expect(n.IsBadTimestamp()).To(BeTrue())
-			})
-
-			g.It("should return false when time 3 hours, 1 second in the past", func() {
-				n.SetLastSeen(time.Now().Add(-3 * time.Hour))
-				Expect(n.IsBadTimestamp()).To(BeTrue())
-			})
-		})
-
 		g.Describe(".AddBootstrapNodes", func() {
 			g.Context("with empty address", func() {
 				g.It("peer manager's bootstrap list should be empty", func() {
@@ -187,7 +161,7 @@ func TestNodeUnit(t *testing.T) {
 			g.BeforeEach(func() {
 				n, err = node.NewNode(cfg, "127.0.0.1:40105", crypto.NewKeyFromIntSeed(5), log)
 				Expect(err).To(BeNil())
-				host = n.Host()
+				host = n.GetHost()
 				Expect(err).To(BeNil())
 				host2, err = testutil.RandomHost(6, 40106)
 				Expect(err).To(BeNil())

@@ -12,7 +12,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/ellcrys/elld/play/local/sim_difficulty/helpers"
+	"github.com/ellcrys/elld/play/simulations/difficulty/helpers"
 	"github.com/ellcrys/elld/util/logger"
 	funk "github.com/thoas/go-funk"
 )

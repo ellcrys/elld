@@ -10,8 +10,9 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -27,7 +28,7 @@ func TestWorldReader(t *testing.T) {
 		var bc *Blockchain
 		var cfg *config.EngineConfig
 		var db elldb.DB
-		var genesisBlock core.Block
+		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
 		var wr *WorldReader
@@ -177,11 +178,11 @@ func TestWorldReader(t *testing.T) {
 					})
 
 					g.Describe("account is created in block 2 of parent chain", func() {
-						var account core.Account
+						var account types.Account
 
 						g.BeforeEach(func() {
-							account = &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account = &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -198,19 +199,19 @@ func TestWorldReader(t *testing.T) {
 
 					g.Describe("account is created in block 2 and updated in block 3 of parent chain", func() {
 
-						var account core.Account
+						var account types.Account
 
 						g.BeforeEach(func() {
-							account = &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account = &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
 							err = genesisChain.CreateAccount(2, account)
 							Expect(err).To(BeNil())
 
-							account2 := &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account2 := &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "1000",
 								Address: "addr1",
 							}
@@ -227,11 +228,11 @@ func TestWorldReader(t *testing.T) {
 
 					g.Describe("account is created in block 3", func() {
 
-						var account core.Account
+						var account types.Account
 
 						g.BeforeEach(func() {
-							account = &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account = &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -249,11 +250,11 @@ func TestWorldReader(t *testing.T) {
 
 					g.Describe("account is created in block 2 of grand parent chain", func() {
 
-						var account core.Account
+						var account types.Account
 
 						g.BeforeEach(func() {
-							account = &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account = &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
@@ -270,19 +271,19 @@ func TestWorldReader(t *testing.T) {
 
 					g.Describe("account is created in block 2 and updated in block 3 of grand parent chain", func() {
 
-						var account core.Account
+						var account types.Account
 
 						g.BeforeEach(func() {
-							account = &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account = &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}
 							err = genesisChain.CreateAccount(2, account)
 							Expect(err).To(BeNil())
 
-							account2 := &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account2 := &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "1000",
 								Address: "addr1",
 							}
@@ -299,11 +300,11 @@ func TestWorldReader(t *testing.T) {
 
 					g.Describe("account is created in block 3 of grand parent", func() {
 
-						var account core.Account
+						var account types.Account
 
 						g.BeforeEach(func() {
-							account = &objects.Account{
-								Type:    objects.AccountTypeBalance,
+							account = &core.Account{
+								Type:    core.AccountTypeBalance,
 								Balance: "100",
 								Address: "addr1",
 							}

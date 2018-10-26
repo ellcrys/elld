@@ -7,6 +7,7 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -18,7 +19,7 @@ import (
 )
 
 // Chain represents a chain of blocks
-// Implements core.Chainer
+// Implements types.Chainer
 type Chain struct {
 
 	// id represents the identifier of this chain
@@ -26,7 +27,7 @@ type Chain struct {
 
 	// parentBlock represents the block from which this chain is formed.
 	// A chain that is not a subtree of another chain will have this set to nil.
-	parentBlock core.Block
+	parentBlock types.Block
 
 	// parentChain is the parent chain from which this
 	// chain is rooted on
@@ -43,7 +44,7 @@ type Chain struct {
 	chainLock *sync.RWMutex
 
 	// store provides functionalities for storing objects
-	store core.ChainStorer
+	store types.ChainStorer
 
 	// log is used for logging
 	log logger.Logger
@@ -77,7 +78,7 @@ func NewChainFromChainInfo(ci *core.ChainInfo, db elldb.DB,
 }
 
 // GetStore gets the store
-func (c *Chain) GetStore() core.ChainStorer {
+func (c *Chain) GetStore() types.ChainStorer {
 	return c.store
 }
 
@@ -87,22 +88,22 @@ func (c *Chain) GetID() util.String {
 }
 
 // ChainReader gets a chain reader for this chain
-func (c *Chain) ChainReader() core.ChainReader {
+func (c *Chain) ChainReader() types.ChainReader {
 	return NewChainReader(c)
 }
 
 // GetParentBlock gets the chain's parent block if it has one
-func (c *Chain) GetParentBlock() core.Block {
+func (c *Chain) GetParentBlock() types.Block {
 	return c.parentBlock
 }
 
 // GetInfo gets the chain information
-func (c *Chain) GetInfo() *core.ChainInfo {
+func (c *Chain) GetInfo() types.ChainInfo {
 	return c.info
 }
 
 // GetParent gets an instance of this chain's parent
-func (c *Chain) GetParent(opts ...core.CallOp) *Chain {
+func (c *Chain) GetParent(opts ...types.CallOp) *Chain {
 	if c.info == nil || c.info.ParentChainID == "" {
 		return nil
 	}
@@ -113,12 +114,12 @@ func (c *Chain) GetParent(opts ...core.CallOp) *Chain {
 }
 
 // HasParent checks whether the chain has a parent
-func (c *Chain) HasParent(opts ...core.CallOp) bool {
+func (c *Chain) HasParent(opts ...types.CallOp) bool {
 	return c.GetParent(opts...) != nil
 }
 
 // GetBlock fetches a block by its number
-func (c *Chain) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
+func (c *Chain) GetBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 	b, err := c.store.GetBlock(number, opts...)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ func (c *Chain) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error)
 }
 
 // save saves a chain to the store
-func (c *Chain) save(opts ...core.CallOp) error {
+func (c *Chain) save(opts ...types.CallOp) error {
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)
 	if txOp.Closed() {
@@ -152,7 +153,7 @@ func (c *Chain) save(opts ...core.CallOp) error {
 // failed to find the parent chain or block.
 //
 // NOTE: should be called with chainLock held
-func (c *Chain) loadParent(opts ...core.CallOp) (*Chain, error) {
+func (c *Chain) loadParent(opts ...types.CallOp) (*Chain, error) {
 
 	// Get the cached version if
 	// we already saved it
@@ -218,7 +219,7 @@ func (c *Chain) loadParent(opts ...core.CallOp) (*Chain, error) {
 }
 
 // Current returns the header of the highest block on this c
-func (c *Chain) Current(opts ...core.CallOp) (core.Header, error) {
+func (c *Chain) Current(opts ...types.CallOp) (types.Header, error) {
 	h, err := c.store.GetHeader(0, opts...)
 	if err != nil {
 		return nil, err
@@ -230,7 +231,7 @@ func (c *Chain) Current(opts ...core.CallOp) (core.Header, error) {
 // height returns the height of this chain. The height can
 // be deduced by fetching the number of the most recent block
 // added to the chain.
-func (c *Chain) height(opts ...core.CallOp) (uint64, error) {
+func (c *Chain) height(opts ...types.CallOp) (uint64, error) {
 	tip, err := c.Current(opts...)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
@@ -254,7 +255,7 @@ func (c *Chain) hasBlock(hash util.Hash) (bool, error) {
 }
 
 // getBlockHeaderByHash returns the header of a block that matches the hash on this chain
-func (c *Chain) getBlockHeaderByHash(hash util.Hash) (core.Header, error) {
+func (c *Chain) getBlockHeaderByHash(hash util.Hash) (types.Header, error) {
 	h, err := c.store.GetHeaderByHash(hash)
 	if err != nil {
 		return nil, err
@@ -273,7 +274,7 @@ func (c *Chain) getBlockHeaderByHash(hash util.Hash) (core.Header, error) {
 //          |__[4]		Chain C
 // In the example above, the Chain B is the first generation
 // to Chain C. The root parent block of Chain C is [2].
-func (c *Chain) GetRoot() core.Block {
+func (c *Chain) GetRoot() types.Block {
 
 	// If this chain has no parent, it is the main chain, and
 	// there for, has no root.
@@ -293,27 +294,27 @@ func (c *Chain) GetRoot() core.Block {
 }
 
 // getBlockByHash fetches a block by hash
-func (c *Chain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+func (c *Chain) getBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 	return c.store.GetBlockByHash(hash, opts...)
 }
 
 // getBlockByNumberAndHash fetches a block by number and hash
-func (c *Chain) getBlockByNumberAndHash(number uint64, hash util.Hash) (core.Block, error) {
+func (c *Chain) getBlockByNumberAndHash(number uint64, hash util.Hash) (types.Block, error) {
 	return c.store.GetBlockByNumberAndHash(number, hash)
 }
 
 // CreateAccount creates an account on a target block
-func (c *Chain) CreateAccount(targetBlockNum uint64, account core.Account, opts ...core.CallOp) error {
+func (c *Chain) CreateAccount(targetBlockNum uint64, account types.Account, opts ...types.CallOp) error {
 	return c.store.CreateAccount(targetBlockNum, account, opts...)
 }
 
 // GetAccount gets an account
-func (c *Chain) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
+func (c *Chain) GetAccount(address util.String, opts ...types.CallOp) (types.Account, error) {
 	return c.store.GetAccount(address, opts...)
 }
 
 // GetAccounts gets all accounts
-func (c *Chain) GetAccounts(opts ...core.CallOp) ([]core.Account, error) {
+func (c *Chain) GetAccounts(opts ...types.CallOp) ([]types.Account, error) {
 	return c.store.GetAccounts()
 }
 
@@ -324,7 +325,7 @@ func (c *Chain) GetAccounts(opts ...core.CallOp) ([]core.Account, error) {
 // the chain yet, then we assume this to be the first block of a fork.
 //
 // The caller is expected to validate the block before call.
-func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
+func (c *Chain) append(candidate types.Block, opts ...types.CallOp) error {
 
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)
@@ -364,7 +365,7 @@ func (c *Chain) append(candidate core.Block, opts ...core.CallOp) error {
 // state root of the chain's tip block. For chains
 // with no block (new chains), the state root of
 // their parent block is used.
-func (c *Chain) NewStateTree(opts ...core.CallOp) (core.Tree, error) {
+func (c *Chain) NewStateTree(opts ...types.CallOp) (types.Tree, error) {
 
 	var prevRoot util.Hash
 
@@ -400,12 +401,12 @@ func (c *Chain) NewStateTree(opts ...core.CallOp) (core.Tree, error) {
 }
 
 // PutTransactions stores a collection of transactions in the chain
-func (c *Chain) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
+func (c *Chain) PutTransactions(txs []types.Transaction, blockNumber uint64, opts ...types.CallOp) error {
 	return c.store.PutTransactions(txs, blockNumber, opts...)
 }
 
 // GetTransaction gets a transaction by hash
-func (c *Chain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
+func (c *Chain) GetTransaction(hash util.Hash, opts ...types.CallOp) (types.Transaction, error) {
 	tx, err := c.store.GetTransaction(hash, opts...)
 	if err != nil {
 		return nil, err
@@ -415,7 +416,7 @@ func (c *Chain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transa
 
 // removeBlock deletes a block and all objects
 // associated to it such as transactions, accounts etc.
-func (c *Chain) removeBlock(number uint64, opts ...core.CallOp) error {
+func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 
 	var err error
 	txOp := common.GetTxOp(c.store.DB(), opts...)
@@ -510,7 +511,7 @@ func (r *ChainRead) GetID() util.String {
 
 // GetParent returns a chain reader to the parent chain.
 // Returns nil if chain has no parent.
-func (r *ChainRead) GetParent() core.ChainReader {
+func (r *ChainRead) GetParent() types.ChainReader {
 	if ch := r.ch.GetParent(); ch != nil {
 		return ch.ChainReader()
 	}
@@ -518,40 +519,40 @@ func (r *ChainRead) GetParent() core.ChainReader {
 }
 
 // GetParentBlock returns the parent block
-func (r *ChainRead) GetParentBlock() core.Block {
+func (r *ChainRead) GetParentBlock() types.Block {
 	return r.ch.GetParentBlock()
 }
 
 // GetRoot fetches the root block of this chain. If the chain
 // has more than one parents/ancestors, it will traverse
 // the parents to return the root parent block.
-func (r *ChainRead) GetRoot() core.Block {
+func (r *ChainRead) GetRoot() types.Block {
 	return r.ch.GetRoot()
 }
 
 // GetBlock finds and returns a block associated with chainID.
 // When 0 is passed, it should return the block with the highest number
-func (r *ChainRead) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
+func (r *ChainRead) GetBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 	return r.ch.GetBlock(number, opts...)
 }
 
 // GetBlockByHash finds and returns a block associated with chainID.
-func (r *ChainRead) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+func (r *ChainRead) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 	return r.ch.GetStore().GetBlockByHash(hash, opts...)
 }
 
 // GetHeader gets the header of a block.
 // When 0 is passed, it should return the header of the block with the highest number
-func (r *ChainRead) GetHeader(number uint64, opts ...core.CallOp) (core.Header, error) {
+func (r *ChainRead) GetHeader(number uint64, opts ...types.CallOp) (types.Header, error) {
 	return r.ch.GetStore().GetHeader(number, opts...)
 }
 
 // GetHeaderByHash finds and returns the header of a block matching hash
-func (r *ChainRead) GetHeaderByHash(hash util.Hash, opts ...core.CallOp) (core.Header, error) {
+func (r *ChainRead) GetHeaderByHash(hash util.Hash, opts ...types.CallOp) (types.Header, error) {
 	return r.ch.GetStore().GetHeaderByHash(hash, opts...)
 }
 
 // Current gets the current block at the tip of the chain
-func (r *ChainRead) Current(opts ...core.CallOp) (core.Block, error) {
+func (r *ChainRead) Current(opts ...types.CallOp) (types.Block, error) {
 	return r.ch.GetStore().Current(opts...)
 }

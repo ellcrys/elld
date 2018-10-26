@@ -8,8 +8,9 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -117,9 +118,9 @@ func TestCommon(t *testing.T) {
 
 		g.Describe(".ComputeTxsRoot", func() {
 			g.It("should return expected root", func() {
-				txs := []core.Transaction{
-					objects.NewTransaction(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
-					objects.NewTransaction(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
+				txs := []types.Transaction{
+					core.NewTransaction(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
+					core.NewTransaction(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
 				}
 				root := ComputeTxsRoot(txs)
 				Expect(root).To(Equal(util.Hash{

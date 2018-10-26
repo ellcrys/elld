@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-ozzo/ozzo-validation"
 
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/shopspring/decimal"
 
@@ -19,8 +19,8 @@ import (
 
 // KnownTransactionTypes are the supported transaction types
 var KnownTransactionTypes = []int64{
-	objects.TxTypeBalance,
-	objects.TxTypeAlloc,
+	core.TxTypeBalance,
+	core.TxTypeAlloc,
 }
 
 // TxsValidator implements a validator for checking
@@ -30,14 +30,14 @@ type TxsValidator struct {
 	VContexts
 
 	// txs are the transactions to be validated
-	txs []core.Transaction
+	txs []types.Transaction
 
 	// txpool refers to the transaction pool
-	txpool core.TxPool
+	txpool types.TxPool
 
 	// bchain is the blockchain manager. We use it
 	// to query transactions
-	bchain core.Blockchain
+	bchain types.Blockchain
 
 	// curIndex is the current index of the the current
 	// transaction being validated.
@@ -55,8 +55,8 @@ func appendErr(dest []error, err error) []error {
 }
 
 // NewTxsValidator creates an instance of TxsValidator
-func NewTxsValidator(txs []core.Transaction, txPool core.TxPool,
-	bchain core.Blockchain) *TxsValidator {
+func NewTxsValidator(txs []types.Transaction, txPool types.TxPool,
+	bchain types.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    txs,
 		txpool: txPool,
@@ -67,10 +67,10 @@ func NewTxsValidator(txs []core.Transaction, txPool core.TxPool,
 
 // NewTxValidator is like NewTxsValidator
 // except it accepts a single transaction
-func NewTxValidator(tx core.Transaction, txPool core.TxPool,
-	bchain core.Blockchain) *TxsValidator {
+func NewTxValidator(tx types.Transaction, txPool types.TxPool,
+	bchain types.Blockchain) *TxsValidator {
 	return &TxsValidator{
-		txs:    []core.Transaction{tx},
+		txs:    []types.Transaction{tx},
 		txpool: txPool,
 		bchain: bchain,
 		nonces: make(map[string]uint64),
@@ -79,7 +79,7 @@ func NewTxValidator(tx core.Transaction, txPool core.TxPool,
 
 // Validate execute validation checks
 // against each transactions
-func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
+func (v *TxsValidator) Validate(opts ...types.CallOp) (errs []error) {
 	var seenTxs = make(map[string]struct{})
 	for i, tx := range v.txs {
 		v.curIndex = i
@@ -113,7 +113,7 @@ func (v *TxsValidator) Validate(opts ...core.CallOp) (errs []error) {
 
 // CheckFields checks validates the transaction
 // fields and values.
-func (v *TxsValidator) CheckFields(tx core.Transaction) (errs []error) {
+func (v *TxsValidator) CheckFields(tx types.Transaction) (errs []error) {
 
 	// Transaction must not be nil
 	if tx == nil {
@@ -228,7 +228,7 @@ func (v *TxsValidator) CheckFields(tx core.Transaction) (errs []error) {
 	// It must be a number. It must be equal to the
 	// minimum required fee for the size of the
 	// transaction.
-	if tx.GetType() != objects.TxTypeAlloc {
+	if tx.GetType() != core.TxTypeAlloc {
 		err := validation.Validate(tx.GetFee(),
 			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
 			validation.By(validValueRule("fee")),
@@ -263,7 +263,7 @@ func (v *TxsValidator) CheckFields(tx core.Transaction) (errs []error) {
 
 // checkSignature checks whether the signature is valid.
 // Expects the transaction to have a valid sender public key
-func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
+func (v *TxsValidator) checkSignature(tx types.Transaction) (errs []error) {
 
 	pubKey, err := crypto.PubKeyFromBase58(tx.GetSenderPubKey().String())
 	if err != nil {
@@ -287,11 +287,11 @@ func (v *TxsValidator) checkSignature(tx core.Transaction) (errs []error) {
 // consistencyCheck checks whether the transaction
 // exist as a duplicate in the main chain or in the
 // transaction pool. It also performs nonce checks.
-func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp) (errs []error) {
+func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.CallOp) (errs []error) {
 
 	// No need for consistency check for
 	// TxTypeAlloc transactions
-	if tx.GetType() == objects.TxTypeAlloc {
+	if tx.GetType() == core.TxTypeAlloc {
 		return
 	}
 
@@ -299,7 +299,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// for inclusion in a chain, then we must
 	// check that the transaction does not have a
 	// duplicate in the pool
-	if !v.has(core.ContextBlock) && v.txpool.Has(tx) {
+	if !v.has(types.ContextBlock) && v.txpool.Has(tx) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex,
 			"", "transaction already exist in the transactions pool"))
 		return
@@ -308,7 +308,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// If the caller intends to validate a block that was
 	// received when the client is not is a block sync state,
 	// the transaction must exist in the transactions pool
-	if v.has(core.ContextBlock) && !v.has(core.ContextBlockSync) {
+	if v.has(types.ContextBlock) && !v.has(types.ContextBlockSync) {
 		if !v.txpool.Has(tx) {
 			errs = append(errs, fieldErrorWithIndex(v.curIndex,
 				"", "transaction does not exist in the transactions pool"))
@@ -319,7 +319,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// to a branch chain but the main chain, we must
 	// ensure the transaction does not exist on the
 	// main chain.
-	if !v.has(core.ContextBranch) {
+	if !v.has(types.ContextBranch) {
 		_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
 		if err != nil {
 			if err != core.ErrTxNotFound {
@@ -365,7 +365,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// transaction into a block, then the nonce
 	// must be greater than the account's current
 	// nonce by at least 1
-	if !v.has(core.ContextBlock) && (tx.GetNonce() <= accountNonce) {
+	if !v.has(types.ContextBlock) && (tx.GetNonce() <= accountNonce) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants from %d",
 				tx.GetNonce(), accountNonce+1)))
@@ -375,7 +375,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 	// If the caller intends to process a block of which
 	// this transaction is part of, then the nonce must
 	// be greater than the account's current nonce by 1
-	if v.has(core.ContextBlock) && tx.GetNonce() > accountNonce &&
+	if v.has(types.ContextBlock) && tx.GetNonce() > accountNonce &&
 		tx.GetNonce()-accountNonce != 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants %d",
@@ -388,7 +388,7 @@ func (v *TxsValidator) consistencyCheck(tx core.Transaction, opts ...core.CallOp
 
 // ValidateTx validates a single transaction coming received
 // by the gossip handler..
-func (v *TxsValidator) ValidateTx(tx core.Transaction, opts ...core.CallOp) []error {
+func (v *TxsValidator) ValidateTx(tx types.Transaction, opts ...types.CallOp) []error {
 
 	errs := v.CheckFields(tx)
 	if len(errs) > 0 {

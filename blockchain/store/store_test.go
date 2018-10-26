@@ -8,8 +8,9 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -51,9 +52,9 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".PutTransactions", func() {
 
-			var txs = []core.Transaction{
-				&objects.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
-				&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
+			var txs = []types.Transaction{
+				&core.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+				&core.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 			}
 
 			g.It("should store 2 transaction block pointers", func() {
@@ -72,9 +73,9 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".GetTransaction", func() {
 
-			var txs = []core.Transaction{
-				&objects.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
-				&objects.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
+			var txs = []types.Transaction{
+				&core.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+				&core.Transaction{To: "to_addr_2", From: "from_addr_2", Hash: util.StrToHash("hash2")},
 			}
 
 			g.Context("when the transaction's value holds an non-existing block number", func() {
@@ -90,12 +91,12 @@ func TestStore(t *testing.T) {
 
 			g.Context("when the transaction's value holds an existing block number", func() {
 
-				var block core.Block
+				var block types.Block
 
 				g.BeforeEach(func() {
-					block = &objects.Block{
-						Header: &objects.Header{Number: 211},
-						Transactions: []*objects.Transaction{
+					block = &core.Block{
+						Header: &core.Header{Number: 211},
+						Transactions: []*core.Transaction{
 							{Hash: util.StrToHash("hash1")},
 						},
 					}
@@ -104,8 +105,8 @@ func TestStore(t *testing.T) {
 				})
 
 				g.It("should return ErrTxNotFound when the transaction is not in the block", func() {
-					var txs = []core.Transaction{
-						&objects.Transaction{Hash: util.StrToHash("hash2")},
+					var txs = []types.Transaction{
+						&core.Transaction{Hash: util.StrToHash("hash2")},
 					}
 					err = store.PutTransactions(txs, 211)
 					Expect(err).To(BeNil())
@@ -125,8 +126,8 @@ func TestStore(t *testing.T) {
 		})
 
 		g.Describe(".Delete", func() {
-			var txs = []core.Transaction{
-				&objects.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
+			var txs = []types.Transaction{
+				&core.Transaction{To: "to_addr", From: "from_addr", Hash: util.StrToHash("hash1")},
 			}
 
 			g.It("should successfully delete", func() {
@@ -145,21 +146,21 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".CreateAccount", func() {
 			g.It("should successfully create an account", func() {
-				var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+				var acct = &core.Account{Type: core.AccountTypeBalance, Address: "addr"}
 				err = store.CreateAccount(1, acct)
 				Expect(err).To(BeNil())
 
 				r := store.db.GetByPrefix(common.MakeKeyAccount(1, store.chainID.Bytes(), []byte("addr")))
-				var found objects.Account
+				var found core.Account
 				r[0].Scan(&found)
 				Expect(&found).To(Equal(acct))
 			})
 
 			g.Context("with two accounts created on different blocks", func() {
-				var accts []*objects.Account
+				var accts []*core.Account
 				g.BeforeEach(func() {
 					for i := uint64(1); i <= 2; i++ {
-						var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+						var acct = &core.Account{Type: core.AccountTypeBalance, Address: "addr"}
 						err = store.CreateAccount(i, acct)
 						Expect(err).To(BeNil())
 						accts = append(accts, acct)
@@ -178,7 +179,7 @@ func TestStore(t *testing.T) {
 		g.Describe(".GetAccount", func() {
 			g.Context("no existing account in store", func() {
 				g.It("should return the only account", func() {
-					var acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+					var acct = &core.Account{Type: core.AccountTypeBalance, Address: "addr"}
 					err = store.CreateAccount(1, acct)
 					Expect(err).To(BeNil())
 
@@ -190,14 +191,14 @@ func TestStore(t *testing.T) {
 
 			g.Context("with multiple account of same address but different block number", func() {
 
-				var acct, acct2 *objects.Account
+				var acct, acct2 *core.Account
 
 				g.BeforeEach(func() {
-					acct = &objects.Account{Type: objects.AccountTypeBalance, Balance: "0.1", Address: "addr"}
+					acct = &core.Account{Type: core.AccountTypeBalance, Balance: "0.1", Address: "addr"}
 					err = store.CreateAccount(1, acct)
 					Expect(err).To(BeNil())
 
-					acct2 = &objects.Account{Type: objects.AccountTypeBalance, Balance: "1.2", Address: "addr"}
+					acct2 = &core.Account{Type: core.AccountTypeBalance, Balance: "1.2", Address: "addr"}
 					err = store.CreateAccount(2, acct2)
 					Expect(err).To(BeNil())
 
@@ -251,14 +252,14 @@ func TestStore(t *testing.T) {
 		g.Describe(".GetAccounts", func() {
 			g.Context("when two accounts are stored", func() {
 
-				var acct, acct2 *objects.Account
+				var acct, acct2 *core.Account
 
 				g.BeforeEach(func() {
-					acct = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr"}
+					acct = &core.Account{Type: core.AccountTypeBalance, Address: "addr"}
 					err = store.CreateAccount(1, acct)
 					Expect(err).To(BeNil())
 
-					acct2 = &objects.Account{Type: objects.AccountTypeBalance, Address: "addr2"}
+					acct2 = &core.Account{Type: core.AccountTypeBalance, Address: "addr2"}
 					err = store.CreateAccount(2, acct2)
 					Expect(err).To(BeNil())
 				})
@@ -271,15 +272,15 @@ func TestStore(t *testing.T) {
 			})
 
 			g.Context("with two accounts of same address at different blocks", func() {
-				var acct, acct2 *objects.Account
+				var acct, acct2 *core.Account
 
 				g.BeforeEach(func() {
-					acct = &objects.Account{Type: objects.AccountTypeBalance,
+					acct = &core.Account{Type: core.AccountTypeBalance,
 						Balance: "1", Address: "addr"}
 					err = store.CreateAccount(1, acct)
 					Expect(err).To(BeNil())
 
-					acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+					acct2 = &core.Account{Type: core.AccountTypeBalance,
 						Balance: "2", Address: "addr"}
 					err = store.CreateAccount(2, acct2)
 					Expect(err).To(BeNil())
@@ -301,15 +302,15 @@ func TestStore(t *testing.T) {
 			g.Context("Using BlockRange", func() {
 				g.Context("with minimum = 2", func() {
 					g.Context("with two accounts of same address at different blocks", func() {
-						var acct, acct2 *objects.Account
+						var acct, acct2 *core.Account
 
 						g.BeforeEach(func() {
-							acct = &objects.Account{Type: objects.AccountTypeBalance,
+							acct = &core.Account{Type: core.AccountTypeBalance,
 								Balance: "1", Address: "addr"}
 							err = store.CreateAccount(1, acct)
 							Expect(err).To(BeNil())
 
-							acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+							acct2 = &core.Account{Type: core.AccountTypeBalance,
 								Balance: "2", Address: "addr"}
 							err = store.CreateAccount(2, acct2)
 							Expect(err).To(BeNil())
@@ -326,15 +327,15 @@ func TestStore(t *testing.T) {
 
 				g.Context("with maximum = 3", func() {
 					g.Context("with two accounts of different address at block 1 and 3 respectively", func() {
-						var acct, acct2 *objects.Account
+						var acct, acct2 *core.Account
 
 						g.BeforeEach(func() {
-							acct = &objects.Account{Type: objects.AccountTypeBalance,
+							acct = &core.Account{Type: core.AccountTypeBalance,
 								Balance: "1", Address: "addr"}
 							err = store.CreateAccount(1, acct)
 							Expect(err).To(BeNil())
 
-							acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+							acct2 = &core.Account{Type: core.AccountTypeBalance,
 								Balance: "30", Address: "addr2"}
 							err = store.CreateAccount(3, acct2)
 							Expect(err).To(BeNil())
@@ -350,15 +351,15 @@ func TestStore(t *testing.T) {
 
 				g.Context("with maximum = 4", func() {
 					g.Context("with two accounts of different address at block 1 and 5 respectively", func() {
-						var acct, acct2 *objects.Account
+						var acct, acct2 *core.Account
 
 						g.BeforeEach(func() {
-							acct = &objects.Account{Type: objects.AccountTypeBalance,
+							acct = &core.Account{Type: core.AccountTypeBalance,
 								Balance: "1", Address: "addr"}
 							err = store.CreateAccount(1, acct)
 							Expect(err).To(BeNil())
 
-							acct2 = &objects.Account{Type: objects.AccountTypeBalance,
+							acct2 = &core.Account{Type: core.AccountTypeBalance,
 								Balance: "3", Address: "addr2"}
 							err = store.CreateAccount(5, acct2)
 							Expect(err).To(BeNil())
@@ -378,11 +379,11 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".PutBlock", func() {
 
-			var block *objects.Block
+			var block *core.Block
 
 			g.BeforeEach(func() {
-				block = &objects.Block{
-					Header: &objects.Header{Number: 1},
+				block = &core.Block{
+					Header: &core.Header{Number: 1},
 					Hash:   util.StrToHash("hash"),
 					Sig:    []byte("stuff"),
 				}
@@ -400,7 +401,7 @@ func TestStore(t *testing.T) {
 				})
 
 				g.Specify("the return block is same as the added saved block", func() {
-					var storedBlock objects.Block
+					var storedBlock core.Block
 					err = result[0].Scan(&storedBlock)
 					Expect(err).To(BeNil())
 					Expect(&storedBlock).To(Equal(block))
@@ -420,13 +421,13 @@ func TestStore(t *testing.T) {
 				result := store.db.GetByPrefix(common.MakeQueryKeyBlocks(chainID.Bytes()))
 				Expect(result).To(HaveLen(1))
 
-				var storedBlock objects.Block
+				var storedBlock core.Block
 				err = result[0].Scan(&storedBlock)
 				Expect(err).To(BeNil())
 				Expect(&storedBlock).To(Equal(block))
 
-				var block2 = &objects.Block{
-					Header: &objects.Header{Number: 1},
+				var block2 = &core.Block{
+					Header: &core.Header{Number: 1},
 					Hash:   util.StrToHash("some_hash"),
 				}
 
@@ -443,8 +444,8 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".Current", func() {
 			g.When("two blocks are in the chain", func() {
-				var block = &objects.Block{Header: &objects.Header{Number: 1}, Hash: util.StrToHash("hash")}
-				var block2 = &objects.Block{Header: &objects.Header{Number: 2}, Hash: util.StrToHash("hash2")}
+				var block = &core.Block{Header: &core.Header{Number: 1}, Hash: util.StrToHash("hash")}
+				var block2 = &core.Block{Header: &core.Header{Number: 2}, Hash: util.StrToHash("hash2")}
 
 				g.BeforeEach(func() {
 					err = store.PutBlock(block)
@@ -471,8 +472,8 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".GetBlockByNumberAndHash", func() {
 
-			var block = &objects.Block{
-				Header: &objects.Header{Number: 100},
+			var block = &core.Block{
+				Header: &core.Header{Number: 100},
 				Hash:   util.StrToHash("hash"),
 			}
 
@@ -504,8 +505,8 @@ func TestStore(t *testing.T) {
 
 		g.Describe(".GetBlock", func() {
 
-			var block = &objects.Block{
-				Header: &objects.Header{Number: 1},
+			var block = &core.Block{
+				Header: &core.Header{Number: 1},
 				Hash:   util.StrToHash("hash"),
 			}
 
@@ -542,8 +543,8 @@ func TestStore(t *testing.T) {
 			})
 
 			g.It("should return the block with the hightest number if 0 is passed", func() {
-				var block2 = &objects.Block{
-					Header: &objects.Header{Number: 2},
+				var block2 = &core.Block{
+					Header: &core.Header{Number: 2},
 					Hash:   util.StrToHash("hash"),
 				}
 
@@ -559,8 +560,8 @@ func TestStore(t *testing.T) {
 
 		g.Describe("GetBlockHeader", func() {
 
-			var block = &objects.Block{
-				Header: &objects.Header{Number: 1},
+			var block = &core.Block{
+				Header: &core.Header{Number: 1},
 				Hash:   util.StrToHash("hash"),
 			}
 
@@ -580,8 +581,8 @@ func TestStore(t *testing.T) {
 		})
 
 		g.Describe(".GetBlockHeaderByHash", func() {
-			var block = &objects.Block{
-				Header: &objects.Header{Number: 1},
+			var block = &core.Block{
+				Header: &core.Header{Number: 1},
 				Hash:   util.StrToHash("hash"),
 			}
 

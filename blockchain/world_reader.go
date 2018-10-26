@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 )
@@ -23,12 +24,12 @@ type WorldReader struct {
 
 // GetAccount gets an account by the given
 // address in the chain provided.
-func (r *WorldReader) GetAccount(chain core.Chainer, address util.String,
-	opts ...core.CallOp) (core.Account, error) {
+func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
+	opts ...types.CallOp) (types.Account, error) {
 	r.bchain.chainLock.RLock()
 	defer r.bchain.chainLock.RUnlock()
 
-	var result core.Account
+	var result types.Account
 	var err error
 
 	// If a start chain is not given,
@@ -60,9 +61,9 @@ func (r *WorldReader) GetAccount(chain core.Chainer, address util.String,
 	maxChainHeight := uint64(0)
 
 	// Transverse the chain and its ancestors.
-	err = r.bchain.NewChainTraverser().Start(chain).Query(func(ch core.Chainer) (bool, error) {
+	err = r.bchain.NewChainTraverser().Start(chain).Query(func(ch types.Chainer) (bool, error) {
 		// make a copy of the call options
-		optsCopy := append([]core.CallOp{}, opts...)
+		optsCopy := append([]types.CallOp{}, opts...)
 
 		// Add a QueryBlockRange containing the max chain height
 		// to the call options slice.
@@ -84,8 +85,9 @@ func (r *WorldReader) GetAccount(chain core.Chainer, address util.String,
 		// so we know what blocks were know to the miner at
 		// the time there created their block.
 		if result == nil {
-			if ch.GetInfo().ParentBlockNumber > 0 {
-				maxChainHeight = ch.GetInfo().ParentBlockNumber
+			chInfo := ch.GetInfo()
+			if chInfo.GetParentBlockNumber() > 0 {
+				maxChainHeight = chInfo.GetParentBlockNumber()
 			}
 			return false, nil
 		}
