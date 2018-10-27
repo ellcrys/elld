@@ -170,43 +170,43 @@ func (m *Intro) Hash() util.Hash {
 type Gossip interface {
 
 	// Address messages
-	OnAddr(s net.Stream) error
+	OnAddr(s net.Stream, rp Engine) error
 	RelayAddresses(addrs []*Address) []error
 
 	// Block messages
 	RelayBlock(block types.Block, remotePeers []Engine) error
-	OnBlockBody(s net.Stream) error
+	OnBlockBody(s net.Stream, rp Engine) error
 	RequestBlock(rp Engine, blockHash util.Hash) error
-	OnRequestBlock(s net.Stream) error
+	OnRequestBlock(s net.Stream, rp Engine) error
 	SendGetBlockHashes(rp Engine, locators []util.Hash) error
-	OnGetBlockHashes(s net.Stream) error
+	OnGetBlockHashes(s net.Stream, rp Engine) error
 	SendGetBlockBodies(rp Engine, hashes []util.Hash) error
-	OnGetBlockBodies(s net.Stream) error
+	OnGetBlockBodies(s net.Stream, rp Engine) error
 
 	// Handshake messages
 	SendHandshake(rp Engine) error
-	OnHandshake(s net.Stream) error
+	OnHandshake(s net.Stream, rp Engine) error
 
 	// GetAddr messages
 	SendGetAddrToPeer(remotePeer Engine) ([]*Address, error)
 	SendGetAddr(remotePeers []Engine) error
-	OnGetAddr(s net.Stream) error
+	OnGetAddr(s net.Stream, rp Engine) error
 
 	// Ping messages
 	SendPing(remotePeers []Engine)
 	SendPingToPeer(remotePeer Engine) error
-	OnPing(s net.Stream) error
+	OnPing(s net.Stream, rp Engine) error
 
 	// Node advertisement
 	SelfAdvertise(connectedPeers []Engine) int
 
 	// Introductory messages
 	SendIntro(intro *Intro)
-	OnIntro(s net.Stream) error
+	OnIntro(s net.Stream, rp Engine) error
 
 	// Transaction messages
 	RelayTx(tx types.Transaction, remotePeers []Engine) error
-	OnTx(s net.Stream) error
+	OnTx(s net.Stream, rp Engine) error
 
 	// PickBroadcasters selects N random addresses from
 	// the given slice of addresses and caches them to

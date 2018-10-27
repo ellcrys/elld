@@ -14,11 +14,7 @@ import (
 )
 
 // onAddr processes core.Addr message
-func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
-
-	remoteAddr := util.RemoteAddrFromStream(s)
-	rp := g.engine.NewRemoteNode(remoteAddr)
-	rpIDStr := rp.ShortID()
+func (g *Gossip) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 
 	resp := &core.Addr{}
 	if err := ReadStream(s, resp); err != nil {
@@ -29,7 +25,7 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 	// not exceed the maximum expected
 	if int64(len(resp.Addresses)) > g.engine.GetCfg().Node.MaxAddrsExpected {
 		g.log.Debug("Too many addresses received. Ignoring addresses",
-			"PeerID", rpIDStr,
+			"PeerID", rp.ShortID(),
 			"NumAddrReceived", len(resp.Addresses))
 		return nil, fmt.Errorf("too many addresses received. Ignoring addresses")
 	}
@@ -54,7 +50,8 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 		}
 	}
 
-	g.log.Info("Received addresses", "PeerID", rpIDStr, "NumAddrs", len(resp.Addresses),
+	g.log.Info("Received addresses", "PeerID", rp.ShortID(),
+		"NumAddrs", len(resp.Addresses),
 		"InvalidAddrs", invalidAddrs)
 
 	return resp.Addresses, nil
@@ -62,12 +59,12 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 
 // OnAddr handles incoming core.Addr message.
 // Received addresses are relayed.
-func (g *Gossip) OnAddr(s net.Stream) error {
+func (g *Gossip) OnAddr(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
 	// process the stream and return the addresses set
-	addresses, err := g.onAddr(s)
+	addresses, err := g.onAddr(s, rp)
 	if err != nil {
 		g.engine.GetEventEmitter().Emit(EventAddrProcessed, err)
 		return err

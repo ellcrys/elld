@@ -70,10 +70,9 @@ func (g *Gossip) RelayBlock(block types.Block, remotePeers []core.Engine) error 
 // BlockBody messages contain information about a
 // block. It will attempt to process the received
 // block.
-func (g *Gossip) OnBlockBody(s net.Stream) error {
+func (g *Gossip) OnBlockBody(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
-	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
 
 	blockBody := &core.BlockBody{}
 	if err := ReadStream(s, &blockBody); err != nil {
@@ -155,12 +154,9 @@ func (g *Gossip) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 // OnRequestBlock handles RequestBlock message.
 // A RequestBlock message includes information
 // a bout a block that a remote node needs.
-func (g *Gossip) OnRequestBlock(s net.Stream) error {
+func (g *Gossip) OnRequestBlock(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
-	rpAddr := util.RemoteAddrFromStream(s)
-	rp := g.engine.NewRemoteNode(rpAddr)
-	rpID := rp.ShortID()
 
 	msg := &core.RequestBlock{}
 	if err := ReadStream(s, msg); err != nil {
@@ -174,7 +170,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) error {
 	if msg.Hash == "" {
 		s.Reset()
 		err := fmt.Errorf("Invalid RequestBlock message: empty 'Hash' field")
-		g.log.Debug(err.Error(), "PeerID", rpID)
+		g.log.Debug(err.Error(), "PeerID", rp.ShortID())
 		return err
 	}
 
@@ -185,7 +181,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) error {
 	if err != nil {
 		s.Reset()
 		g.log.Debug("Invalid hash supplied in requestblock message",
-			"PeerID", rpID, "Hash", msg.Hash)
+			"PeerID", rp.ShortID(), "Hash", msg.Hash)
 		return err
 	}
 
@@ -198,7 +194,7 @@ func (g *Gossip) OnRequestBlock(s net.Stream) error {
 			return err
 		}
 		s.Reset()
-		g.log.Debug("Requested block is not found", "PeerID", rpID,
+		g.log.Debug("Requested block is not found", "PeerID", rp.ShortID(),
 			"Hash", util.StrToHash(msg.Hash).SS())
 		return err
 	}
@@ -287,13 +283,12 @@ func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error 
 // and as such send an empty block hash response.
 //
 // If it finds that the remote peer has a chain that is
-// not the same as its main chain (a side branch), it will
+// not the same as its main chain (a branch), it will
 // send block hashes starting from the root parent block (oldest
 // ancestor) which exists on the main chain.
-func (g *Gossip) OnGetBlockHashes(s net.Stream) error {
+func (g *Gossip) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
-	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
 
 	// Read the message
 	msg := &core.GetBlockHashes{}
@@ -449,9 +444,8 @@ func (g *Gossip) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) error {
 }
 
 // OnGetBlockBodies handles GetBlockBodies requests
-func (g *Gossip) OnGetBlockBodies(s net.Stream) error {
+func (g *Gossip) OnGetBlockBodies(s net.Stream, rp core.Engine) error {
 	defer s.Close()
-	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
 
 	// Read the message
 	msg := &core.GetBlockBodies{}

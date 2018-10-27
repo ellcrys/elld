@@ -6,7 +6,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/go-ethereum/log"
@@ -111,17 +110,14 @@ func (g *Gossip) SendHandshake(rp core.Engine) error {
 }
 
 // OnHandshake handles incoming handshake requests
-func (g *Gossip) OnHandshake(s net.Stream) error {
-
-	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
-	rpIDShort := rp.ShortID()
+func (g *Gossip) OnHandshake(s net.Stream, rp core.Engine) error {
 
 	msg := &core.Handshake{}
 	if err := ReadStream(s, msg); err != nil {
 		return g.logErr(err, rp, "[OnHandshake] Failed to read message")
 	}
 
-	g.log.Info("Received handshake", "PeerID", rpIDShort,
+	g.log.Info("Received handshake", "PeerID", rp.ShortID(),
 		"ClientVersion", msg.Version,
 		"Height", msg.BestBlockNumber,
 		"TotalDifficulty", msg.BestBlockTotalDifficulty)
@@ -153,7 +149,7 @@ func (g *Gossip) OnHandshake(s net.Stream) error {
 	g.engine.GetIntros().AddWithExp(rp.StringID(), struct{}{}, cache.Sec(3600))
 
 	g.log.Info("Responded to handshake with chain state", "PeerID",
-		rpIDShort, "ClientVersion",
+		rp.ShortID(), "ClientVersion",
 		nodeMsg.Version, "TotalDifficulty",
 		nodeMsg.BestBlockTotalDifficulty)
 
@@ -166,7 +162,7 @@ func (g *Gossip) OnHandshake(s net.Stream) error {
 		g.log.Info("Local blockchain is behind peer",
 			"ChainHeight", bestBlock.GetNumber(),
 			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
-			"PeerID", rpIDShort,
+			"PeerID", rp.ShortID(),
 			"PeerChainHeight", msg.BestBlockNumber,
 			"PeerChainTotalDifficulty", msg.BestBlockTotalDifficulty)
 		go g.SendGetBlockHashes(rp, nil)

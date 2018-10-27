@@ -3,20 +3,17 @@ package gossip
 import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
 // SendGetAddrToPeer sends a core.GetAddr message to a remote peer.
 // The remote peer will respond with a core.Addr message which
 // must be processed using the OnAddr handler and return the response.
-func (g *Gossip) SendGetAddrToPeer(remotePeer core.Engine) ([]*core.Address, error) {
+func (g *Gossip) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
 
-	rpIDShort := remotePeer.ShortID()
-
-	s, c, err := g.NewStream(remotePeer, config.GetAddrVersion)
+	s, c, err := g.NewStream(rp, config.GetAddrVersion)
 	if err != nil {
-		return nil, g.logConnectErr(err, remotePeer, "[SendGetAddrToPeer] Failed to connect")
+		return nil, g.logConnectErr(err, rp, "[SendGetAddrToPeer] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
@@ -24,12 +21,12 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer core.Engine) ([]*core.Address, err
 	msg := &core.GetAddr{}
 	if err := WriteStream(s, msg); err != nil {
 		s.Reset()
-		return nil, g.logErr(err, remotePeer, "[SendGetAddrToPeer] Failed to write")
+		return nil, g.logErr(err, rp, "[SendGetAddrToPeer] Failed to write")
 	}
 
-	g.log.Debug("GetAddr message sent to peer", "PeerID", rpIDShort)
+	g.log.Debug("GetAddr message sent to peer", "PeerID", rp.ShortID())
 
-	addr, err := g.onAddr(s)
+	addr, err := g.onAddr(s, rp)
 	if err != nil {
 		return nil, err
 	}
@@ -72,13 +69,9 @@ func (g *Gossip) SendGetAddr(remotePeers []core.Engine) error {
 
 // OnGetAddr processes a core.GetAddr request.
 // Sends a list of active addresses to the sender
-func (g *Gossip) OnGetAddr(s net.Stream) error {
+func (g *Gossip) OnGetAddr(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
-
-	remoteAddr := util.RemoteAddrFromStream(s)
-	rp := g.engine.NewRemoteNode(remoteAddr)
-	rpIDShort := rp.ShortID()
 
 	// read the message
 	msg := &core.GetAddr{}
@@ -87,7 +80,7 @@ func (g *Gossip) OnGetAddr(s net.Stream) error {
 		return g.logErr(err, rp, "[OnGetAddr] Failed to read")
 	}
 
-	g.log.Debug("Received GetAddr message", "PeerID", rpIDShort)
+	g.log.Debug("Received GetAddr message", "PeerID", rp.ShortID())
 
 	// get active addresses we know about. If we have more 2500
 	// addresses, then we select 2500 randomly
@@ -116,6 +109,6 @@ func (g *Gossip) OnGetAddr(s net.Stream) error {
 		return g.logErr(err, rp, "[OnGetAddr] Failed to write")
 	}
 
-	g.log.Debug("Sent GetAddr response to peer", "PeerID", rpIDShort)
+	g.log.Debug("Sent GetAddr response to peer", "PeerID", rp.ShortID())
 	return nil
 }

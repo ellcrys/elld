@@ -19,11 +19,8 @@ func MakeTxHistoryKey(tx types.Transaction, peer core.Engine) []interface{} {
 }
 
 // OnTx handles incoming transaction message
-func (g *Gossip) OnTx(s net.Stream) error {
+func (g *Gossip) OnTx(s net.Stream, rp core.Engine) error {
 	defer s.Close()
-
-	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
-	rpIDShort := rp.ShortID()
 
 	msg := &core.Transaction{}
 	if err := ReadStream(s, msg); err != nil {
@@ -31,7 +28,7 @@ func (g *Gossip) OnTx(s net.Stream) error {
 		return g.logErr(err, rp, "[OnTx] Failed to read")
 	}
 
-	g.log.Info("Received new transaction", "PeerID", rpIDShort)
+	g.log.Info("Received new transaction", "PeerID", rp.ShortID())
 
 	historyKey := MakeTxHistoryKey(msg, rp)
 	if g.engine.GetHistory().HasMulti(historyKey...) {

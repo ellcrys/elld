@@ -132,7 +132,7 @@ func (g *Gossip) checkRemotePeer(s net.Stream, rp core.Engine) error {
 
 // Handle wrappers a protocol handler providing an
 // interface to perform pre and post handling operations.
-func (g *Gossip) Handle(handler func(s net.Stream) error) func(net.Stream) {
+func (g *Gossip) Handle(handler func(s net.Stream, remotePeer core.Engine) error) func(net.Stream) {
 	return func(s net.Stream) {
 
 		remoteAddr := util.RemoteAddrFromStream(s)
@@ -149,7 +149,7 @@ func (g *Gossip) Handle(handler func(s net.Stream) error) func(net.Stream) {
 		g.PM().AddOrUpdateNode(rp)
 
 		// Handle the message
-		handler(s)
+		handler(s, rp)
 	}
 }
 

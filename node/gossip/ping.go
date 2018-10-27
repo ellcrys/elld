@@ -8,7 +8,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types/core"
 
-	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
@@ -106,14 +105,11 @@ func (g *Gossip) SendPing(remotePeers []core.Engine) {
 // blockchain synchronization if the Ping message includes
 // blockchain information that is better than the local
 // blockchain
-func (g *Gossip) OnPing(s net.Stream) error {
+func (g *Gossip) OnPing(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
-	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
-	rpIDShort := rp.ShortID()
-
-	g.log.Info("Received ping message", "PeerID", rpIDShort)
+	g.log.Info("Received ping message", "PeerID", rp.ShortID())
 
 	// read the message from the stream
 	msg := &core.Ping{}
@@ -141,7 +137,7 @@ func (g *Gossip) OnPing(s net.Stream) error {
 		return g.logErr(err, rp, "[OnPing] Failed to write message")
 	}
 
-	g.log.Debug("Sent pong response to peer", "PeerID", rpIDShort)
+	g.log.Debug("Sent pong response to peer", "PeerID", rp.ShortID())
 
 	// compare best chain.
 	// If the blockchain best block has a less
@@ -151,11 +147,11 @@ func (g *Gossip) OnPing(s net.Stream) error {
 		Cmp(msg.BestBlockTotalDifficulty) == -1 {
 
 		g.log.Info("Local blockchain is behind peer",
-			"PeerID", rpIDShort,
+			"PeerID", rp.ShortID(),
 			"Height", msg.BestBlockNumber,
 			"TotalDifficulty", msg.BestBlockTotalDifficulty)
 		g.log.Info("Attempting to sync blockchain with peer",
-			"PeerID", rpIDShort)
+			"PeerID", rp.ShortID())
 		go g.SendGetBlockHashes(rp, nil)
 	}
 

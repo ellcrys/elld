@@ -3,7 +3,6 @@ package gossip
 import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
 	net "github.com/libp2p/go-libp2p-net"
 )
@@ -76,11 +75,9 @@ func (g *Gossip) SendIntro(intro *core.Intro) {
 
 // OnIntro handles incoming core.Intro messages.
 // Received messages are relayed to 2 random peers.
-func (g *Gossip) OnIntro(s net.Stream) error {
+func (g *Gossip) OnIntro(s net.Stream, rp core.Engine) error {
 
 	defer s.Reset()
-	remoteAddr := util.RemoteAddrFromStream(s)
-	rp := g.engine.NewRemoteNode(remoteAddr)
 
 	var msg core.Intro
 	if err := ReadStream(s, &msg); err != nil {
