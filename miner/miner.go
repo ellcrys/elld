@@ -12,8 +12,9 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
@@ -34,7 +35,7 @@ type Miner struct {
 	log logger.Logger
 
 	// blockMaker provides functions for creating a block
-	blockMaker core.BlockMaker
+	blockMaker types.BlockMaker
 
 	// event is the engine event emitter
 	event *emitter.Emitter
@@ -57,11 +58,11 @@ type Miner struct {
 	aborted bool
 
 	// proposedBlock is the block currently being mined
-	proposedBlock core.Block
+	proposedBlock types.Block
 }
 
 // New creates and returns a new Miner instance
-func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter,
+func New(mineKey *crypto.Key, blockMaker types.BlockMaker, event *emitter.Emitter,
 	cfg *config.EngineConfig, log logger.Logger) *Miner {
 
 	m := &Miner{
@@ -71,7 +72,7 @@ func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter
 		blockMaker: blockMaker,
 		event:      event,
 		abort:      make(chan struct{}),
-		blakimoto:  blakimoto.ConfiguredBlakimoto(cfg.Miner.Mode, log),
+		blakimoto:  blakimoto.ConfiguredBlakimoto(blakimoto.Mode(cfg.Miner.Mode), log),
 	}
 
 	// Subscribe to the global event emitter to learn
@@ -81,8 +82,8 @@ func New(mineKey *crypto.Key, blockMaker core.BlockMaker, event *emitter.Emitter
 		for {
 			select {
 			case evt := <-m.event.Once(core.EventNewBlock):
-				m.handleNewBlockEvt(evt.Args[0].(*objects.Block),
-					evt.Args[1].(core.ChainReader))
+				m.handleNewBlockEvt(evt.Args[0].(*core.Block),
+					evt.Args[1].(types.ChainReader))
 			}
 		}
 	}()
@@ -95,11 +96,16 @@ func (m *Miner) setFakeDelay(d time.Duration) {
 	m.blakimoto.SetFakeDelay(d)
 }
 
+// SetNumThreads sets the number of miner threads
+func (m *Miner) SetNumThreads(n int) {
+	m.blakimoto.SetThreads(n)
+}
+
 // getProposedBlock creates a full
 // valid block compatible with the
 // main chain.
-func (m *Miner) getProposedBlock(txs []core.Transaction) (core.Block, error) {
-	proposedBlock, err := m.blockMaker.Generate(&core.GenerateBlockParams{
+func (m *Miner) getProposedBlock(txs []types.Transaction) (types.Block, error) {
+	proposedBlock, err := m.blockMaker.Generate(&types.GenerateBlockParams{
 		Transactions: txs,
 		Creator:      m.minerKey,
 		Nonce:        util.EncodeNonce(1),
@@ -159,7 +165,7 @@ func (m *Miner) setMiningStatus(s bool) {
 // will cause the current proposed block to be dumped.
 // Additionally, it emits a core.EventMinerProposedBlockAborted event
 // to inform other processes about the aborted proposed block.
-func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReader) {
+func (m *Miner) handleNewBlockEvt(newBlock *core.Block, chain types.ChainReader) {
 	m.Lock()
 	defer m.Unlock()
 	if !m.mining {
@@ -175,7 +181,7 @@ func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReade
 	if m.blockMaker.IsMainChain(chain) &&
 		!m.proposedBlock.GetHash().Equal(newBlock.GetHash()) {
 		m.log.Debug("Aborting on-going miner session. Proposing a new block.",
-			"Number", newBlock.Header.Number)
+			"Number", newBlock.GetHeader().GetNumber())
 		go m.event.Emit(core.EventMinerProposedBlockAborted, m.proposedBlock)
 		m.abortCurrent()
 	}
@@ -183,8 +189,8 @@ func (m *Miner) handleNewBlockEvt(newBlock *objects.Block, chain core.ChainReade
 
 // ValidateHeader validates a given header according to
 // the Ethash specification.
-func (m *Miner) ValidateHeader(chain core.ChainReader, header,
-	parent *objects.Header, seal bool) {
+func (m *Miner) ValidateHeader(chain types.ChainReader, header,
+	parent *core.Header, seal bool) {
 	m.blakimoto.VerifyHeader(header, parent, seal)
 }
 
@@ -236,17 +242,20 @@ func (m *Miner) Mine() {
 
 		// abort due to new winning block being discovered
 		// or due to Stop() being called.
+		m.RLock()
 		if block == nil || m.stop {
+			m.RUnlock()
 			continue
 		}
+		m.RUnlock()
 
 		// Recompute hash and signature
 		block.SetHash(block.ComputeHash())
-		blockSig, _ := objects.BlockSign(block, m.minerKey.PrivKey().Base58())
+		blockSig, _ := core.BlockSign(block, m.minerKey.PrivKey().Base58())
 		block.SetSignature(blockSig)
 
 		// Attempt to add to the blockchain to the main chain.
-		if m.cfg.Miner.Mode != blakimoto.ModeTest {
+		if blakimoto.Mode(m.cfg.Miner.Mode) != blakimoto.ModeTest {
 			_, err = m.blockMaker.ProcessBlock(block)
 			if err != nil {
 				m.log.Error("Failed to process block", "Err", err.Error())
@@ -264,7 +273,7 @@ func (m *Miner) Mine() {
 		// in test or fake wait for a second before continues to next block
 		// TODO: remove when we are sure duplicate transactions do not exist in
 		// the proposed block.
-		if m.cfg.Miner.Mode == blakimoto.ModeTest || m.cfg.Node.Mode == config.ModeDev {
+		if blakimoto.Mode(m.cfg.Miner.Mode) == blakimoto.ModeTest || m.cfg.Node.Mode == config.ModeDev {
 			time.Sleep(3 * time.Second)
 		}
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -154,7 +155,7 @@ func (b *Blockchain) decideBestChain() error {
 
 // recordReOrg stores a record of a reorganization
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...core.CallOp) error {
+func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.CallOp) error {
 
 	var txOp = common.GetTxOp(b.db, opts...)
 	if txOp.Closed() {
@@ -195,7 +196,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...core.Ca
 }
 
 // getReOrgs fetches information about all reorganizations
-func (b *Blockchain) getReOrgs(opts ...core.CallOp) []*ReOrgInfo {
+func (b *Blockchain) getReOrgs(opts ...types.CallOp) []*ReOrgInfo {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 

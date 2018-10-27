@@ -17,12 +17,6 @@ import (
 var (
 	// maxUint256 is a big integer representing 2^256-1
 	maxUint256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
-
-	// algorithmRevision is the data structure version used for file naming.
-	algorithmRevision = 23
-
-	// dumpMagic is a dataset dump header to sanity check a data dump.
-	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
 )
 
 // Mode defines the type and amount of PoW verification an blakimoto engine makes.
@@ -87,7 +81,6 @@ func (blakimoto *Blakimoto) SetFakeDelay(d time.Duration) {
 func (blakimoto *Blakimoto) Threads() int {
 	blakimoto.lock.Lock()
 	defer blakimoto.lock.Unlock()
-
 	return blakimoto.threads
 }
 

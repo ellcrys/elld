@@ -9,10 +9,10 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	p "github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -62,19 +62,19 @@ func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
 // all transactions in a given block.
 // The transaction will be awarded to the provide
 // beneficiary.
-func (b *Blockchain) getFeeAllocTx(block *objects.Block, beneficiary *crypto.Key) *objects.Transaction {
+func (b *Blockchain) getFeeAllocTx(block *core.Block, beneficiary *crypto.Key) *core.Transaction {
 
 	// calculate total fees
 	totalMinerFee := decimal.Zero
 	for _, tx := range block.Transactions {
-		if tx.Type != objects.TxTypeAlloc {
+		if tx.Type != core.TxTypeAlloc {
 			totalMinerFee = totalMinerFee.Add(tx.GetFee().Decimal())
 		}
 	}
 
 	// create an alloc transaction
-	tx := &objects.Transaction{
-		Type:         objects.TxTypeAlloc,
+	tx := &core.Transaction{
+		Type:         core.TxTypeAlloc,
 		Nonce:        0,
 		From:         util.String(beneficiary.PubKey().Addr()),
 		To:           util.String(beneficiary.PubKey().Addr()),
@@ -84,7 +84,7 @@ func (b *Blockchain) getFeeAllocTx(block *objects.Block, beneficiary *crypto.Key
 		Timestamp:    time.Now().Unix(),
 	}
 	tx.Hash = tx.ComputeHash()
-	sig, _ := objects.TxSign(tx, beneficiary.PrivKey().Base58())
+	sig, _ := core.TxSign(tx, beneficiary.PrivKey().Base58())
 	tx.SetSignature(sig)
 
 	return tx
@@ -93,10 +93,10 @@ func (b *Blockchain) getFeeAllocTx(block *objects.Block, beneficiary *crypto.Key
 // Generate produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.CallOp) (core.Block, error) {
+func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.CallOp) (types.Block, error) {
 
-	var chain core.Chainer
-	var block *objects.Block
+	var chain types.Chainer
+	var block *core.Block
 
 	if params == nil {
 		return nil, fmt.Errorf("params is required")
@@ -139,8 +139,8 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 		}
 	}
 
-	block = &objects.Block{
-		Header: &objects.Header{
+	block = &core.Block{
+		Header: &core.Header{
 			ParentHash:       util.EmptyHash,
 			CreatorPubKey:    util.String(params.Creator.PubKey().Base58()),
 			Number:           1,
@@ -152,13 +152,13 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	}
 
 	for _, tx := range params.Transactions {
-		block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
+		block.Transactions = append(block.Transactions, tx.(*core.Transaction))
 	}
 
 	// override the total difficult if a
 	// total difficulty is provided in the given params
 	if params.OverrideTotalDifficulty != nil {
-		block.Header.TotalDifficulty = params.OverrideTotalDifficulty
+		block.Header.SetTotalDifficulty(params.OverrideTotalDifficulty)
 	}
 
 	// override the block's timestamp if a timestamp is
@@ -191,7 +191,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 	// Override difficulty if provided in params
 	if params.Difficulty != nil {
-		block.Header.Difficulty = params.Difficulty
+		block.Header.SetDifficulty(params.Difficulty)
 	}
 
 	// select transactions and compute transaction root
@@ -201,7 +201,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 			return nil, err
 		}
 		for _, tx := range selectedTxs {
-			block.Transactions = append(block.Transactions, tx.(*objects.Transaction))
+			block.Transactions = append(block.Transactions, tx.(*core.Transaction))
 		}
 	}
 
@@ -212,13 +212,14 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	}
 
 	// Compute transactions root
-	block.Header.TransactionsRoot = common.ComputeTxsRoot(block.GetTransactions())
+	block.Header.SetTransactionsRoot(common.ComputeTxsRoot(block.GetTransactions()))
 
 	// mock execute the transaction and set the new state root
-	block.Header.StateRoot, _, err = b.execBlock(chain, block)
+	stateRoot, _, err := b.execBlock(chain, block)
 	if err != nil {
 		return nil, fmt.Errorf("exec: %s", err)
 	}
+	block.Header.SetStateRoot(stateRoot)
 
 	// override state root if params include a state root
 	if !params.OverrideStateRoot.IsEmpty() {
@@ -226,7 +227,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 	}
 
 	// Sign the block using the creators private key
-	sig, err := objects.BlockSign(block, params.Creator.PrivKey().Base58())
+	sig, err := core.BlockSign(block, params.Creator.PrivKey().Base58())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign block: %s", err)
 	}
@@ -240,7 +241,7 @@ func (b *Blockchain) Generate(params *core.GenerateBlockParams, opts ...core.Cal
 
 // GetBlock finds a block in any chain with a matching
 // block number and hash.
-func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (core.Block, error) {
+func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	for _, chain := range b.chains {
@@ -257,7 +258,7 @@ func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (core.Block, error)
 }
 
 // getBlockByHash finds a block in any chain with a matching hash.
-func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	for _, chain := range b.chains {
@@ -274,6 +275,6 @@ func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 }
 
 // GetBlockByHash finds a block in any chain with a matching hash.
-func (b *Blockchain) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+func (b *Blockchain) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 	return b.getBlockByHash(hash, opts...)
 }

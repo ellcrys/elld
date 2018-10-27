@@ -866,6 +866,14 @@
   revision = "d229c224a219dcf41e9d2af4684b9782f33f5eb7"
 
 [[projects]]
+  digest = "1:5687f8b9476a155019fa7810c2737107df42a7ca5c88f10ae9161d377431c89a"
+  name = "github.com/ncodes/goblin"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b90fe3147ca4d8280908a36144d547b00441c902"
+  version = "0.0.3"
+
+[[projects]]
   branch = "master"
   digest = "1:6d42480278e7719074c770605d8695d019fb28787242ca939ebee6a40088f075"
   name = "github.com/olebedev/emitter"
@@ -1330,6 +1338,7 @@
     "github.com/multiformats/go-multihash",
     "github.com/ncodes/authtoken",
     "github.com/ncodes/go-prettyjson",
+    "github.com/ncodes/goblin",
     "github.com/olebedev/emitter",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",

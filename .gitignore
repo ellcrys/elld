@@ -5,4 +5,5 @@ CacheFile
 scribleDB
 DagFile
 scripts
-*vscode
+.*vscode
+.*DS_Store

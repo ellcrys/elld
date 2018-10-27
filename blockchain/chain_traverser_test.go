@@ -3,139 +3,145 @@ package blockchain
 import (
 	"fmt"
 	"os"
+	"testing"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
-	. "github.com/onsi/ginkgo"
+	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ChainTraverser", func() {
+func TestChainTraverser(t *testing.T) {
+	g := Goblin(t)
+	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
 
-	var err error
-	var bc *Blockchain
-	var cfg *config.EngineConfig
-	var db elldb.DB
+	g.Describe("ChainTraverser", func() {
 
-	BeforeEach(func() {
-		cfg, err = testutil.SetTestCfg()
-		Expect(err).To(BeNil())
+		var err error
+		var bc *Blockchain
+		var cfg *config.EngineConfig
+		var db elldb.DB
 
-		db = elldb.NewDB(cfg.DataDir())
-		err = db.Open(util.RandString(5))
-		Expect(err).To(BeNil())
+		g.BeforeEach(func() {
+			cfg, err = testutil.SetTestCfg()
+			Expect(err).To(BeNil())
 
-		bc = New(txpool.New(100), cfg, log)
-		bc.SetDB(db)
-	})
+			db = elldb.NewDB(cfg.DataDir())
+			err = db.Open(util.RandString(5))
+			Expect(err).To(BeNil())
 
-	BeforeEach(func() {
-		genesisBlock, err := LoadBlockFromFile("genesis-test.json")
-		Expect(err).To(BeNil())
-		bc.SetGenesisBlock(genesisBlock)
-		err = bc.Up()
-		Expect(err).To(BeNil())
-	})
-
-	AfterEach(func() {
-		db.Close()
-		err = os.RemoveAll(cfg.DataDir())
-		Expect(err).To(BeNil())
-	})
-
-	Describe(".Query", func() {
-
-		var trv *ChainTraverser
-		var chain *Chain
-
-		BeforeEach(func() {
-			trv = bc.NewChainTraverser()
-			chain = NewChain("chain_x", db, cfg, log)
+			bc = New(txpool.New(100), cfg, log)
+			bc.SetDB(db)
 		})
 
-		It("should return error if query function returned an error", func() {
-			err := trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
-				return false, fmt.Errorf("something bad")
-			})
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("something bad"))
-		})
-
-		It("should return nil when true is returned", func() {
-			err := trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
-				return true, nil
-			})
+		g.BeforeEach(func() {
+			genesisBlock, err := LoadBlockFromFile("genesis-test.json")
+			Expect(err).To(BeNil())
+			bc.SetGenesisBlock(genesisBlock)
+			err = bc.Up()
 			Expect(err).To(BeNil())
 		})
 
-		When("object is stored/associated to a chain's grand parent", func() {
+		g.AfterEach(func() {
+			db.Close()
+			err = os.RemoveAll(cfg.DataDir())
+			Expect(err).To(BeNil())
+		})
 
-			var parent, grandParent *Chain
+		g.Describe(".Query", func() {
 
-			// Target shape:
-			// [1]-[2]..[n] - grand parent chain (grand_parent_x)
-			//      |___[n] - parent chain (parent_x)
-			//      |___[n] - chain (chain_x)
-			BeforeEach(func() {
-				parent = NewChain("parent_x", db, cfg, log)
-				grandParent = NewChain("grand_parent_x", db, cfg, log)
+			var trv *ChainTraverser
+			var chain *Chain
 
-				err := bc.saveChain(chain, parent.GetID(), 2)
-				Expect(err).To(BeNil())
-				err = bc.saveChain(parent, grandParent.GetID(), 2)
-				Expect(err).To(BeNil())
-				err = bc.saveChain(grandParent, "", 0)
-				Expect(err).To(BeNil())
-				Expect(bc.chains).To(HaveLen(4))
+			g.BeforeEach(func() {
+				trv = bc.NewChainTraverser()
+				chain = NewChain("chain_x", db, cfg, log)
 			})
 
-			Context("when starting chain has 2 ancestors (parent and grand parent)", func() {
-				var ancestors []string
+			g.It("should return error if query function returned an error", func() {
+				err := trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
+					return false, fmt.Errorf("something bad")
+				})
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("something bad"))
+			})
 
-				BeforeEach(func() {
-					ancestors = []string{}
-					err = trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
-						ancestors = append(ancestors, c.GetID().String())
+			g.It("should return nil when true is returned", func() {
+				err := trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
+					return true, nil
+				})
+				Expect(err).To(BeNil())
+			})
+
+			g.When("object is stored/associated to a chain's grand parent", func() {
+
+				var parent, grandParent *Chain
+
+				// Target shape:
+				// [1]-[2]..[n] - grand parent chain (grand_parent_x)
+				//      |___[n] - parent chain (parent_x)
+				//      |___[n] - chain (chain_x)
+				g.BeforeEach(func() {
+					parent = NewChain("parent_x", db, cfg, log)
+					grandParent = NewChain("grand_parent_x", db, cfg, log)
+
+					err := bc.saveChain(chain, parent.GetID(), 2)
+					Expect(err).To(BeNil())
+					err = bc.saveChain(parent, grandParent.GetID(), 2)
+					Expect(err).To(BeNil())
+					err = bc.saveChain(grandParent, "", 0)
+					Expect(err).To(BeNil())
+					Expect(bc.chains).To(HaveLen(4))
+				})
+
+				g.Context("when starting chain has 2 ancestors (parent and grand parent)", func() {
+					var ancestors []string
+
+					g.BeforeEach(func() {
+						ancestors = []string{}
+						err = trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
+							ancestors = append(ancestors, c.GetID().String())
+							return false, nil
+						})
+						Expect(err).To(BeNil())
+					})
+
+					g.It("should go up the chain ancestry returning 3 chains (itself and the ancestors)", func() {
+						Expect(ancestors).To(HaveLen(3))
+					})
+
+					g.Specify("the returned ancestor order must start from the start chain and up to the last ancestor", func() {
+						Expect(ancestors[0]).To(Equal(chain.GetID().String()))
+						Expect(ancestors[1]).To(Equal(parent.GetID().String()))
+						Expect(ancestors[2]).To(Equal(grandParent.GetID().String()))
+					})
+				})
+
+				g.It("should find the object stored at the ancestor (grand parent)", func() {
+
+					key := elldb.MakeKey(nil, []byte(grandParent.id), []byte("stuff"))
+					db.Put([]*elldb.KVObject{
+						elldb.NewKVObject(key, []byte("123")),
+					})
+
+					var result []*elldb.KVObject
+					err = trv.Start(chain).Query(func(c types.Chainer) (bool, error) {
+						key := elldb.MakeKey(nil, []byte(c.GetID()), []byte("stuff"))
+						if result = db.GetByPrefix(key); len(result) > 0 {
+							return true, nil
+						}
 						return false, nil
 					})
+
 					Expect(err).To(BeNil())
+					Expect(result).To(HaveLen(1))
+					Expect(trv.chain.GetID()).To(Equal(grandParent.GetID()))
 				})
-
-				It("should go up the chain ancestry returning 3 chains (itself and the ancestors)", func() {
-					Expect(ancestors).To(HaveLen(3))
-				})
-
-				Specify("the returned ancestor order must start from the start chain and up to the last ancestor", func() {
-					Expect(ancestors[0]).To(Equal(chain.GetID().String()))
-					Expect(ancestors[1]).To(Equal(parent.GetID().String()))
-					Expect(ancestors[2]).To(Equal(grandParent.GetID().String()))
-				})
-			})
-
-			It("should find the object stored at the ancestor (grand parent)", func() {
-
-				key := elldb.MakeKey(nil, []byte(grandParent.id), []byte("stuff"))
-				db.Put([]*elldb.KVObject{
-					elldb.NewKVObject(key, []byte("123")),
-				})
-
-				var result []*elldb.KVObject
-				err = trv.Start(chain).Query(func(c core.Chainer) (bool, error) {
-					key := elldb.MakeKey(nil, []byte(c.GetID()), []byte("stuff"))
-					if result = db.GetByPrefix(key); len(result) > 0 {
-						return true, nil
-					}
-					return false, nil
-				})
-
-				Expect(err).To(BeNil())
-				Expect(result).To(HaveLen(1))
-				Expect(trv.chain.GetID()).To(Equal(grandParent.GetID()))
 			})
 		})
 	})
-})
+}

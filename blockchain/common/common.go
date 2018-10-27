@@ -6,7 +6,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -24,7 +24,7 @@ const (
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
-func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
+func GetTxOp(db elldb.TxCreator, opts ...types.CallOp) *TxOp {
 	for _, op := range opts {
 		switch _op := op.(type) {
 		case *TxOp:
@@ -55,7 +55,7 @@ func GetTxOp(db elldb.TxCreator, opts ...core.CallOp) *TxOp {
 
 // GetBlockQueryRangeOp is a convenience method to get QueryBlockRange
 // option from a slice of CallOps
-func GetBlockQueryRangeOp(opts ...core.CallOp) *BlockQueryRange {
+func GetBlockQueryRangeOp(opts ...types.CallOp) *BlockQueryRange {
 	for _, op := range opts {
 		switch _op := op.(type) {
 		case *BlockQueryRange:
@@ -67,7 +67,7 @@ func GetBlockQueryRangeOp(opts ...core.CallOp) *BlockQueryRange {
 
 // GetTransitions finds a Transitions option from a given
 // slice of call options and returns a slice of transition objects
-func GetTransitions(opts ...core.CallOp) (transitions []Transition) {
+func GetTransitions(opts ...types.CallOp) (transitions []Transition) {
 	for _, op := range opts {
 		switch _op := op.(type) {
 		case *TransitionsOp:
@@ -82,7 +82,7 @@ func GetTransitions(opts ...core.CallOp) (transitions []Transition) {
 
 // GetChainerOp is a convenience method to get ChainerOp
 // option from a slice of CallOps
-func GetChainerOp(opts ...core.CallOp) *ChainerOp {
+func GetChainerOp(opts ...types.CallOp) *ChainerOp {
 	for _, op := range opts {
 		switch _op := op.(type) {
 		case *ChainerOp:
@@ -93,7 +93,7 @@ func GetChainerOp(opts ...core.CallOp) *ChainerOp {
 }
 
 // ComputeTxsRoot computes the merkle root of a set of transactions.
-func ComputeTxsRoot(txs []core.Transaction) util.Hash {
+func ComputeTxsRoot(txs []types.Transaction) util.Hash {
 
 	tree := NewTree()
 	for _, tx := range txs {

@@ -3,18 +3,15 @@ package node_test
 import (
 	"fmt"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/olebedev/emitter"
+	"github.com/shopspring/decimal"
 
 	"github.com/phayes/freeport"
-	"github.com/shopspring/decimal"
 	"github.com/thoas/go-funk"
 
 	. "github.com/onsi/gomega"
-
-	. "github.com/onsi/ginkgo"
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -30,38 +27,9 @@ import (
 
 var log = logger.NewLogrusNoOp()
 
-// var makeBlock = func(bchain core.Blockchain, sender, receiver *crypto.Key, timestamp int64) core.Block {
-// 	block, err := bchain.Generate(&core.GenerateBlockParams{
-// 		Transactions: []core.Transaction{
-// 			objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
-// 		},
-// 		Creator:           sender,
-// 		Nonce:             core.EncodeNonce(1),
-// 		Difficulty:        new(big.Int).SetInt64(131072),
-// 		OverrideTimestamp: timestamp,
-// 		AddFeeAlloc:       true,
-// 	})
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return block
-// }
-
-// var makeBlockWithSingleTx = func(bchain core.Blockchain, sender, receiver *crypto.Key, timestamp int64, senderNonce uint64) core.Block {
-// 	block, err := bchain.Generate(&core.GenerateBlockParams{
-// 		Transactions: []core.Transaction{
-// 			objects.NewTx(objects.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
-// 		},
-// 		Creator:           sender,
-// 		Nonce:             core.EncodeNonce(1),
-// 		Difficulty:        new(big.Int).SetInt64(131072),
-// 		OverrideTimestamp: timestamp,
-// 		AddFeeAlloc:       true,
-// 	})
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// }
+func init() {
+	params.FeePerByte = decimal.NewFromFloat(0.01)
+}
 
 func getPort() int {
 	port, err := freeport.GetFreePort()
@@ -112,24 +80,16 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	if err != nil {
 		panic(err)
 	}
-	n.SetLastSeen(time.Now().UTC())
+	n.SetLastSeen(time.Now())
 
 	n.SetTxsPool(txp)
-	gossip := node.NewGossip(n, log)
-	n.SetGossipProtocol(gossip)
 	n.SetBlockchain(bc)
 
 	return n
 }
 
-func TestNodeSuite(t *testing.T) {
-	params.FeePerByte = decimal.NewFromFloat(0.01)
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Node Suite")
-}
-
 func closeNode(n *node.Node) {
-	n.Host().Close()
+	go n.GetHost().Close()
 	err := os.RemoveAll(n.GetCfg().DataDir())
 	Expect(err).To(BeNil())
 }

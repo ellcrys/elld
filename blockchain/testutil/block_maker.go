@@ -6,15 +6,15 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
 
 // MakeTestBlock creates a block and adds
 // the transactions in the transactions pool
 // attached to the blockchain instance
-func MakeTestBlock(bc core.Blockchain, chain core.Chainer, gp *core.GenerateBlockParams) core.Block {
+func MakeTestBlock(bc types.Blockchain, chain types.Chainer, gp *types.GenerateBlockParams) types.Block {
 	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
 	if err != nil {
 		panic(err)
@@ -28,10 +28,10 @@ func MakeTestBlock(bc core.Blockchain, chain core.Chainer, gp *core.GenerateBloc
 }
 
 // MakeBlock creates a block
-func MakeBlock(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+func MakeBlock(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
@@ -43,10 +43,10 @@ func MakeBlock(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key
 
 // MakeBlockWithOnlyAllocTx creates a block with
 // only one allocation transaction
-func MakeBlockWithOnlyAllocTx(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+func MakeBlockWithOnlyAllocTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
@@ -57,9 +57,9 @@ func MakeBlockWithOnlyAllocTx(bc core.Blockchain, ch core.Chainer, sender, recei
 
 // MakeBlockWithNoTx creates a block with no
 // transaction in it.
-func MakeBlockWithNoTx(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions:      []core.Transaction{},
+func MakeBlockWithNoTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions:      []types.Transaction{},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
 		Difficulty:        new(big.Int).SetInt64(131072),
@@ -70,10 +70,10 @@ func MakeBlockWithNoTx(bc core.Blockchain, ch core.Chainer, sender, receiver *cr
 // MakeBlockWithSingleTx creates a block with
 // only one balance transaction. Sender nonce
 // is required
-func MakeBlockWithSingleTx(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key, senderNonce uint64) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+func MakeBlockWithSingleTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, senderNonce uint64) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
@@ -85,10 +85,10 @@ func MakeBlockWithSingleTx(bc core.Blockchain, ch core.Chainer, sender, receiver
 
 // MakeBlockWithBalanceTx is like MakeBlockWithSingleTx
 // but does not require a sender nonce
-func MakeBlockWithBalanceTx(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
+func MakeBlockWithBalanceTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:     sender,
 		Nonce:       util.EncodeNonce(1),
@@ -99,10 +99,10 @@ func MakeBlockWithBalanceTx(bc core.Blockchain, ch core.Chainer, sender, receive
 
 // MakeBlockWithParentHash creates a block with one
 // balance transaction and a given parent block hash
-func MakeBlockWithParentHash(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key, parentHash util.Hash) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
+func MakeBlockWithParentHash(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, parentHash util.Hash) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:            sender,
 		Nonce:              util.EncodeNonce(1),
@@ -113,10 +113,10 @@ func MakeBlockWithParentHash(bc core.Blockchain, ch core.Chainer, sender, receiv
 
 // MakeBlockWithTotalDifficulty creates a block with one
 // balance transaction and a given total difficulty
-func MakeBlockWithTotalDifficulty(bc core.Blockchain, ch core.Chainer, sender, receiver *crypto.Key, td *big.Int) core.Block {
-	return MakeTestBlock(bc, ch, &core.GenerateBlockParams{
-		Transactions: []core.Transaction{
-			objects.NewTx(objects.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
+func MakeBlockWithTotalDifficulty(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, td *big.Int) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:                 sender,
 		Nonce:                   util.EncodeNonce(1),

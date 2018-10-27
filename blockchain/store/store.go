@@ -7,8 +7,8 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -38,7 +38,7 @@ func (s *ChainStore) DB() elldb.DB {
 }
 
 // hasBlock checks whether a block exists
-func (s *ChainStore) hasBlock(number uint64, opts ...core.CallOp) (bool, error) {
+func (s *ChainStore) hasBlock(number uint64, opts ...types.CallOp) (bool, error) {
 	_, err := s.getBlock(number, opts...)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
@@ -51,7 +51,7 @@ func (s *ChainStore) hasBlock(number uint64, opts ...core.CallOp) (bool, error) 
 
 // getBlock gets a block by the block number.
 // If number is 0, return the block with the highest block number
-func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
+func (s *ChainStore) getBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -70,7 +70,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, e
 		return nil, core.ErrBlockNotFound
 	}
 
-	var block objects.Block
+	var block core.Block
 	if err := r[0].Scan(&block); err != nil {
 		txOp.Rollback()
 		return nil, err
@@ -80,7 +80,7 @@ func (s *ChainStore) getBlock(number uint64, opts ...core.CallOp) (core.Block, e
 }
 
 // GetHeader gets the header of the current block in the chain
-func (s *ChainStore) GetHeader(number uint64, opts ...core.CallOp) (core.Header, error) {
+func (s *ChainStore) GetHeader(number uint64, opts ...types.CallOp) (types.Header, error) {
 	var err error
 	block, err := s.getBlock(number, opts...)
 	if err != nil {
@@ -91,7 +91,7 @@ func (s *ChainStore) GetHeader(number uint64, opts ...core.CallOp) (core.Header,
 }
 
 // GetHeaderByHash returns the header of a block by searching using its hash
-func (s *ChainStore) GetHeaderByHash(hash util.Hash, opts ...core.CallOp) (core.Header, error) {
+func (s *ChainStore) GetHeaderByHash(hash util.Hash, opts ...types.CallOp) (types.Header, error) {
 
 	block, err := s.GetBlockByHash(hash, opts...)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *ChainStore) GetHeaderByHash(hash util.Hash, opts ...core.CallOp) (core.
 
 // GetBlock fetches a block by its block number.
 // If the block number begins with -1, the block with the highest block number is returned.
-func (s *ChainStore) GetBlock(number uint64, opts ...core.CallOp) (core.Block, error) {
+func (s *ChainStore) GetBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 	var err error
 
 	block, err := s.getBlock(number, opts...)
@@ -119,7 +119,7 @@ func (s *ChainStore) GetBlock(number uint64, opts ...core.CallOp) (core.Block, e
 // can be found as opposed to storing the entire
 // transaction. This saves disk space when considering
 // that the block on disk already contains the transaction.
-func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64, opts ...core.CallOp) error {
+func (s *ChainStore) PutTransactions(txs []types.Transaction, blockNumber uint64, opts ...types.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
 		return leveldb.ErrClosed
@@ -142,10 +142,10 @@ func (s *ChainStore) PutTransactions(txs []core.Transaction, blockNumber uint64,
 }
 
 // Current gets the current block at the tip of the chain
-func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
+func (s *ChainStore) Current(opts ...types.CallOp) (types.Block, error) {
 
 	var err error
-	var block objects.Block
+	var block core.Block
 	var r *elldb.KVObject
 
 	var txOp = common.GetTxOp(s.db, opts...)
@@ -173,7 +173,7 @@ func (s *ChainStore) Current(opts ...core.CallOp) (core.Block, error) {
 }
 
 // GetBlockByHash fetches a block by its block hash.
-func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -194,7 +194,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...core.CallOp) (core.B
 }
 
 // GetBlockByNumberAndHash finds by number and hash
-func (s *ChainStore) GetBlockByNumberAndHash(number uint64, hash util.Hash, opts ...core.CallOp) (core.Block, error) {
+func (s *ChainStore) GetBlockByNumberAndHash(number uint64, hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 
 	// find a block in the chain with a matching number.
 	// Expect to find 1 of such block
@@ -215,7 +215,7 @@ func (s *ChainStore) GetBlockByNumberAndHash(number uint64, hash util.Hash, opts
 
 // PutBlock adds a block to the store.
 // Returns error if a block with same number exists.
-func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {
+func (s *ChainStore) PutBlock(block types.Block, opts ...types.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -232,7 +232,7 @@ func (s *ChainStore) PutBlock(block core.Block, opts ...core.CallOp) error {
 
 // putBlock adds a block to the store using the provided transaction object.
 // Returns error if a block with same number exists.
-func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
+func (s *ChainStore) putBlock(block types.Block, opts ...types.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -273,7 +273,7 @@ func (s *ChainStore) putBlock(block core.Block, opts ...core.CallOp) error {
 }
 
 // Delete deletes objects
-func (s *ChainStore) Delete(key []byte, opts ...core.CallOp) error {
+func (s *ChainStore) Delete(key []byte, opts ...types.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -289,7 +289,7 @@ func (s *ChainStore) Delete(key []byte, opts ...core.CallOp) error {
 }
 
 // Put stores an object
-func (s *ChainStore) put(key []byte, value []byte, opts ...core.CallOp) error {
+func (s *ChainStore) put(key []byte, value []byte, opts ...types.CallOp) error {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -306,7 +306,7 @@ func (s *ChainStore) put(key []byte, value []byte, opts ...core.CallOp) error {
 }
 
 // get an object by key (and optionally by prefixes)
-func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.CallOp) error {
+func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...types.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
 		return leveldb.ErrClosed
@@ -323,7 +323,7 @@ func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...core.Cal
 
 // GetTransaction gets a transaction (by hash)
 // belonging to a chain
-func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
+func (s *ChainStore) GetTransaction(hash util.Hash, opts ...types.CallOp) (types.Transaction, error) {
 
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -366,13 +366,13 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 }
 
 // CreateAccount creates an account on a target block
-func (s *ChainStore) CreateAccount(targetBlockNum uint64, account core.Account, opts ...core.CallOp) error {
+func (s *ChainStore) CreateAccount(targetBlockNum uint64, account types.Account, opts ...types.CallOp) error {
 	key := common.MakeKeyAccount(targetBlockNum, s.chainID.Bytes(), account.GetAddress().Bytes())
 	return s.put(key, util.ObjectToBytes(account), opts...)
 }
 
 // GetAccount gets an account
-func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.Account, error) {
+func (s *ChainStore) GetAccount(address util.String, opts ...types.CallOp) (types.Account, error) {
 
 	var r *elldb.KVObject
 
@@ -405,16 +405,16 @@ func (s *ChainStore) GetAccount(address util.String, opts ...core.CallOp) (core.
 		return nil, core.ErrAccountNotFound
 	}
 
-	var account objects.Account
+	var account core.Account
 	r.Scan(&account)
 
 	return &account, txOp.Commit()
 }
 
 // GetAccounts gets all accounts
-func (s *ChainStore) GetAccounts(opts ...core.CallOp) ([]core.Account, error) {
+func (s *ChainStore) GetAccounts(opts ...types.CallOp) ([]types.Account, error) {
 
-	var accounts []core.Account
+	var accounts []types.Account
 	var index = map[util.String]struct{}{}
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {
@@ -435,7 +435,7 @@ func (s *ChainStore) GetAccounts(opts ...core.CallOp) ([]core.Account, error) {
 			return false
 		}
 
-		var account objects.Account
+		var account core.Account
 		kv.Scan(&account)
 		if _, has := index[account.GetAddress()]; !has {
 			accounts = append(accounts, &account)
