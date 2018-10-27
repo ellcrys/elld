@@ -181,6 +181,7 @@ func (db *LevelDB) NewTx() (Tx, error) {
 
 // Transaction defines interface for working with a database transaction
 type Transaction struct {
+	sync.Mutex
 	ldb *leveldb.Transaction
 }
 
@@ -209,11 +210,15 @@ func (tx *Transaction) Iterate(prefix []byte, first bool, iterFunc func(kv *KVOb
 
 // Commit the transaction
 func (tx *Transaction) Commit() error {
+	tx.Lock()
+	defer tx.Unlock()
 	return tx.ldb.Commit()
 }
 
 // Rollback discards the transaction
 func (tx *Transaction) Rollback() {
+	tx.Lock()
+	defer tx.Unlock()
 	tx.ldb.Discard()
 }
 

@@ -95,6 +95,11 @@ func (l *Logrus) SetToDebug() {
 	l.log.SetLevel(logrus.DebugLevel)
 }
 
+// SetToInfo sets the logger to INFO level
+func (l *Logrus) SetToInfo() {
+	l.log.SetLevel(logrus.InfoLevel)
+}
+
 func (l *Logrus) toFields(kv []interface{}) (f logrus.Fields) {
 	f = logrus.Fields{}
 	for i := 0; i < len(kv); i++ {
