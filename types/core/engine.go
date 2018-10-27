@@ -149,9 +149,9 @@ type Engine interface {
 	// transaction to the transaction pool.
 	AddTransaction(tx types.Transaction) error
 
-	// IsHardCodedSeed sets the hardcoded seed state
+	// SetHardcodedState sets the hardcoded seed state
 	// of the engine.
-	IsHardCodedSeed(v bool)
+	SetHardcodedState(v bool)
 
 	// SetGossipManager sets the gossip manager
 	SetGossipManager(m Gossip)

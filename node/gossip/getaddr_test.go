@@ -103,7 +103,7 @@ func TestGetAddr(t *testing.T) {
 
 				g.BeforeEach(func() {
 					remoteAddr = makeTestNode(getPort())
-					remoteAddr.MakeHardcoded()
+					remoteAddr.SetHardcodedState(true)
 					remoteAddr.SetLastSeen(time.Now())
 					rp.PM().AddOrUpdateNode(remoteAddr)
 				})

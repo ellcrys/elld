@@ -153,7 +153,7 @@ func (g *Gossip) Handle(handler func(s net.Stream, remotePeer core.Engine) error
 		// Check whether we are allowed to receive from this peer
 		ws := &core.WrappedStream{Stream: s, Extra: make(map[string]interface{})}
 		if err := g.CheckRemotePeer(ws, rp); err != nil {
-			g.logErr(err, rp, "message unaccepted")
+			g.logErr(err, rp, "message ("+string(s.Protocol())+") unaccepted")
 			s.Reset()
 			return
 		}
@@ -196,8 +196,8 @@ func (g *Gossip) logConnectErr(err error, rp core.Engine, msg string) error {
 
 	// When the peer reaches the max allowed
 	// failure count, add a ban time fo 3 hours
-	if g.PM().GetConnFailCount(rp.GetAddress()) >= 3 {
-		g.PM().AddTimeBan(rp, 1*time.Hour)
+	if !rp.IsHardcodedSeed() && g.PM().GetConnFailCount(rp.GetAddress()) >= 3 {
+		g.PM().AddTimeBan(rp, 15*time.Minute)
 	}
 
 	return g.logErr(err, rp, msg)

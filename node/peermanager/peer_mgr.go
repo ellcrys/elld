@@ -73,6 +73,12 @@ func (m *Manager) TimeBanIndex() map[string]time.Time {
 // If an existing entry exist for peer, add dur
 // to it.
 func (m *Manager) AddTimeBan(peer core.Engine, dur time.Duration) {
+
+	// We can't ban hardcoded seeds
+	if peer.IsHardcodedSeed() {
+		return
+	}
+
 	m.cacheMtx.Lock()
 	defer m.cacheMtx.Unlock()
 	curBanTime := m.timeBan[peer.StringID()]

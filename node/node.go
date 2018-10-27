@@ -56,7 +56,6 @@ type Node struct {
 	remote              bool                 // remote indicates the node represents a remote peer
 	lastSeen            time.Time            // the last time this node was seen
 	createdAt           time.Time            // the first time this node was seen/added
-	isHardcodedSeed     bool                 // whether the node was hardcoded as a seed
 	stopped             bool                 // flag to tell if node has stopped
 	log                 logger.Logger        // node logger
 	txsPool             *txpool.TxPool
@@ -73,6 +72,7 @@ type Node struct {
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
+	hardcodedPeers      map[string]struct{}
 }
 
 // NewNode creates a node instance at the specified port
@@ -126,6 +126,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		intros:         cache.NewActiveCache(50000),
 		tickerDone:     make(chan bool),
 		createdAt:      time.Now(),
+		hardcodedPeers: make(map[string]struct{}),
 	}
 
 	node.localNode = node
@@ -178,14 +179,15 @@ func NewNodeWithDB(db elldb.DB, config *config.EngineConfig, address string,
 // NewRemoteNode creates a Node that represents a remote node
 func (n *Node) NewRemoteNode(address util.NodeAddr) core.Engine {
 	node := &Node{
-		address:   address,
-		remote:    true,
-		mtx:       sync.RWMutex{},
-		syncMtx:   sync.RWMutex{},
-		localNode: n,
-		gProtoc:   n.gProtoc,
-		createdAt: time.Now(),
-		lastSeen:  time.Now(),
+		address:        address,
+		remote:         true,
+		mtx:            sync.RWMutex{},
+		syncMtx:        sync.RWMutex{},
+		localNode:      n,
+		gProtoc:        n.gProtoc,
+		createdAt:      time.Now(),
+		lastSeen:       time.Now(),
+		hardcodedPeers: make(map[string]struct{}),
 	}
 	node.IP = node.ip()
 	return node
@@ -195,13 +197,14 @@ func (n *Node) NewRemoteNode(address util.NodeAddr) core.Engine {
 // excepts it accepts a Multiaddr
 func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
 	node := &Node{
-		address:   util.NodeAddr(address.String()),
-		remote:    true,
-		mtx:       sync.RWMutex{},
-		syncMtx:   sync.RWMutex{},
-		localNode: localNode,
-		createdAt: time.Now(),
-		lastSeen:  time.Now(),
+		address:        util.NodeAddr(address.String()),
+		remote:         true,
+		mtx:            sync.RWMutex{},
+		syncMtx:        sync.RWMutex{},
+		localNode:      localNode,
+		createdAt:      time.Now(),
+		lastSeen:       time.Now(),
+		hardcodedPeers: make(map[string]struct{}),
 	}
 	node.IP = node.ip()
 	return node
@@ -211,9 +214,10 @@ func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
 // almost all its field uninitialized.
 func NewAlmostEmptyNode() *Node {
 	return &Node{
-		createdAt: time.Now(),
-		mtx:       sync.RWMutex{},
-		syncMtx:   sync.RWMutex{},
+		createdAt:      time.Now(),
+		mtx:            sync.RWMutex{},
+		syncMtx:        sync.RWMutex{},
+		hardcodedPeers: make(map[string]struct{}),
 	}
 }
 
@@ -221,9 +225,10 @@ func NewAlmostEmptyNode() *Node {
 // with the given address set
 func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	return &Node{
-		createdAt: time.Now(),
-		mtx:       sync.RWMutex{},
-		address:   util.NodeAddr(address.String()),
+		createdAt:      time.Now(),
+		mtx:            sync.RWMutex{},
+		address:        util.NodeAddr(address.String()),
+		hardcodedPeers: make(map[string]struct{}),
 	}
 }
 
@@ -401,13 +406,10 @@ func (n *Node) SetBlockchain(bchain types.Blockchain) {
 // IsHardcodedSeed checks whether
 // the node is an hardcoded seed node
 func (n *Node) IsHardcodedSeed() bool {
-	return n.isHardcodedSeed
-}
-
-// MakeHardcoded sets the node has
-// an hardcoded seed node
-func (n *Node) MakeHardcoded() {
-	n.isHardcodedSeed = true
+	n.mtx.RLock()
+	defer n.mtx.RUnlock()
+	_, ok := n.localNode.hardcodedPeers[n.StringID()]
+	return ok
 }
 
 // SetLastSeen sets the timestamp value
@@ -627,7 +629,7 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 		// Convert the connection string to a valid
 		// IPFS Multiaddr format
 		rp := n.NewRemoteNode(util.AddressFromConnString(connStr))
-		rp.IsHardCodedSeed(hardcoded)
+		rp.SetHardcodedState(hardcoded)
 		rp.SetGossipManager(n.gProtoc)
 		n.peerManager.AddPeer(rp)
 	}
@@ -635,10 +637,30 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 	return nil
 }
 
-// IsHardCodedSeed sets the hardcoded seed state
+// addHardcodedPeer adds a peer to the hardcoded peer
+// index maintained by this engine
+func (n *Node) addHardcodedPeer(peer core.Engine) {
+	n.mtx.Lock()
+	n.hardcodedPeers[peer.StringID()] = struct{}{}
+	n.mtx.Unlock()
+}
+
+// RemoveHardcodedPeer removes a peer from the hardcoded
+// peer index maintained by this engine
+func (n *Node) removeHardcodedPeer(peer core.Engine) {
+	n.mtx.Lock()
+	delete(n.hardcodedPeers, peer.StringID())
+	n.mtx.Unlock()
+}
+
+// SetHardcodedState sets the hardcoded seed state
 // of the engine.
-func (n *Node) IsHardCodedSeed(v bool) {
-	n.isHardcodedSeed = v
+func (n *Node) SetHardcodedState(v bool) {
+	if v {
+		n.localNode.addHardcodedPeer(n)
+		return
+	}
+	n.localNode.removeHardcodedPeer(n)
 }
 
 // SetGossipManager sets the gossip manager
