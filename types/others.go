@@ -42,8 +42,12 @@ const (
 	NamespaceNet = "net"
 
 	// NamespaceRPC is the namespace for RPC methods
-	// that perform rpc  actions
+	// that perform rpc actions
 	NamespaceRPC = "rpc"
+
+	// NamespaceLogger is the namespace for RPC methods
+	// for configuring the logger
+	NamespaceLogger = "logger"
 )
 
 // ValidationContext is used to

@@ -32,6 +32,17 @@ func (t *TxOp) GetName() string {
 	return "TxOp"
 }
 
+// Discard the transaction. Do not call
+// functions in the transaction after this.
+func (t *TxOp) Discard() error {
+	if !t.CanFinish || t.finished {
+		return nil
+	}
+	t.Tx.Discard()
+	t.finished = true
+	return nil
+}
+
 // Commit commits the transaction if it has not been done before.
 // It ignores the call if CanFinish is false.
 func (t *TxOp) Commit() error {

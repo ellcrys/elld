@@ -66,17 +66,17 @@ func (s *ChainStore) getBlock(number uint64, opts ...types.CallOp) (types.Block,
 
 	r := txOp.Tx.GetByPrefix(common.MakeKeyBlock(s.chainID.Bytes(), number))
 	if len(r) == 0 {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, core.ErrBlockNotFound
 	}
 
 	var block core.Block
 	if err := r[0].Scan(&block); err != nil {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, err
 	}
 
-	return &block, txOp.Commit()
+	return &block, txOp.Discard()
 }
 
 // GetHeader gets the header of the current block in the chain
@@ -160,16 +160,16 @@ func (s *ChainStore) Current(opts ...types.CallOp) (types.Block, error) {
 	})
 
 	if r == nil {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, core.ErrBlockNotFound
 	}
 
 	if err = r.Scan(&block); err != nil {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, core.ErrDecodeFailed("")
 	}
 
-	return &block, txOp.Commit()
+	return &block, txOp.Discard()
 }
 
 // GetBlockByHash fetches a block by its block hash.
@@ -185,7 +185,7 @@ func (s *ChainStore) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types
 	queryKey := common.MakeKeyBlockHash(s.chainID.Bytes(), hash.Hex())
 	r := txOp.Tx.GetByPrefix(queryKey)
 	if len(r) == 0 {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, core.ErrBlockNotFound
 	}
 	blockNum := util.DecodeNumber(r[0].Value)
@@ -314,11 +314,11 @@ func (s *ChainStore) get(key []byte, result *[]*elldb.KVObject, opts ...types.Ca
 
 	r := txOp.Tx.GetByPrefix(key)
 	if r == nil {
-		return txOp.Commit()
+		return txOp.Discard()
 	}
 
 	*result = append(*result, r...)
-	return txOp.Commit()
+	return txOp.Discard()
 }
 
 // GetTransaction gets a transaction (by hash)
@@ -338,7 +338,7 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...types.CallOp) (types
 	}
 
 	if len(result) == 0 {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, core.ErrTxNotFound
 	}
 
@@ -360,7 +360,7 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...types.CallOp) (types
 		}
 	}
 
-	txOp.Commit()
+	txOp.Discard()
 
 	return nil, core.ErrTxNotFound
 }
@@ -401,14 +401,14 @@ func (s *ChainStore) GetAccount(address util.String, opts ...types.CallOp) (type
 	})
 
 	if r == nil {
-		txOp.Rollback()
+		txOp.Discard()
 		return nil, core.ErrAccountNotFound
 	}
 
 	var account core.Account
 	r.Scan(&account)
 
-	return &account, txOp.Commit()
+	return &account, txOp.Discard()
 }
 
 // GetAccounts gets all accounts
@@ -445,7 +445,7 @@ func (s *ChainStore) GetAccounts(opts ...types.CallOp) ([]types.Account, error) 
 		return false
 	})
 
-	return accounts, txOp.Commit()
+	return accounts, txOp.Discard()
 }
 
 // NewTx creates and returns a transaction
