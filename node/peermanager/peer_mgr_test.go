@@ -203,7 +203,7 @@ func TestPeerManager(t *testing.T) {
 			})
 		})
 
-		g.Describe(".canAcceptNode", func() {
+		g.Describe(".CanAcceptNode", func() {
 
 			var n *node.Node
 
@@ -232,6 +232,15 @@ func TestPeerManager(t *testing.T) {
 					Expect(err).ToNot(BeNil())
 					Expect(err.Error()).To(Equal("unacquainted node"))
 					Expect(accept).To(BeFalse())
+				})
+			})
+
+			g.When("node is not acquainted but skipAcquainted option is provided", func() {
+				g.It("should return true and nil", func() {
+					cfg.Node.Mode = config.ModeProd
+					accept, err := lp.PM().CanAcceptNode(n, true)
+					Expect(err).To(BeNil())
+					Expect(accept).To(BeTrue())
 				})
 			})
 

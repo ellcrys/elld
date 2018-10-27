@@ -166,6 +166,13 @@ func (m *Intro) Hash() util.Hash {
 	return util.BytesToHash(util.Blake2b256(bs))
 }
 
+// WrappedStream encapsulates a stream along with
+// extra data and behaviours
+type WrappedStream struct {
+	Stream net.Stream
+	Extra  map[string]interface{}
+}
+
 // Gossip represent messages and interactions between nodes
 type Gossip interface {
 
@@ -223,6 +230,13 @@ type Gossip interface {
 	// ID and between the local peer and the given remote peer.
 	NewStream(remotePeer Engine, msgVersion string) (net.Stream,
 		context.CancelFunc, error)
+
+	// CheckRemotePeer performs validation against the remote peer.
+	CheckRemotePeer(ws *WrappedStream, rp Engine) error
+
+	// Handle wrappers a protocol handler providing an
+	// interface to perform pre and post handling operations.
+	Handle(handler func(s net.Stream, remotePeer Engine) error) func(net.Stream)
 }
 
 // BroadcastPeers is a type that contains

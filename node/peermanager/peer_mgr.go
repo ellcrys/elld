@@ -157,6 +157,13 @@ func (m *Manager) AddAcquainted(peer core.Engine) {
 	m.acquainted[peer.StringID()] = struct{}{}
 }
 
+// RemoveAcquainted makes a peer unacquainted
+func (m *Manager) RemoveAcquainted(peer core.Engine) {
+	m.cacheMtx.Lock()
+	defer m.cacheMtx.Unlock()
+	delete(m.acquainted, peer.StringID())
+}
+
 // IsAcquainted checks whether the peer passed through
 // the handshake step
 func (m *Manager) IsAcquainted(peer core.Engine) bool {
@@ -336,16 +343,18 @@ func (m *Manager) doIntro(done chan bool) {
 
 // CanAcceptNode determines whether we can continue to
 // interact with a given node.
-func (m *Manager) CanAcceptNode(node core.Engine) (bool, error) {
+func (m *Manager) CanAcceptNode(node core.Engine, opts ...bool) (bool, error) {
 
 	// Don't do this in test mode
 	if m.localNode.TestMode() {
 		return true, nil
 	}
 
+	skipAcquaintanceCheck := len(opts) > 0 && opts[0] == true
+
 	// When the remote and local peer have not performed
 	// the handshake ritual, other messages can't be accepted.
-	if !m.IsAcquainted(node) {
+	if !skipAcquaintanceCheck && !m.IsAcquainted(node) {
 		return false, fmt.Errorf("unacquainted node")
 	}
 
