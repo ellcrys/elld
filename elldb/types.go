@@ -111,6 +111,10 @@ type Tx interface {
 
 	// Rollback roles back the transaction
 	Rollback()
+
+	// Discard the transaction. Do not call
+	// functions in the transaction after this.
+	Discard()
 }
 
 // DB describes the database access, model and available functionalities

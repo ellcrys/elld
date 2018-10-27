@@ -215,6 +215,13 @@ func (tx *Transaction) Commit() error {
 	return tx.ldb.Commit()
 }
 
+// Discard the transaction
+func (tx *Transaction) Discard() {
+	tx.Lock()
+	defer tx.Unlock()
+	tx.ldb.Discard()
+}
+
 // Rollback discards the transaction
 func (tx *Transaction) Rollback() {
 	tx.Lock()
