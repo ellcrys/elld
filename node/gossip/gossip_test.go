@@ -54,7 +54,7 @@ func TestGossip(t *testing.T) {
 				})
 			})
 
-			g.When("not in test mode and remote peer is unacquainted and message is not Intro or Addr", func() {
+			g.When("not in test mode and remote peer is unacquainted and message is not Addr", func() {
 
 				g.BeforeEach(func() {
 					lp.GetCfg().Node.Mode = config.ModeProd
@@ -89,10 +89,9 @@ func TestGossip(t *testing.T) {
 					ws = &core.WrappedStream{Stream: stream, Extra: map[string]interface{}{}}
 				})
 
-				g.It("should return nil and add 'forget_after_handle' key to stream wrapper extras", func() {
+				g.It("should return nil", func() {
 					err := lp.Gossip().CheckRemotePeer(ws, rp)
 					Expect(err).To(BeNil())
-					Expect(ws.Extra).To(HaveKey("forget_after_handle"))
 				})
 			})
 		})

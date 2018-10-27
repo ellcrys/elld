@@ -116,6 +116,7 @@ func (g *Gossip) NewStream(remotePeer core.Engine, msgVersion string) (net.Strea
 func (g *Gossip) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
 
 	s := ws.Stream
+	skipAcquaintanceCheck := false
 
 	// Perform no checks for handshake messages
 	if s.Protocol() == protocol.ID(config.HandshakeVersion) {
@@ -123,21 +124,18 @@ func (g *Gossip) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
 	}
 
 	// If we receive an Addr message from an unknown peer,
-	// temporarily add the peer as acquainted so it will
-	// pass CanAcceptNode.
+	// temporarily skip acquaintance check and allow
+	// message to be processed.
 	// We need to accept this unsolicited message so
-	// that peer discovery will be effective.
-	// After the message is handled, the acquainted status
-	// is revoked.
+	// that peer discovery will be more effective.
 	if s.Protocol() == protocol.ID(config.AddrVersion) &&
 		!g.PM().PeerExist(rp.StringID()) {
-		g.PM().AddAcquainted(rp)
-		ws.Extra["forget_after_handle"] = true
+		skipAcquaintanceCheck = true
 	}
 
 	// Check whether the local peer is allowed to receive
 	// incoming messages from this remote peer
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp, skipAcquaintanceCheck); !ok {
 		return err
 	}
 
@@ -161,21 +159,10 @@ func (g *Gossip) Handle(handler func(s net.Stream, remotePeer core.Engine) error
 		}
 
 		// Update the last seen time of this peer
-		// as long as we don't intend to forget this
-		// peer after handling its message
-		if s.Stat().Extra["forget_after_handle"] == nil {
-			g.PM().AddOrUpdateNode(rp)
-		}
+		g.PM().AddOrUpdateNode(rp)
 
 		// Handle the message
 		handler(s, rp)
-
-		// Make the remote peer become unacquainted and
-		// close the connection to it
-		if s.Stat().Extra["forget_after_handle"] != nil {
-			g.PM().RemoveAcquainted(rp)
-			s.Conn().Close()
-		}
 	}
 }
 
