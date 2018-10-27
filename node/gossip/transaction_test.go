@@ -132,7 +132,7 @@ func TestTransaction(t *testing.T) {
 
 				g.It("should return error about unexpected allocation transaction", func() {
 					Expect(evt.Args).To(HaveLen(1))
-					Expect(evt.Args[0].(error).Error()).To(Equal("Unexpected allocation transaction received"))
+					Expect(evt.Args[0].(error).Error()).To(Equal("Allocation transaction type is not allowed"))
 				})
 			})
 

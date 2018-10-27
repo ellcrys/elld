@@ -25,8 +25,6 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
 	}
 
-	g.PM().AddOrUpdateNode(rp)
-
 	// we need to ensure the amount of addresses does
 	// not exceed the maximum expected
 	if int64(len(resp.Addresses)) > g.engine.GetCfg().Node.MaxAddrsExpected {
@@ -43,7 +41,8 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 
 		p := g.engine.NewRemoteNode(addr.Address)
 
-		if !addr.Address.IsValid() || (!g.engine.TestMode() && !addr.Address.IsRoutable()) {
+		if !addr.Address.IsValid() || (!g.engine.TestMode() &&
+			!addr.Address.IsRoutable()) {
 			invalidAddrs++
 			continue
 		}
@@ -53,13 +52,9 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 			invalidAddrs++
 			continue
 		}
-
-		// Add the remote peer to the peer manager's list
-		g.PM().AddOrUpdateNode(p)
 	}
 
-	g.log.Info("Received addresses", "PeerID", rpIDStr,
-		"NumAddrs", len(resp.Addresses),
+	g.log.Info("Received addresses", "PeerID", rpIDStr, "NumAddrs", len(resp.Addresses),
 		"InvalidAddrs", invalidAddrs)
 
 	return resp.Addresses, nil
@@ -67,24 +62,15 @@ func (g *Gossip) onAddr(s net.Stream) ([]*core.Address, error) {
 
 // OnAddr handles incoming core.Addr message.
 // Received addresses are relayed.
-func (g *Gossip) OnAddr(s net.Stream) {
+func (g *Gossip) OnAddr(s net.Stream) error {
 
 	defer s.Close()
-	remoteAddr := util.RemoteAddrFromStream(s)
-	rp := g.engine.NewRemoteNode(remoteAddr)
 
-	// check whether we are allowed to receive this peer's message
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
-		g.logErr(err, rp, "message unaccepted")
-		return
-	}
-
-	// process the stream and return
-	// the addresses set
+	// process the stream and return the addresses set
 	addresses, err := g.onAddr(s)
 	if err != nil {
 		g.engine.GetEventEmitter().Emit(EventAddrProcessed, err)
-		return
+		return err
 	}
 
 	// As long as we have more that one address,
@@ -94,6 +80,7 @@ func (g *Gossip) OnAddr(s net.Stream) {
 	}
 
 	g.engine.GetEventEmitter().Emit(EventAddrProcessed)
+	return nil
 }
 
 // PickBroadcasters selects N random addresses from
@@ -285,8 +272,6 @@ func (g *Gossip) RelayAddresses(addrs []*core.Address) []error {
 			errs = append(errs, err)
 			continue
 		}
-
-		g.PM().AddOrUpdateNode(rp)
 
 		for _, p := range relayable {
 			hk := []interface{}{p.Address.String(), rp.StringID()}

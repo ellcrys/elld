@@ -54,9 +54,6 @@ func (g *Gossip) SendPingToPeer(remotePeer core.Engine) error {
 		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to read message")
 	}
 
-	// update the remote peer's timestamp
-	g.PM().AddOrUpdateNode(remotePeer)
-
 	g.log.Info("Received pong response from peer", "PeerID", rpIDShort)
 
 	// compare best chain.
@@ -106,26 +103,19 @@ func (g *Gossip) SendPing(remotePeers []core.Engine) {
 // blockchain synchronization if the Ping message includes
 // blockchain information that is better than the local
 // blockchain
-func (g *Gossip) OnPing(s net.Stream) {
+func (g *Gossip) OnPing(s net.Stream) error {
 
 	defer s.Close()
 
 	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
 	rpIDShort := rp.ShortID()
 
-	// check whether we are allowed to receive this peer's message
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
-		g.logErr(err, rp, "message unaccepted")
-		return
-	}
-
 	g.log.Info("Received ping message", "PeerID", rpIDShort)
 
 	// read the message from the stream
 	msg := &core.Ping{}
 	if err := ReadStream(s, msg); err != nil {
-		g.logErr(err, rp, "[OnPing] Failed to read message")
-		return
+		return g.logErr(err, rp, "[OnPing] Failed to read message")
 	}
 
 	// determine the best block an the total
@@ -134,7 +124,7 @@ func (g *Gossip) OnPing(s net.Stream) {
 	bestBlock, err := g.GetBlockchain().ChainReader().GetBlock(0)
 	if err != nil {
 		g.log.Error("Pong failed. Failed to determine best block", "Err", err)
-		return
+		return err
 	}
 
 	pongMsg := &core.Pong{
@@ -145,12 +135,8 @@ func (g *Gossip) OnPing(s net.Stream) {
 
 	// send pong message
 	if err := WriteStream(s, pongMsg); err != nil {
-		g.logErr(err, rp, "[OnPing] Failed to write message")
-		return
+		return g.logErr(err, rp, "[OnPing] Failed to write message")
 	}
-
-	// update the remote peer's timestamp
-	g.PM().AddOrUpdateNode(rp)
 
 	g.log.Debug("Sent pong response to peer", "PeerID", rpIDShort)
 
@@ -175,4 +161,6 @@ func (g *Gossip) OnPing(s net.Stream) {
 	var bestBlockInfo core.BestBlockInfo
 	copier.Copy(&bestBlockInfo, msg)
 	g.engine.UpdateSyncInfo(&bestBlockInfo)
+
+	return nil
 }

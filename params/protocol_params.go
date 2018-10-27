@@ -39,7 +39,7 @@ var (
 
 	// NumBlockBodiesRequesters is the number of workers that will
 	// fetch block bodies
-	NumBlockBodiesRequesters = 1
+	NumBlockBodiesRequesters = 20
 )
 
 var (

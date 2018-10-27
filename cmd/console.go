@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ellcrys/elld/config"
@@ -45,23 +44,14 @@ var consoleCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		node, rpcServer, cs, miner := start(cmd, args, true)
 		cs.OnStop(func() {
-			fmt.Println("XA")
 			if miner != nil {
-				fmt.Println("XB")
 				miner.Stop()
-				fmt.Println("XC")
 			}
-			fmt.Println("XD")
 			rpcServer.Stop()
-			fmt.Println("XE")
 			node.Stop()
-			fmt.Println("XF")
 			os.Exit(0)
-			fmt.Println("XG")
 		})
-		fmt.Println("XH")
 		node.Wait()
-		fmt.Println("XI")
 	},
 }
 

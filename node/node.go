@@ -842,27 +842,20 @@ func (n *Node) HasStopped() bool {
 // Stop stops the node and releases any held resources.
 func (n *Node) Stop() {
 
-	fmt.Println("S1")
 	n.mtx.Lock()
-	fmt.Println("S2")
 	n.stopped = true
 	n.mtx.Unlock()
-	fmt.Println("S3")
 
 	// stop the peer manager
 	// and its managed routines.
 	if pm := n.PM(); pm != nil {
-		fmt.Println("S4")
 		pm.Stop()
-		fmt.Println("S5")
 	}
 
-	fmt.Println("S6")
 	// Shut down the host
 	if n.host != nil {
 		n.host.Close()
 	}
-	fmt.Println("S7")
 
 	if n.db != nil {
 
@@ -872,14 +865,14 @@ func (n *Node) Stop() {
 		time.Sleep(2 * time.Second)
 
 		err := n.db.Close()
-		if err == nil {
-			n.log.Info("Database has been closed")
+		if err != nil {
+			n.log.Error("Failed to close database", "Err", err)
 		} else {
-			n.log.Error("failed to close database", "Err", err)
+			n.log.Info("Database has been closed")
 		}
 	}
 
-	n.log.Info("Local node has stopped")
+	n.log.Info("Elld has stopped")
 
 	if n.wg != (sync.WaitGroup{}) {
 		n.wg.Done()

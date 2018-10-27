@@ -63,36 +63,28 @@ func (g *Gossip) SendIntro(intro *core.Intro) {
 			continue
 		}
 
-		g.PM().AddOrUpdateNode(peer)
-
 		sent++
 
 		g.engine.GetHistory().AddMulti(cache.Sec(3600), peer.StringID(),
 			msg.Hash().HexStr())
 	}
 
-	g.log.Debug("Sent Intro to peer(s)", "NumBroadcastPeers", g.broadcasters.Len(),
+	g.log.Debug("Sent Intro to peer(s)",
+		"NumBroadcastPeers", g.broadcasters.Len(),
 		"NumSentTo", sent)
 }
 
 // OnIntro handles incoming core.Intro messages.
 // Received messages are relayed to 2 random peers.
-func (g *Gossip) OnIntro(s net.Stream) {
+func (g *Gossip) OnIntro(s net.Stream) error {
 
 	defer s.Reset()
 	remoteAddr := util.RemoteAddrFromStream(s)
 	rp := g.engine.NewRemoteNode(remoteAddr)
 
-	// check whether we are allowed to receive this peer's message
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
-		g.logErr(err, rp, "message unaccepted")
-		return
-	}
-
 	var msg core.Intro
 	if err := ReadStream(s, &msg); err != nil {
-		g.logErr(err, rp, "[OnIntro] Failed to read")
-		return
+		return g.logErr(err, rp, "[OnIntro] Failed to read")
 	}
 
 	// Add remote peer into the intro cache
@@ -106,4 +98,5 @@ func (g *Gossip) OnIntro(s net.Stream) {
 
 	// Relay the received message to our own peers
 	go g.SendIntro(&msg)
+	return nil
 }

@@ -46,12 +46,11 @@ func (g *Gossip) SelfAdvertise(connectedPeers []core.Engine) int {
 			continue
 		}
 
-		g.PM().AddOrUpdateNode(peer)
-
 		sent++
 	}
 
-	g.log.Debug("Self advertisement completed", "ConnectedPeers", len(connectedPeers),
+	g.log.Debug("Self advertisement completed",
+		"ConnectedPeers", len(connectedPeers),
 		"NumAdvertisedTo", sent)
 
 	return sent

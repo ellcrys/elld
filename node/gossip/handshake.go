@@ -111,15 +111,14 @@ func (g *Gossip) SendHandshake(rp core.Engine) error {
 }
 
 // OnHandshake handles incoming handshake requests
-func (g *Gossip) OnHandshake(s net.Stream) {
+func (g *Gossip) OnHandshake(s net.Stream) error {
 
 	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
 	rpIDShort := rp.ShortID()
 
 	msg := &core.Handshake{}
 	if err := ReadStream(s, msg); err != nil {
-		g.logErr(err, rp, "[OnHandshake] Failed to read message")
-		return
+		return g.logErr(err, rp, "[OnHandshake] Failed to read message")
 	}
 
 	g.log.Info("Received handshake", "PeerID", rpIDShort,
@@ -132,13 +131,12 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	}, g.GetBlockchain().
 		ChainReader(), g.log)
 	if err != nil {
-		return
+		return err
 	}
 
 	// send back a Handshake as response
 	if err := WriteStream(s, nodeMsg); err != nil {
-		g.logErr(err, rp, "[OnHandshake] Failed to send response")
-		return
+		return g.logErr(err, rp, "[OnHandshake] Failed to send response")
 	}
 
 	// Set new peer as acquainted so that
@@ -178,4 +176,5 @@ func (g *Gossip) OnHandshake(s net.Stream) {
 	var bestBlockInfo core.BestBlockInfo
 	copier.Copy(&bestBlockInfo, msg)
 	g.engine.UpdateSyncInfo(&bestBlockInfo)
+	return nil
 }

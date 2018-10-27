@@ -19,46 +19,39 @@ func MakeTxHistoryKey(tx types.Transaction, peer core.Engine) []interface{} {
 }
 
 // OnTx handles incoming transaction message
-func (g *Gossip) OnTx(s net.Stream) {
+func (g *Gossip) OnTx(s net.Stream) error {
 	defer s.Close()
 
 	rp := g.engine.NewRemoteNode(util.RemoteAddrFromStream(s))
 	rpIDShort := rp.ShortID()
 
-	// check whether we are allowed to receive this peer's message
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
-		g.logErr(err, rp, "message unaccepted")
-		return
-	}
-
 	msg := &core.Transaction{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.log.Error("Failed to read tx message", "Err", err, "PeerID", rpIDShort)
-		return
+		return g.logErr(err, rp, "[OnTx] Failed to read")
 	}
 
 	g.log.Info("Received new transaction", "PeerID", rpIDShort)
 
 	historyKey := MakeTxHistoryKey(msg, rp)
 	if g.engine.GetHistory().HasMulti(historyKey...) {
-		return
+		return nil
 	}
 
 	// TxTypeAlloc transactions are not to
 	// be relayed like standard transactions.
 	if msg.Type == core.TxTypeAlloc {
 		s.Reset()
-		g.log.Debug("Refusing to process allocation transaction")
-		g.engine.GetEventEmitter().Emit(EventTransactionProcessed,
-			fmt.Errorf("Unexpected allocation transaction received"))
-		return
+		err := fmt.Errorf("Allocation transaction type is not allowed")
+		g.log.Debug(err.Error())
+		g.engine.GetEventEmitter().Emit(EventTransactionProcessed, err)
+		return err
 	}
 
 	// Ignore the transaction if already
 	// in our transaction pool
 	if g.engine.GetTxPool().Has(msg) {
-		return
+		return nil
 	}
 
 	// Validate the transaction and check whether
@@ -70,7 +63,7 @@ func (g *Gossip) OnTx(s net.Stream) {
 		s.Reset()
 		g.log.Debug("Transaction is not valid", "Err", errs[0])
 		g.engine.GetEventEmitter().Emit(EventTransactionProcessed, errs[0])
-		return
+		return errs[0]
 	}
 
 	// Add the transaction to the transaction
@@ -78,13 +71,14 @@ func (g *Gossip) OnTx(s net.Stream) {
 	if err := g.engine.AddTransaction(msg); err != nil {
 		g.log.Error("Failed to add transaction to pool", "Err", msg)
 		g.engine.GetEventEmitter().Emit(EventTransactionProcessed, err)
-		return
+		return err
 	}
 
 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
 	g.engine.GetEventEmitter().Emit(EventTransactionProcessed)
-
 	g.log.Info("Added new transaction to pool", "TxID", msg.GetID())
+
+	return nil
 }
 
 // RelayTx relays transactions to peers

@@ -362,6 +362,8 @@ func (m *Manager) CanAcceptNode(node core.Engine) (bool, error) {
 // it hasn't been added. It updates the timestamp
 // of existing peers.
 func (m *Manager) AddOrUpdateNode(n core.Engine) {
+	defer m.CleanPeers()
+	defer m.SavePeers()
 
 	peer := m.GetPeer(n.StringID())
 	// For unknown peers, set 'last seen' time to an hour ago
@@ -563,8 +565,9 @@ func (m *Manager) GetRandomActivePeers(limit int) []core.Engine {
 }
 
 // SavePeers stores active peer addresses
-// Note: Caller must acquire ptx lock
 func (m *Manager) SavePeers() error {
+	m.ptx.Lock()
+	defer m.ptx.Unlock()
 
 	var numAddrs = 0
 	var kvObjs []*elldb.KVObject
@@ -641,9 +644,8 @@ func (m *Manager) LoadPeers() error {
 // routines managed by the manager
 func (m *Manager) Stop() {
 
-	m.ptx.Lock()
+	m.CleanPeers()
 	m.SavePeers()
-	m.ptx.Unlock()
 
 	m.mtx.Lock()
 	defer m.mtx.Unlock()

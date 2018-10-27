@@ -6,6 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/util"
+
 	"github.com/vmihailenco/msgpack"
 
 	"github.com/ellcrys/elld/node/peermanager"
@@ -109,10 +112,43 @@ func (g *Gossip) NewStream(remotePeer core.Engine, msgVersion string) (net.Strea
 	return s, cf, err
 }
 
+// checkRemotePeer performs validation against
+// the remote peer.
+func (g *Gossip) checkRemotePeer(s net.Stream, rp core.Engine) error {
+
+	// Perform no checks for handshake messages
+	if s.Protocol() == protocol.ID(config.HandshakeVersion) {
+		return nil
+	}
+
+	// Check whether the local peer is allowed to receive
+	// incoming messages from this remote peer
+	if ok, err := g.PM().CanAcceptNode(rp); !ok {
+		return err
+	}
+
+	return nil
+}
+
 // Handle wrappers a protocol handler providing an
 // interface to perform pre and post handling operations.
-func (g *Gossip) Handle(handler func(s net.Stream)) func(net.Stream) {
+func (g *Gossip) Handle(handler func(s net.Stream) error) func(net.Stream) {
 	return func(s net.Stream) {
+
+		remoteAddr := util.RemoteAddrFromStream(s)
+		rp := g.engine.NewRemoteNode(remoteAddr)
+
+		// Check whether we are allowed to receive from this peer
+		if err := g.checkRemotePeer(s, rp); err != nil {
+			g.logErr(err, rp, "message unaccepted")
+			s.Reset()
+			return
+		}
+
+		// Update the last seen time of this peer
+		g.PM().AddOrUpdateNode(rp)
+
+		// Handle the message
 		handler(s)
 	}
 }

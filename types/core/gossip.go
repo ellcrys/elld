@@ -170,43 +170,43 @@ func (m *Intro) Hash() util.Hash {
 type Gossip interface {
 
 	// Address messages
-	OnAddr(s net.Stream)
+	OnAddr(s net.Stream) error
 	RelayAddresses(addrs []*Address) []error
 
 	// Block messages
 	RelayBlock(block types.Block, remotePeers []Engine) error
-	OnBlockBody(s net.Stream)
+	OnBlockBody(s net.Stream) error
 	RequestBlock(rp Engine, blockHash util.Hash) error
-	OnRequestBlock(s net.Stream)
+	OnRequestBlock(s net.Stream) error
 	SendGetBlockHashes(rp Engine, locators []util.Hash) error
-	OnGetBlockHashes(s net.Stream)
+	OnGetBlockHashes(s net.Stream) error
 	SendGetBlockBodies(rp Engine, hashes []util.Hash) error
-	OnGetBlockBodies(s net.Stream)
+	OnGetBlockBodies(s net.Stream) error
 
 	// Handshake messages
 	SendHandshake(rp Engine) error
-	OnHandshake(s net.Stream)
+	OnHandshake(s net.Stream) error
 
 	// GetAddr messages
 	SendGetAddrToPeer(remotePeer Engine) ([]*Address, error)
 	SendGetAddr(remotePeers []Engine) error
-	OnGetAddr(s net.Stream)
+	OnGetAddr(s net.Stream) error
 
 	// Ping messages
 	SendPing(remotePeers []Engine)
 	SendPingToPeer(remotePeer Engine) error
-	OnPing(s net.Stream)
+	OnPing(s net.Stream) error
 
 	// Node advertisement
 	SelfAdvertise(connectedPeers []Engine) int
 
 	// Introductory messages
 	SendIntro(intro *Intro)
-	OnIntro(s net.Stream)
+	OnIntro(s net.Stream) error
 
 	// Transaction messages
 	RelayTx(tx types.Transaction, remotePeers []Engine) error
-	OnTx(s net.Stream)
+	OnTx(s net.Stream) error
 
 	// PickBroadcasters selects N random addresses from
 	// the given slice of addresses and caches them to

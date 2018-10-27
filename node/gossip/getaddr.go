@@ -27,7 +27,6 @@ func (g *Gossip) SendGetAddrToPeer(remotePeer core.Engine) ([]*core.Address, err
 		return nil, g.logErr(err, remotePeer, "[SendGetAddrToPeer] Failed to write")
 	}
 
-	g.PM().AddOrUpdateNode(remotePeer)
 	g.log.Debug("GetAddr message sent to peer", "PeerID", rpIDShort)
 
 	addr, err := g.onAddr(s)
@@ -73,7 +72,7 @@ func (g *Gossip) SendGetAddr(remotePeers []core.Engine) error {
 
 // OnGetAddr processes a core.GetAddr request.
 // Sends a list of active addresses to the sender
-func (g *Gossip) OnGetAddr(s net.Stream) {
+func (g *Gossip) OnGetAddr(s net.Stream) error {
 
 	defer s.Close()
 
@@ -81,21 +80,13 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 	rp := g.engine.NewRemoteNode(remoteAddr)
 	rpIDShort := rp.ShortID()
 
-	// check whether we are allowed to receive this peer's message
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
-		g.logErr(err, rp, "message unaccepted")
-		return
-	}
-
 	// read the message
 	msg := &core.GetAddr{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		g.logErr(err, rp, "[OnGetAddr] Failed to read")
-		return
+		return g.logErr(err, rp, "[OnGetAddr] Failed to read")
 	}
 
-	g.PM().AddOrUpdateNode(rp)
 	g.log.Debug("Received GetAddr message", "PeerID", rpIDShort)
 
 	// get active addresses we know about. If we have more 2500
@@ -122,9 +113,9 @@ func (g *Gossip) OnGetAddr(s net.Stream) {
 
 	if err := WriteStream(s, addr); err != nil {
 		s.Reset()
-		g.logErr(err, rp, "[OnGetAddr] Failed to write")
-		return
+		return g.logErr(err, rp, "[OnGetAddr] Failed to write")
 	}
 
 	g.log.Debug("Sent GetAddr response to peer", "PeerID", rpIDShort)
+	return nil
 }
