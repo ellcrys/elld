@@ -236,8 +236,8 @@ func (m *Miner) Mine() {
 		startTime := time.Now()
 		block, err := m.blakimoto.Seal(m.proposedBlock, m.abort)
 		if err != nil {
-			m.log.Error(err.Error())
-			break
+			m.log.Warn(err.Error())
+			continue
 		}
 
 		// abort due to new winning block being discovered
