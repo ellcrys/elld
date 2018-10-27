@@ -48,9 +48,11 @@ func (g *Gossip) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 			invalidAddrs++
 			continue
 		}
+
+		g.PM().AddOrUpdateNode(rp)
 	}
 
-	g.log.Info("Received addresses", "PeerID", rp.ShortID(),
+	g.log.Debug("Received addresses", "PeerID", rp.ShortID(),
 		"NumAddrs", len(resp.Addresses),
 		"InvalidAddrs", invalidAddrs)
 

@@ -112,18 +112,30 @@ func (g *Gossip) NewStream(remotePeer core.Engine, msgVersion string) (net.Strea
 	return s, cf, err
 }
 
-// checkRemotePeer performs validation against
-// the remote peer.
-func (g *Gossip) checkRemotePeer(s net.Stream, rp core.Engine) error {
+// CheckRemotePeer performs validation against the remote peer.
+func (g *Gossip) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
+
+	s := ws.Stream
+	skipAcquaintanceCheck := false
 
 	// Perform no checks for handshake messages
 	if s.Protocol() == protocol.ID(config.HandshakeVersion) {
 		return nil
 	}
 
+	// If we receive an Addr message from an unknown peer,
+	// temporarily skip acquaintance check and allow
+	// message to be processed.
+	// We need to accept this unsolicited message so
+	// that peer discovery will be more effective.
+	if s.Protocol() == protocol.ID(config.AddrVersion) &&
+		!g.PM().PeerExist(rp.StringID()) {
+		skipAcquaintanceCheck = true
+	}
+
 	// Check whether the local peer is allowed to receive
 	// incoming messages from this remote peer
-	if ok, err := g.PM().CanAcceptNode(rp); !ok {
+	if ok, err := g.PM().CanAcceptNode(rp, skipAcquaintanceCheck); !ok {
 		return err
 	}
 
@@ -139,7 +151,8 @@ func (g *Gossip) Handle(handler func(s net.Stream, remotePeer core.Engine) error
 		rp := g.engine.NewRemoteNode(remoteAddr)
 
 		// Check whether we are allowed to receive from this peer
-		if err := g.checkRemotePeer(s, rp); err != nil {
+		ws := &core.WrappedStream{Stream: s, Extra: make(map[string]interface{})}
+		if err := g.CheckRemotePeer(ws, rp); err != nil {
 			g.logErr(err, rp, "message unaccepted")
 			s.Reset()
 			return
