@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -40,7 +40,7 @@ func (o *TxBuilder) Balance() *TxBalanceBuilder {
 		e: o.e,
 		data: map[string]interface{}{
 			"from":         o.e.coinbase.Addr(),
-			"type":         objects.TxTypeBalance,
+			"type":         core.TxTypeBalance,
 			"senderPubKey": o.e.coinbase.PubKey().Base58(),
 		},
 	}
@@ -95,14 +95,14 @@ send:
 	o.data["timestamp"] = time.Now().Unix()
 
 	// marshal into core.Transaction
-	var tx objects.Transaction
+	var tx core.Transaction
 	util.MapDecode(o.data, &tx)
 
 	// Compute and set hash
 	o.data["hash"] = tx.ComputeHash()
 
 	// Compute and set signature
-	sig, err := objects.TxSign(&tx, o.e.coinbase.PrivKey().Base58())
+	sig, err := core.TxSign(&tx, o.e.coinbase.PrivKey().Base58())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign tx: %s", err)
 	}

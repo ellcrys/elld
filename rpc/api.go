@@ -3,7 +3,6 @@ package rpc
 import (
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
 )
 
 func (s *Server) apiRPCAuth(params interface{}) *jsonrpc.Response {
@@ -40,7 +39,7 @@ func (s *Server) APIs() jsonrpc.APISet {
 
 		// namespace: "admin"
 		"auth": {
-			Namespace:   core.NamespaceAdmin,
+			Namespace:   types.NamespaceAdmin,
 			Description: "Get a session token",
 			Func:        s.apiRPCAuth,
 		},
@@ -48,12 +47,12 @@ func (s *Server) APIs() jsonrpc.APISet {
 		// namespace: "rpc"
 		"stop": {
 			Private:     true,
-			Namespace:   core.NamespaceRPC,
+			Namespace:   types.NamespaceRPC,
 			Description: "Get a session token",
 			Func:        s.apiRPCStop,
 		},
 		"echo": {
-			Namespace:   core.NamespaceRPC,
+			Namespace:   types.NamespaceRPC,
 			Description: "Sends back the parameter passed to it",
 			Func:        s.apiRPCEcho,
 		},

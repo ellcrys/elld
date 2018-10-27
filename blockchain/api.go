@@ -19,7 +19,7 @@ func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
 	for id, chain := range b.chains {
 		ch := map[string]interface{}{
 			"id":        id,
-			"timestamp": chain.info.Timestamp,
+			"timestamp": chain.info.GetTimestamp(),
 		}
 
 		tip, err := chain.Current()
@@ -131,7 +131,7 @@ func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 
 	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
 		"id":              b.bestChain.id,
-		"timestamp":       b.bestChain.info.Timestamp,
+		"timestamp":       b.bestChain.info.GetTimestamp(),
 		"height":          tip.GetNumber(),
 		"totalDifficulty": tip.GetTotalDifficulty(),
 	}))
@@ -330,81 +330,81 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 
 		// namespace: "state"
 		"getChains": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get all chains",
 			Func:        b.apiGetChains,
 		},
 		"getBlock": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get a block by number",
 			Func:        b.apiGetBlock,
 		},
 		"getBlockByHash": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
 		},
 		"getOrphans": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get a list of orphans",
 			Func:        b.apiGetOrphans,
 		},
 		"getBestChain": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get the best chain",
 			Func:        b.apiGetBestchain,
 		},
 		"getReOrgs": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get a list of re-organization events",
 			Func:        b.apiGetReOrgs,
 		},
 		"getAccount": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get an account",
 			Func:        b.apiGetAccount,
 		},
 		"listAccounts": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "List all accounts",
 			Func:        b.apiListAccounts,
 		},
 		"listTopAccounts": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "List top accounts",
 			Func:        b.apiListTopNAccounts,
 		},
 		"getAccountNonce": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get the nonce of an account",
 			Func:        b.apiGetNonce,
 		},
 		"getTransaction": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get a transaction by hash",
 			Func:        b.apiGetTransaction,
 		},
 		"getDifficulty": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get difficulty information",
 			Func:        b.apiGetDifficultyInfo,
 		},
 		"getObjects": {
-			Namespace:   core.NamespaceState,
+			Namespace:   types.NamespaceState,
 			Description: "Get raw database objects (for debugging)",
 			Func:        b.apiGetDBObjects,
 		},
 
 		// namespace: "node"
 		"getTransactionStatus": {
-			Namespace:   core.NamespaceNode,
+			Namespace:   types.NamespaceNode,
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
 		},
 
 		// namespace: "ell"
 		"getBalance": {
-			Namespace:   core.NamespaceEll,
+			Namespace:   types.NamespaceEll,
 			Description: "Get account balance",
 			Func:        b.apiGetBalance,
 		},

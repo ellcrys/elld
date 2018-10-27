@@ -9,7 +9,7 @@ import (
 	"github.com/thoas/go-funk"
 
 	"github.com/ellcrys/elld/params"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/shopspring/decimal"
 )
@@ -27,12 +27,12 @@ var (
 // item. It wraps a transaction and its
 // related information
 type ContainerItem struct {
-	Tx      core.Transaction
+	Tx      types.Transaction
 	FeeRate util.String
 }
 
 // newItem creates a container item
-func newItem(tx core.Transaction) *ContainerItem {
+func newItem(tx types.Transaction) *ContainerItem {
 	item := &ContainerItem{Tx: tx}
 	return item
 }
@@ -97,7 +97,7 @@ func (q *TxContainer) Full() bool {
 // Returns false if container capacity has been reached.
 // It computes the fee rate and sorts the transactions
 // after addition.
-func (q *TxContainer) Add(tx core.Transaction) bool {
+func (q *TxContainer) Add(tx types.Transaction) bool {
 
 	if q.Full() {
 		return false
@@ -125,7 +125,7 @@ func (q *TxContainer) Add(tx core.Transaction) bool {
 }
 
 // Has checks whether a transaction is in the container
-func (q *TxContainer) Has(tx core.Transaction) bool {
+func (q *TxContainer) Has(tx types.Transaction) bool {
 	q.gmx.RLock()
 	defer q.gmx.RUnlock()
 	return q.index[tx.GetHash().HexStr()] != nil
@@ -140,7 +140,7 @@ func (q *TxContainer) HasByHash(hash string) bool {
 
 // First returns a single transaction at head.
 // Returns nil if container is empty
-func (q *TxContainer) First() core.Transaction {
+func (q *TxContainer) First() types.Transaction {
 
 	if q.Size() <= 0 {
 		return nil
@@ -159,7 +159,7 @@ func (q *TxContainer) First() core.Transaction {
 
 // Last returns a single transaction at head.
 // Returns nil if container is empty
-func (q *TxContainer) Last() core.Transaction {
+func (q *TxContainer) Last() types.Transaction {
 
 	if q.Size() <= 0 {
 		return nil
@@ -211,7 +211,7 @@ func (q *TxContainer) Sort() {
 //
 // Do not modify the transaction in the predicate
 // as it is a pointer to the transaction in container.
-func (q *TxContainer) IFind(predicate func(core.Transaction) bool) core.Transaction {
+func (q *TxContainer) IFind(predicate func(types.Transaction) bool) types.Transaction {
 	q.gmx.Lock()
 	defer q.gmx.Unlock()
 	for _, item := range q.container {
@@ -224,9 +224,9 @@ func (q *TxContainer) IFind(predicate func(core.Transaction) bool) core.Transact
 
 // remove removes a transaction.
 // Note: Not thread-safe
-func (q *TxContainer) remove(txs ...core.Transaction) {
+func (q *TxContainer) remove(txs ...types.Transaction) {
 	finalTxs := funk.Filter(q.container, func(o *ContainerItem) bool {
-		if funk.Find(txs, func(tx core.Transaction) bool {
+		if funk.Find(txs, func(tx types.Transaction) bool {
 			return o.Tx.GetHash().Equal(tx.GetHash())
 		}) != nil {
 			delete(q.index, o.Tx.GetHash().HexStr())
@@ -241,7 +241,7 @@ func (q *TxContainer) remove(txs ...core.Transaction) {
 }
 
 // Remove removes a transaction
-func (q *TxContainer) Remove(txs ...core.Transaction) {
+func (q *TxContainer) Remove(txs ...types.Transaction) {
 	q.gmx.Lock()
 	defer q.gmx.Unlock()
 	q.remove(txs...)

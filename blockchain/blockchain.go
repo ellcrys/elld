@@ -8,8 +8,6 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 
-	"github.com/ellcrys/elld/types/core/objects"
-
 	"github.com/gobuffalo/packr"
 
 	"github.com/olebedev/emitter"
@@ -17,6 +15,7 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
@@ -38,7 +37,7 @@ type Blockchain struct {
 
 	// genesisBlock is the initial, hardcoded block
 	// shared by all clients. It is the root of all chains.
-	genesisBlock core.Block
+	genesisBlock types.Block
 
 	// chainLock is a general purpose chainLock for store, bestChain, chains etc
 	chainLock *sync.RWMutex
@@ -70,7 +69,7 @@ type Blockchain struct {
 	rejectedBlocks *cache.Cache
 
 	// txPool contains all transactions awaiting inclusion in a block
-	txPool core.TxPool
+	txPool types.TxPool
 
 	// eventEmitter allows the manager to listen to specific
 	// events or broadcast events about its state
@@ -81,7 +80,7 @@ type Blockchain struct {
 }
 
 // New creates a Blockchain instance.
-func New(txPool core.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
+func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Blockchain {
 	bc := new(Blockchain)
 	bc.txPool = txPool
 	bc.log = log
@@ -96,12 +95,12 @@ func New(txPool core.TxPool, cfg *config.EngineConfig, log logger.Logger) *Block
 }
 
 // SetGenesisBlock sets the genesis block
-func (b *Blockchain) SetGenesisBlock(block core.Block) {
+func (b *Blockchain) SetGenesisBlock(block types.Block) {
 	b.genesisBlock = block
 }
 
 // LoadBlockFromFile loads a block from a file
-func LoadBlockFromFile(name string) (core.Block, error) {
+func LoadBlockFromFile(name string) (types.Block, error) {
 
 	box := packr.NewBox("./data")
 	data := box.Bytes(name)
@@ -109,7 +108,7 @@ func LoadBlockFromFile(name string) (core.Block, error) {
 		return nil, fmt.Errorf("block file not found")
 	}
 
-	var gBlock objects.Block
+	var gBlock core.Block
 	if err := json.Unmarshal(data, &gBlock); err != nil {
 		return nil, err
 	}
@@ -120,7 +119,7 @@ func LoadBlockFromFile(name string) (core.Block, error) {
 // makeChainID creates a chain id
 // Combination: blake2b(current nano time + initial block hash
 // + pointer address of initial block)
-func makeChainID(initialBlock core.Block) util.String {
+func makeChainID(initialBlock types.Block) util.String {
 	now := time.Now().Unix()
 	blockHash := initialBlock.GetHashAsHex()
 	id := fmt.Sprintf("%s %d %d", blockHash, now, util.GetPtrAddr(initialBlock))
@@ -211,19 +210,19 @@ func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 	b.eventEmitter = ee
 }
 
-func (b *Blockchain) getBlockValidator(block core.Block) *BlockValidator {
+func (b *Blockchain) getBlockValidator(block types.Block) *BlockValidator {
 	v := NewBlockValidator(block, b.txPool, b, b.cfg, b.log)
-	v.setContext(core.ContextBlock)
+	v.setContext(types.ContextBlock)
 	return v
 }
 
 // GetTxPool gets the transaction pool
-func (b *Blockchain) GetTxPool() core.TxPool {
+func (b *Blockchain) GetTxPool() types.TxPool {
 	return b.txPool
 }
 
 // OrphanBlocks returns a cache reader for orphan blocks
-func (b *Blockchain) OrphanBlocks() core.CacheReader {
+func (b *Blockchain) OrphanBlocks() types.CacheReader {
 	return b.orphanBlocks
 }
 
@@ -243,15 +242,15 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 	// Check whether the chain information is a genesis chain.
 	// A genesis chain info does not include a parent chain id
 	// and a parent block number since it has no parent.
-	if ci.ParentChainID == "" && ci.ParentBlockNumber == 0 {
+	if ci.GetParentChainID() == "" && ci.GetParentBlockNumber() == 0 {
 		b.addChain(NewChainFromChainInfo(ci, b.db, b.cfg, b.log))
 		return nil
 	}
 
 	// Both parent chain ID and block number must be
 	// set. We cannot allow one to only be set.
-	if (ci.ParentChainID != "" && ci.ParentBlockNumber == 0) ||
-		(ci.ParentChainID == "" && ci.ParentBlockNumber != 0) {
+	if (ci.GetParentChainID() != "" && ci.GetParentBlockNumber() == 0) ||
+		(ci.GetParentChainID() == "" && ci.GetParentBlockNumber() != 0) {
 		return fmt.Errorf("chain load failed: chain parent chain ID and block are required")
 	}
 
@@ -274,7 +273,7 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 }
 
 // GetBestChain gets the chain that is currently considered the main chain
-func (b *Blockchain) GetBestChain() core.Chainer {
+func (b *Blockchain) GetBestChain() types.Chainer {
 	return b.bestChain
 }
 
@@ -302,7 +301,9 @@ func (b *Blockchain) removeChain(chain *Chain) {
 // highest block in the chain.
 //
 // NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...core.CallOp) (block core.Block, chain *Chain, chainTipHeader core.Header, err error) {
+func (b *Blockchain) findChainByBlockHash(hash util.Hash,
+	opts ...types.CallOp) (block types.Block, chain *Chain,
+	chainTipHeader types.Header, err error) {
 
 	for _, chain := range b.chains {
 
@@ -333,7 +334,7 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...core.CallOp) (
 }
 
 // addRejectedBlock adds the block to the rejection cache.
-func (b *Blockchain) addRejectedBlock(block core.Block) {
+func (b *Blockchain) addRejectedBlock(block types.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	b.rejectedBlocks.Add(block.GetHash().HexStr(), struct{}{})
@@ -341,7 +342,7 @@ func (b *Blockchain) addRejectedBlock(block core.Block) {
 
 // isRejected checks whether a block exists in the
 // rejection cache
-func (b *Blockchain) isRejected(block core.Block) bool {
+func (b *Blockchain) isRejected(block types.Block) bool {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	return b.rejectedBlocks.Has(block.GetHash().HexStr())
@@ -349,12 +350,15 @@ func (b *Blockchain) isRejected(block core.Block) bool {
 
 // addOrphanBlock adds a block to the collection of
 // orphaned blocks.
-func (b *Blockchain) addOrphanBlock(block core.Block) {
+func (b *Blockchain) addOrphanBlock(block types.Block) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration
-	b.orphanBlocks.AddWithExp(block.GetHash().HexStr(), block, time.Now().Add(time.Hour))
-	b.log.Debug("Added block to orphan cache", "BlockNo", block.GetNumber(), "CacheSize", b.orphanBlocks.Len())
+	b.orphanBlocks.AddWithExp(block.GetHash().HexStr(),
+		block, time.Now().Add(time.Hour))
+	b.log.Debug("Added block to orphan cache",
+		"BlockNo", block.GetNumber(),
+		"CacheSize", b.orphanBlocks.Len())
 }
 
 // isOrphanBlock checks whether a block is present in the
@@ -366,10 +370,10 @@ func (b *Blockchain) isOrphanBlock(blockHash util.Hash) bool {
 }
 
 // NewChainFromChainInfo creates an instance of a Chain given a NewChainFromChainInfo
-func (b *Blockchain) NewChainFromChainInfo(ci *core.ChainInfo) *Chain {
-	ch := NewChain(ci.ID, b.db, b.cfg, b.log)
-	ch.info.ParentChainID = ci.ParentChainID
-	ch.info.ParentBlockNumber = ci.ParentBlockNumber
+func (b *Blockchain) NewChainFromChainInfo(ci types.ChainInfo) *Chain {
+	ch := NewChain(ci.GetID(), b.db, b.cfg, b.log)
+	ch.info.ParentChainID = ci.GetParentChainID()
+	ch.info.ParentBlockNumber = ci.GetParentBlockNumber()
 	return ch
 }
 
@@ -400,7 +404,7 @@ func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error)
 }
 
 // IsMainChain checks whether cr is the main chain
-func (b *Blockchain) IsMainChain(cr core.ChainReader) bool {
+func (b *Blockchain) IsMainChain(cr types.ChainReader) bool {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	return b.bestChain.GetID() == cr.GetID()
@@ -408,7 +412,8 @@ func (b *Blockchain) IsMainChain(cr core.ChainReader) bool {
 
 // saveChain persist a given chain to the database.
 // It will also cache the chain to support faster query.
-func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String, parentBlockNumber uint64, opts ...core.CallOp) error {
+func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String,
+	parentBlockNumber uint64, opts ...types.CallOp) error {
 
 	var txOp = common.GetTxOp(b.db, opts...)
 	if txOp.Closed() {
@@ -472,7 +477,8 @@ func (b *Blockchain) addChain(chain *Chain) {
 //
 // While parentChain is the chain on which the parent block
 // belongs to.
-func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock core.Block, parentChain *Chain) (*Chain, error) {
+func (b *Blockchain) newChain(tx elldb.Tx, initialBlock types.Block,
+	parentBlock types.Block, parentChain *Chain) (*Chain, error) {
 
 	// The block and its parent must be provided.
 	// They must also be related through the
@@ -507,7 +513,8 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock core.Block, parentBlock 
 }
 
 // GetTransaction finds a transaction in the main chain and returns it
-func (b *Blockchain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.Transaction, error) {
+func (b *Blockchain) GetTransaction(hash util.Hash,
+	opts ...types.CallOp) (types.Transaction, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -524,13 +531,13 @@ func (b *Blockchain) GetTransaction(hash util.Hash, opts ...core.CallOp) (core.T
 }
 
 // ChainReader creates a chain reader for best/main chain
-func (b *Blockchain) ChainReader() core.ChainReader {
+func (b *Blockchain) ChainReader() types.ChainReader {
 	return NewChainReader(b.bestChain)
 }
 
 // GetChainReaderByHash returns a chain reader to a chain
 // where a block with the given hash exists
-func (b *Blockchain) GetChainReaderByHash(hash util.Hash) core.ChainReader {
+func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReader {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	_, chain, _, _ := b.findChainByBlockHash(hash)
@@ -541,7 +548,7 @@ func (b *Blockchain) GetChainReaderByHash(hash util.Hash) core.ChainReader {
 }
 
 // GetChainsReader gets chain reader for all known chains
-func (b *Blockchain) GetChainsReader() (readers []core.ChainReader) {
+func (b *Blockchain) GetChainsReader() (readers []types.ChainReader) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	for _, c := range b.chains {
@@ -594,12 +601,13 @@ func (b *Blockchain) GetLocators() ([]util.Hash, error) {
 
 // SelectTransactions collects transactions from the head
 // of the pool up to the specified maxSize.
-func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []core.Transaction, err error) {
+func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []types.Transaction,
+	err error) {
 	b.chainLock.RLock()
 	b.chainLock.RUnlock()
 
 	totalSelectedTxsSize := int64(0)
-	cache := []core.Transaction{}
+	cache := []types.Transaction{}
 	nonces := make(map[util.String]uint64)
 	for b.txPool.Size() > 0 {
 

@@ -7,8 +7,8 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -37,7 +37,7 @@ func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
 	go tp.onNewBlock()
 }
 
-func (tp *TxPool) remove(txs ...core.Transaction) {
+func (tp *TxPool) remove(txs ...types.Transaction) {
 	tp.Lock()
 	defer tp.Unlock()
 	tp.container.Remove(txs...)
@@ -51,13 +51,13 @@ func (tp *TxPool) onNewBlock() {
 	for {
 		select {
 		case evt := <-tp.event.Once(core.EventNewBlock):
-			tp.remove(evt.Args[0].(core.Block).GetTransactions()...)
+			tp.remove(evt.Args[0].(types.Block).GetTransactions()...)
 		}
 	}
 }
 
 // Put adds a transaction
-func (tp *TxPool) Put(tx core.Transaction) error {
+func (tp *TxPool) Put(tx types.Transaction) error {
 	tp.Lock()
 	defer tp.Unlock()
 
@@ -75,7 +75,7 @@ func (tp *TxPool) Put(tx core.Transaction) error {
 
 // clean removes old transactions
 func (tp *TxPool) clean() {
-	tp.container.IFind(func(tx core.Transaction) bool {
+	tp.container.IFind(func(tx types.Transaction) bool {
 		expTime := time.Unix(tx.GetTimestamp(), 0).UTC().AddDate(0, 0, params.TxTTL)
 		if time.Now().UTC().After(expTime) {
 			tp.container.remove(tx)
@@ -86,7 +86,7 @@ func (tp *TxPool) clean() {
 
 // PutSilently is like Put but it does not
 // emit an event on success.
-func (tp *TxPool) PutSilently(tx core.Transaction) error {
+func (tp *TxPool) PutSilently(tx types.Transaction) error {
 	tp.Lock()
 	defer tp.Unlock()
 
@@ -98,14 +98,14 @@ func (tp *TxPool) PutSilently(tx core.Transaction) error {
 }
 
 // addTx adds a transaction to the queue
-// and sends out core.EventNewTransaction event.
+// and sends out types.EventNewTransaction event.
 // (Not thread-safe)
-func (tp *TxPool) addTx(tx core.Transaction) error {
+func (tp *TxPool) addTx(tx types.Transaction) error {
 
 	switch tx.GetType() {
-	case objects.TxTypeBalance:
+	case core.TxTypeBalance:
 	default:
-		return objects.ErrTxTypeUnknown
+		return core.ErrTxTypeUnknown
 	}
 
 	// Ensure the transaction does not
@@ -125,7 +125,7 @@ func (tp *TxPool) addTx(tx core.Transaction) error {
 }
 
 // Has checks whether a transaction is in the pool
-func (tp *TxPool) Has(tx core.Transaction) bool {
+func (tp *TxPool) Has(tx types.Transaction) bool {
 	return tp.container.Has(tx)
 }
 
@@ -138,14 +138,14 @@ func (tp *TxPool) HasByHash(hash string) bool {
 // with a matching sender address and nonce exist in
 // the pool
 func (tp *TxPool) SenderHasTxWithSameNonce(address util.String, nonce uint64) bool {
-	return tp.container.IFind(func(tx core.Transaction) bool {
+	return tp.container.IFind(func(tx types.Transaction) bool {
 		return tx.GetFrom().Equal(address) && tx.GetNonce() == nonce
 	}) != nil
 }
 
 // Container gets the underlying
 // transaction container
-func (tp *TxPool) Container() core.TxContainer {
+func (tp *TxPool) Container() types.TxContainer {
 	return tp.container
 }
 

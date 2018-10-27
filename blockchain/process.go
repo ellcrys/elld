@@ -10,8 +10,8 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/util"
@@ -44,11 +44,11 @@ func addOp(ops []common.Transition, op common.Transition) []common.Transition {
 //
 // It will create a OpCreateAccount transition
 // object if the recipient account does not exist.
-func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transition,
-	chain core.Chainer, opts ...core.CallOp) ([]common.Transition, error) {
+func (b *Blockchain) processBalanceTx(tx types.Transaction, ops []common.Transition,
+	chain types.Chainer, opts ...types.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
-	var senderAcct, recipientAcct core.Account
+	var senderAcct, recipientAcct types.Account
 
 	// Find the current account object in previous operations
 	// passed via ops. If an account has been updated by
@@ -90,8 +90,8 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 			if err != core.ErrAccountNotFound {
 				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
 			}
-			recipientAcct = &objects.Account{
-				Type:    objects.AccountTypeBalance,
+			recipientAcct = &core.Account{
+				Type:    core.AccountTypeBalance,
 				Address: tx.GetTo(),
 				Balance: "0",
 			}
@@ -149,12 +149,12 @@ func (b *Blockchain) processBalanceTx(tx core.Transaction, ops []common.Transiti
 //
 // It will create a OpCreateAccount transition
 // object if the account does not exist.
-func (b *Blockchain) processAllocCoinTx(tx core.Transaction,
-	ops []common.Transition, chain core.Chainer,
-	opts ...core.CallOp) ([]common.Transition, error) {
+func (b *Blockchain) processAllocCoinTx(tx types.Transaction, ops []common.Transition,
+	chain types.Chainer,
+	opts ...types.CallOp) ([]common.Transition, error) {
 	var err error
 	var txOps []common.Transition
-	var recipientAcct core.Account
+	var recipientAcct types.Account
 
 	// Find the current account object in previous operations
 	// passed via ops. If an account has been updated by
@@ -177,8 +177,8 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction,
 			if err != core.ErrAccountNotFound {
 				return nil, fmt.Errorf("failed to retrieve recipient account: %s", err)
 			}
-			recipientAcct = &objects.Account{
-				Type:    objects.AccountTypeBalance,
+			recipientAcct = &core.Account{
+				Type:    core.AccountTypeBalance,
 				Address: tx.GetTo(),
 				Balance: "0",
 			}
@@ -203,7 +203,7 @@ func (b *Blockchain) processAllocCoinTx(tx core.Transaction,
 
 // opsToKVObjects takes a slice of operations
 // and apply them to the provided chain
-func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer,
+func (b *Blockchain) opsToStateObjects(block types.Block, chain types.Chainer,
 	ops []common.Transition) ([]*common.StateObject, error) {
 
 	stateObjs := []*common.StateObject{}
@@ -236,8 +236,8 @@ func (b *Blockchain) opsToStateObjects(block core.Block, chain core.Chainer,
 // ProcessTransactions computes the state transition operations
 // for each transactions that must be applied to the state tree
 // and world state
-func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chainer,
-	opts ...core.CallOp) ([]common.Transition, error) {
+func (b *Blockchain) ProcessTransactions(txs []types.Transaction, chain types.Chainer,
+	opts ...types.CallOp) ([]common.Transition, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 
@@ -247,9 +247,9 @@ func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chai
 		var newOps []common.Transition
 
 		switch tx.GetType() {
-		case objects.TxTypeBalance:
+		case core.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
-		case objects.TxTypeAlloc:
+		case core.TxTypeAlloc:
 			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
 		}
 
@@ -267,7 +267,7 @@ func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chai
 
 // maybeAcceptBlock attempts to determine the suitable chain for the
 // provided block, execute the block's transactions to derive the
-// new set of state objects. The state objects and transactions are
+// new set of state core. The state objects and transactions are
 // then stored to the store.
 //
 // If a chain is passed as parameter, no attempt to determine the chain
@@ -275,12 +275,12 @@ func (b *Blockchain) ProcessTransactions(txs []core.Transaction, chain core.Chai
 // passed chain. This should only be used for the genesis block.
 //
 // NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) maybeAcceptBlock(block core.Block, chain *Chain,
-	opts ...core.CallOp) (*Chain, error) {
+func (b *Blockchain) maybeAcceptBlock(block types.Block, chain *Chain,
+	opts ...types.CallOp) (*Chain, error) {
 
 	var err error
-	var parentBlock core.Block
-	var chainTip core.Header
+	var parentBlock types.Block
+	var chainTip types.Header
 	var createNewChain bool
 	var bValidator = b.getBlockValidator(block)
 
@@ -405,7 +405,7 @@ process:
 
 		// Update the validator context to ContextBranch
 		// since we intend to add the block to a branch
-		bValidator.setContext(core.ContextBranch)
+		bValidator.setContext(types.ContextBranch)
 	}
 
 	// validate transactions in the block
@@ -502,7 +502,7 @@ process:
 // and attempts to add it to the tip of one of the known
 // chains (main chain or forked chain). It returns a chain reader
 // pointing to the chain in which the block was added to.
-func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
+func (b *Blockchain) ProcessBlock(block types.Block) (types.ChainReader, error) {
 	b.processLock.Lock()
 	defer b.processLock.Unlock()
 
@@ -572,8 +572,8 @@ func (b *Blockchain) ProcessBlock(block core.Block) (core.ChainReader, error) {
 
 // execBlock execute the transactions of the blocks to
 // output the resulting state objects and state root.
-func (b *Blockchain) execBlock(chain core.Chainer,
-	block core.Block, opts ...core.CallOp) (root util.Hash,
+func (b *Blockchain) execBlock(chain types.Chainer,
+	block types.Block, opts ...types.CallOp) (root util.Hash,
 	stateObjs []*common.StateObject, err error) {
 
 	// Process the transactions to produce a series of transitions
@@ -584,7 +584,7 @@ func (b *Blockchain) execBlock(chain core.Chainer,
 	}
 
 	// Create state objects from the transition
-	// objects. State objects when written to the
+	// core. State objects when written to the
 	// blockchain state (store and tree) change
 	// the values of data.
 	stateObjs, err = b.opsToStateObjects(block, chain, ops)
@@ -646,7 +646,7 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 
 			// find an orphan block with a parent hash that
 			// is same has the latestBlockHash
-			orphanBlock := b.orphanBlocks.Peek(oBKey).(core.Block)
+			orphanBlock := b.orphanBlocks.Peek(oBKey).(types.Block)
 			if orphanBlock.GetHeader().GetParentHash().HexStr() != curParentHash {
 				continue
 			}

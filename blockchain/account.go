@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 )
@@ -11,8 +12,8 @@ import (
 // CreateAccount creates an account
 // that is associated with the given block number
 // and chain.
-func (b *Blockchain) CreateAccount(blockNo uint64, chain core.Chainer,
-	account core.Account) error {
+func (b *Blockchain) CreateAccount(blockNo uint64, chain types.Chainer,
+	account types.Account) error {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return chain.CreateAccount(blockNo, account)
@@ -20,7 +21,7 @@ func (b *Blockchain) CreateAccount(blockNo uint64, chain core.Chainer,
 
 // GetAccountNonce gets the nonce of an account
 func (b *Blockchain) GetAccountNonce(address util.String,
-	opts ...core.CallOp) (uint64, error) {
+	opts ...types.CallOp) (uint64, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	account, err := b.GetAccount(address, opts...)
@@ -32,7 +33,7 @@ func (b *Blockchain) GetAccountNonce(address util.String,
 
 // GetAccount gets an account by its address
 func (b *Blockchain) GetAccount(address util.String,
-	opts ...core.CallOp) (core.Account, error) {
+	opts ...types.CallOp) (types.Account, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	opt := common.GetChainerOp(opts...)
@@ -44,7 +45,7 @@ func (b *Blockchain) GetAccount(address util.String,
 }
 
 // ListAccounts list all accounts
-func (b *Blockchain) ListAccounts(opts ...core.CallOp) ([]core.Account, error) {
+func (b *Blockchain) ListAccounts(opts ...types.CallOp) ([]types.Account, error) {
 
 	if b.bestChain == nil {
 		return nil, core.ErrBestChainUnknown
@@ -56,7 +57,7 @@ func (b *Blockchain) ListAccounts(opts ...core.CallOp) ([]core.Account, error) {
 }
 
 // ListTopAccounts lists top n accounts
-func (b *Blockchain) ListTopAccounts(n int, opts ...core.CallOp) ([]core.Account, error) {
+func (b *Blockchain) ListTopAccounts(n int, opts ...types.CallOp) ([]types.Account, error) {
 	accounts, err := b.ListAccounts(opts...)
 	if err != nil {
 		return nil, err

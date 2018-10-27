@@ -17,8 +17,9 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
+
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 )
@@ -58,17 +59,17 @@ func main() {
 	creator, _ := crypto.NewKey(nil)
 
 	// generate some allocation transactions
-	var txs = []core.Transaction{}
+	var txs = []types.Transaction{}
 	var addrsPrivateKey = make(map[string]string)
 
 	for i := int64(1); i < *maxTxs+1; i++ {
 		recipient := crypto.NewKeyFromIntSeed(int(i))
-		allocTx := objects.NewTx(objects.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().Unix())
+		allocTx := core.NewTx(core.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().Unix())
 		txs = append(txs, allocTx)
 		addrsPrivateKey[recipient.Addr()] = recipient.PrivKey().Base58()
 	}
 
-	params := &core.GenerateBlockParams{
+	params := &types.GenerateBlockParams{
 		Transactions:            txs,
 		Creator:                 creator,
 		Nonce:                   util.EncodeNonce(1),

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -96,8 +95,8 @@ type ConsensusConfig struct {
 // MinerConfig defines configuration for mining
 type MinerConfig struct {
 
-	// Mode describes the blakimoto mining mode
-	Mode blakimoto.Mode `json:"-"`
+	// Mode describes the mining mode
+	Mode uint `json:"-"`
 }
 
 // VersionInfo describes the clients
@@ -194,7 +193,7 @@ func init() {
 	}
 
 	defaultConfig.Miner = &MinerConfig{
-		Mode: blakimoto.ModeNormal,
+		Mode: 0,
 	}
 
 	defaultConfig.RPC = &RPCConfig{

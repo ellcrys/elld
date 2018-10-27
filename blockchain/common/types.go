@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 )
 
@@ -85,7 +86,7 @@ func (t *TransitionsOp) GetName() string {
 // ChainerOp defines a CallOp for
 // passing a chain
 type ChainerOp struct {
-	Chain core.Chainer
+	Chain types.Chainer
 	name  string
 }
 

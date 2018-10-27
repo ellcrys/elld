@@ -154,6 +154,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	password, _ := cmd.Flags().GetString("pwd")
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
+	numMiners, _ := cmd.Flags().GetInt("miners")
 
 	// When password is not set, get it from the
 	// environment variable
@@ -196,7 +197,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	log.Info("Elld has started", "Version", config.ClientVersion, "DevMode", devMode)
+	log.Info("Elld has started", "Version", cfg.VersionInfo.BuildVersion, "DevMode", devMode)
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}
@@ -231,24 +232,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// open the database on the engine
 	if err = n.OpenDB(); err != nil {
-		log.Fatal("failed to open local database")
+		log.Fatal("failed to open local database", "Err", err.Error())
 	}
 
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
-
-	// Initialized gossip protocol handlers
-	protocol := node.NewGossip(n, log)
-	n.SetGossipProtocol(protocol)
-	n.SetProtocolHandler(config.HandshakeVersion, protocol.OnHandshake)
-	n.SetProtocolHandler(config.PingVersion, protocol.OnPing)
-	n.SetProtocolHandler(config.GetAddrVersion, protocol.OnGetAddr)
-	n.SetProtocolHandler(config.AddrVersion, protocol.OnAddr)
-	n.SetProtocolHandler(config.IntroVersion, protocol.OnIntro)
-	n.SetProtocolHandler(config.TxVersion, protocol.OnTx)
-	n.SetProtocolHandler(config.BlockBodyVersion, protocol.OnBlockBody)
-	n.SetProtocolHandler(config.RequestBlockVersion, protocol.OnRequestBlock)
-	n.SetProtocolHandler(config.GetBlockHashesVersion, protocol.OnGetBlockHashes)
-	n.SetProtocolHandler(config.GetBlockBodiesVersion, protocol.OnGetBlockBodies)
 
 	// Instantiate the blockchain manager,
 	// set db, event emitter and pass it to the engine
@@ -271,6 +258,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Initialized and start the miner if
 	// enabled via the cli flag.
 	miner := miner.New(coinbase, bchain, event, cfg, log)
+	miner.SetNumThreads(numMiners)
 	if mine {
 		go miner.Mine()
 	}
@@ -366,4 +354,5 @@ func init() {
 	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
+	startCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 }

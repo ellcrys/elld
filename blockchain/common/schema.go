@@ -181,7 +181,7 @@ func MakeKeyReOrg(timestamp int64) []byte {
 }
 
 // MakeQueryKeyReOrg constructs a key for
-// querying reorganization objects.
+// querying reorganization core.
 // Prefixes: tag_reOrg
 func MakeQueryKeyReOrg() []byte {
 	return elldb.MakePrefix(

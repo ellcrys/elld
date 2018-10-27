@@ -2,12 +2,12 @@ package vm
 
 import (
 	"github.com/ellcrys/elld/blockcode"
-	"github.com/ellcrys/elld/types/core/objects"
+	"github.com/ellcrys/elld/types/core"
 )
 
 // Block defines an interface for a block
 type Block interface {
-	GetTransactions() []*objects.Transaction
+	GetTransactions() []*core.Transaction
 }
 
 // Blockchain interface defines a structure for accessing the blockchain

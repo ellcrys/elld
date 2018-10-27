@@ -3,9 +3,8 @@ package blockchain
 import (
 	"bytes"
 
-	"github.com/ellcrys/elld/types/core/objects"
-
 	"github.com/ellcrys/elld/blockchain/common"
+	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/elldb"
@@ -133,7 +132,7 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 				// If object represents a block, decode
 				// the block and set to map
 				if bytes.Index(kv.Prefix, common.TagBlock) != -1 {
-					var block objects.Block
+					var block core.Block
 					util.BytesToObject(kv.Value, &block)
 					m["value"] = block
 				} else {

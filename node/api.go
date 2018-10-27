@@ -9,7 +9,6 @@ import (
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/types/core/objects"
 	"github.com/ellcrys/elld/util"
 )
 
@@ -79,18 +78,14 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 				"address ("+address+") format is invalid", nil)
 		}
 
-		rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
-		if err != nil {
-			return jsonrpc.Error(types.ErrCodeAddress, err.Error(), nil)
-		}
-
+		rp := n.NewRemoteNode(util.AddressFromConnString(address))
 		if rp.IsSame(n) {
 			return jsonrpc.Error(types.ErrCodeAddress,
 				"can't add self ("+address+") as a peer", nil)
 		}
 
-		go func(rp *Node) {
-			n.connectToNode(rp)
+		go func(rp core.Engine) {
+			n.peerManager.ConnectToNode(rp)
 		}(rp)
 	}
 
@@ -133,11 +128,7 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 				"address ("+address+") format is invalid", nil)
 		}
 
-		rp, err := n.NodeFromAddr(util.AddressFromConnString(address), true)
-		if err != nil {
-			return jsonrpc.Error(types.ErrCodeAddress, err.Error()+" ("+address+")", nil)
-		}
-
+		rp := n.NewRemoteNode(util.AddressFromConnString(address))
 		if rp.IsSame(n) {
 			return jsonrpc.Error(types.ErrCodeAddress,
 				"can't add self ("+address+") as a peer", nil)
@@ -152,7 +143,7 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 // apiNetInfo returns the
 // number of peers connected to
 func (n *Node) apiNetInfo(arg interface{}) *jsonrpc.Response {
-	var connsInfo = n.peerManager.connMgr.GetConnsCount()
+	var connsInfo = n.peerManager.ConnMgr().GetConnsCount()
 	in, out := connsInfo.Info()
 	var result = map[string]int{
 		"total":    out + in,
@@ -178,7 +169,8 @@ func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 			"lastSeen":     p.GetLastSeen(),
 			"connected":    p.Connected(),
 			"isHardcoded":  p.IsHardcodedSeed(),
-			"isAcquainted": p.IsAcquainted(),
+			"isAcquainted": n.PM().IsAcquainted(p),
+			"isInbound":    p.IsInbound(),
 		})
 	}
 	return jsonrpc.Success(peers)
@@ -192,8 +184,10 @@ func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
 			"id":           p.StringID(),
 			"lastSeen":     p.GetLastSeen(),
 			"connected":    p.Connected(),
-			"isHardcoded":  p.IsHardcodedSeed(),
-			"isAcquainted": p.IsAcquainted(),
+			"isAcquainted": n.PM().IsAcquainted(p),
+			"isInbound":    p.IsInbound(),
+			"isBanned":     n.peerManager.IsBanned(p),
+			"banEndTime":   n.peerManager.GetBanTime(p),
 		})
 	}
 	return jsonrpc.Success(peers)
@@ -206,7 +200,7 @@ func (n *Node) apiIsSyncing(arg interface{}) *jsonrpc.Response {
 
 // apiGetSyncState fetches the sync status
 func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.getSyncStateInfo())
+	return jsonrpc.Success(n.GetSyncStateInfo())
 }
 
 // apiTxPoolSizeInfo fetches the size information
@@ -229,10 +223,10 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	}
 	// set the type to TxTypeBalance.
 	// it will override the type given
-	txData["type"] = objects.TxTypeBalance
+	txData["type"] = core.TxTypeBalance
 
 	// Copy data in txData to a core.Transaction
-	var tx objects.Transaction
+	var tx core.Transaction
 	util.MapDecode(txData, &tx)
 
 	// The signature being of type []uint8, will be
@@ -243,7 +237,7 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	}
 
 	// Attempt to add the transaction to the pool
-	if err := n.addTransaction(&tx); err != nil {
+	if err := n.AddTransaction(&tx); err != nil {
 		return jsonrpc.Error(types.ErrCodeTxFailed, err.Error(), nil)
 	}
 
@@ -254,8 +248,8 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 
 // apiFetchPool fetches transactions currently in the pool
 func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
-	var txs []core.Transaction
-	n.GetTxPool().Container().IFind(func(tx core.Transaction) bool {
+	var txs []types.Transaction
+	n.GetTxPool().Container().IFind(func(tx types.Transaction) bool {
 		txs = append(txs, tx)
 		return false
 	})
@@ -268,36 +262,36 @@ func (n *Node) APIs() jsonrpc.APISet {
 
 		// namespace: "node"
 		"config": {
-			Namespace:   core.NamespaceNode,
+			Namespace:   types.NamespaceNode,
 			Description: "Get node configurations",
 			Private:     true,
 			Func:        n.apiGetConfig,
 		},
 		"info": {
-			Namespace:   core.NamespaceNode,
+			Namespace:   types.NamespaceNode,
 			Description: "Get basic information of the node",
 			Private:     true,
 			Func:        n.apiBasicNodeInfo,
 		},
 		"isSyncing": {
-			Namespace:   core.NamespaceNode,
+			Namespace:   types.NamespaceNode,
 			Description: "Check whether blockchain synchronization is active",
 			Func:        n.apiIsSyncing,
 		},
 		"getSyncState": {
-			Namespace:   core.NamespaceNode,
+			Namespace:   types.NamespaceNode,
 			Description: "Get blockchain synchronization status",
 			Func:        n.apiGetSyncState,
 		},
 		"getSyncQueueSize": {
-			Namespace:   core.NamespaceNode,
+			Namespace:   types.NamespaceNode,
 			Description: "Get number of block hashes in the sync queue",
 			Func:        n.apiGetSyncQueueSize,
 		},
 
 		// namespace: "ell"
 		"send": {
-			Namespace:   core.NamespaceEll,
+			Namespace:   types.NamespaceEll,
 			Description: "Create a balance transaction",
 			Private:     true,
 			Func:        n.apiSend,
@@ -305,41 +299,41 @@ func (n *Node) APIs() jsonrpc.APISet {
 
 		// namespace: "net"
 		"join": {
-			Namespace:   core.NamespaceNet,
+			Namespace:   types.NamespaceNet,
 			Description: "Connect to a peer",
 			Private:     true,
 			Func:        n.apiJoin,
 		},
 		"addPeer": {
-			Namespace:   core.NamespaceNet,
+			Namespace:   types.NamespaceNet,
 			Description: "Add a peer address",
 			Private:     true,
 			Func:        n.apiAddPeer,
 		},
 		"counts": {
-			Namespace:   core.NamespaceNet,
+			Namespace:   types.NamespaceNet,
 			Description: "Get number connections and network nodes",
 			Func:        n.apiNetInfo,
 		},
 		"getPeers": {
-			Namespace:   core.NamespaceNet,
+			Namespace:   types.NamespaceNet,
 			Description: "Get a list of all peers",
 			Func:        n.apiGetPeers,
 		},
 		"getActivePeers": {
-			Namespace:   core.NamespaceNet,
+			Namespace:   types.NamespaceNet,
 			Description: "Get a list of active peers",
 			Func:        n.apiGetActivePeers,
 		},
 
 		// namespace: "pool"
 		"getSize": {
-			Namespace:   core.NamespacePool,
+			Namespace:   types.NamespacePool,
 			Description: "Get size information of the transaction pool",
 			Func:        n.apiTxPoolSizeInfo,
 		},
 		"getAll": {
-			Namespace:   core.NamespacePool,
+			Namespace:   types.NamespacePool,
 			Description: "Get transactions in the pool",
 			Func:        n.apiFetchPool,
 		},
