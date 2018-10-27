@@ -448,7 +448,7 @@ process:
 	}
 
 	// We will also index the transactions so
-	// they can are queryable but only if the
+	// they are queryable but only if the
 	// chain is not a side chain
 	if !chain.HasParent(txOp) {
 		if err := chain.PutTransactions(block.GetTransactions(),
@@ -472,9 +472,7 @@ process:
 	}
 
 	// cache the chain if it has not been seen before
-	if _, ok := b.chains[chain.GetID()]; !ok {
-		b.chains[chain.GetID()] = chain
-	}
+	b.addChain(chain)
 
 	// decide and set which chain is the best chain
 	// This could potentially cause a reorganization.
