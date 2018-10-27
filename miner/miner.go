@@ -236,7 +236,7 @@ func (m *Miner) Mine() {
 		startTime := time.Now()
 		block, err := m.blakimoto.Seal(m.proposedBlock, m.abort)
 		if err != nil {
-			m.log.Warn(err.Error())
+			m.log.Error(err.Error())
 			continue
 		}
 
@@ -258,8 +258,8 @@ func (m *Miner) Mine() {
 		if blakimoto.Mode(m.cfg.Miner.Mode) != blakimoto.ModeTest {
 			_, err = m.blockMaker.ProcessBlock(block)
 			if err != nil {
-				m.log.Error("Failed to process block", "Err", err.Error())
-				break
+				m.log.Warn("Failed to process block", "Err", err.Error())
+				continue
 			}
 		}
 
