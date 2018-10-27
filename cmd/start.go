@@ -155,6 +155,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed, _ := cmd.Flags().GetInt64("seed")
 	mine, _ := cmd.Flags().GetBool("mine")
 	numMiners, _ := cmd.Flags().GetInt("miners")
+	debug, _ := cmd.Flags().GetBool("debug")
 
 	// When password is not set, get it from the
 	// environment variable
@@ -179,7 +180,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// set to dev mode if -dev is set
 	// and apply dev config values
-	if devMode {
+	if devMode || debug {
 		cfg.Node.Mode = config.ModeDev
 		devDefaultConfig(cfg)
 	}
