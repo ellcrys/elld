@@ -260,6 +260,25 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 
+		// namespace: "logger"
+		"debug": {
+			Namespace:   types.NamespaceLogger,
+			Description: "Set log level to DEBUG",
+			Func: func(arg interface{}) *jsonrpc.Response {
+				n.log.SetToDebug()
+				return jsonrpc.Success(nil)
+			},
+		},
+
+		"default": {
+			Namespace:   types.NamespaceLogger,
+			Description: "Set log level to the default (INFO)",
+			Func: func(arg interface{}) *jsonrpc.Response {
+				n.log.SetToInfo()
+				return jsonrpc.Success(nil)
+			},
+		},
+
 		// namespace: "node"
 		"config": {
 			Namespace:   types.NamespaceNode,
