@@ -231,6 +231,18 @@ func (m *Manager) GetUnconnectedPeers() (peers []core.Engine) {
 	return
 }
 
+// GetLonelyPeers returns the peers that
+// are currently not connected or are connected
+// unacquainted to the local peer.
+func (m *Manager) GetLonelyPeers() (peers []core.Engine) {
+	for _, p := range m.GetPeers() {
+		if !p.Connected() || !m.IsAcquainted(p) {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
 // GetConnectedPeers returns the connected peers
 func (m *Manager) GetConnectedPeers() (peers []core.Engine) {
 	for _, p := range m.GetPeers() {
@@ -472,7 +484,7 @@ func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
 		return fmt.Errorf("unknown peer")
 	}
 
-	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
+	m.log.Debug("Peer has disconnected", "PeerID", peer.ShortID())
 
 	peer.SetLastSeen(peer.GetLastSeen().Add(-1 * time.Hour))
 
