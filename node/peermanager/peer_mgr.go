@@ -157,6 +157,13 @@ func (m *Manager) AddAcquainted(peer core.Engine) {
 	m.acquainted[peer.StringID()] = struct{}{}
 }
 
+// RemoveAcquainted makes a peer unacquainted
+func (m *Manager) RemoveAcquainted(peer core.Engine) {
+	m.cacheMtx.Lock()
+	defer m.cacheMtx.Unlock()
+	delete(m.acquainted, peer.StringID())
+}
+
 // IsAcquainted checks whether the peer passed through
 // the handshake step
 func (m *Manager) IsAcquainted(peer core.Engine) bool {

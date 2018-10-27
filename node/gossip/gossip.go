@@ -112,13 +112,27 @@ func (g *Gossip) NewStream(remotePeer core.Engine, msgVersion string) (net.Strea
 	return s, cf, err
 }
 
-// checkRemotePeer performs validation against
-// the remote peer.
-func (g *Gossip) checkRemotePeer(s net.Stream, rp core.Engine) error {
+// CheckRemotePeer performs validation against the remote peer.
+func (g *Gossip) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
+
+	s := ws.Stream
 
 	// Perform no checks for handshake messages
 	if s.Protocol() == protocol.ID(config.HandshakeVersion) {
 		return nil
+	}
+
+	// If we receive an Addr message from an unknown peer,
+	// temporarily add the peer as acquainted so it will
+	// pass CanAcceptNode.
+	// We need to accept this unsolicited message so
+	// that peer discovery will be effective.
+	// After the message is handled, the acquainted status
+	// is revoked.
+	if s.Protocol() == protocol.ID(config.AddrVersion) &&
+		!g.PM().PeerExist(rp.StringID()) {
+		g.PM().AddAcquainted(rp)
+		ws.Extra["forget_after_handle"] = true
 	}
 
 	// Check whether the local peer is allowed to receive
@@ -139,17 +153,29 @@ func (g *Gossip) Handle(handler func(s net.Stream, remotePeer core.Engine) error
 		rp := g.engine.NewRemoteNode(remoteAddr)
 
 		// Check whether we are allowed to receive from this peer
-		if err := g.checkRemotePeer(s, rp); err != nil {
+		ws := &core.WrappedStream{Stream: s, Extra: make(map[string]interface{})}
+		if err := g.CheckRemotePeer(ws, rp); err != nil {
 			g.logErr(err, rp, "message unaccepted")
 			s.Reset()
 			return
 		}
 
 		// Update the last seen time of this peer
-		g.PM().AddOrUpdateNode(rp)
+		// as long as we don't intend to forget this
+		// peer after handling its message
+		if s.Stat().Extra["forget_after_handle"] == nil {
+			g.PM().AddOrUpdateNode(rp)
+		}
 
 		// Handle the message
 		handler(s, rp)
+
+		// Make the remote peer become unacquainted and
+		// close the connection to it
+		if s.Stat().Extra["forget_after_handle"] != nil {
+			g.PM().RemoveAcquainted(rp)
+			s.Conn().Close()
+		}
 	}
 }
 
