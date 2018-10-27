@@ -54,6 +54,9 @@ func (g *Gossip) SendPingToPeer(remotePeer core.Engine) error {
 		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to read message")
 	}
 
+	// update the remote peer's timestamp
+	g.PM().AddOrUpdateNode(remotePeer)
+
 	g.log.Info("Received pong response from peer", "PeerID", rpIDShort)
 
 	// compare best chain.

@@ -395,8 +395,8 @@ func (m *Manager) Peers() map[string]core.Engine {
 // SetPeers sets the known peers
 func (m *Manager) SetPeers(d map[string]core.Engine) {
 	m.ptx.Lock()
-	defer m.ptx.Unlock()
 	m.peers = d
+	m.ptx.Unlock()
 }
 
 // hasReachedOutConnLimit checks whether the
@@ -471,34 +471,32 @@ func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
 // we remove peers based on their active status.
 // It returns the number of peers removed
 func (m *Manager) CleanPeers() int {
-	m.ptx.Lock()
-	defer m.ptx.Unlock()
+	peers := m.GetPeers()
+	before := len(peers)
+	clean := map[string]core.Engine{}
 
-	before := len(m.peers)
-	newKnownPeers := make(map[string]core.Engine)
-
-	for k, p := range m.peers {
+	for _, p := range peers {
 
 		// If last communication was received within 3 hours
 		// ago, we consider the peer active
 		if !m.IsBanned(p) && time.Now().Add(-3*(60*60)*time.Second).
 			Before(p.GetLastSeen()) {
-			newKnownPeers[k] = p
+			clean[p.StringID()] = p
 			continue
 		}
 
 		// If peer has been banned but have a ban time
 		// that is <= 3 hours in the future, we can keep the peer
 		if m.IsBanned(p) && m.GetBanTime(p).Before(time.Now().Add(3*time.Hour)) {
-			newKnownPeers[k] = p
+			clean[p.StringID()] = p
 			continue
 		}
 
-		delete(m.acquainted, k)
+		delete(m.acquainted, p.StringID())
 	}
 
-	after := len(newKnownPeers)
-	m.peers = newKnownPeers
+	after := len(clean)
+	m.SetPeers(clean)
 
 	return before - after
 }
@@ -506,8 +504,8 @@ func (m *Manager) CleanPeers() int {
 // GetPeers gets all the known
 // peers (connected or unconnected).
 func (m *Manager) GetPeers() (peers []core.Engine) {
-	m.ptx.Lock()
-	defer m.ptx.Unlock()
+	m.ptx.RLock()
+	defer m.ptx.RUnlock()
 
 	for _, p := range m.peers {
 		peers = append(peers, p)
@@ -566,15 +564,14 @@ func (m *Manager) GetRandomActivePeers(limit int) []core.Engine {
 
 // SavePeers stores active peer addresses
 func (m *Manager) SavePeers() error {
-	m.ptx.Lock()
-	defer m.ptx.Unlock()
 
 	var numAddrs = 0
 	var kvObjs []*elldb.KVObject
+	var peers = m.GetPeers()
 
 	// Hardcoded seed peers and peers that are
 	// not up to 20 minutes old are also not saved.
-	for _, p := range m.peers {
+	for _, p := range peers {
 
 		isOldEnough := time.Now().Sub(p.CreatedAt()).Minutes() >= 20
 		if !isOldEnough || !m.hasSeenRecently(p) || p.IsHardcodedSeed() {

@@ -198,8 +198,7 @@ func (m *ConnectionManager) Disconnected(n net.Network, conn net.Conn) {
 // OpenedStream is called when a stream is openned
 func (m *ConnectionManager) OpenedStream(n net.Network, s net.Stream) {
 
-	// If the local node has stopped,
-	// close the stream on both ends.
+	// Reset the stream if local node has stopped
 	if m.pm.localNode.HasStopped() {
 		s.Reset()
 	}
