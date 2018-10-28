@@ -4,6 +4,6 @@ vendor
 CacheFile
 scribleDB
 DagFile
-scripts
+local
 .*vscode
 .*DS_Store

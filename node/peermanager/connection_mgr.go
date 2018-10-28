@@ -122,7 +122,7 @@ func (m *ConnectionManager) makeConnections(done chan bool) {
 				continue
 			}
 
-			m.log.Info("Establishing connection with more peers", "UnconnectedPeers",
+			m.log.Debug("Establishing connection with more peers", "UnconnectedPeers",
 				len(peers))
 
 			for _, p := range peers {

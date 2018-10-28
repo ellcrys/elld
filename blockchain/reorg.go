@@ -114,8 +114,8 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 // decideBestChain determines and sets the current best chain
 // based on the split resolution rules.
 func (b *Blockchain) decideBestChain() error {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chainLock.Lock()
+	defer b.chainLock.Unlock()
 
 	proposedBestChain, err := b.chooseBestChain()
 	if err != nil {
@@ -135,10 +135,12 @@ func (b *Blockchain) decideBestChain() error {
 	if b.bestChain != nil && b.bestChain.GetID() != proposedBestChain.GetID() {
 		b.log.Info("New best chain detected. Re-organizing.",
 			"CurBestChainID", b.bestChain.GetID().SS(), "ProposedChainID", proposedBestChain.GetID().SS())
-		b.bestChain, err = b.reOrg(proposedBestChain)
+		newBestChain, err := b.reOrg(proposedBestChain)
 		if err != nil {
 			return fmt.Errorf("Reorganization error: %s", err)
 		}
+
+		b.bestChain = newBestChain
 
 		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID().SS())
 	}

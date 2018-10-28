@@ -316,7 +316,7 @@ func TestBlockValidator(t *testing.T) {
 				g.It("should return error when total difficulty is invalid", func() {
 					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid difficulty: have 131, want 100000")))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid difficulty: have 131, want 100000")))
 				})
 			})
 
@@ -334,7 +334,7 @@ func TestBlockValidator(t *testing.T) {
 				g.It("should return no error", func() {
 					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid total difficulty: have 10222, want 10000100000")))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid total difficulty: have 10222, want 10000100000")))
 				})
 			})
 
@@ -352,7 +352,7 @@ func TestBlockValidator(t *testing.T) {
 				g.It("should return invalid proof-of-work error", func() {
 					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:parentHash, error:invalid proof-of-work")))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid proof-of-work")))
 				})
 			})
 		})

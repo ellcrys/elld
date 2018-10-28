@@ -28,17 +28,19 @@ release:
 	env GOVERSION=$(GOVERSION) goreleaser --snapshot --rm-dist
 
 # Build an elld image 
-dockerize: 
+build: 
 	docker build -t elld-node -f ./docker/node/Dockerfile .
-dockerize-force: 
+update: 
 	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile .
 	
-# Remove volumes and containers
-docker-prune-container-volume:
-	docker container prune 
-	docker volume prune 
+# Remove elld volume and container
+destroy: 
+	@echo "\033[0;31m[WARNING!]\033[0m You are about to remove 'elld' container and volumes. \n\
+	Data (e.g. Accounts, Blockchain state, logs etc) in the volumes attached to an 'elld' \n\
+	container will be lost forever."
+	python ./scripts/confirm.py "docker rm -f -v elld"
 	
-# Start a node
+# Starts elld client in a docker container
 start:
 	docker volume create elld-datadir
 	docker run -d \
@@ -47,6 +49,18 @@ start:
 		-p 0.0.0.0:9000:9000 \
 		-p 0.0.0.0:8999:8999 \
 		--mount "src=elld-datadir,dst=/root/.ellcrys" \
+		elld-node
+		
+# Starts elld client in a docker container
+# with the host data directory (~/.ellcrys) used as volume
+start-hv:
+	docker volume create elld-datadir
+	docker run -d \
+	 	--name elld \
+		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASS) \
+		-p 0.0.0.0:9000:9000 \
+		-p 0.0.0.0:8999:8999 \
+		-v ~/.ellcrys:/root/.ellcrys \
 		elld-node
 		
 # Gracefully stop the node
@@ -70,9 +84,10 @@ attach:
 	
 # Execute commands in the client's container
 exec:
-	docker exec -it elld bash
+	docker exec -it elld bash -c "${c}"
 	
-# Start elld in console mode with RPC enabled
-run-console: 
-	./dist/darwin_amd64/elld console --rpc
+# Starts a bash terminal
+bash:
+	docker exec -it elld bash
+
 	

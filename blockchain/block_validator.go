@@ -178,7 +178,7 @@ func (v *BlockValidator) CheckPoW(opts ...types.CallOp) (errs []error) {
 
 	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(),
 		parentHeader.GetHeader(), true); err != nil {
-		errs = append(errs, fieldError("parentHash", err.Error()))
+		errs = append(errs, fieldError("header", err.Error()))
 	}
 
 	return

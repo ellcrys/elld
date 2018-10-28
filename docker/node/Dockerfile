@@ -4,14 +4,14 @@ FROM debian:stretch
 WORKDIR /root/elld
 
 # Install curl and other tools
-RUN apt-get clean && apt-get update
-RUN apt-get install -y curl
+RUN apt-get clean && apt-get update && apt-get install -y curl
 RUN apt-get install nano
 
 # Download elld and decompress
 RUN curl -L "https://storage.googleapis.com/elld-releases/elld_v0.0.0_linux_x86_64.tar.gz" > elld_v0.0.0_linux_x86_64.tar.gz
 RUN tar -xvzf elld_v0.0.0_linux_x86_64.tar.gz
 RUN mv elld /bin/elld
+RUN rm -rf ./*
 
 # Start client
 EXPOSE 9000
