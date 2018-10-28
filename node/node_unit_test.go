@@ -190,5 +190,23 @@ func TestNodeUnit(t *testing.T) {
 				Expect(ip.String()).To(Equal("127.0.0.1"))
 			})
 		})
+
+		g.Describe(".SetHardcodedState", func() {
+			g.When("peer hardcoded status is false", func() {
+
+				var n *node.Node
+
+				g.BeforeEach(func() {
+					n = node.NewAlmostEmptyNode()
+					n.SetLocalNode(n)
+					Expect(n.IsHardcodedSeed()).To(BeFalse())
+				})
+
+				g.It("should set hardcoded status to true", func() {
+					n.SetHardcodedState(true)
+					Expect(n.IsHardcodedSeed()).To(BeTrue())
+				})
+			})
+		})
 	})
 }

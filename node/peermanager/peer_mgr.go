@@ -73,6 +73,12 @@ func (m *Manager) TimeBanIndex() map[string]time.Time {
 // If an existing entry exist for peer, add dur
 // to it.
 func (m *Manager) AddTimeBan(peer core.Engine, dur time.Duration) {
+
+	// We can't ban hardcoded seeds
+	if peer.IsHardcodedSeed() {
+		return
+	}
+
 	m.cacheMtx.Lock()
 	defer m.cacheMtx.Unlock()
 	curBanTime := m.timeBan[peer.StringID()]
@@ -219,6 +225,18 @@ func (m *Manager) ConnectToNode(node core.Engine) error {
 func (m *Manager) GetUnconnectedPeers() (peers []core.Engine) {
 	for _, p := range m.GetPeers() {
 		if !p.Connected() {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
+// GetLonelyPeers returns the peers that
+// are currently not connected or are connected
+// unacquainted to the local peer.
+func (m *Manager) GetLonelyPeers() (peers []core.Engine) {
+	for _, p := range m.GetPeers() {
+		if !p.Connected() || !m.IsAcquainted(p) {
 			peers = append(peers, p)
 		}
 	}
@@ -466,7 +484,7 @@ func (m *Manager) HasDisconnected(peerAddr util.NodeAddr) error {
 		return fmt.Errorf("unknown peer")
 	}
 
-	m.log.Info("Peer has disconnected", "PeerID", peer.ShortID())
+	m.log.Debug("Peer has disconnected", "PeerID", peer.ShortID())
 
 	peer.SetLastSeen(peer.GetLastSeen().Add(-1 * time.Hour))
 
