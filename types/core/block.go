@@ -301,11 +301,10 @@ func (b *Block) SetSignature(sig []byte) {
 	b.Sig = sig
 }
 
-// WithSeal returns a new block with the data from b but the header replaced with
-// the sealed one.
-func (b *Block) WithSeal(header types.Header) types.Block {
-	cpy := header.Copy()
-
+// ReplaceHeader creates a copy of h and
+// sets as the blocks header
+func (b *Block) ReplaceHeader(h types.Header) types.Block {
+	cpy := h.Copy()
 	return &Block{
 		Header:       cpy.(*Header),
 		Transactions: b.Transactions,

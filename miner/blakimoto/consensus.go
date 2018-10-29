@@ -213,7 +213,7 @@ func (b *Blakimoto) VerifySeal(header types.Header) error {
 
 	// Recompute the digest and PoW value and
 	// verify against the header
-	result := blakimoto(header.GetHashNoNonce().Bytes(), header.GetNonce().Uint64())
+	result := BlakeHash(header.GetHashNoNonce().Bytes(), header.GetNonce().Uint64())
 
 	target := new(big.Int).Div(maxUint256, header.GetDifficulty())
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
