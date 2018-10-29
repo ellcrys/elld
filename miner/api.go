@@ -29,7 +29,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Description: "Start the CPU miner",
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
-				go m.Mine()
+				go m.Begin()
 				return jsonrpc.Success(nil)
 			},
 		},
@@ -46,7 +46,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceMiner,
 			Description: "Check miner status",
 			Func: func(params interface{}) *jsonrpc.Response {
-				return jsonrpc.Success(m.IsMining())
+				return jsonrpc.Success(m.isMining())
 			},
 		},
 		"getHashrate": {

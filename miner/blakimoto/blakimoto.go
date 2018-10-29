@@ -107,9 +107,10 @@ func (blakimoto *Blakimoto) Hashrate() float64 {
 	return blakimoto.hashrate.Rate1()
 }
 
-// blakimoto performs simple hashing to produce a
-// value that can be checked with a target
-func blakimoto(headerHash []byte, nonce uint64) []byte {
+// BlakeHash combines the header's hash and nonce
+// and hashes the value using blake2b-256 to provide
+// an output that is checked against a difficulty target
+func BlakeHash(headerHash []byte, nonce uint64) []byte {
 
 	// Combine header+nonce into a 64 byte seed
 	seed := make([]byte, 40)
