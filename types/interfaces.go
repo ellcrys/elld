@@ -260,7 +260,7 @@ type Block interface {
 	GetBytes() []byte
 	GetHeader() Header
 	SetHeader(h Header)
-	WithSeal(header Header) Block
+	ReplaceHeader(header Header) Block
 	GetNumber() uint64
 	GetHash() util.Hash
 	SetHash(util.Hash)

@@ -93,16 +93,18 @@ func main() {
 
 	// Add genesis block
 	diffSim.Blocks = append(diffSim.Blocks, &helpers.Block{
-		Number:     1,
-		Timestamp:  time.Now(),
+		Number:     95,
+		Timestamp:  time.Unix(1540742728, 0),
 		Difficulty: new(big.Int).SetInt64(100000),
 	})
 
-	go diffSim.run()
-
 	for {
-		minMax := prompt.String(">")
-		minMaxPars := strings.Split(minMax, ",")
+		inp := prompt.String(">")
+		if inp == "s" {
+			go diffSim.run()
+			continue
+		}
+		minMaxPars := strings.Split(inp, ",")
 		min, _ := strconv.Atoi(minMaxPars[0])
 		max, _ := strconv.Atoi(minMaxPars[1])
 		diffSim.setMinMax(min, max)

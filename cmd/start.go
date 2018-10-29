@@ -206,7 +206,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Create the local node.
 	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
 	if err != nil {
-		log.Fatal("failed to create local node")
+		log.Fatal("failed to create local node", "Err", err.Error())
 	}
 
 	// In debug mode, we set log level
@@ -258,10 +258,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Initialized and start the miner if
 	// enabled via the cli flag.
-	miner := miner.New(coinbase, bchain, event, cfg, log)
+	miner := miner.NewMiner(coinbase, bchain, event, cfg, log)
 	miner.SetNumThreads(numMiners)
 	if mine {
-		go miner.Mine()
+		go miner.Begin()
 	}
 	// Initialize and start the RPCServer
 	// if enabled via the appropriate cli flag.
