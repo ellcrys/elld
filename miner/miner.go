@@ -84,6 +84,7 @@ type Miner struct {
 
 	stopped bool
 	done    chan bool
+	mining  bool
 }
 
 // NewMiner creates a Miner instance
@@ -121,6 +122,10 @@ func (m *Miner) Begin() error {
 	if err := m.startWorkers(); err != nil {
 		return err
 	}
+
+	m.Lock()
+	m.mining = true
+	m.Unlock()
 
 	<-m.done
 
@@ -233,6 +238,7 @@ func (m *Miner) Stop() {
 
 	m.Lock()
 	close(m.done)
+	m.mining = false
 	m.stopped = true
 	m.Unlock()
 
@@ -295,7 +301,7 @@ func (m *Miner) handleInternalEvents() {
 func (m *Miner) isMining() bool {
 	m.RLock()
 	defer m.RUnlock()
-	return !m.stopped
+	return m.mining
 }
 
 // getProposedBlock creates a full valid block
