@@ -17,6 +17,9 @@ var (
 	// determine whether difficulty should go up or not.
 	DurationLimit = big.NewInt(60)
 
+	// DifficultyEpoch is the number of block between difficulty calculation
+	DifficultyEpoch = uint64(1000)
+
 	// GenesisDifficulty is the difficulty of the Genesis block.
 	GenesisDifficulty = big.NewInt(10000000)
 

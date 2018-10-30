@@ -25,7 +25,6 @@ import (
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util/math"
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -62,7 +61,7 @@ func (b *Blakimoto) VerifyHeader(header, parent types.Header, seal bool) error {
 
 	// Verify the block's difficulty based on
 	// it's timestamp and parent's difficulty
-	expected := b.CalcDifficulty(uint64(header.GetTimestamp()), parent)
+	expected := b.CalcDifficulty(header, parent)
 	if expected.Cmp(header.GetDifficulty()) != 0 {
 		return fmt.Errorf("invalid difficulty: have %v, want %v",
 			header.GetDifficulty(), expected)
@@ -98,16 +97,23 @@ func (b *Blakimoto) VerifyHeader(header, parent types.Header, seal bool) error {
 // algorithm. It returns the difficulty that a
 // new block should have when created at time
 // given the parent block's time and difficulty.
-func (b *Blakimoto) CalcDifficulty(time uint64, parent types.Header) *big.Int {
-	return CalcDifficulty(time, parent)
+func (b *Blakimoto) CalcDifficulty(blockHeader types.Header, parent types.Header) *big.Int {
+
+	if sameDiffEpoch(parent.GetNumber(), blockHeader.GetNumber()) {
+		b.log.Debug("Same Epoch as parent", "Epoch", parent.GetNumber()/params.DifficultyEpoch)
+		return parent.GetDifficulty()
+	}
+
+	return CalcDifficulty(blockHeader, parent)
 }
 
 // CalcDifficulty is the difficulty adjustment
 // algorithm. It returns the difficulty that a new
 // block should have when created at time
 // given the parent block's time and difficulty.
-func CalcDifficulty(time uint64, parent types.Header) *big.Int {
-	return calcDifficultyInception(time, parent)
+func CalcDifficulty(blockHeader types.Header, parent types.Header) *big.Int {
+	return calcDifficultyInception(uint64(blockHeader.GetTimestamp()),
+		parent)
 }
 
 // Some weird constants to avoid constant memory
@@ -119,6 +125,12 @@ var (
 	big2          = big.NewInt(2)
 	big100F       = big.NewFloat(100)
 )
+
+func sameDiffEpoch(parentBlockNumber, blockNumber uint64) bool {
+	parentEpoch := int(parentBlockNumber / params.DifficultyEpoch)
+	blockEpoch := int(blockNumber / params.DifficultyEpoch)
+	return parentEpoch == blockEpoch
+}
 
 func calcDifficultyInception(time uint64, parent types.Header) *big.Int {
 
@@ -171,24 +183,6 @@ func calcDifficultyInception(time uint64, parent types.Header) *big.Int {
 		diff.Set(params.MinimumDifficulty)
 	}
 
-	// Here, we exponentially increase the difficulty
-	// when the block time is within expected duration.
-	// Otherwise, exponentially reduce the difficulty
-	periodCount := new(big.Int).Add(new(big.Int).SetUint64(parent.GetNumber()), big1)
-	periodCount.Div(periodCount, expDiffPeriod)
-	if periodCount.Cmp(big1) > 0 {
-		expDiff := periodCount.Sub(periodCount, big2)
-		expDiff.Exp(big2, expDiff, nil)
-
-		if blockTimeDiff.Cmp(params.DurationLimit) < 0 {
-			diff.Add(diff, expDiff)
-		} else {
-			diff.Sub(diff, expDiff)
-		}
-
-		diff = math.BigMax(diff, params.MinimumDifficulty)
-	}
-
 	return diff
 }
 
@@ -237,7 +231,7 @@ func (b *Blakimoto) Prepare(chain types.ChainReader, header types.Header) error 
 		return ErrUnknownParent
 	}
 
-	header.SetDifficulty(b.CalcDifficulty(uint64(header.GetTimestamp()), parent))
+	header.SetDifficulty(b.CalcDifficulty(header, parent))
 	header.SetTotalDifficulty(new(big.Int).Add(parent.GetTotalDifficulty(),
 		header.GetDifficulty()))
 	return nil
