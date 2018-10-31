@@ -266,11 +266,11 @@ func (m *Manager) Manage() {
 	}
 
 	go m.connMgr.Manage()
-	go m.doSelfAdvert(m.tickersDone)
-	go m.doCleanUp(m.tickersDone)
-	go m.doPingMsgs(m.tickersDone)
-	go m.doGetAddrMsg(m.tickersDone)
-	go m.doIntro(m.tickersDone)
+	// go m.doSelfAdvert(m.tickersDone)
+	// go m.doCleanUp(m.tickersDone)
+	// go m.doPingMsgs(m.tickersDone)
+	// go m.doGetAddrMsg(m.tickersDone)
+	// go m.doIntro(m.tickersDone)
 }
 
 // doGetAddrMsg periodically sends wire.GetAddr
@@ -587,6 +587,12 @@ func (m *Manager) GetRandomActivePeers(limit int) []core.Engine {
 	}
 
 	return peers[:limit]
+}
+
+// ForgetPeers deletes peers in memory and on disk
+func (m *Manager) ForgetPeers() {
+	m.SetPeers(map[string]core.Engine{})
+	m.localNode.DB().DeleteByPrefix([]byte("address"))
 }
 
 // SavePeers stores active peer addresses

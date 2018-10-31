@@ -160,6 +160,11 @@ func (n *Node) apiGetSyncQueueSize(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.blockHashQueue.Size())
 }
 
+func (n *Node) apiForgetPeers(arg interface{}) *jsonrpc.Response {
+	n.PM().ForgetPeers()
+	return jsonrpc.Success(n.blockHashQueue.Size())
+}
+
 // apiGetActivePeers fetches active peers
 func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 	var peers = []map[string]interface{}{}
@@ -343,6 +348,11 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceNet,
 			Description: "Get a list of active peers",
 			Func:        n.apiGetActivePeers,
+		},
+		"dumpPeers": {
+			Namespace:   types.NamespaceNet,
+			Description: "Delete all peers in memory and on disk",
+			Func:        n.apiForgetPeers,
 		},
 
 		// namespace: "pool"
