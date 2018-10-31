@@ -21,6 +21,20 @@ const (
 	TypeTx DocType = 0x2
 )
 
+// HasTxOp checks whether a slice of
+// CallOp includes a TxOp
+func HasTxOp(opts ...types.CallOp) bool {
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case *TxOp:
+			if _op.Tx != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
@@ -49,7 +63,6 @@ func GetTxOp(db elldb.TxCreator, opts ...types.CallOp) *TxOp {
 		txOp.finished = true
 	}
 	txOp.Tx = tx
-
 	return txOp
 }
 

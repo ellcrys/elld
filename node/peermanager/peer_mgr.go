@@ -266,11 +266,11 @@ func (m *Manager) Manage() {
 	}
 
 	go m.connMgr.Manage()
-	// go m.doSelfAdvert(m.tickersDone)
-	// go m.doCleanUp(m.tickersDone)
-	// go m.doPingMsgs(m.tickersDone)
-	// go m.doGetAddrMsg(m.tickersDone)
-	// go m.doIntro(m.tickersDone)
+	go m.doSelfAdvert(m.tickersDone)
+	go m.doCleanUp(m.tickersDone)
+	go m.doPingMsgs(m.tickersDone)
+	go m.doGetAddrMsg(m.tickersDone)
+	go m.doIntro(m.tickersDone)
 }
 
 // doGetAddrMsg periodically sends wire.GetAddr

@@ -372,28 +372,20 @@ process:
 		return nil, leveldb.ErrClosed
 	}
 
-	if len(opts) == 0 {
+	// If a db transaction was not injected,
+	// then we must prevent methods that we pass
+	// this transaction to from finishing it
+	// (commit/rollback)
+	hasInjectTx := common.HasTxOp(opts...)
+	if !hasInjectTx {
 		txOp.CanFinish = false
-	}
-
-	var rollback = func() {
-		if len(opts) == 0 {
-			txOp.AllowFinish().Rollback()
-		}
-	}
-
-	var commit = func() error {
-		if len(opts) == 0 {
-			return txOp.AllowFinish().Commit()
-		}
-		return nil
 	}
 
 	// create the new chain, set its root to
 	// the parent of the forked block
 	if createNewChain {
 		if chain, err = b.newChain(txOp.Tx, block, parentBlock, chain); err != nil {
-			rollback()
+			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
 
@@ -410,7 +402,7 @@ process:
 	// validate transactions in the block
 	chainOp := &common.ChainerOp{Chain: chain}
 	if errs := bValidator.CheckTransactions(txOp, chainOp); len(errs) > 0 {
-		rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, errs[0]
 	}
 
@@ -419,7 +411,7 @@ process:
 	// object be applied to the blockchain state tree.
 	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
 	if err != nil {
-		rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.log.Error("Block execution failed", "BlockNo", block.GetNumber(), "Err", err)
 		return nil, err
 	}
@@ -427,7 +419,9 @@ process:
 	// Compare the state root in the block header with
 	// the root obtained from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
-		rollback()
+
+		txOp.SetFinishable(!hasInjectTx).Rollback()
+
 		b.log.Error("Compute state root and block state root do not match",
 			"BlockNo", block.GetNumber(),
 			"BlockStateRoot", block.GetHeader().GetStateRoot().HexStr(),
@@ -442,7 +436,7 @@ process:
 		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
 	}
 	if err := txOp.Tx.Put(batchObjs); err != nil {
-		rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to add state object to store: %s", err)
 	}
 
@@ -452,7 +446,7 @@ process:
 	if !chain.HasParent(txOp) {
 		if err := chain.PutTransactions(block.GetTransactions(),
 			block.GetNumber(), txOp); err != nil {
-			rollback()
+			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("put transaction failed: %s", err)
 		}
 	}
@@ -460,24 +454,33 @@ process:
 	// At this point, the block is good to go.
 	// We add it to the chain
 	if err := chain.append(block, txOp); err != nil {
-		rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
 
 	// Commit the transaction
-	if err := commit(); err != nil {
-		rollback()
+	if err := txOp.SetFinishable(!hasInjectTx).Commit(); err != nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("commit error: %s", err)
 	}
 
-	// cache the chain if it has not been seen before
+	// Cache the chain if it has
+	// not been seen before
 	b.addChain(chain)
 
-	// decide and set which chain is the best chain
+	// Decide which chain/branch is the best/main.
 	// This could potentially cause a reorganization.
 	// We will skip this step if a reorganization is ongoing
 	if !b.reOrgIsActive() {
-		if err := b.decideBestChain(); err != nil {
+		var err error
+
+		if !hasInjectTx {
+			err = b.decideBestChain()
+		} else {
+			err = b.decideBestChain(txOp)
+		}
+
+		if err != nil {
 			b.log.Error("Failed to decide best chain", "Err", err)
 			return nil, fmt.Errorf("failed to choose best chain: %s", err)
 		}
