@@ -430,7 +430,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 	_, err = c.store.GetBlock(number, txOp)
 	if err != nil {
 		if len(opts) == 0 {
-			txOp.AllowFinish().Rollback()
+			txOp.Finishable().Rollback()
 		}
 		return err
 	}
@@ -439,7 +439,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 	blockKey := common.MakeKeyBlock(c.id.Bytes(), number)
 	if err = c.store.Delete(blockKey, txOp); err != nil {
 		if len(opts) == 0 {
-			txOp.AllowFinish().Rollback()
+			txOp.Finishable().Rollback()
 		}
 		return fmt.Errorf("failed to delete block: %s", err)
 	}
@@ -459,7 +459,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 	})
 	if err != nil {
 		if len(opts) == 0 {
-			txOp.AllowFinish().Rollback()
+			txOp.Finishable().Rollback()
 		}
 		return fmt.Errorf("failed to delete accounts: %s", err)
 	}
@@ -479,13 +479,13 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 	})
 	if err != nil {
 		if len(opts) == 0 {
-			txOp.AllowFinish().Rollback()
+			txOp.Finishable().Rollback()
 		}
 		return fmt.Errorf("failed to delete transactions: %s", err)
 	}
 
 	if len(opts) == 0 {
-		return txOp.AllowFinish().Commit()
+		return txOp.Finishable().Commit()
 	}
 
 	return nil

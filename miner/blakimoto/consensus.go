@@ -100,7 +100,6 @@ func (b *Blakimoto) VerifyHeader(header, parent types.Header, seal bool) error {
 func (b *Blakimoto) CalcDifficulty(blockHeader types.Header, parent types.Header) *big.Int {
 
 	if sameDiffEpoch(parent.GetNumber(), blockHeader.GetNumber()) {
-		b.log.Debug("Same Epoch as parent", "Epoch", parent.GetNumber()/params.DifficultyEpoch)
 		return parent.GetDifficulty()
 	}
 

@@ -589,6 +589,12 @@ func (m *Manager) GetRandomActivePeers(limit int) []core.Engine {
 	return peers[:limit]
 }
 
+// ForgetPeers deletes peers in memory and on disk
+func (m *Manager) ForgetPeers() {
+	m.SetPeers(map[string]core.Engine{})
+	m.localNode.DB().DeleteByPrefix([]byte("address"))
+}
+
 // SavePeers stores active peer addresses
 func (m *Manager) SavePeers() error {
 
