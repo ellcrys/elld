@@ -67,9 +67,16 @@ func (t *TxOp) Rollback() error {
 	return nil
 }
 
-// AllowFinish sets CanFinish to true
-func (t *TxOp) AllowFinish() *TxOp {
+// Finishable makes the transaction finishable
+func (t *TxOp) Finishable() *TxOp {
 	t.CanFinish = true
+	return t
+}
+
+// SetFinishable sets whether the transaction
+// can be finished
+func (t *TxOp) SetFinishable(finish bool) *TxOp {
+	t.CanFinish = finish
 	return t
 }
 

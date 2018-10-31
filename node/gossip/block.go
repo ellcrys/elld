@@ -364,8 +364,7 @@ send:
 func (g *Gossip) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) error {
 
 	rpID := rp.ShortID()
-	g.log.Debug("Requesting block bodies",
-		"PeerID", rpID,
+	g.log.Debug("Requesting block bodies", "PeerID", rpID,
 		"NumHashes", len(hashes))
 
 	s, c, err := g.NewStream(rp, config.GetBlockBodiesVersion)

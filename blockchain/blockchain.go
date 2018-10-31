@@ -231,6 +231,19 @@ func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
 	return b.eventEmitter
 }
 
+func (b *Blockchain) reOrgIsActive() bool {
+	b.chainLock.RLock()
+	r := b.reOrgActive
+	b.chainLock.RUnlock()
+	return r
+}
+
+func (b *Blockchain) setReOrgStatus(active bool) {
+	b.chainLock.Lock()
+	b.reOrgActive = active
+	b.chainLock.Unlock()
+}
+
 // loadChain finds and load a chain into the chain cache. It
 // can be used to find both standalone chain and child chains.
 func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
@@ -305,7 +318,11 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash,
 	opts ...types.CallOp) (block types.Block, chain *Chain,
 	chainTipHeader types.Header, err error) {
 
-	for _, chain := range b.chains {
+	b.chainLock.RLock()
+	chains := b.chains
+	b.chainLock.RUnlock()
+
+	for _, chain := range chains {
 
 		// Find the block by its hash. If we don't
 		// find the block in this chain, we continue to the
@@ -461,7 +478,10 @@ func (b *Blockchain) hasChain(chain *Chain) bool {
 func (b *Blockchain) addChain(chain *Chain) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
-	b.chains[chain.GetID()] = chain
+	_, ok := b.chains[chain.GetID()]
+	if !ok {
+		b.chains[chain.GetID()] = chain
+	}
 	return
 }
 

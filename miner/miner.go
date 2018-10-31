@@ -173,9 +173,18 @@ func (m *Miner) startWorkers() error {
 // SetNumThreads sets the number of threads
 // performing PoW computation
 func (m *Miner) SetNumThreads(n int) {
+	m.log.Debug("Restarting")
 	m.Lock()
 	m.numThreads = n
 	m.Unlock()
+
+	if m.isMining() {
+		m.stopWorkers()
+
+		if err := m.startWorkers(); err != nil {
+			m.log.Debug("Unable to restart workers", "Err", err.Error())
+		}
+	}
 }
 
 // handleEvents handles events from
@@ -274,6 +283,10 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 
 	// Process block
 	m.processBlock(fb)
+
+	// wait a second so the next block
+	// does not have same time as its parent
+	time.Sleep(1 * time.Second)
 
 	m.Lock()
 	m.processing = false

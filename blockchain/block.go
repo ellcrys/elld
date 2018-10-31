@@ -20,8 +20,9 @@ import (
 // the hash in any of the known chains
 func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
-	for _, chain := range b.chains {
+	chains := b.chains
+	b.chainLock.RUnlock()
+	for _, chain := range chains {
 		has, err := chain.hasBlock(hash)
 		if err != nil {
 			return false, err
@@ -243,8 +244,9 @@ func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.C
 // block number and hash.
 func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error) {
 	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
-	for _, chain := range b.chains {
+	chains := b.chains
+	b.chainLock.RUnlock()
+	for _, chain := range chains {
 		block, err := chain.getBlockByNumberAndHash(number, hash)
 		if err != nil {
 			if err != core.ErrBlockNotFound {

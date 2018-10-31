@@ -14,7 +14,7 @@ func (m *Miner) apiSetThreads(args interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("Integer").Error(), nil)
 	}
 
-	m.blakimoto.SetThreads(int(num))
+	m.SetNumThreads(int(num))
 
 	return jsonrpc.Success(true)
 }

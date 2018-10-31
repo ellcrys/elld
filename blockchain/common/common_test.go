@@ -38,6 +38,31 @@ func TestCommon(t *testing.T) {
 			Expect(err).To(BeNil())
 		})
 
+		g.Describe(".HasTxOp", func() {
+
+			g.BeforeEach(func() {
+				db = elldb.NewDB(cfg.DataDir())
+				err = db.Open(util.RandString(5))
+				Expect(err).To(BeNil())
+			})
+
+			g.AfterEach(func() {
+				db.Close()
+			})
+
+			g.It("should return true when TxOp instance is found", func() {
+				tx, err := db.NewTx()
+				Expect(err).To(BeNil())
+				defer tx.Rollback()
+				txOp := &TxOp{Tx: tx, CanFinish: true}
+				Expect(HasTxOp(txOp)).To(BeTrue())
+			})
+
+			g.It("should return true when TxOp instance is found", func() {
+				Expect(HasTxOp(nil)).To(BeFalse())
+			})
+		})
+
 		g.Describe(".GetTxOp", func() {
 
 			g.BeforeEach(func() {
@@ -62,7 +87,7 @@ func TestCommon(t *testing.T) {
 			g.It("should create new transaction option if call options does not include a TxOp", func() {
 				result := GetTxOp(db)
 				Expect(result).ToNot(BeNil())
-				result.AllowFinish().Rollback()
+				result.Finishable().Rollback()
 			})
 
 			g.It("should a finished TxOp when database is closed", func() {

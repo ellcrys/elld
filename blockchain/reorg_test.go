@@ -312,11 +312,17 @@ func TestReOrg(t *testing.T) {
 				Expect(err.Error()).To(Equal("parent block not set on branch"))
 			})
 
-			g.It("should be successful; return nil", func() {
-				reOrgedChain, err := bc.reOrg(forkedChain)
-				Expect(err).To(BeNil())
+			g.Describe("when successful", func() {
 
-				g.Describe("reorged chain should have same length as side/fork chain", func() {
+				var reOrgedChain *Chain
+				var err error
+
+				g.BeforeEach(func() {
+					reOrgedChain, err = bc.reOrg(forkedChain)
+					Expect(err).To(BeNil())
+				})
+
+				g.It("re-orged chain should have same length as side/fork chain", func() {
 					reOrgedHeight, err := reOrgedChain.height()
 					Expect(err).To(BeNil())
 					forkedChainHeight, err := forkedChain.height()
@@ -324,7 +330,7 @@ func TestReOrg(t *testing.T) {
 					Expect(reOrgedHeight).To(Equal(forkedChainHeight))
 				})
 
-				g.Describe("reorged chain tip must equal side/fork chain tip", func() {
+				g.It("re-orged chain tip must equal side/fork chain tip", func() {
 					reOrgedTip, err := reOrgedChain.Current()
 					Expect(err).To(BeNil())
 					forkedChainTip, err := reOrgedChain.Current()

@@ -34,10 +34,27 @@ type ReOrgInfo struct {
 // 3. The chain with the larger pointer
 //
 // NOTE: This method must be called with chain lock held by the caller.
-func (b *Blockchain) chooseBestChain() (*Chain, error) {
+func (b *Blockchain) chooseBestChain(opts ...types.CallOp) (*Chain, error) {
 
 	var highTDChains = []*Chain{}
 	var curHighestTD = new(big.Int).SetInt64(0)
+	var txOp = common.GetTxOp(b.db, opts...)
+	if txOp.Closed() {
+		return nil, leveldb.ErrClosed
+	}
+
+	// If a db transaction was not injected,
+	// then we must prevent methods that we pass
+	// this transaction to from finishing it
+	// (commit/rollback)
+	hasInjectTx := common.HasTxOp(opts...)
+	if !hasInjectTx {
+		txOp.CanFinish = false
+	}
+
+	defer func() {
+		txOp.SetFinishable(!hasInjectTx).Discard()
+	}()
 
 	// If no chain exists on the blockchain, return nil
 	if len(b.chains) == 0 {
@@ -49,14 +66,16 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 	// difficulty, then that indicates a tie and as such the highTDChains
 	// will also include these chains.
 	for _, chain := range b.chains {
-		tip, err := chain.Current()
+		tip, err := chain.Current(txOp)
 		if err != nil {
 			// A chain with no tip is ignored.
 			if err == core.ErrBlockNotFound {
 				continue
 			}
+
 			return nil, err
 		}
+
 		cmpResult := tip.GetTotalDifficulty().Cmp(curHighestTD)
 		if cmpResult > 0 {
 			curHighestTD = tip.GetTotalDifficulty()
@@ -113,12 +132,25 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 
 // decideBestChain determines and sets the current best chain
 // based on the split resolution rules.
-func (b *Blockchain) decideBestChain() error {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+func (b *Blockchain) decideBestChain(opts ...types.CallOp) error {
 
-	proposedBestChain, err := b.chooseBestChain()
+	txOp := common.GetTxOp(b.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
+
+	// If a db transaction was not injected,
+	// then we must prevent methods that we pass
+	// this transaction to from finishing it
+	// (commit/rollback)
+	hasInjectTx := common.HasTxOp(opts...)
+	if !hasInjectTx {
+		txOp.CanFinish = false
+	}
+
+	proposedBestChain, err := b.chooseBestChain(txOp)
 	if err != nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.log.Error("Unable to determine best chain", "Err", err.Error())
 		return err
 	}
@@ -126,6 +158,7 @@ func (b *Blockchain) decideBestChain() error {
 	// At this point, we were just not able to choose a best chain.
 	// This will be unlikely and only possible in tests
 	if proposedBestChain == nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.log.Debug("Unable to choose best chain")
 		return fmt.Errorf("unable to choose best chain")
 	}
@@ -133,13 +166,21 @@ func (b *Blockchain) decideBestChain() error {
 	// If the current best chain and the new best chain
 	// are not the same. Then we must reorganize
 	if b.bestChain != nil && b.bestChain.GetID() != proposedBestChain.GetID() {
-		b.log.Info("New best chain detected. Re-organizing.",
-			"CurBestChainID", b.bestChain.GetID().SS(), "ProposedChainID", proposedBestChain.GetID().SS())
-		newBestChain, err := b.reOrg(proposedBestChain)
+		b.log.Info("New best chain detected. Re-organizing...",
+			"CurBestChainID", b.bestChain.GetID().SS(),
+			"ProposedChainID",
+			proposedBestChain.GetID().SS())
+
+		b.setReOrgStatus(true)
+		newBestChain, err := b.reOrg(proposedBestChain, txOp)
 		if err != nil {
+			txOp.SetFinishable(!hasInjectTx).Rollback()
+			b.log.Error(err.Error())
+			b.setReOrgStatus(false)
 			return fmt.Errorf("Reorganization error: %s", err)
 		}
 
+		b.setReOrgStatus(false)
 		b.bestChain = newBestChain
 
 		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID().SS())
@@ -152,7 +193,7 @@ func (b *Blockchain) decideBestChain() error {
 		b.log.Info("Best chain set", "CurBestChainID", b.bestChain.GetID().SS())
 	}
 
-	return nil
+	return txOp.SetFinishable(!hasInjectTx).Commit()
 }
 
 // recordReOrg stores a record of a reorganization
@@ -164,7 +205,14 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.C
 		return leveldb.ErrClosed
 	}
 
-	txOp.CanFinish = false
+	// If a db transaction was not injected,
+	// then we must prevent methods that we pass
+	// this transaction to from finishing it
+	// (commit/rollback)
+	hasInjectTx := common.HasTxOp(opts...)
+	if !hasInjectTx {
+		txOp.CanFinish = false
+	}
 
 	var reOrgInfo = &ReOrgInfo{
 		MainChainID: b.bestChain.id.String(),
@@ -174,13 +222,13 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.C
 
 	mainTip, err := b.bestChain.Current(txOp)
 	if err != nil {
-		txOp.AllowFinish().Rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return err
 	}
 
 	sideTip, err := branch.Current(txOp)
 	if err != nil {
-		txOp.AllowFinish().Rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return err
 	}
 
@@ -190,11 +238,11 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.C
 	key := common.MakeKeyReOrg(timestamp)
 	err = txOp.Tx.Put([]*elldb.KVObject{elldb.NewKVObject(key, util.ObjectToBytes(reOrgInfo))})
 	if err != nil {
-		txOp.AllowFinish().Rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return err
 	}
 
-	return txOp.AllowFinish().Commit()
+	return txOp.SetFinishable(!hasInjectTx).Commit()
 }
 
 // getReOrgs fetches information about all reorganizations
@@ -224,41 +272,38 @@ func (b *Blockchain) getReOrgs(opts ...types.CallOp) []*ReOrgInfo {
 // Returns the re-organized chain or error.
 //
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
+func (b *Blockchain) reOrg(branch *Chain, opts ...types.CallOp) (*Chain, error) {
 
 	now := time.Now()
+	txOp := common.GetTxOp(b.db, opts...)
 
-	// indicate the commencement of a re-org
-	b.reOrgActive = true
-	defer func() {
-		b.reOrgActive = false
-	}()
-
-	tx, err := b.db.NewTx()
-	if err != nil {
-		return nil, err
+	// If a db transaction was not injected,
+	// then we must prevent methods that we pass
+	// this transaction to from finishing it
+	// (commit/rollback)
+	hasInjectTx := common.HasTxOp(opts...)
+	if !hasInjectTx {
+		txOp.CanFinish = false
 	}
-
-	txOp := &common.TxOp{Tx: tx, CanFinish: false}
 
 	// get the tip of the current best chain
 	tip, err := b.bestChain.Current(txOp)
 	if err != nil {
-		txOp.AllowFinish().Rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to get best chain tip: %s", err)
 	}
 
 	// get the branch chain tip
 	sideTip, err := branch.Current(txOp)
 	if err != nil {
-		txOp.AllowFinish().Rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to get branch chain tip: %s", err)
 	}
 
 	// get the parent block of the branch chain
 	parentBlock := branch.GetParentBlock()
 	if parentBlock == nil {
-		txOp.AllowFinish().Rollback()
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("parent block not set on branch")
 	}
 
@@ -280,14 +325,14 @@ func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
 		// get the branch chain block
 		proposedBlock, err := branch.GetBlock(nextBlockNumber, txOp)
 		if err != nil {
-			txOp.AllowFinish().Rollback()
+			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("failed to get proposed block: %s", err)
 		}
 
 		// attempt to process and append to
 		// the current main chain
 		if _, err := b.maybeAcceptBlock(proposedBlock, b.bestChain, txOp); err != nil {
-			txOp.AllowFinish().Rollback()
+			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("proposed block was not accepted: %s", err)
 		}
 
@@ -296,16 +341,15 @@ func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
 
 	// store a record of this re-org
 	if err := b.recordReOrg(now.Unix(), branch, txOp); err != nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to store re-org record")
 	}
 
-	if err := txOp.AllowFinish().Commit(); err != nil {
+	if err := txOp.SetFinishable(!hasInjectTx).Commit(); err != nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.reOrgActive = false
-		txOp.AllowFinish().Rollback()
 		return nil, fmt.Errorf("failed to commit: %s", err)
 	}
-
-	b.reOrgActive = false
 
 	return b.bestChain, nil
 }

@@ -37,6 +37,7 @@ func TestBlockValidator(t *testing.T) {
 		var genesisBlock types.Block
 		var genesisChain *Chain
 		var sender, receiver *crypto.Key
+		var bkm *blakimoto.Blakimoto
 
 		g.BeforeEach(func() {
 			cfg, err = testutil.SetTestCfg()
@@ -51,6 +52,8 @@ func TestBlockValidator(t *testing.T) {
 
 			bc = New(txpool.New(100), cfg, log)
 			bc.SetDB(db)
+
+			bkm = blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log)
 		})
 
 		g.BeforeEach(func() {
@@ -326,7 +329,7 @@ func TestBlockValidator(t *testing.T) {
 
 				g.BeforeEach(func() {
 					block = MakeBlock(bc, genesisChain, sender, receiver)
-					diff := blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader())
+					diff := bkm.CalcDifficulty(block.GetHeader(), genesisBlock.GetHeader())
 					block.GetHeader().SetDifficulty(diff)
 					block.GetHeader().SetTotalDifficulty(new(big.Int).SetInt64(10222))
 				})
@@ -334,7 +337,7 @@ func TestBlockValidator(t *testing.T) {
 				g.It("should return no error", func() {
 					errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
 					Expect(errs).To(HaveLen(1))
-					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid total difficulty: have 10222, want 10000100000")))
+					Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid total difficulty: have 10222, want 200000")))
 				})
 			})
 
@@ -344,7 +347,7 @@ func TestBlockValidator(t *testing.T) {
 
 				g.BeforeEach(func() {
 					block = MakeBlock(bc, genesisChain, sender, receiver)
-					diff := blakimoto.CalcDifficulty(uint64(block.GetHeader().GetTimestamp()), genesisBlock.GetHeader())
+					diff := bkm.CalcDifficulty(block.GetHeader(), genesisBlock.GetHeader())
 					block.GetHeader().SetDifficulty(diff)
 					block.GetHeader().SetTotalDifficulty(new(big.Int).Add(diff, genesisBlock.GetHeader().GetDifficulty()))
 				})
