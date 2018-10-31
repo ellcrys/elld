@@ -812,6 +812,7 @@ func (n *Node) ProcessBlockHashes() {
 			// particular broadcaster. Temporarily
 			// keep the others in a cache to be added back
 			// in the queue when we have collected some hashes
+			n.mtx.Lock()
 			for !n.blockHashQueue.Empty() && int64(len(hashes)) <
 				params.MaxGetBlockBodiesHashes {
 
@@ -835,6 +836,8 @@ func (n *Node) ProcessBlockHashes() {
 			for _, bh := range otherBlockHashes {
 				n.blockHashQueue.Append(bh)
 			}
+
+			n.mtx.Unlock()
 
 			// send block body request
 			if len(hashes) > 0 {

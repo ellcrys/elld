@@ -3,8 +3,6 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/olebedev/emitter"
-
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/config"
@@ -398,6 +396,7 @@ process:
 			rollback()
 			return nil, fmt.Errorf("failed to create subtree out of stale block")
 		}
+
 		b.log.Debug("New chain created",
 			"ChainID", chain.GetID(),
 			"BlockNo", block.GetNumber(),
@@ -477,7 +476,7 @@ process:
 	// decide and set which chain is the best chain
 	// This could potentially cause a reorganization.
 	// We will skip this step if a reorganization is ongoing
-	if !b.reOrgActive {
+	if !b.reOrgIsActive() {
 		if err := b.decideBestChain(); err != nil {
 			b.log.Error("Failed to decide best chain", "Err", err)
 			return nil, fmt.Errorf("failed to choose best chain: %s", err)
@@ -487,8 +486,7 @@ process:
 	// if the chain is the best chain, emit a new block
 	// event for other processes to act on the new block
 	if b.bestChain.GetID() == chain.GetID() {
-		b.eventEmitter.Emit(core.EventNewBlock, block,
-			chain.ChainReader(), emitter.Sync)
+		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
 	b.log.Info("Block has been successfully processed",

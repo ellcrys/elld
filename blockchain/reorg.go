@@ -114,8 +114,6 @@ func (b *Blockchain) chooseBestChain() (*Chain, error) {
 // decideBestChain determines and sets the current best chain
 // based on the split resolution rules.
 func (b *Blockchain) decideBestChain() error {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
 
 	proposedBestChain, err := b.chooseBestChain()
 	if err != nil {
@@ -133,12 +131,20 @@ func (b *Blockchain) decideBestChain() error {
 	// If the current best chain and the new best chain
 	// are not the same. Then we must reorganize
 	if b.bestChain != nil && b.bestChain.GetID() != proposedBestChain.GetID() {
-		b.log.Info("New best chain detected. Re-organizing.",
-			"CurBestChainID", b.bestChain.GetID().SS(), "ProposedChainID", proposedBestChain.GetID().SS())
+
+		b.log.Info("New best chain detected. Re-organizing...",
+			"CurBestChainID", b.bestChain.GetID().SS(),
+			"ProposedChainID",
+			proposedBestChain.GetID().SS())
+
+		b.setReOrgStatus(true)
 		newBestChain, err := b.reOrg(proposedBestChain)
 		if err != nil {
+			b.log.Error(err.Error())
+			b.setReOrgStatus(false)
 			return fmt.Errorf("Reorganization error: %s", err)
 		}
+		b.setReOrgStatus(false)
 
 		b.bestChain = newBestChain
 
@@ -228,12 +234,6 @@ func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
 
 	now := time.Now()
 
-	// indicate the commencement of a re-org
-	b.reOrgActive = true
-	defer func() {
-		b.reOrgActive = false
-	}()
-
 	tx, err := b.db.NewTx()
 	if err != nil {
 		return nil, err
@@ -304,8 +304,6 @@ func (b *Blockchain) reOrg(branch *Chain) (*Chain, error) {
 		txOp.AllowFinish().Rollback()
 		return nil, fmt.Errorf("failed to commit: %s", err)
 	}
-
-	b.reOrgActive = false
 
 	return b.bestChain, nil
 }
