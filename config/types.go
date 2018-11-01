@@ -167,16 +167,16 @@ var defaultConfig = EngineConfig{}
 func init() {
 
 	defaultConfig.Node = &PeerConfig{
-		GetAddrInterval:        60,
+		GetAddrInterval:        300,
 		PingInterval:           60,
 		SelfAdvInterval:        120,
-		CleanUpInterval:        600,
+		CleanUpInterval:        1200,
 		MaxAddrsExpected:       1000,
 		MaxOutboundConnections: 10,
 		MaxInboundConnections:  115,
-		ConnEstInterval:        10,
+		ConnEstInterval:        120,
 		Mode:                   ModeProd,
-		MessageTimeout:         60,
+		MessageTimeout:         30,
 	}
 
 	defaultConfig.Consensus = &ConsensusConfig{
