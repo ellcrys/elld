@@ -66,7 +66,7 @@ func main() {
 		recipient := crypto.NewKeyFromIntSeed(int(i))
 		allocTx := core.NewTx(core.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().Unix())
 		txs = append(txs, allocTx)
-		addrsPrivateKey[recipient.Addr()] = recipient.PrivKey().Base58()
+		addrsPrivateKey[recipient.Addr().String()] = recipient.PrivKey().Base58()
 	}
 
 	params := &types.GenerateBlockParams{

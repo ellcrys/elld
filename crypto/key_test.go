@@ -3,6 +3,7 @@ package crypto
 import (
 	"testing"
 
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/go-libp2p-crypto"
 	. "github.com/ncodes/goblin"
 	. "github.com/onsi/gomega"
@@ -57,12 +58,12 @@ func TestKey(t *testing.T) {
 		})
 
 		g.Describe(".Addr", func() {
-			g.It("should return 'eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad'", func() {
+			g.It("should return 'eLPbkwui7eymQFLo8GRa7jgTJrhrXS6a8c'", func() {
 				seed := int64(1)
 				a, err := NewKey(&seed)
 				Expect(err).To(BeNil())
 				addr := a.Addr()
-				Expect(addr).To(Equal("eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad"))
+				Expect(addr).To(Equal(util.String("eLPbkwui7eymQFLo8GRa7jgTJrhrXS6a8c")))
 			})
 		})
 

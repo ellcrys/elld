@@ -95,7 +95,7 @@ func (am *AccountManager) CreateAccount(address *crypto.Key, passphrase string) 
 		return fmt.Errorf("Passphrase is required")
 	}
 
-	exist, err := am.AccountExist(address.Addr())
+	exist, err := am.AccountExist(address.Addr().String())
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (am *AccountManager) CreateAccount(address *crypto.Key, passphrase string) 
 
 	// construct, json encode and encrypt account data
 	acctDataBs, _ := msgpack.Marshal(map[string]string{
-		"addr": address.Addr(),
+		"addr": address.Addr().String(),
 		"sk":   address.PrivKey().Base58(),
 		"pk":   address.PubKey().Base58(),
 		"v":    accountEncryptionVersion,
@@ -197,7 +197,7 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 	}
 
 	fmt.Println("New account created, encrypted and stored")
-	fmt.Println("Address:", color.CyanString(address.Addr()))
+	fmt.Println("Address:", color.CyanString(address.Addr().String()))
 
 	return address, nil
 }

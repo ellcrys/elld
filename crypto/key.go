@@ -16,6 +16,7 @@ import (
 
 	peer "github.com/libp2p/go-libp2p-peer"
 
+	"github.com/ellcrys/elld/util"
 	crypto "github.com/ellcrys/go-libp2p-crypto"
 	"golang.org/x/crypto/sha3"
 )
@@ -72,8 +73,8 @@ func NewKey(seed *int64) (*Key, error) {
 // Intended to be used in test
 func NewKeyFromIntSeed(seed int) *Key {
 	int64Seed := int64(seed)
-	addr, _ := NewKey(&int64Seed)
-	return addr
+	key, _ := NewKey(&int64Seed)
+	return key
 }
 
 // NewKeyFromPrivKey creates a new address from a private key
@@ -103,7 +104,7 @@ func (k *Key) PeerID() string {
 }
 
 // Addr returns the address corresponding to the public key
-func (k *Key) Addr() string {
+func (k *Key) Addr() util.String {
 	return k.PubKey().Addr()
 }
 
@@ -146,13 +147,13 @@ func (p *PubKey) Verify(data, sig []byte) (bool, error) {
 }
 
 // Addr computes an address from the public key
-func (p *PubKey) Addr() string {
-	pkHex := p.Hex()
-	pubSha256 := sha3.Sum256([]byte(pkHex))
+func (p *PubKey) Addr() util.String {
+	pk, _ := p.Bytes()
+	pubSha256 := sha3.Sum256(pk)
 	r := ripemd160.New()
 	r.Write(pubSha256[:])
 	addr := r.Sum(nil)
-	return base58.CheckEncode(addr, AddressVersion)
+	return util.String(base58.CheckEncode(addr, AddressVersion))
 }
 
 // Bytes returns the byte equivalent of the public key

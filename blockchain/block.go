@@ -77,8 +77,8 @@ func (b *Blockchain) getFeeAllocTx(block *core.Block, beneficiary *crypto.Key) *
 	tx := &core.Transaction{
 		Type:         core.TxTypeAlloc,
 		Nonce:        0,
-		From:         util.String(beneficiary.PubKey().Addr()),
-		To:           util.String(beneficiary.PubKey().Addr()),
+		From:         beneficiary.PubKey().Addr(),
+		To:           beneficiary.PubKey().Addr(),
 		SenderPubKey: util.String(beneficiary.PubKey().Base58()),
 		Value:        util.String(totalMinerFee.StringFixed(p.Decimals)),
 		Fee:          "0",

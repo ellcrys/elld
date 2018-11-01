@@ -115,10 +115,17 @@ func TestProcess(t *testing.T) {
 
 			g.It("should return error if sender does not exist on the best chain", func() {
 				var txs = []types.Transaction{
-					&core.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "unknown", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
-						Value: "1", Timestamp: 1532730724,
-						Fee: "0.1", Sig: []uint8{},
-						Hash: util.Hash{},
+					&core.Transaction{
+						Type:         1,
+						Nonce:        1,
+						To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+						From:         "unknown",
+						SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						Value:        "1",
+						Timestamp:    1532730724,
+						Fee:          "0.1",
+						Sig:          []uint8{},
+						Hash:         util.Hash{},
 					},
 				}
 
@@ -129,9 +136,15 @@ func TestProcess(t *testing.T) {
 
 			g.It("should return error if sender account has insufficient value", func() {
 				var txs = []types.Transaction{
-					&core.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
-						Value: "10000000", Timestamp: 1532730724,
-						Fee: "0.1", Sig: []uint8{},
+					&core.Transaction{
+						Type:         1,
+						Nonce:        1,
+						To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+						From:         sender.Addr(),
+						SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						Value:        "10000000", Timestamp: 1532730724,
+						Fee:  "0.1",
+						Sig:  []uint8{},
 						Hash: util.Hash{},
 					},
 				}
@@ -143,8 +156,13 @@ func TestProcess(t *testing.T) {
 
 			g.It("should panic if sender value is could not be converted to decimal", func() {
 				var txs = []types.Transaction{
-					&core.Transaction{Type: 1, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
-						Value: "100_333", Timestamp: 1532730724,
+					&core.Transaction{
+						Type:         1,
+						Nonce:        1,
+						To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
+						From:         sender.Addr(),
+						SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						Value:        "100_333", Timestamp: 1532730724,
 						Fee: "0.1", Sig: []uint8{},
 						Hash: util.Hash{},
 					},
@@ -165,7 +183,7 @@ func TestProcess(t *testing.T) {
 						&core.Transaction{
 							Type: 1, Nonce: 1,
 							To:           "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS",
-							From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+							From:         sender.Addr(),
 							SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value:        "1",
 							Timestamp:    1532730724,
@@ -214,7 +232,7 @@ func TestProcess(t *testing.T) {
 						&core.Transaction{
 							Type: 1, Nonce: 1,
 							To:           util.String(receiver.Addr()),
-							From:         "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad",
+							From:         sender.Addr(),
 							SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value:        "1",
 							Timestamp:    1532730724,
@@ -257,12 +275,12 @@ func TestProcess(t *testing.T) {
 						Expect(err).To(BeNil())
 
 						txs = []types.Transaction{
-							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: sender.Addr(), SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: sender.Addr(), SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -296,12 +314,12 @@ func TestProcess(t *testing.T) {
 
 					g.BeforeEach(func() {
 						txs = []types.Transaction{
-							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: sender.Addr(), SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
 							},
-							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+							&core.Transaction{Type: 1, Nonce: 1, To: util.String(receiver.Addr()), From: sender.Addr(), SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 								Value: "1", Timestamp: 1532730724,
 								Fee: "0.1", Sig: []uint8{},
 								Hash: util.Hash{},
@@ -339,7 +357,7 @@ func TestProcess(t *testing.T) {
 			g.When("recipient account does not exist", func() {
 				g.It("should successfully return one state object = OpNewAccountBalance", func() {
 					var txs = []types.Transaction{
-						&core.Transaction{Type: core.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						&core.Transaction{Type: core.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: sender.Addr(), SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "10", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},
@@ -365,7 +383,7 @@ func TestProcess(t *testing.T) {
 
 				g.It("should successfully return one state object = OpNewAccountBalance and Balance = 110.000000000000000000", func() {
 					var txs = []types.Transaction{
-						&core.Transaction{Type: core.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: "eGzzf1HtQL7M9Eh792iGHTvb6fsnnPipad", SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
+						&core.Transaction{Type: core.TxTypeAlloc, Nonce: 1, To: "e6i7rxApBYUt7w94gGDKTz45A5J567JfkS", From: sender.Addr(), SenderPubKey: "48d9u6L7tWpSVYmTE4zBDChMUasjP5pvoXE7kPw5HbJnXRnZBNC",
 							Value: "10", Timestamp: 1532730724,
 							Fee: "0.1", Sig: []uint8{},
 							Hash: util.Hash{},

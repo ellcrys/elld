@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 func MakeTestBlock(bc types.Blockchain, chain types.Chainer, gp *types.GenerateBlockParams) types.Block {
 	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	if !gp.NoPoolAdditionInTest && bc.GetTxPool() != nil {
@@ -31,7 +33,7 @@ func MakeTestBlock(bc types.Blockchain, chain types.Chainer, gp *types.GenerateB
 func MakeBlock(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
 	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
 		Transactions: []types.Transaction{
-			core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+			core.NewTx(core.TxTypeBalance, 1, sender.Addr(), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
@@ -46,7 +48,7 @@ func MakeBlock(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.K
 func MakeBlockWithOnlyAllocTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
 	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
 		Transactions: []types.Transaction{
-			core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+			core.NewTx(core.TxTypeAlloc, 1, sender.Addr(), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
@@ -73,7 +75,7 @@ func MakeBlockWithNoTx(bc types.Blockchain, ch types.Chainer, sender, receiver *
 func MakeBlockWithSingleTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, senderNonce uint64) types.Block {
 	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
 		Transactions: []types.Transaction{
-			core.NewTx(core.TxTypeBalance, senderNonce, util.String(sender.Addr()), sender, "0", "2.5", time.Now().UnixNano()),
+			core.NewTx(core.TxTypeBalance, senderNonce, sender.Addr(), sender, "0", "2.5", time.Now().UnixNano()),
 		},
 		Creator:           sender,
 		Nonce:             util.EncodeNonce(1),
@@ -88,7 +90,7 @@ func MakeBlockWithSingleTx(bc types.Blockchain, ch types.Chainer, sender, receiv
 func MakeBlockWithBalanceTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
 	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
 		Transactions: []types.Transaction{
-			core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
+			core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:     sender,
 		Nonce:       util.EncodeNonce(1),
@@ -102,7 +104,7 @@ func MakeBlockWithBalanceTx(bc types.Blockchain, ch types.Chainer, sender, recei
 func MakeBlockWithParentHash(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, parentHash util.Hash) types.Block {
 	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
 		Transactions: []types.Transaction{
-			core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
+			core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:            sender,
 		Nonce:              util.EncodeNonce(1),
@@ -116,7 +118,7 @@ func MakeBlockWithParentHash(bc types.Blockchain, ch types.Chainer, sender, rece
 func MakeBlockWithTotalDifficulty(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, td *big.Int) types.Block {
 	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
 		Transactions: []types.Transaction{
-			core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().UnixNano()),
+			core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.5", time.Now().UnixNano()),
 		},
 		Creator:                 sender,
 		Nonce:                   util.EncodeNonce(1),

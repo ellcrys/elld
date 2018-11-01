@@ -68,6 +68,10 @@ func TestBlock(t *testing.T) {
 			Expect(err).To(BeNil())
 		})
 
+		g.It("", func() {
+
+		})
+
 		g.Describe(".HaveBlock", func() {
 			var block types.Block
 
@@ -137,7 +141,7 @@ func TestBlock(t *testing.T) {
 
 					block3 = MakeTestBlock(bc, chain2, &types.GenerateBlockParams{
 						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730724),
+							core.NewTx(core.TxTypeAlloc, 1, sender.Addr(), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      util.EncodeNonce(2),
@@ -162,7 +166,7 @@ func TestBlock(t *testing.T) {
 			g.BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 					Transactions: []types.Transaction{
-						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+						core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -197,7 +201,7 @@ func TestBlock(t *testing.T) {
 
 					block3 = MakeTestBlock(bc, chain2, &types.GenerateBlockParams{
 						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.36", 1532730724),
+							core.NewTx(core.TxTypeAlloc, 1, sender.Addr(), sender, "1", "2.36", 1532730724),
 						},
 						Creator:    sender,
 						Nonce:      util.EncodeNonce(2),
@@ -222,7 +226,7 @@ func TestBlock(t *testing.T) {
 			g.BeforeEach(func() {
 				block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 					Transactions: []types.Transaction{
-						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730724),
+						core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730724),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),
@@ -267,7 +271,7 @@ func TestBlock(t *testing.T) {
 
 			g.BeforeEach(func() {
 				bc.bestChain = genesisChain
-				txs = []types.Transaction{core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix())}
+				txs = []types.Transaction{core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "0.1", "2.38", time.Now().Unix())}
 			})
 
 			g.It("should validate params", func() {
@@ -301,9 +305,9 @@ func TestBlock(t *testing.T) {
 				var tx, tx2 types.Transaction
 
 				g.BeforeEach(func() {
-					tx = core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix())
+					tx = core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "0.1", "2.38", time.Now().Unix())
 					tx.SetHash(tx.ComputeHash())
-					tx2 = core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "0.1", "2.38", time.Now().Unix()+100)
+					tx2 = core.NewTx(core.TxTypeBalance, 2, receiver.Addr(), sender, "0.1", "2.38", time.Now().Unix()+100)
 					tx2.SetHash(tx2.ComputeHash())
 					err = bc.txPool.Put(tx)
 					Expect(err).To(BeNil())
@@ -393,7 +397,7 @@ func TestBlock(t *testing.T) {
 				g.BeforeEach(func() {
 					err = bc.CreateAccount(1, targetChain, &core.Account{
 						Type:    core.AccountTypeBalance,
-						Address: util.String(sender.Addr()),
+						Address: sender.Addr(),
 						Balance: "100",
 					})
 					Expect(err).To(BeNil())
@@ -425,7 +429,7 @@ func TestBlock(t *testing.T) {
 				g.BeforeEach(func() {
 					err = bc.CreateAccount(1, targetChain, &core.Account{
 						Type:    core.AccountTypeBalance,
-						Address: util.String(sender.Addr()),
+						Address: sender.Addr(),
 						Balance: "100",
 					})
 					Expect(err).To(BeNil())
