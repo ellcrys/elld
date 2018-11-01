@@ -33,7 +33,7 @@ func TestTransactionValidator(t *testing.T) {
 		var db elldb.DB
 		var genesisBlock types.Block
 		var genesisChain *Chain
-		var sender *crypto.Key
+		var sender, receiver *crypto.Key
 
 		g.BeforeEach(func() {
 			cfg, err = testutil.SetTestCfg()
@@ -44,6 +44,7 @@ func TestTransactionValidator(t *testing.T) {
 			Expect(err).To(BeNil())
 
 			sender = crypto.NewKeyFromIntSeed(1)
+			receiver = crypto.NewKeyFromIntSeed(2)
 
 			bc = New(txpool.New(100), cfg, log)
 			bc.SetDB(db)
@@ -74,27 +75,87 @@ func TestTransactionValidator(t *testing.T) {
 				Expect(errs).To(ContainElement(fmt.Errorf("nil tx")))
 			})
 
-			g.It("should test all validation rules", func() {
+			g.It("should test validation rules", func() {
 				var cases = map[types.Transaction]interface{}{
-					&core.Transaction{Type: 0}:                                             fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
-					&core.Transaction{Type: core.TxTypeBalance, Nonce: 0}:                  fmt.Errorf("index:0, field:to, error:recipient address is required"),
-					&core.Transaction{To: "invalid", Type: core.TxTypeBalance, Nonce: 0}:   fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
-					&core.Transaction{From: "invalid", Type: core.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:from, error:sender address is not valid"),
-					&core.Transaction{To: util.String(sender.Addr()),
-						Type: core.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:senderPubKey, error:sender public key is required"),
-					&core.Transaction{SenderPubKey: "invalid", To: util.String(sender.Addr()),
-						Type: core.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:senderPubKey, error:sender public key is not valid"),
-					&core.Transaction{SenderPubKey: util.String(sender.PubKey().Base58()),
-						To: util.String(sender.Addr()), Type: core.TxTypeBalance, Nonce: 0}: fmt.Errorf("index:0, field:value, error:value is required"),
-					&core.Transaction{Type: core.TxTypeBalance, Value: "1oo"}:    fmt.Errorf("index:0, field:value, error:could not convert to decimal"),
-					&core.Transaction{Type: core.TxTypeBalance, Value: "-10"}:    fmt.Errorf("index:0, field:value, error:negative value not allowed"),
-					&core.Transaction{}:                                          fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
-					&core.Transaction{Type: core.TxTypeBalance}:                  fmt.Errorf("index:0, field:fee, error:fee is required"),
-					&core.Transaction{Type: core.TxTypeBalance, Fee: "1oo"}:      fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
-					&core.Transaction{Type: core.TxTypeBalance, Fee: "0.000001"}: fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.440000000000000009159339953157541458494961261749267578125 (for 44 bytes)"),
-					&core.Transaction{}:                                          fmt.Errorf("index:0, field:hash, error:hash is required"),
-					&core.Transaction{Hash: util.StrToHash("incorrect")}:         fmt.Errorf("index:0, field:hash, error:hash is not correct"),
-					&core.Transaction{}:                                          fmt.Errorf("index:0, field:sig, error:signature is required"),
+					&core.Transaction{
+						Type: 0,
+					}: fmt.Errorf("index:0, field:type, error:unsupported transaction type"),
+
+					&core.Transaction{
+						Type:  core.TxTypeBalance,
+						Nonce: 0,
+					}: fmt.Errorf("index:0, field:to, error:recipient address is required"),
+
+					&core.Transaction{
+						To:    "invalid",
+						Type:  core.TxTypeBalance,
+						Nonce: 0,
+					}: fmt.Errorf("index:0, field:to, error:recipient address is not valid"),
+
+					&core.Transaction{
+						From:  "invalid",
+						Type:  core.TxTypeBalance,
+						Nonce: 0,
+					}: fmt.Errorf("index:0, field:from, error:sender address is not valid"),
+
+					&core.Transaction{
+						To:    util.String(sender.Addr()),
+						Type:  core.TxTypeBalance,
+						Nonce: 0,
+					}: fmt.Errorf("index:0, field:senderPubKey, error:sender public key is required"),
+
+					&core.Transaction{
+						SenderPubKey: "invalid",
+						To:           util.String(sender.Addr()),
+						Type:         core.TxTypeBalance,
+						Nonce:        0,
+					}: fmt.Errorf("index:0, field:senderPubKey, error:sender public key is not valid"),
+
+					&core.Transaction{
+						SenderPubKey: util.String(sender.PubKey().Base58()),
+						To:           util.String(sender.Addr()),
+						Type:         core.TxTypeBalance,
+						Nonce:        0,
+					}: fmt.Errorf("index:0, field:value, error:value is required"),
+
+					&core.Transaction{
+						Type:  core.TxTypeBalance,
+						Value: "1oo",
+					}: fmt.Errorf("index:0, field:value, error:could not convert to decimal"),
+
+					&core.Transaction{
+						Type:  core.TxTypeBalance,
+						Value: "-10",
+					}: fmt.Errorf("index:0, field:value, error:negative value not allowed"),
+
+					&core.Transaction{}: fmt.Errorf("index:0, field:timestamp, error:timestamp is required"),
+
+					&core.Transaction{
+						Type: core.TxTypeBalance,
+					}: fmt.Errorf("index:0, field:fee, error:fee is required"),
+
+					&core.Transaction{
+						Type: core.TxTypeBalance,
+						Fee:  "1oo",
+					}: fmt.Errorf("index:0, field:fee, error:could not convert to decimal"),
+
+					&core.Transaction{
+						Type: core.TxTypeBalance,
+						Fee:  "0.000001",
+					}: fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.440000000000000009159339953157541458494961261749267578125 (for 44 bytes)"),
+
+					&core.Transaction{}: fmt.Errorf("index:0, field:hash, error:hash is required"),
+
+					&core.Transaction{
+						Hash: util.StrToHash("incorrect"),
+					}: fmt.Errorf("index:0, field:hash, error:hash is not correct"),
+
+					&core.Transaction{}: fmt.Errorf("index:0, field:sig, error:signature is required"),
+
+					&core.Transaction{
+						SenderPubKey: util.String(sender.PubKey().Base58()),
+						From:         receiver.Addr(),
+					}: fmt.Errorf("index:0, field:from, error:sender address is not derived from the sender public key"),
 				}
 				for tx, err := range cases {
 					validator = NewTxsValidator([]types.Transaction{tx}, nil, bc)

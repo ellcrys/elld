@@ -139,6 +139,16 @@ func (v *TxsValidator) CheckFields(tx types.Transaction) (errs []error) {
 		}
 	}
 
+	var isDerivedFromPublicKeyRule = func(err error) func(interface{}) error {
+		return func(val interface{}) error {
+			pk, _ := crypto.PubKeyFromBase58(tx.GetSenderPubKey().String())
+			if !pk.Addr().Equal(val.(util.String)) {
+				return err
+			}
+			return nil
+		}
+	}
+
 	var validPubKeyRule = func(err error) func(interface{}) error {
 		return func(val interface{}) error {
 			if _, _err := crypto.PubKeyFromBase58(val.(util.String).String()); _err != nil {
@@ -181,47 +191,61 @@ func (v *TxsValidator) CheckFields(tx types.Transaction) (errs []error) {
 
 	// Transaction type is required and must match the known types
 	errs = appendErr(errs, validation.Validate(tx.GetType(),
-		validation.By(validTypeRule(fieldErrorWithIndex(v.curIndex, "type", "unsupported transaction type"))),
+		validation.By(validTypeRule(fieldErrorWithIndex(v.curIndex, "type",
+			"unsupported transaction type"))),
 	))
 
 	// Recipient's address must be set and it must be valid
 	errs = appendErr(errs, validation.Validate(tx.GetTo(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "to", "recipient address is required").Error()),
-		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to", "recipient address is not valid"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "to",
+			"recipient address is required").Error()),
+		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to",
+			"recipient address is not valid"))),
 	))
 
 	// Value must be >= 0 and it must be valid number
 	errs = appendErr(errs, validation.Validate(tx.GetValue(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "value", "value is required").Error()),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "value",
+			"value is required").Error()),
 		validation.By(validValueRule("value")),
 	))
 
 	// Timestamp is required.
 	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "timestamp", "timestamp is required").Error()),
-	))
-
-	// Sender's address must be set and must also be valid
-	errs = appendErr(errs, validation.Validate(tx.GetFrom(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "from", "sender address is required").Error()),
-		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "from", "sender address is not valid"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "timestamp",
+			"timestamp is required").Error()),
 	))
 
 	// Sender's public key is required and must be a valid base58 encoded key
 	errs = appendErr(errs, validation.Validate(tx.GetSenderPubKey(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "senderPubKey", "sender public key is required").Error()),
-		validation.By(validPubKeyRule(fieldErrorWithIndex(v.curIndex, "senderPubKey", "sender public key is not valid"))),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "senderPubKey",
+			"sender public key is required").Error()),
+		validation.By(validPubKeyRule(fieldErrorWithIndex(v.curIndex, "senderPubKey",
+			"sender public key is not valid"))),
+	))
+
+	// Sender's address must be set and must also be valid
+	errs = appendErr(errs, validation.Validate(tx.GetFrom(),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "from",
+			"sender address is required").Error()),
+		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "from",
+			"sender address is not valid"))),
+		validation.By(isDerivedFromPublicKeyRule(fieldErrorWithIndex(v.curIndex, "from",
+			"sender address is not derived from the sender public key"))),
 	))
 
 	// Hash is required. It must also be correct
 	errs = appendErr(errs, validation.Validate(tx.GetHash(),
-		validation.By(requireHashRule(fieldErrorWithIndex(v.curIndex, "hash", "hash is required"))),
-		validation.By(isSameHashRule(tx.ComputeHash(), fieldErrorWithIndex(v.curIndex, "hash", "hash is not correct"))),
+		validation.By(requireHashRule(fieldErrorWithIndex(v.curIndex, "hash",
+			"hash is required"))),
+		validation.By(isSameHashRule(tx.ComputeHash(), fieldErrorWithIndex(v.curIndex,
+			"hash", "hash is not correct"))),
 	))
 
 	// Signature must be set
 	errs = appendErr(errs, validation.Validate(tx.GetSignature(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "sig", "signature is required").Error()),
+		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "sig",
+			"signature is required").Error()),
 	))
 
 	// For non allocations, fee is required.
@@ -230,7 +254,8 @@ func (v *TxsValidator) CheckFields(tx types.Transaction) (errs []error) {
 	// transaction.
 	if tx.GetType() != core.TxTypeAlloc {
 		err := validation.Validate(tx.GetFee(),
-			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee", "fee is required").Error()),
+			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "fee",
+				"fee is required").Error()),
 			validation.By(validValueRule("fee")),
 		)
 		errs = appendErr(errs, err)
