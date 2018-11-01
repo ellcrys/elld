@@ -243,7 +243,7 @@ func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error 
 
 	msg := core.GetBlockHashes{
 		Locators:  locators,
-		MaxBlocks: params.MaxGetBlockHeader,
+		MaxBlocks: params.MaxGetBlockHashes,
 	}
 
 	if err := WriteStream(s, msg); err != nil {
