@@ -164,7 +164,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	}
 
 	// Set configurations
-	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 60)
+	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 30)
 	cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, bootstrapAddresses...)
 	cfg.Node.MaxAddrsExpected = 1000
 	cfg.Node.MaxOutboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 10)
