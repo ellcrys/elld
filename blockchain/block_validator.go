@@ -278,8 +278,8 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 	minerPubKey, _ := crypto.PubKeyFromBase58(v.block.GetHeader().
 		GetCreatorPubKey().String())
 	expectedAllocs = append(expectedAllocs, []interface{}{
-		util.String(minerPubKey.Addr()),
-		util.String(minerPubKey.Addr()),
+		minerPubKey.Addr(),
+		minerPubKey.Addr(),
 		totalFees.StringFixed(params.Decimals),
 	})
 

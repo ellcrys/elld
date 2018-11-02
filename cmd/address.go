@@ -54,7 +54,7 @@ var addressNewCmd = &cobra.Command{
 		addr, _ := crypto.NewKey(seed)
 		newAddr := addr.Addr()
 
-		fmt.Println(fmt.Sprintf("Address:     %s", color.HiCyanString(newAddr)))
+		fmt.Println(fmt.Sprintf("Address:     %s", color.HiCyanString(newAddr.String())))
 		fmt.Println(fmt.Sprintf("Public Key:  %s", addr.PubKey().Base58()))
 		fmt.Println(fmt.Sprintf("Private Key: %s", addr.PrivKey().Base58()))
 		fmt.Println(fmt.Sprintf("Peer ID:     %s", addr.PeerID()))

@@ -26,6 +26,10 @@ dep-ensure:
 # Create a release 
 release:
 	env GOVERSION=$(GOVERSION) goreleaser --snapshot --rm-dist
+	
+# Create a tagged release 
+release-tagged:
+	env GOVERSION=$(GOVERSION) goreleaser release --skip-publish --rm-dist
 
 # Build an elld image 
 build: 

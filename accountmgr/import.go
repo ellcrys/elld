@@ -91,7 +91,7 @@ create:
 	}
 
 	fmt.Println("Import successful. New account created, encrypted and stored")
-	fmt.Println("Address:", color.CyanString(address.Addr()))
+	fmt.Println("Address:", color.CyanString(address.Addr().String()))
 
 	return nil
 }

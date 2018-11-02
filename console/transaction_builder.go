@@ -123,9 +123,27 @@ func (o *TxBalanceBuilder) Nonce(nonce int64) *TxBalanceBuilder {
 	return o
 }
 
-// To sets the recipient address
+// To sets the recipient's address
 func (o *TxBalanceBuilder) To(address string) *TxBalanceBuilder {
 	o.data["to"] = address
+	return o
+}
+
+// From sets the sender's address
+func (o *TxBalanceBuilder) From(address string) *TxBalanceBuilder {
+	o.data["from"] = address
+	return o
+}
+
+// Type sets the transaction type
+func (o *TxBalanceBuilder) Type(txType int) *TxBalanceBuilder {
+	o.data["type"] = txType
+	return o
+}
+
+// SenderPubKey sets the senders public key
+func (o *TxBalanceBuilder) SenderPubKey(pk int) *TxBalanceBuilder {
+	o.data["senderPubKey"] = pk
 	return o
 }
 

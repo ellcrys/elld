@@ -21,6 +21,21 @@ TxBalanceBuilder.prototype.nonce = function(nonce) {
 	return this;
 };
 
+TxBalanceBuilder.prototype.from = function(from) {
+	this.builder.From(from);
+	return this;
+};
+
+TxBalanceBuilder.prototype.senderPubKey = function(pk) {
+	this.builder.SenderPubKey(pk);
+	return this;
+};
+
+TxBalanceBuilder.prototype.type = function(txType) {
+	this.builder.Type(txType);
+	return this;
+};
+
 TxBalanceBuilder.prototype.to = function(addr) {
 	this.builder.To(addr);
 	return this;

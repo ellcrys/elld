@@ -236,7 +236,7 @@ func TestBlockValidator(t *testing.T) {
 						g.BeforeEach(func() {
 							block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 								Transactions: []types.Transaction{
-									core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", 1532730722),
+									core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.4", 1532730722),
 								},
 								Creator:           sender,
 								Nonce:             util.EncodeNonce(1),
@@ -265,8 +265,8 @@ func TestBlockValidator(t *testing.T) {
 						g.BeforeEach(func() {
 							now := time.Now().Unix()
 							txs = []types.Transaction{
-								core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.4", now),
-								core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.4", now),
+								core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.4", now),
+								core.NewTx(core.TxTypeBalance, 2, receiver.Addr(), sender, "1", "2.4", now),
 							}
 							for _, tx := range txs {
 								bc.txPool.Put(tx)
@@ -412,9 +412,9 @@ func TestBlockValidator(t *testing.T) {
 				g.BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),
@@ -435,10 +435,10 @@ func TestBlockValidator(t *testing.T) {
 				g.BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "0", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeAlloc, 1, sender.Addr(), sender, "1", "0", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),
@@ -459,10 +459,10 @@ func TestBlockValidator(t *testing.T) {
 				g.BeforeEach(func() {
 					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.36", 1532730722),
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "7.080000000000000000", "0", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730722),
+							core.NewTx(core.TxTypeAlloc, 1, sender.Addr(), sender, "7.080000000000000000", "0", 1532730722),
 						},
 						Creator:           sender,
 						Nonce:             util.EncodeNonce(1),
