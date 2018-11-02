@@ -44,7 +44,7 @@ func (e *Executor) createAccount(passphrase ...string) string {
 		panic(e.accountError(err.Error()))
 	}
 
-	return key.Addr()
+	return key.Addr().String()
 }
 
 // loadAccount loads an account and
@@ -85,7 +85,7 @@ func (e *Executor) loadedAccount() string {
 	if e.coinbase == nil {
 		return ""
 	}
-	return e.coinbase.Addr()
+	return e.coinbase.Addr().String()
 }
 
 // importAccount creates an account with the given
@@ -123,5 +123,5 @@ func (e *Executor) importAccount(privateKey string, optionalArgs ...string) stri
 		panic(e.accountError(err.Error()))
 	}
 
-	return key.Addr()
+	return key.Addr().String()
 }

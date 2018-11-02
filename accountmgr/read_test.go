@@ -43,7 +43,7 @@ func TestRead(t *testing.T) {
 					err := am.CreateAccount(address, passphrase)
 					Expect(err).To(BeNil())
 
-					exist, err := am.AccountExist(address.Addr())
+					exist, err := am.AccountExist(address.Addr().String())
 					Expect(err).To(BeNil())
 					Expect(exist).To(BeTrue())
 				})
@@ -52,7 +52,7 @@ func TestRead(t *testing.T) {
 					seed := int64(1)
 					address, _ := crypto.NewKey(&seed)
 
-					exist, err := am.AccountExist(address.Addr())
+					exist, err := am.AccountExist(address.Addr().String())
 					Expect(err).To(BeNil())
 					Expect(exist).To(BeFalse())
 				})
@@ -80,7 +80,7 @@ func TestRead(t *testing.T) {
 					account, err := am.GetDefault()
 					Expect(err).To(BeNil())
 					Expect(account).ToNot(BeNil())
-					Expect(account.Address).To(Equal(address.Addr()))
+					Expect(account.Address).To(Equal(address.Addr().String()))
 				})
 
 				g.It("should return nil if no address was found", func() {
@@ -113,9 +113,9 @@ func TestRead(t *testing.T) {
 				g.It("should get accounts at index 0 and 1", func() {
 					act, err := am.GetByIndex(0)
 					Expect(err).To(BeNil())
-					Expect(act.Address).To(Equal(address.Addr()))
+					Expect(act.Address).To(Equal(address.Addr().String()))
 					act, err = am.GetByIndex(1)
-					Expect(act.Address).To(Equal(address2.Addr()))
+					Expect(act.Address).To(Equal(address2.Addr().String()))
 				})
 
 				g.It("should return err = 'account not found' when no account is found", func() {
@@ -139,9 +139,9 @@ func TestRead(t *testing.T) {
 				})
 
 				g.It("should successfully get account with address", func() {
-					act, err := am.GetByAddress(address.Addr())
+					act, err := am.GetByAddress(address.Addr().String())
 					Expect(err).To(BeNil())
-					Expect(act.Address).To(Equal(address.Addr()))
+					Expect(act.Address).To(Equal(address.Addr().String()))
 				})
 
 				g.It("should return err = 'account not found' when address does not exist", func() {
