@@ -9,4 +9,6 @@ from subprocess import call
 
 v = raw_input("Are you sure? (n,Y): ")
 if v.lower() == "y":
-    call(sys.argv[1].split(" "))
+    commands = sys.argv[1].split("&&")
+    for cmd in commands:
+        call(cmd.strip().split(" "))

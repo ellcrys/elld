@@ -37,12 +37,25 @@ build:
 update: 
 	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile .
 	
+# Build an elld image with CPU profiling enabled
+build-with-cpu_prof: 
+	docker build -t elld-node -f ./docker/node/Dockerfile.CPU .
+update-with-cpu_prof: 
+	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile.CPU .
+	
+# Build an elld image with Memory profiling enabled
+build-with-mem_prof: 
+	docker build -t elld-node -f ./docker/node/Dockerfile.Mem .
+update-with-mem_prof: 
+	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile.Mem .
+	
 # Remove elld volume and container
 destroy: 
 	@echo "\033[0;31m[WARNING!]\033[0m You are about to remove 'elld' container and volumes. \n\
 	Data (e.g. Accounts, Blockchain state, logs etc) in the volumes attached to an 'elld' \n\
 	container will be lost forever."
-	python ./scripts/confirm.py "docker rm -f -v elld"
+	python ./scripts/confirm.py "docker rm -f -v elld && docker volume remove -f elld-datadir"
+
 	
 # Starts elld client in a docker container
 start:
@@ -57,7 +70,7 @@ start:
 		
 # Starts elld client in a docker container
 # with the host data directory (~/.ellcrys) used as volume
-start-hv:
+start-with-host-vol:
 	docker volume create elld-datadir
 	docker run -d \
 	 	--name elld \
@@ -94,4 +107,11 @@ exec:
 bash:
 	docker exec -it elld bash
 
-	
+# Download linux elld 
+get-elld-linux:
+	rm -rf build && mkdir build
+	curl -L "https://storage.googleapis.com/elld-releases/elld_v0.0.0_linux_x86_64.tar.gz" > build/elld_v0.0.0_linux_x86_64.tar.gz
+	tar -xvzf build/elld_v0.0.0_linux_x86_64.tar.gz -C build
+	sudo mv build/elld /usr/local/bin/elld
+	rm -rf build
+
