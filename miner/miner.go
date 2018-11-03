@@ -173,7 +173,6 @@ func (m *Miner) startWorkers() error {
 // SetNumThreads sets the number of threads
 // performing PoW computation
 func (m *Miner) SetNumThreads(n int) {
-	m.log.Debug("Restarting")
 	m.Lock()
 	m.numThreads = n
 	m.Unlock()
