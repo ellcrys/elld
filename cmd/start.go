@@ -9,6 +9,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/params"
+	"github.com/pkg/profile"
 
 	"github.com/olebedev/emitter"
 
@@ -326,6 +327,18 @@ var startCmd = &cobra.Command{
   operations. Use '--pwd' flag to provide the account password non-interactively. '--pwd'
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		profilePath := profile.ProfilePath(cfg.DataDir())
+
+		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
+		if cpuProfile {
+			defer profile.Start(profile.CPUProfile, profilePath).Stop()
+		}
+
+		memProfile, _ := cmd.Flags().GetBool("memprofile")
+		if memProfile {
+			defer profile.Start(profile.MemProfile, profilePath).Stop()
+		}
 
 		n, rpcServer, _, miner := start(cmd, args, false)
 

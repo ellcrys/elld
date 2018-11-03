@@ -15,9 +15,8 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/ellcrys/elld/config"
+	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 )
 
@@ -42,6 +41,19 @@ var consoleCmd = &cobra.Command{
   operations. Use '--pwd' flag to provide the account password non-interactively. '--pwd'
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
+
+		profilePath := profile.ProfilePath(cfg.DataDir())
+
+		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
+		if cpuProfile {
+			defer profile.Start(profile.CPUProfile, profilePath).Stop()
+		}
+
+		memProfile, _ := cmd.Flags().GetBool("memprofile")
+		if memProfile {
+			defer profile.Start(profile.MemProfile, profilePath).Stop()
+		}
+
 		node, rpcServer, cs, miner := start(cmd, args, true)
 		cs.OnStop(func() {
 			if miner != nil {
@@ -49,8 +61,8 @@ var consoleCmd = &cobra.Command{
 			}
 			rpcServer.Stop()
 			node.Stop()
-			os.Exit(0)
 		})
+
 		node.Wait()
 	},
 }

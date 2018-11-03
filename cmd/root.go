@@ -103,6 +103,8 @@ func init() {
 	rootCmd.PersistentFlags().String("datadir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	rootCmd.PersistentFlags().Bool("debug", false, "Set log level to DEBUG")
+	rootCmd.PersistentFlags().Bool("cpuprofile", false, "Start CPU Profiling")
+	rootCmd.PersistentFlags().Bool("memprofile", false, "Start Memory Profiling")
 	cobra.OnInitialize(initConfig)
 }
 
