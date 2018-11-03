@@ -7,3 +7,4 @@ DagFile
 local
 .*vscode
 .*DS_Store
+build
