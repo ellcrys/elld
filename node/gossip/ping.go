@@ -85,7 +85,7 @@ func (g *Gossip) SendPingToPeer(remotePeer core.Engine) error {
 func (g *Gossip) SendPing(remotePeers []core.Engine) {
 	sent := 0
 	for _, peer := range remotePeers {
-		if g.PM().IsAcquainted(peer) {
+		if !g.PM().IsAcquainted(peer) {
 			continue
 		}
 		sent++
