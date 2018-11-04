@@ -11,8 +11,6 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	"gopkg.in/oleiade/lane.v1"
-
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
@@ -26,6 +24,7 @@ import (
 
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/elld/util/queue"
 
 	"github.com/ellcrys/elld/config"
 
@@ -66,7 +65,7 @@ type Node struct {
 	event               *emitter.Emitter    // Provides access event emitting service
 	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
 	bchain              types.Blockchain    // The blockchain manager
-	blockHashQueue      *lane.Deque         // Contains headers collected during block syncing
+	blockHashQueue      *queue.Queue        // Contains headers collected during block syncing
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	syncing             bool                // Indicates the process of syncing the blockchain with peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
@@ -121,7 +120,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		db:             db,
 		event:          &emitter.Emitter{},
 		txsRelayQueue:  txpool.NewQueueNoSort(cfg.TxPool.Capacity),
-		blockHashQueue: lane.NewDeque(),
+		blockHashQueue: queue.New(),
 		history:        cache.NewActiveCache(5000),
 		intros:         cache.NewActiveCache(50000),
 		tickerDone:     make(chan bool),
@@ -524,7 +523,7 @@ func (n *Node) SetHost(h host.Host) {
 }
 
 // GetBlockHashQueue returns the block hash queue
-func (n *Node) GetBlockHashQueue() *lane.Deque {
+func (n *Node) GetBlockHashQueue() *queue.Queue {
 	return n.blockHashQueue
 }
 
@@ -806,7 +805,7 @@ func (n *Node) ProcessBlockHashes() {
 
 			hashes := []util.Hash{}
 			var broadcaster core.Engine
-			otherBlockHashes := []interface{}{}
+			otherBlockHashes := []queue.Item{}
 
 			// Collect hash of headers sent by a
 			// particular broadcaster. Temporarily
@@ -816,7 +815,7 @@ func (n *Node) ProcessBlockHashes() {
 			for !n.blockHashQueue.Empty() && int64(len(hashes)) <
 				params.MaxGetBlockBodiesHashes {
 
-				bh := n.blockHashQueue.Shift()
+				bh := n.blockHashQueue.Head()
 				if bh == nil {
 					continue
 				}

@@ -136,6 +136,11 @@ type BlockHash struct {
 	Broadcaster Engine
 }
 
+// ID is the unique identifier
+func (b *BlockHash) ID() interface{} {
+	return b.Hash.HexStr()
+}
+
 // BlockBody represents the body of a block
 type BlockBody struct {
 	Header       *Header        `json:"header" msgpack:"header"`
