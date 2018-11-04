@@ -212,8 +212,8 @@ func TestBlock(t *testing.T) {
 				})
 
 				g.Specify("first header number = 2 and second header number = 3", func() {
-					h2 := lp.GetBlockHashQueue().Shift()
-					h3 := lp.GetBlockHashQueue().Shift()
+					h2 := lp.GetBlockHashQueue().Head()
+					h3 := lp.GetBlockHashQueue().Head()
 					Expect(h2).To(BeAssignableToTypeOf(&core.BlockHash{}))
 					Expect(h2.(*core.BlockHash).Hash).To(Equal(block2.GetHash()))
 					Expect(h3).To(BeAssignableToTypeOf(&core.BlockHash{}))
@@ -245,7 +245,7 @@ func TestBlock(t *testing.T) {
 				})
 
 				g.Specify("the block hash must match hash of block [2]", func() {
-					hash := lp.GetBlockHashQueue().Shift()
+					hash := lp.GetBlockHashQueue().Head()
 					Expect(hash).To(BeAssignableToTypeOf(&core.BlockHash{}))
 					Expect(hash.(*core.BlockHash).Hash).To(Equal(block2.GetHash()))
 				})
@@ -304,8 +304,8 @@ func TestBlock(t *testing.T) {
 					g.Specify("the block hash queue should contain 2 hashes from ChainA", func() {
 						Expect(lp.GetBlockHashQueue().Size()).To(Equal(2))
 						g.Context("first header number = [2] and second header number = [3]", func() {
-							h2 := lp.GetBlockHashQueue().Shift()
-							h3 := lp.GetBlockHashQueue().Shift()
+							h2 := lp.GetBlockHashQueue().Head()
+							h3 := lp.GetBlockHashQueue().Head()
 							Expect(h2).To(BeAssignableToTypeOf(&core.BlockHash{}))
 							Expect(h2.(*core.BlockHash).Hash).To(Equal(block2.GetHash()))
 							Expect(h3).To(BeAssignableToTypeOf(&core.BlockHash{}))

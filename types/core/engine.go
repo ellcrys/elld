@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/olebedev/emitter"
-	lane "gopkg.in/oleiade/lane.v1"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
+	"github.com/ellcrys/elld/util/queue"
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
@@ -132,7 +132,7 @@ type Engine interface {
 	UpdateSyncInfo(bi *BestBlockInfo)
 
 	// GetBlockHashQueue returns the block hash queue
-	GetBlockHashQueue() *lane.Deque
+	GetBlockHashQueue() *queue.Queue
 
 	// GetSyncStateInfo generates status and progress
 	// information about the current blockchain sync operation
