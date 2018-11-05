@@ -108,7 +108,9 @@ func NewMiner(mineKey *crypto.Key, blockMaker types.BlockMaker,
 // and all managing functions
 func (m *Miner) Begin() error {
 
+	m.Lock()
 	m.done = make(chan bool)
+	m.Unlock()
 
 	// If the number of threads haven't been set,
 	// Set number of threads to the available
