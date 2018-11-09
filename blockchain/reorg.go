@@ -16,11 +16,11 @@ import (
 
 // ReOrgInfo describes a re-organization event
 type ReOrgInfo struct {
-	MainChainID  string `json:"mainChainID" msgpack:"mainChainID"`
-	SideChainID  string `json:"sideChainID" msgpack:"sideChainID"`
-	SideChainLen uint64 `json:"sideChainLen" msgpack:"sideChainLen"`
-	ReOrgLen     uint64 `json:"reOrgLen" msgpack:"reOrgLen"`
-	Timestamp    int64  `json:"timestamp" msgpack:"timestamp"`
+	MainChainID string `json:"mainChainID" msgpack:"mainChainID"`
+	BranchID    string `json:"branchID" msgpack:"branchID"`
+	BranchLen   uint64 `json:"branchLen" msgpack:"branchLen"`
+	ReOrgLen    uint64 `json:"reOrgLen" msgpack:"reOrgLen"`
+	Timestamp   int64  `json:"timestamp" msgpack:"timestamp"`
 }
 
 // chooseBestChain returns the chain that is considered the
@@ -216,7 +216,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.C
 
 	var reOrgInfo = &ReOrgInfo{
 		MainChainID: b.bestChain.id.String(),
-		SideChainID: branch.id.String(),
+		BranchID:    branch.id.String(),
 		Timestamp:   timestamp,
 	}
 
@@ -232,7 +232,7 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.C
 		return err
 	}
 
-	reOrgInfo.SideChainLen = sideTip.GetNumber() - branch.parentBlock.GetNumber()
+	reOrgInfo.BranchLen = sideTip.GetNumber() - branch.parentBlock.GetNumber()
 	reOrgInfo.ReOrgLen = mainTip.GetNumber() - branch.parentBlock.GetNumber()
 
 	key := common.MakeKeyReOrg(timestamp)
