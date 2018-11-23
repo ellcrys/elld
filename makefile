@@ -22,7 +22,11 @@ clean:
 # Ensure dep depencencies are in order
 dep-ensure:
 	dep ensure -v
-	
+
+# Install deps depend on dep-ensure to install other packages needed for make release to work
+install-deps: dep-ensure
+	go get github.com/gobuffalo/packr/packr
+
 # Create a release 
 release:
 	env GOVERSION=$(GOVERSION) goreleaser --snapshot --rm-dist
