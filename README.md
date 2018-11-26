@@ -29,7 +29,7 @@ Adds support for compiling and executing self-executing functions. Must support 
 
 
 ### Requirements
-[Go](http://golang.org/) 1.10 or newer.
+Tested with [Go](http://golang.org/) 1.10.
 
 ### Contributing
 We use [Dep](https://github.com/golang/dep) tool to manage project dependencies. You will need it to create deterministic builds with other developers.

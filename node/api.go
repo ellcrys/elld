@@ -68,7 +68,14 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 			addrs = append(addrs, val.(string))
 		}
 	} else {
-		addrs = append(addrs, address)
+		if len(address) > 0 {
+			addrs = append(addrs, address)
+		}
+	}
+
+	if len(addrs) == 0 {
+		return jsonrpc.Error(types.ErrCodeAddress,
+			"one or more addresses are required", nil)
 	}
 
 	for _, address := range addrs {
@@ -89,7 +96,7 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 		}(rp)
 	}
 
-	return jsonrpc.Success(nil)
+	return jsonrpc.Success(true)
 }
 
 // apiAddPeer adds an address of a
@@ -118,7 +125,14 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 			addrs = append(addrs, val.(string))
 		}
 	} else {
-		addrs = append(addrs, address)
+		if len(address) > 0 {
+			addrs = append(addrs, address)
+		}
+	}
+
+	if len(addrs) == 0 {
+		return jsonrpc.Error(types.ErrCodeAddress,
+			"one or more addresses are required", nil)
 	}
 
 	for _, address := range addrs {
@@ -137,12 +151,12 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 		n.PM().AddPeer(rp)
 	}
 
-	return jsonrpc.Success(nil)
+	return jsonrpc.Success(true)
 }
 
-// apiNetInfo returns the
+// apiNetStats returns the
 // number of peers connected to
-func (n *Node) apiNetInfo(arg interface{}) *jsonrpc.Response {
+func (n *Node) apiNetStats(arg interface{}) *jsonrpc.Response {
 	var connsInfo = n.peerManager.ConnMgr().GetConnsCount()
 	in, out := connsInfo.Info()
 	var result = map[string]int{
@@ -162,7 +176,7 @@ func (n *Node) apiGetSyncQueueSize(arg interface{}) *jsonrpc.Response {
 
 func (n *Node) apiForgetPeers(arg interface{}) *jsonrpc.Response {
 	n.PM().ForgetPeers()
-	return jsonrpc.Success(n.blockHashQueue.Size())
+	return jsonrpc.Success(true)
 }
 
 // apiGetActivePeers fetches active peers
@@ -271,7 +285,7 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Description: "Set log level to DEBUG",
 			Func: func(arg interface{}) *jsonrpc.Response {
 				n.log.SetToDebug()
-				return jsonrpc.Success(nil)
+				return jsonrpc.Success(true)
 			},
 		},
 
@@ -280,7 +294,7 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Description: "Set log level to the default (INFO)",
 			Func: func(arg interface{}) *jsonrpc.Response {
 				n.log.SetToInfo()
-				return jsonrpc.Success(nil)
+				return jsonrpc.Success(true)
 			},
 		},
 
@@ -334,10 +348,10 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Private:     true,
 			Func:        n.apiAddPeer,
 		},
-		"counts": {
+		"stats": {
 			Namespace:   types.NamespaceNet,
 			Description: "Get number connections and network nodes",
-			Func:        n.apiNetInfo,
+			Func:        n.apiNetStats,
 		},
 		"getPeers": {
 			Namespace:   types.NamespaceNet,

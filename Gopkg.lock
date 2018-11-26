@@ -167,6 +167,14 @@
   revision = "02af3965c54e8cacf948b97fef38925c4120652c"
 
 [[projects]]
+  digest = "1:f34e8dee87ed7ebb9caceae96b7851d99ab5bca0afc345cf964c61dc0ad56eb8"
+  name = "github.com/ellcrys/go-ethereum"
+  packages = ["log"]
+  pruneopts = "UT"
+  revision = "66432f3821badf24d526f2d9205f36c0543219de"
+  version = "v1.8.7"
+
+[[projects]]
   branch = "master"
   digest = "1:49e171d2b38eb63ca557874418265cf475d01f6c9f0017e1e50f39a4f49c601a"
   name = "github.com/ellcrys/go-libp2p-crypto"
@@ -459,6 +467,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
+
+[[projects]]
+  digest = "1:16dd6b893b78a50564cdde1d9f7ea67224dece11bb0886bd882f1dc3dc1d440d"
+  name = "github.com/k0kubun/pp"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "027a6d1765d673d337e687394dbe780dd64e2a1e"
+  version = "v2.3.0"
 
 [[projects]]
   digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
@@ -875,6 +891,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:e7d61f626291833d1a5ba054c86b0339c13a9a494360cf8ab8cf91c669eab631"
+  name = "github.com/ncodes/whereami"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "aebf70d4a772ea20216cfe6c428f439cb47cfaf2"
+
+[[projects]]
+  branch = "master"
   digest = "1:6d42480278e7719074c770605d8695d019fb28787242ca939ebee6a40088f075"
   name = "github.com/olebedev/emitter"
   packages = ["."]
@@ -983,6 +1007,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "816c9085562cd7ee03e7f8188a1cfd942858cded"
+
+[[projects]]
+  digest = "1:cfa0d7741863a0e1d30e0ccdd4b48a96a471cdb47892303de8b92c3713af3e77"
+  name = "github.com/pkg/profile"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5b67d428864e92711fcbd2f8629456121a56d91f"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
@@ -1304,6 +1336,7 @@
     "github.com/cenkalti/rpc2",
     "github.com/dgrijalva/jwt-go",
     "github.com/dustin/go-humanize",
+    "github.com/ellcrys/go-ethereum/log",
     "github.com/ellcrys/go-libp2p-crypto",
     "github.com/ellcrys/merkletree",
     "github.com/ethereum/go-ethereum/metrics",
@@ -1323,6 +1356,7 @@
     "github.com/imdario/mergo",
     "github.com/jinzhu/configor",
     "github.com/jinzhu/copier",
+    "github.com/k0kubun/pp",
     "github.com/lestrrat-go/file-rotatelogs",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
@@ -1339,10 +1373,12 @@
     "github.com/ncodes/authtoken",
     "github.com/ncodes/go-prettyjson",
     "github.com/ncodes/goblin",
+    "github.com/ncodes/whereami",
     "github.com/olebedev/emitter",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/phayes/freeport",
+    "github.com/pkg/profile",
     "github.com/rifflock/lfshook",
     "github.com/robertkrimen/otto",
     "github.com/segmentio/go-prompt",

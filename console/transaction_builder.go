@@ -1,12 +1,19 @@
 package console
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/btcsuite/btcutil/base58"
 
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 )
+
+// Base58CheckVersionTxPayload is the base58 encode version adopted
+// for compressed transaction payload
+var Base58CheckVersionTxPayload byte = 95
 
 // TxBuilder provides methods for building
 // and executing a transaction
@@ -62,7 +69,9 @@ func (o *TxBalanceBuilder) Send() map[string]interface{} {
 	return resp
 }
 
-func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
+// SignedPayload returns the transaction payload
+// with signature included.
+func (o *TxBalanceBuilder) SignedPayload() map[string]interface{} {
 
 	var result map[string]interface{}
 	var err error
@@ -71,12 +80,12 @@ func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
 	// we must attempt to determine the current
 	// nonce of the account, increment it and set it
 	if o.data["nonce"] != nil {
-		goto send
+		goto sign
 	}
 
 	result, err = o.e.callRPCMethod("state_getAccountNonce", o.data["from"])
 	if err != nil {
-		return nil, err
+		panic(o.e.vm.MakeCustomError("BuilderError", err.Error()))
 	}
 
 	if result["error"] != nil {
@@ -85,12 +94,12 @@ func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
 		case "account not found":
 			errMsg = fmt.Errorf("sender account not found")
 		}
-		return nil, errMsg
+		panic(o.e.vm.MakeCustomError("BuilderError", errMsg.Error()))
 	}
 
 	o.data["nonce"] = int64(result["result"].(float64)) + 1
 
-send:
+sign:
 	// Set the timestamp
 	o.data["timestamp"] = time.Now().Unix()
 
@@ -104,12 +113,28 @@ send:
 	// Compute and set signature
 	sig, err := core.TxSign(&tx, o.e.coinbase.PrivKey().Base58())
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign tx: %s", err)
+		err = fmt.Errorf("failed to sign tx: %s", err)
+		panic(o.e.vm.MakeCustomError("BuilderError", err.Error()))
 	}
 	o.data["sig"] = sig
 
+	return o.data
+}
+
+// PackedPayload returns a base58check encode
+// of the signed payload.
+func (o *TxBalanceBuilder) PackedPayload() string {
+	data := o.SignedPayload()
+	bs, _ := json.Marshal(data)
+	return base58.CheckEncode(bs, Base58CheckVersionTxPayload)
+}
+
+func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
+
+	data := o.SignedPayload()
+
 	// Call the RPC method
-	resp, err := o.e.callRPCMethod("ell_send", o.data)
+	resp, err := o.e.callRPCMethod("ell_send", data)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +167,7 @@ func (o *TxBalanceBuilder) Type(txType int) *TxBalanceBuilder {
 }
 
 // SenderPubKey sets the senders public key
-func (o *TxBalanceBuilder) SenderPubKey(pk int) *TxBalanceBuilder {
+func (o *TxBalanceBuilder) SenderPubKey(pk string) *TxBalanceBuilder {
 	o.data["senderPubKey"] = pk
 	return o
 }

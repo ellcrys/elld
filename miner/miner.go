@@ -108,6 +108,10 @@ func NewMiner(mineKey *crypto.Key, blockMaker types.BlockMaker,
 // and all managing functions
 func (m *Miner) Begin() error {
 
+	m.Lock()
+	m.done = make(chan bool)
+	m.Unlock()
+
 	// If the number of threads haven't been set,
 	// Set number of threads to the available
 	// number of CPUs
@@ -291,8 +295,10 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 	m.processing = false
 	m.Unlock()
 
-	if err := m.startWorkers(); err != nil {
-		m.log.Debug("Unable to start workers", "Err", err.Error())
+	if m.isMining() {
+		if err := m.startWorkers(); err != nil {
+			m.log.Debug("Unable to start workers", "Err", err.Error())
+		}
 	}
 }
 
