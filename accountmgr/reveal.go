@@ -37,7 +37,7 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 	// if no password or password file is provided, ask for password
 	if len(pwd) == 0 {
 		fmt.Println("The account needs to be unlocked. Please enter a password.")
-		passphrase, err = am.AskForPassword()
+		passphrase, err = am.AskForPasswordOnce()
 		if err != nil {
 			printErr(err.Error())
 			return err

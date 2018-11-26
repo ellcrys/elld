@@ -34,7 +34,7 @@ func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
 			parent := chain.parentBlock
 			ch["parentBlockHash"] = parent.GetHash().HexStr()
 			ch["parentBlockNumber"] = parent.GetNumber()
-			ch["isSidechain"] = true
+			ch["isBranch"] = true
 			ch["length"] = tip.GetNumber() - parent.GetNumber()
 		}
 
@@ -329,9 +329,9 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
 
 		// namespace: "state"
-		"getChains": {
+		"getBranches": {
 			Namespace:   types.NamespaceState,
-			Description: "Get all chains",
+			Description: "Get all branches",
 			Func:        b.apiGetChains,
 		},
 		"getBlock": {

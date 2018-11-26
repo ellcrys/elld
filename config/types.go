@@ -20,7 +20,7 @@ type PeerConfig struct {
 	BootstrapAddresses []string `json:"addresses"`
 
 	// Mode determines the current environment type
-	Mode int `json:"dev"`
+	Mode int `json:"mode"`
 
 	// GetAddrInterval is the interval between GetAddr messages
 	GetAddrInterval int64 `json:"getAddrInt"`
@@ -51,7 +51,7 @@ type PeerConfig struct {
 
 	// MessageTimeout is the number of seconds to attempt to
 	// connect to or read from a peer.
-	MessageTimeout int64
+	MessageTimeout int64 `json:"messageTimeout"`
 }
 
 // RPCConfig defines configuration for the RPC component

@@ -30,7 +30,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
 				go m.Begin()
-				return jsonrpc.Success(nil)
+				return jsonrpc.Success(true)
 			},
 		},
 		"stop": {
@@ -39,7 +39,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Private:     true,
 			Func: func(params interface{}) *jsonrpc.Response {
 				m.Stop()
-				return jsonrpc.Success(nil)
+				return jsonrpc.Success(true)
 			},
 		},
 		"isMining": {
