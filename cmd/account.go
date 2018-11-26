@@ -15,11 +15,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	path "path/filepath"
 
 	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -68,7 +70,9 @@ var accountCreateCmd = &cobra.Command{
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
-		am.CreateCmd(seed, pwd)
+		key, _ := am.CreateCmd(seed, pwd)
+		fmt.Println("New account created, encrypted and stored")
+		fmt.Println("Address:", color.CyanString(key.Addr().String()))
 	},
 }
 

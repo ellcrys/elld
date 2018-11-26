@@ -33,6 +33,7 @@ var PrivateKeyVersion byte = 94
 // Key represents an address
 type Key struct {
 	privKey *PrivKey
+	Meta    map[string]interface{}
 }
 
 // PubKey represents a public key
@@ -63,6 +64,7 @@ func NewKey(seed *int64) (*Key, error) {
 		privKey: &PrivKey{
 			privKey: priv,
 		},
+		Meta: make(map[string]interface{}),
 	}
 
 	return key, nil

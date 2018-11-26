@@ -46,19 +46,16 @@ func devDefaultConfig(cfg *config.EngineConfig) {
 // loadOrCreateAccount unlocks an account and returns the underlying address.
 // - If account is provided, it is fetched and unlocked using the password provided.
 //	 If password is not provided, the is requested through an interactive prompt.
-// - If account is not provided, the default account is fetched and unlocked using
-// 	 the password provided. If password is not set, it is requested via a prompt.
-// - If account is not provided and no default account exists, an interactive account
-// 	 creation session begins.
-func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, error) {
+// - If account is not provided, an ephemeral key is created and returned.
+func loadOrCreateAccount(accountID, password string, seed int64) (*crypto.Key, error) {
 
 	var address *crypto.Key
 	var err error
 	var storedAccount *accountmgr.StoredAccount
 
-	if account != "" {
-		if govalidator.IsNumeric(account) {
-			aInt, err := strconv.Atoi(account)
+	if accountID != "" {
+		if govalidator.IsNumeric(accountID) {
+			aInt, err := strconv.Atoi(accountID)
 			if err != nil {
 				return nil, err
 			}
@@ -67,35 +64,19 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 				return nil, err
 			}
 		} else {
-			storedAccount, err = accountMgr.GetByAddress(account)
+			storedAccount, err = accountMgr.GetByAddress(accountID)
 			if err != nil {
 				return nil, err
 			}
 		}
-	}
-
-	if account == "" {
-		storedAccount, err = accountMgr.GetDefault()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get default account. %s", err)
-		}
-	}
-
-	if storedAccount == nil {
-		fmt.Println("No default account found. Create an account.")
-		address, err = accountMgr.CreateCmd(seed, password)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if address != nil {
+	} else {
+		// create ephemeral account
+		address, _ = accountMgr.CreateCmd(0, util.RandString(32))
+		address.Meta["ephemeral"] = true
 		return address, nil
 	}
 
-	// if address is unset, decrypt the account using the password provided.
-	// if password is unset, request password from user
-	// if password is set and is a path to a file, read the file and use its content as the password
+	// If the password is unset, request password from user
 	if password == "" {
 		fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.", storedAccount.Address))
 		password, err = accountMgr.AskForPasswordOnce()
@@ -105,6 +86,8 @@ func loadOrCreateAccount(account, password string, seed int64) (*crypto.Key, err
 		}
 	}
 
+	// If password is set and its a path to a file,
+	// read the file and use its content as the password
 	if len(password) > 1 && (os.IsPathSeparator(password[0]) || (len(password) >= 2 && password[:2] == "./")) {
 		content, err := ioutil.ReadFile(password)
 		if err != nil {
@@ -192,11 +175,17 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("invalid bind address provided")
 	}
 
-	// load the coinbase account.
+	// load the node account.
 	// Required for signing blocks and transactions
-	coinbase, err := loadOrCreateAccount(account, password, seed)
+	nodeKey, err := loadOrCreateAccount(account, password, seed)
 	if err != nil {
 		log.Fatal(err.Error())
+	}
+
+	// Prevent mining when the node's key is ephemeral
+	if mine && nodeKey.Meta["ephemeral"] != nil {
+		log.Fatal("Cannot mine with an ephemeral key. Please Provide an " +
+			"account using '--account' flag.")
 	}
 
 	log.Info("Elld has started", "Version", cfg.VersionInfo.BuildVersion, "DevMode", devMode)
@@ -205,7 +194,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	event := &emitter.Emitter{}
 
 	// Create the local node.
-	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
+	n, err := node.NewNode(cfg, listeningAddr, nodeKey, log)
 	if err != nil {
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
@@ -259,7 +248,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Initialized and start the miner if
 	// enabled via the cli flag.
-	miner := miner.NewMiner(coinbase, bchain, event, cfg, log)
+	miner := miner.NewMiner(nodeKey, bchain, event, cfg, log)
 	miner.SetNumThreads(numMiners)
 	if mine {
 		go miner.Begin()
@@ -289,7 +278,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 		// Create the console.
 		// Configure the RPC client if the server has started
-		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
+		cs = console.New(nodeKey, consoleHistoryFilePath, cfg, log)
 		cs.SetVersions(config.ProtocolVersion, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 
