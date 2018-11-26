@@ -23,7 +23,7 @@ clean:
 dep-ensure:
 	dep ensure -v
 
-# Install deps depend on dep-ensure to install other packages needed for make release to work
+# Install source code and binary dependencies
 install-deps: dep-ensure
 	go get github.com/gobuffalo/packr/packr
 
