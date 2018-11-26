@@ -26,7 +26,7 @@ func (s *Server) apiRPCAuth(params interface{}) *jsonrpc.Response {
 
 func (s *Server) apiRPCStop(params interface{}) *jsonrpc.Response {
 	s.Stop()
-	return jsonrpc.Success("stopped")
+	return jsonrpc.Success(true)
 }
 
 func (s *Server) apiRPCEcho(params interface{}) *jsonrpc.Response {
