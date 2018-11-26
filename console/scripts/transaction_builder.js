@@ -12,6 +12,14 @@ TxBalanceBuilder.prototype.payload = function() {
 	return this.builder.Payload();
 };
 
+TxBalanceBuilder.prototype.signedPayload = function() {
+	return this.builder.SignedPayload();
+};
+
+TxBalanceBuilder.prototype.packedPayload = function() {
+	return this.builder.PackedPayload();
+};
+
 TxBalanceBuilder.prototype.send = function() {
 	return this.builder.Send();
 };
