@@ -1,3 +1,4 @@
+// Package elldb provides LevelDB database utility.
 package elldb
 
 import (

@@ -1,3 +1,4 @@
+// Package crypto provides key and address creation functions.
 package crypto
 
 import (

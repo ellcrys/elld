@@ -1,3 +1,7 @@
+// Package console provides javascript-enabled console
+// environment for interacting with the client. It includes
+// pre-loaded methods that access the node's RPC interface
+// allowing access to the state and condition of the client.
 package console
 
 import (
