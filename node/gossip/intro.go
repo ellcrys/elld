@@ -48,7 +48,7 @@ func (g *Gossip) SendIntro(intro *core.Intro) {
 			continue
 		}
 
-		s, c, err := g.NewStream(peer, config.IntroVersion)
+		s, c, err := g.NewStream(peer, config.Versions.Intro)
 		if err != nil {
 			g.logConnectErr(err, peer, "[SendIntro] Failed to connect")
 			continue

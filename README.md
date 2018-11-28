@@ -53,8 +53,8 @@ go test ./<path to module>/...
 ```
 git clone https://github.com/ellcrys/elld $GOPATH/src/github.com/ellcrys/elld
 cd $GOPATH/src/github.com/ellcrys/elld
-make dep-ensure
-make release
+make deps
+go build
 ```
 
 ## Contact

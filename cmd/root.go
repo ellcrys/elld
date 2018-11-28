@@ -100,6 +100,7 @@ func init() {
 		}
 	}()
 
+	rootCmd.PersistentFlags().String("net", "0001", "Set the network version")
 	rootCmd.PersistentFlags().String("datadir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	rootCmd.PersistentFlags().Bool("debug", false, "Set log level to DEBUG")
@@ -115,7 +116,16 @@ func initConfig() {
 
 	// Parse flags
 	devMode, _ = rootCmd.Flags().GetBool("dev")
-	dataDirPath, _ := rootCmd.Root().PersistentFlags().GetString("datadir")
+	dataDirPath, _ := rootCmd.PersistentFlags().GetString("datadir")
+	netVersion, _ := rootCmd.PersistentFlags().GetString("net")
+
+	// Set network version environment variable
+	// if not already set and then reset protocol
+	// handlers version.
+	if os.Getenv("ELLD_NET_VERSION") == "" {
+		os.Setenv("ELLD_NET_VERSION", netVersion)
+		config.SetVersions()
+	}
 
 	// When in dev mode and data directory path is not
 	// provided, set the default dev mode data directory
@@ -125,7 +135,7 @@ func initConfig() {
 	}
 
 	// Load configuration
-	cfg, err = config.LoadCfg(dataDirPath)
+	cfg, err = config.LoadDataDir(dataDirPath, config.Versions.Protocol)
 	if err != nil {
 		golog.Fatal(err.Error())
 	}

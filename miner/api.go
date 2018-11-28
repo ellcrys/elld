@@ -72,6 +72,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			},
 		},
 		"setThreads": {
+			Private:     true,
 			Namespace:   types.NamespaceMiner,
 			Description: "Set the number of miner threads",
 			Func:        m.apiSetThreads,

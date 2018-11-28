@@ -18,43 +18,44 @@ import (
 // AccountDirName is the name of the directory for storing accounts
 var AccountDirName = "accounts"
 
-// Config holds configuration information
-type Config struct {
+// DataDir manages the client's data directory
+type DataDir struct {
 	path string
 }
 
-// NewConfig creates a new Config object
-func NewConfig(dirPath string) (cfg *Config, err error) {
+// NewDataDir creates a new DataDir object
+func NewDataDir(dirPath, network string) (dd *DataDir, err error) {
 
 	// check if dirPath exists
 	if len(strings.TrimSpace(dirPath)) > 0 && !util.IsPathOk(dirPath) {
-		return nil, fmt.Errorf("config directory is not ok; may not exist or we don't have enough permission")
+		return nil, fmt.Errorf("config directory is not ok; may not exist or we " +
+			"don't have enough permission")
 	}
 
-	cfg = new(Config)
-	cfg.path = dirPath
+	dd = new(DataDir)
+	dd.path = dirPath
 
 	// set default config directory if not provided and attempt to create it
-	if len(cfg.path) == 0 {
+	if len(dd.path) == 0 {
 		hd, _ := homedir.Dir()
-		cfg.path = fmt.Sprintf("%s/.ellcrys", hd)
-		os.Mkdir(cfg.path, 0700)
+		dd.path = path.Join(hd, ".ellcrys", network)
+		os.MkdirAll(dd.path, 0700)
 	}
 
 	return
 }
 
 // Path returns the config path
-func (cd *Config) Path() string {
-	return cd.path
+func (d *DataDir) Path() string {
+	return d.path
 }
 
 // creates the config (ellcrys.json) file if it does not exist.
 // Returns true and nil if config file already exists, false and nil
 // if config file did not exist and was created. Otherwise, returns false and error
-func (cd *Config) createConfigFileInNotExist() (bool, error) {
+func (d *DataDir) createConfigFileInNotExist() (bool, error) {
 
-	cfgFile := path.Join(cd.path, "ellcrys.json")
+	cfgFile := path.Join(d.path, "ellcrys.json")
 
 	if util.IsPathOk(cfgFile) {
 		return true, nil
@@ -76,14 +77,14 @@ func (cd *Config) createConfigFileInNotExist() (bool, error) {
 }
 
 // Init creates required files and directories
-func (cd *Config) Init() error {
+func (d *DataDir) Init() error {
 
 	var err error
-	if _, err = cd.createConfigFileInNotExist(); err != nil {
+	if _, err = d.createConfigFileInNotExist(); err != nil {
 		return err
 	}
 
-	if fullAccountDir := path.Join(cd.path, AccountDirName); !util.IsPathOk(fullAccountDir) {
+	if fullAccountDir := path.Join(d.path, AccountDirName); !util.IsPathOk(fullAccountDir) {
 		os.MkdirAll(fullAccountDir, 0700)
 	}
 
@@ -91,19 +92,20 @@ func (cd *Config) Init() error {
 }
 
 // Load reads the content of the ellcrys.json file into Config struct
-func (cd *Config) Load() (*EngineConfig, error) {
+func (d *DataDir) Load() (*EngineConfig, error) {
 	var cfg EngineConfig
 	cfgr := configor.New(&configor.Config{ENVPrefix: "ELLD"})
-	if err := cfgr.Load(&cfg, path.Join(cd.path, "ellcrys.json")); err != nil {
+	if err := cfgr.Load(&cfg, path.Join(d.path, "ellcrys.json")); err != nil {
 		return nil, fmt.Errorf("failed to parse config file -> %s", err)
 	}
 	return &cfg, nil
 }
 
-// LoadCfg loads the config file
-func LoadCfg(dataDirPath string) (*EngineConfig, error) {
+// LoadDataDir loads a data directory and returns
+// the engine configuration
+func LoadDataDir(dataDirPath, network string) (*EngineConfig, error) {
 
-	dataDir, err := NewConfig(dataDirPath)
+	dataDir, err := NewDataDir(dataDirPath, network)
 	if err != nil {
 		return nil, err
 	}
@@ -116,18 +118,18 @@ func LoadCfg(dataDirPath string) (*EngineConfig, error) {
 		return nil, err
 	}
 
-	cfg, err := dataDir.Load()
+	dd, err := dataDir.Load()
 	if err != nil {
 		return nil, err
 	}
 
-	cfg.VersionInfo = new(VersionInfo)
+	dd.VersionInfo = new(VersionInfo)
 
-	if err := mergo.Merge(cfg, defaultConfig); err != nil {
+	if err := mergo.Merge(dd, defaultConfig); err != nil {
 		return nil, err
 	}
 
-	cfg.SetConfigDir(dataDir.Path())
+	dd.SetConfigDir(dataDir.Path())
 
-	return cfg, nil
+	return dd, nil
 }

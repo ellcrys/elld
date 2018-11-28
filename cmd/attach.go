@@ -53,7 +53,7 @@ account does not exist, the command will fail.`,
 
 		// Set up the console in attach mode
 		cs := console.NewAttached(coinbase, consoleHistoryFilePath, cfg, log)
-		cs.SetVersions(config.ProtocolVersion, BuildVersion, GoVersion, BuildCommit)
+		cs.SetVersions(config.Versions.Protocol, BuildVersion, GoVersion, BuildCommit)
 
 		// Set the RPC server address to be dialled
 		cs.SetRPCServerAddr(rpcAddress, false)
