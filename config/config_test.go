@@ -25,9 +25,9 @@ func TestConfigDir(t *testing.T) {
 			homeDir, _ = homedir.Dir()
 		})
 
-		g.Describe(".NewHomeDir", func() {
+		g.Describe(".NewDataDir", func() {
 			g.It("should return error when the passed in directory does not exist", func() {
-				_, err := NewConfig("~/not_existing")
+				_, err := NewDataDir("~/not_existing", "")
 				Expect(err).NotTo(BeNil())
 				Expect(err.Error()).To(Equal("config directory is not ok; may not exist or we don't have enough permission"))
 			})
@@ -39,13 +39,13 @@ func TestConfigDir(t *testing.T) {
 				Expect(err).To(BeNil())
 				defer os.RemoveAll(dirName)
 
-				_, err = NewConfig(dirName)
+				_, err = NewDataDir(dirName, "")
 				Expect(err).To(BeNil())
 			})
 
 			g.It("should return the default directory path", func() {
 				dirName := fmt.Sprintf("%s/.ellcrys", homeDir)
-				dataDir, err := NewConfig("")
+				dataDir, err := NewDataDir("", "")
 				Expect(err).To(BeNil())
 				Expect(dataDir.path).To(Equal(dirName))
 			})
@@ -60,13 +60,13 @@ func TestConfigDir(t *testing.T) {
 					Expect(err).To(BeNil())
 					defer os.RemoveAll(dirName)
 
-					cfg, err := NewConfig(dirName)
+					dd, err := NewDataDir(dirName, "")
 					Expect(err).To(BeNil())
-					existed, err := cfg.createConfigFileInNotExist()
+					existed, err := dd.createConfigFileInNotExist()
 					Expect(err).To(BeNil())
 					Expect(existed).To(BeFalse())
 
-					dataDirPath := path.Join(cfg.path, "ellcrys.json")
+					dataDirPath := path.Join(dd.path, "ellcrys.json")
 					d, err := ioutil.ReadFile(dataDirPath)
 					Expect(err).To(BeNil())
 					Expect(len(d)).NotTo(BeZero())
@@ -81,13 +81,13 @@ func TestConfigDir(t *testing.T) {
 					Expect(err).To(BeNil())
 					defer os.RemoveAll(dirName)
 
-					cfg, err := NewConfig(dirName)
+					dd, err := NewDataDir(dirName, "")
 					Expect(err).To(BeNil())
-					existed, err := cfg.createConfigFileInNotExist()
+					existed, err := dd.createConfigFileInNotExist()
 					Expect(err).To(BeNil())
 					Expect(existed).To(BeFalse())
 
-					existed, err = cfg.createConfigFileInNotExist()
+					existed, err = dd.createConfigFileInNotExist()
 					Expect(err).To(BeNil())
 					Expect(existed).To(BeTrue())
 				})
@@ -109,15 +109,15 @@ func TestConfigDir(t *testing.T) {
 						},
 					}
 
-					dataDir, err := NewConfig(dirName)
+					dataDir, err := NewDataDir(dirName, "")
 					Expect(err).To(BeNil())
 					existed, err := dataDir.createConfigFileInNotExist()
 					Expect(err).To(BeNil())
 					Expect(existed).To(BeFalse())
 
-					cfg, err := dataDir.Load()
+					dd, err := dataDir.Load()
 					Expect(err).To(BeNil())
-					Expect(cfg).To(Equal(&EngineConfig{
+					Expect(dd).To(Equal(&EngineConfig{
 						Node: &PeerConfig{
 							BootstrapAddresses: []string{"127.0.0.1:4000"},
 						},
@@ -143,7 +143,7 @@ func TestConfigDir(t *testing.T) {
 					err = ioutil.WriteFile(filePath, []byte("invalid content"), 0600)
 					Expect(err).To(BeNil())
 
-					dataDir, err := NewConfig(dirName)
+					dataDir, err := NewDataDir(dirName, "")
 					Expect(err).To(BeNil())
 					_, err = dataDir.Load()
 					Expect(err).NotTo(BeNil())

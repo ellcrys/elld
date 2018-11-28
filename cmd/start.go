@@ -140,15 +140,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	mine, _ := cmd.Flags().GetBool("mine")
 	numMiners, _ := cmd.Flags().GetInt("miners")
 	debug, _ := cmd.Flags().GetBool("debug")
-	netVersion, _ := cmd.Flags().GetString("net")
-
-	// Set network version environment variable
-	// if not already set and then reset protocol
-	// handlers version.
-	if os.Getenv("ELLD_NET_VERSION") == "" {
-		os.Setenv("ELLD_NET_VERSION", netVersion)
-		config.SetVersions()
-	}
 
 	if len(account) == 0 {
 		account = os.Getenv("ELLD_ACCOUNT")
@@ -378,7 +369,6 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().String("net", "0001", "Set the network version")
 	startCmd.Flags().StringSliceP("addnode", "j", nil, "Add the address of a node to connect to.")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on.")
 	startCmd.Flags().Bool("rpc", false, "Enables the RPC server")
