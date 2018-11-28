@@ -247,7 +247,7 @@ func TestAddr(t *testing.T) {
 			g.Describe("when the number of addresses is below max address expected", func() {
 
 				g.It("should select relay peers from the relayed addresses", func(done Done) {
-					stream, c, err := lp.Gossip().NewStream(rp, config.AddrVersion)
+					stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
 					Expect(err).To(BeNil())
 
 					err = gossip.WriteStream(stream, addrMsg)
@@ -267,7 +267,7 @@ func TestAddr(t *testing.T) {
 			g.Context("when the number of addresses is above max address expected", func() {
 				g.It("should return no error", func(done Done) {
 					rp.GetCfg().Node.MaxAddrsExpected = 1
-					stream, c, err := lp.Gossip().NewStream(rp, config.AddrVersion)
+					stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
 
 					Expect(err).To(BeNil())
 					defer c()

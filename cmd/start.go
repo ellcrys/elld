@@ -206,7 +206,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(params.ErrMiningWithEphemeralKey.Error())
 	}
 
-	log.Info("Elld has started", "Version", cfg.VersionInfo.BuildVersion, "DevMode", devMode)
+	log.Info("Elld has started",
+		"ClientVersion", cfg.VersionInfo.BuildVersion,
+		"NetVersion", config.Versions.Protocol,
+		"DevMode", devMode)
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}
@@ -297,7 +300,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		// Create the console.
 		// Configure the RPC client if the server has started
 		cs = console.New(nodeKey, consoleHistoryFilePath, cfg, log)
-		cs.SetVersions(config.ProtocolVersion, BuildVersion, GoVersion, BuildCommit)
+		cs.SetVersions(config.Versions.Protocol, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 
 		// Prepare the console

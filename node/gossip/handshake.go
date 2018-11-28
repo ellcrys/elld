@@ -40,7 +40,7 @@ func (g *Gossip) SendHandshake(rp core.Engine) error {
 
 	rpIDShort := rp.ShortID()
 
-	s, c, err := g.NewStream(rp, config.HandshakeVersion)
+	s, c, err := g.NewStream(rp, config.Versions.Handshake)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[SendHandshake] Failed to connect to peer")
 	}

@@ -60,7 +60,7 @@ func SetTestCfg() (*config.EngineConfig, error) {
 	dir, _ := homedir.Dir()
 	dataDir := path.Join(dir, util.RandString(5))
 	os.MkdirAll(dataDir, 0700)
-	cfg, err := config.LoadCfg(dataDir)
+	cfg, err := config.LoadDataDir(dataDir, "test")
 	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5
 	return cfg, err
