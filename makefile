@@ -89,7 +89,7 @@ logs:
 	
 # Attach to elld running locally
 attach:
-	elld attach
+	docker exec -it elld bash -c "elld attach"
 	
 # Execute commands in the client's container
 exec:
