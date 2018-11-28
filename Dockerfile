@@ -8,7 +8,7 @@ RUN git clone -b master https://github.com/ellcrys/elld.git
 # get dependencies
 WORKDIR elld
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-RUN make install-deps
+RUN make deps
 
 # build from source
 RUN go build
