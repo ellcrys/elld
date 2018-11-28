@@ -1,3 +1,4 @@
+// Package miner provides proof-of-work mining capability
 package miner
 
 import (

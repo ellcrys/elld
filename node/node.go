@@ -1,3 +1,5 @@
+// Package node provides an engine that combines
+// other components to make up the client.
 package node
 
 import (
@@ -64,7 +66,7 @@ type Node struct {
 	history             *cache.Cache        // Used to track things we want to remember
 	event               *emitter.Emitter    // Provides access event emitting service
 	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
-	bchain              types.Blockchain    // The blockchain manager
+	bChain              types.Blockchain    // The blockchain manager
 	blockHashQueue      *queue.Queue        // Contains headers collected during block syncing
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	syncing             bool                // Indicates the process of syncing the blockchain with peers
@@ -394,12 +396,12 @@ func (n *Node) IsSame(node core.Engine) bool {
 // GetBlockchain returns the
 // blockchain manager
 func (n *Node) GetBlockchain() types.Blockchain {
-	return n.bchain
+	return n.bChain
 }
 
 // SetBlockchain sets the blockchain
 func (n *Node) SetBlockchain(bchain types.Blockchain) {
-	n.bchain = bchain
+	n.bChain = bchain
 }
 
 // IsHardcodedSeed checks whether

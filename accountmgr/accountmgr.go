@@ -1,3 +1,5 @@
+// Package accountmgr provides account creation and management
+// functionalities.
 package accountmgr
 
 import (
