@@ -1,11 +1,8 @@
 package accountmgr
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -179,14 +176,13 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 		passphrase = pwd
 	}
 
-	// create address using random seed
 	var address *crypto.Key
 	if seed == 0 {
-		rBytes := make([]byte, 32)
-		io.ReadFull(rand.Reader, rBytes)
-		seed = int64(binary.BigEndian.Uint64(rBytes))
+		address, err = crypto.NewKey(nil)
+	} else {
+		address, err = crypto.NewKey(&seed)
 	}
-	address, err = crypto.NewKey(&seed)
+
 	if err != nil {
 		return nil, err
 	}
@@ -195,9 +191,6 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 		printErr(err.Error())
 		return nil, err
 	}
-
-	fmt.Println("New account created, encrypted and stored")
-	fmt.Println("Address:", color.CyanString(address.Addr().String()))
 
 	return address, nil
 }

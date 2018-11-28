@@ -1,5 +1,14 @@
 GOVERSION := $(shell go version | cut -d" " -f3)
-ELLD_ACCOUNT_PASS = ${ELLD_ACCOUNT_PASSWORD}
+ELLD_LADDRESS = ${ELLD_LADDRESS}
+ELLD_ADDNODE = ${ELLD_ADDNODE}
+ELLD_ACCOUNT_PASSWORD = ${ELLD_ACCOUNT_PASSWORD}
+ELLD_ACCOUNT = ${ELLD_ACCOUNT}
+ELLD_RPC_ON = ${ELLD_RPC_ON}
+ELLD_RPC_ADDRESS = ${ELLD_RPC_ADDRESS}
+ELLD_RPC_USERNAME = ${ELLD_RPC_USERNAME}
+ELLD_RPC_PASSWORD = ${ELLD_RPC_PASSWORD}
+ELLD_CPU_PROFILING_ON = ${ELLD_CPU_PROFILING_ON}
+ELLD_MEM_PROFILING_ON = ${ELLD_MEM_PROFILING_ON}
 
 # Run some tests
 test:
@@ -24,7 +33,7 @@ dep-ensure:
 	dep ensure -v
 
 # Install source code and binary dependencies
-install-deps: dep-ensure
+deps: dep-ensure
 	go get github.com/gobuffalo/packr/packr
 
 # Create a release 
@@ -37,52 +46,31 @@ release-tagged:
 
 # Build an elld image 
 build: 
-	docker build -t elld-node -f ./docker/node/Dockerfile .
-update: 
-	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile .
-	
-# Build an elld image with CPU profiling enabled
-build-with-cpu_prof: 
-	docker build -t elld-node -f ./docker/node/Dockerfile.CPU .
-update-with-cpu_prof: 
-	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile.CPU .
-	
-# Build an elld image with Memory profiling enabled
-build-with-mem_prof: 
-	docker build -t elld-node -f ./docker/node/Dockerfile.Mem .
-update-with-mem_prof: 
-	docker build -t elld-node --no-cache -f ./docker/node/Dockerfile.Mem .
-	
-# Remove elld volume and container
-destroy: 
-	@echo "\033[0;31m[WARNING!]\033[0m You are about to remove 'elld' container and volumes. \n\
-	Data (e.g. Accounts, Blockchain state, logs etc) in the volumes attached to an 'elld' \n\
-	container will be lost forever."
-	python ./scripts/confirm.py "docker rm -f -v elld && docker volume remove -f elld-datadir"
+	docker build -t ellcrys/elld .
 
+# Rebuild the elld image
+rebuild: 
+	docker build -t ellcrys/elld --no-cache .
 	
-# Starts elld client in a docker container
-start:
-	docker volume create elld-datadir
-	docker run -d \
-	 	--name elld \
-		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASS) \
-		-p 0.0.0.0:9000:9000 \
-		-p 0.0.0.0:8999:8999 \
-		--mount "src=elld-datadir,dst=/root/.ellcrys" \
-		elld-node
-		
 # Starts elld client in a docker container
 # with the host data directory (~/.ellcrys) used as volume
-start-with-host-vol:
-	docker volume create elld-datadir
+start:
 	docker run -d \
 	 	--name elld \
-		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASS) \
+		-e ELLD_LADDRESS=$(ELLD_LADDRESS) \
+		-e ELLD_ADDNODE=$(ELLD_ADDNODE) \
+		-e ELLD_ACCOUNT_PASSWORD=$(ELLD_ACCOUNT_PASSWORD) \
+		-e ELLD_ACCOUNT=$(ELLD_ACCOUNT) \
+		-e ELLD_RPC_ON=$(ELLD_RPC_ON) \
+		-e ELLD_RPC_ADDRESS=$(ELLD_RPC_ADDRESS) \
+		-e ELLD_RPC_USERNAME=$(ELLD_RPC_USERNAME) \
+		-e ELLD_RPC_PASSWORD=$(ELLD_RPC_PASSWORD) \
+		-e ELLD_CPU_PROFILING_ON=$(ELLD_CPU_PROFILING_ON) \
+		-e ELLD_MEM_PROFILING_ON=$(ELLD_MEM_PROFILING_ON) \
 		-p 0.0.0.0:9000:9000 \
 		-p 0.0.0.0:8999:8999 \
 		-v ~/.ellcrys:/root/.ellcrys \
-		elld-node
+		ellcrys/elld
 		
 # Gracefully stop the node
 stop: 
@@ -110,12 +98,11 @@ exec:
 # Starts a bash terminal
 bash:
 	docker exec -it elld bash
-
-# Download linux elld 
-get-elld-linux:
-	rm -rf build && mkdir build
-	curl -L "https://storage.googleapis.com/elld-releases/elld_v0.0.0_linux_x86_64.tar.gz" > build/elld_v0.0.0_linux_x86_64.tar.gz
-	tar -xvzf build/elld_v0.0.0_linux_x86_64.tar.gz -C build
-	sudo mv build/elld /usr/local/bin/elld
-	rm -rf build
-
+	
+# Remove elld volume and container
+destroy: 
+	@echo "\033[0;31m[WARNING!]\033[0m You are about to remove 'elld' container and volumes. \n\
+	Data (e.g. Accounts, Blockchain state, logs etc) in the volumes attached to an 'elld' \n\
+	container will be lost forever."
+	python ./scripts/confirm.py "docker rm -f -v elld && docker volume remove -f elld-datadir"
+	

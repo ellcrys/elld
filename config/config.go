@@ -93,7 +93,8 @@ func (cd *Config) Init() error {
 // Load reads the content of the ellcrys.json file into Config struct
 func (cd *Config) Load() (*EngineConfig, error) {
 	var cfg EngineConfig
-	if err := configor.Load(&cfg, path.Join(cd.path, "ellcrys.json")); err != nil {
+	cfgr := configor.New(&configor.Config{ENVPrefix: "ELLD"})
+	if err := cfgr.Load(&cfg, path.Join(cd.path, "ellcrys.json")); err != nil {
 		return nil, fmt.Errorf("failed to parse config file -> %s", err)
 	}
 	return &cfg, nil

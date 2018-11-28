@@ -620,7 +620,7 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 		// Check whether the connection string is valid.
 		// If not valid, proceed to the next immediately.
 		if err := checkConnString(n, connStr); err != nil {
-			n.log.Info("Invalid bootstrap address",
+			n.log.Warn("Invalid bootstrap address",
 				"Err", err.Error(), "Address", connStr)
 			continue
 		}
