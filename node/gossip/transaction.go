@@ -94,7 +94,7 @@ func (g *Gossip) RelayTx(tx types.Transaction, remotePeers []core.Engine) error 
 			continue
 		}
 
-		s, c, err := g.NewStream(peer, config.TxVersion)
+		s, c, err := g.NewStream(peer, config.Versions.Tx)
 		if err != nil {
 			g.logConnectErr(err, peer, "[RelayTx] Failed to connect")
 			continue

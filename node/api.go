@@ -27,7 +27,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		"id":                 n.ID().Pretty(),
 		"address":            n.GetAddress().ConnectionString(),
 		"mode":               mode,
-		"netVersion":         config.ProtocolVersion,
+		"netVersion":         config.Versions.Protocol,
 		"syncing":            n.isSyncing(),
 		"coinbasePublicKey":  n.signatory.PubKey().Base58(),
 		"coinbase":           n.signatory.Addr(),

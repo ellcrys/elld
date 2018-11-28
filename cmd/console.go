@@ -70,6 +70,7 @@ var consoleCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(consoleCmd)
+	consoleCmd.Flags().String("net", "0001", "Set the network version")
 	consoleCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
 	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")

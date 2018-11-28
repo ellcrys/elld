@@ -41,7 +41,7 @@ func TestGossip(t *testing.T) {
 			g.When("protocol id is Handshake", func() {
 
 				g.BeforeEach(func() {
-					stream, cc, err = lp.Gossip().NewStream(rp, config.HandshakeVersion)
+					stream, cc, err = lp.Gossip().NewStream(rp, config.Versions.Handshake)
 					Expect(err).To(BeNil())
 					defer cc()
 					defer stream.Close()
@@ -61,7 +61,7 @@ func TestGossip(t *testing.T) {
 				})
 
 				g.BeforeEach(func() {
-					stream, cc, err = lp.Gossip().NewStream(rp, config.GetAddrVersion)
+					stream, cc, err = lp.Gossip().NewStream(rp, config.Versions.GetAddr)
 					Expect(err).To(BeNil())
 					defer cc()
 					defer stream.Close()
@@ -82,7 +82,7 @@ func TestGossip(t *testing.T) {
 				})
 
 				g.BeforeEach(func() {
-					stream, cc, err = lp.Gossip().NewStream(rp, config.AddrVersion)
+					stream, cc, err = lp.Gossip().NewStream(rp, config.Versions.Addr)
 					Expect(err).To(BeNil())
 					defer cc()
 					defer stream.Close()

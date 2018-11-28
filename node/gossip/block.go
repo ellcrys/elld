@@ -39,7 +39,7 @@ func (g *Gossip) RelayBlock(block types.Block, remotePeers []core.Engine) error 
 			continue
 		}
 
-		s, c, err := g.NewStream(peer, config.BlockBodyVersion)
+		s, c, err := g.NewStream(peer, config.Versions.BlockBody)
 		if err != nil {
 			g.logConnectErr(err, peer, "[RelayBlock] Failed to connect to peer")
 			continue
@@ -117,7 +117,7 @@ func (g *Gossip) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 		return nil
 	}
 
-	s, c, err := g.NewStream(rp, config.RequestBlockVersion)
+	s, c, err := g.NewStream(rp, config.Versions.RequestBlock)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[RequestBlock] Failed to connect to peer")
 	}
@@ -224,7 +224,7 @@ func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error 
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
 
-	s, c, err := g.NewStream(rp, config.GetBlockHashesVersion)
+	s, c, err := g.NewStream(rp, config.Versions.GetBlockHashes)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[SendGetBlockHashes] Failed to connect")
 	}
@@ -367,7 +367,7 @@ func (g *Gossip) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) error {
 	g.log.Debug("Requesting block bodies", "PeerID", rpID,
 		"NumHashes", len(hashes))
 
-	s, c, err := g.NewStream(rp, config.GetBlockBodiesVersion)
+	s, c, err := g.NewStream(rp, config.Versions.GetBlockBodies)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[SendGetBlockBodies] Failed to connect")
 	}

@@ -32,7 +32,7 @@ func (g *Gossip) SelfAdvertise(connectedPeers []core.Engine) int {
 	sent := 0
 	for _, peer := range g.broadcasters.Peers() {
 
-		s, c, err := g.NewStream(peer, config.AddrVersion)
+		s, c, err := g.NewStream(peer, config.Versions.Addr)
 		if err != nil {
 			g.logConnectErr(err, peer, "[SelfAdvertise] Failed to connect")
 			continue
