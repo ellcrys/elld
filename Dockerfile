@@ -1,21 +1,20 @@
-FROM "golang:stretch"
+FROM golang:1.10.5-stretch
 
-# set working directory
-WORKDIR /app
+WORKDIR /go/src/github.com/ellcrys
 
-# add druid binary to working directory
-ADD ./dist/linux_amd64 /app
+# clone elld repository
+RUN git clone -b master https://github.com/ellcrys/elld.git
 
-# expose druid port
+# get dependencies
+WORKDIR elld
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+RUN make install-deps
+
+# build from source
+RUN go build
+RUN mv elld /usr/local/bin/elld
+
+# Start client
 EXPOSE 9000
 EXPOSE 8999
-
-# set bootstrap node addresses
-ARG addnode
-ENV addnode ${addnode}
-ARG seed
-ENV seed ${seed}
-ARG mine
-ENV mine ${mine}
-
-CMD ./elld start --dev -a 0.0.0.0:9000 ${mine} -s ${seed} --pwd marvel ${addnode} --rpc --rpcaddress=:8999
+ENTRYPOINT ["elld", "start", "-a", "0.0.0.0:9000"]

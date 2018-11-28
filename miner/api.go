@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
@@ -28,7 +29,14 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceMiner,
 			Description: "Start the CPU miner",
 			Private:     true,
-			Func: func(params interface{}) *jsonrpc.Response {
+			Func: func(arg interface{}) *jsonrpc.Response {
+
+				// Do not start miner when miner key is ephemeral.
+				// Block rewards will be lost if allowed.
+				if m.minerKey.Meta["ephemeral"] != nil {
+					return jsonrpc.Success(params.ErrMiningWithEphemeralKey.Error())
+				}
+
 				go m.Begin()
 				return jsonrpc.Success(true)
 			},
