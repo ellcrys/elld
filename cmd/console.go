@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
@@ -43,14 +45,13 @@ var consoleCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		profilePath := profile.ProfilePath(cfg.DataDir())
-
 		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
-		if cpuProfile {
+		if cpuProfile || os.Getenv("ELLD_CPU_PROFILING_ON") == "true" {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()
 		}
 
 		memProfile, _ := cmd.Flags().GetBool("memprofile")
-		if memProfile {
+		if memProfile || os.Getenv("ELLD_MEM_PROFILING_ON") == "true" {
 			defer profile.Start(profile.MemProfile, profilePath).Stop()
 		}
 

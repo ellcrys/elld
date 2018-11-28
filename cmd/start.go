@@ -141,10 +141,29 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	numMiners, _ := cmd.Flags().GetInt("miners")
 	debug, _ := cmd.Flags().GetBool("debug")
 
-	// When password is not set, get it from the
-	// environment variable
+	if len(account) == 0 {
+		account = os.Getenv("ELLD_ACCOUNT")
+	}
+
 	if len(password) == 0 {
 		password = os.Getenv("ELLD_ACCOUNT_PASSWORD")
+	}
+
+	if os.Getenv("ELLD_RPC_ON") == "true" {
+		startRPC = true
+	}
+
+	if addr := os.Getenv("ELLD_RPC_ADDRESS"); len(addr) > 0 {
+		rpcAddress = addr
+	}
+
+	if addr := os.Getenv("ELLD_LADDRESS"); len(addr) > 0 {
+		listeningAddr = addr
+	}
+
+	if envAddNode := os.Getenv("ELLD_ADDNODE"); len(envAddNode) > 0 {
+		addrs := strings.Split(envAddNode, ",")
+		cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, addrs...)
 	}
 
 	// Set configurations
@@ -184,8 +203,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Prevent mining when the node's key is ephemeral
 	if mine && nodeKey.Meta["ephemeral"] != nil {
-		log.Fatal("Cannot mine with an ephemeral key. Please Provide an " +
-			"account using '--account' flag.")
+		log.Fatal(params.ErrMiningWithEphemeralKey.Error())
 	}
 
 	log.Info("Elld has started", "Version", cfg.VersionInfo.BuildVersion, "DevMode", devMode)
@@ -318,14 +336,13 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		profilePath := profile.ProfilePath(cfg.DataDir())
-
 		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
-		if cpuProfile {
+		if cpuProfile || os.Getenv("ELLD_CPU_PROFILING_ON") == "true" {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()
 		}
 
 		memProfile, _ := cmd.Flags().GetBool("memprofile")
-		if memProfile {
+		if memProfile || os.Getenv("ELLD_MEM_PROFILING_ON") == "true" {
 			defer profile.Start(profile.MemProfile, profilePath).Stop()
 		}
 
