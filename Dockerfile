@@ -1,18 +1,15 @@
 FROM golang:1.10.5-stretch
 
-WORKDIR /go/src/github.com/ellcrys
-
-# clone elld repository
-RUN git clone -b master https://github.com/ellcrys/elld.git
-
-# get dependencies
-WORKDIR elld
-RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-RUN make deps
-
-# build from source
-RUN go build
-RUN mv elld /usr/local/bin/elld
+# Download the latest release
+RUN apt-get update
+RUN apt-get install -y jq
+RUN export elldVersion=$(curl -sL https://api.github.com/repos/ellcrys/elld/releases/latest | jq -r '.assets[].browser_download_url | match("(.*(elld_0.1.0-alpha)_linux.*)") | .captures[1].string')
+RUN curl -L $(curl -sL https://api.github.com/repos/ellcrys/elld/releases/latest | jq -r '.assets[].browser_download_url | match("(.*linux.*)") | '.string'') > elld_${elldVersion}_linux_x86_64.tar.gz
+RUN mkdir elld_${elldVersion}
+RUN tar -xf elld_${elldVersion}_linux_x86_64.tar.gz -C elld_${elldVersion}
+RUN mv elld_${elldVersion}/elld /usr/local/bin/elld
+RUN rm -rf elld_${elldVersion}_linux_x86_64.tar.gz
+RUN rm -rf elld_${elldVersion}
 
 # Start client
 EXPOSE 9000
