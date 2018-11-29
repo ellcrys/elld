@@ -62,5 +62,6 @@ go build
 
 ## Contact
 - Email: hello@ellcrys.co
-- [Telegram](https://t.me/ellcryshq)
+- [Discord](https://discord.gg/QH2n2hT)
+- [Gitter](https://gitter.im/ellnet)
 - [Twitter](https://twitter.com/ellcryshq)
