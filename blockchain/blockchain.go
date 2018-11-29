@@ -1,3 +1,5 @@
+// Package blockchain provides functionalities for
+// creating, managing and accessing the blockchain state.
 package blockchain
 
 import (

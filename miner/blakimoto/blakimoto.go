@@ -1,5 +1,6 @@
-// Package blakimoto implements a proof-of-work consensus engine
-// based on Blake2b-256 hash
+// Package blakimoto provides functionalities for performing
+// and verifying proof-of-work computation. It uses
+// Blake2b-256 as the hash function.
 package blakimoto
 
 import (
