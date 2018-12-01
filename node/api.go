@@ -80,12 +80,14 @@ func (n *Node) apiJoin(arg interface{}) *jsonrpc.Response {
 
 	for _, address := range addrs {
 
-		if !util.IsValidConnectionString(address) {
+		// Validated and/or resolve the address
+		resolvedAddr, err := util.ValidateAndResolveConnString(address)
+		if err != nil {
 			return jsonrpc.Error(types.ErrCodeAddress,
-				"address ("+address+") format is invalid", nil)
+				"could not join address ("+address+"): "+err.Error(), nil)
 		}
 
-		rp := n.NewRemoteNode(util.AddressFromConnString(address))
+		rp := n.NewRemoteNode(util.AddressFromConnString(resolvedAddr))
 		if rp.IsSame(n) {
 			return jsonrpc.Error(types.ErrCodeAddress,
 				"can't add self ("+address+") as a peer", nil)
@@ -137,12 +139,14 @@ func (n *Node) apiAddPeer(arg interface{}) *jsonrpc.Response {
 
 	for _, address := range addrs {
 
-		if !util.IsValidConnectionString(address) {
+		// Validated and/or resolve the address
+		resolvedAddr, err := util.ValidateAndResolveConnString(address)
+		if err != nil {
 			return jsonrpc.Error(types.ErrCodeAddress,
-				"address ("+address+") format is invalid", nil)
+				"could not add address ("+address+"): "+err.Error(), nil)
 		}
 
-		rp := n.NewRemoteNode(util.AddressFromConnString(address))
+		rp := n.NewRemoteNode(util.AddressFromConnString(resolvedAddr))
 		if rp.IsSame(n) {
 			return jsonrpc.Error(types.ErrCodeAddress,
 				"can't add self ("+address+") as a peer", nil)
