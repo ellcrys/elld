@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strings"
 
+	"gopkg.in/asaskevich/govalidator.v4"
+
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 
@@ -164,15 +166,15 @@ func AddressFromConnString(str string) NodeAddr {
 
 	connData := ParseConnString(str)
 
-	host := connData["address"]
-	port := connData["port"]
+	host := connData.Address
+	port := connData.Port
 	tcpIPAddr := fmt.Sprintf("/ip4/%s/tcp/%s", host, port)
-	if net.ParseIP(host).To4() == nil {
+	if govalidator.IsIPv6(host) {
 		tcpIPAddr = fmt.Sprintf("/ip6/%s/tcp/%s", host, port)
 	}
 
 	addr, _ := ma.NewMultiaddr(tcpIPAddr)
-	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", connData["id"]))
+	ipfsAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", connData.ID))
 	return NodeAddr(addr.Encapsulate(ipfsAddr).String())
 }
 
@@ -254,13 +256,24 @@ func IsValidConnectionString(str string) bool {
 	return matched
 }
 
+// ConnStringData represents
+type ConnStringData struct {
+	ID      string
+	Address string
+	Port    string
+}
+
+// ConnString returns a valid connection string
+func (cs *ConnStringData) ConnString() string {
+	return fmt.Sprintf("ellcrys://%s@%s:%s", cs.ID, cs.Address, cs.Port)
+}
+
 // ParseConnString breaksdown a connection string
-func ParseConnString(str string) (m map[string]string) {
+func ParseConnString(str string) *ConnStringData {
 	if !IsValidConnectionString(str) {
 		return nil
 	}
 
-	m = make(map[string]string)
 	mainPart := strings.Split(str, "//")[1]
 	idAddrPart := strings.Split(mainPart, "@")
 	host, port, err := net.SplitHostPort(idAddrPart[1])
@@ -268,9 +281,40 @@ func ParseConnString(str string) (m map[string]string) {
 		return nil
 	}
 
-	m["id"] = idAddrPart[0]
-	m["address"] = host
-	m["port"] = port
+	return &ConnStringData{
+		ID:      idAddrPart[0],
+		Address: host,
+		Port:    port,
+	}
+}
 
-	return
+// ValidateAndResolveConnString validates a connection string
+// and attempts to resolve the address of a connection string
+// to an IP if it is a domain name.
+func ValidateAndResolveConnString(connStr string) (string, error) {
+
+	// Ensure the connection string is valid
+	if !IsValidConnectionString(connStr) {
+		return "", fmt.Errorf("connection string is not valid")
+	}
+
+	connData := ParseConnString(connStr)
+
+	// If host is a dns name, try to resolve it.
+	if govalidator.IsDNSName(connData.Address) {
+		ips, err := net.LookupIP(connData.Address)
+		if err != nil {
+			return "", err
+		}
+
+		if len(ips) == 0 {
+			return "", fmt.Errorf("no ip return for address = %s", connData.Address)
+		}
+
+		// Use the first IP as the replacement address
+		connData.Address = ips[0].String()
+		return connData.ConnString(), nil
+	}
+
+	return connStr, nil
 }

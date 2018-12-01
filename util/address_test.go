@@ -2,6 +2,7 @@ package util_test
 
 import (
 	"context"
+	"net"
 	"testing"
 
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -72,6 +73,23 @@ func TestAddress(t *testing.T) {
 				addr := RemoteAddrFromStream(s)
 				expected := "/ip4/127.0.0.1/tcp/40101/ipfs/12D3KooWE3AwZFT9zEWDUxhya62hmvEbRxYBWaosn7Kiqw5wsu73"
 				Expect(addr.String()).To(Equal(expected))
+			})
+		})
+
+		g.Describe(".ValidateAndResolveConnString", func() {
+
+			g.It("should return error if connection string is not valid", func() {
+				_, err := ValidateAndResolveConnString("ellcrys12D3KooWSpFL@google.com>9000")
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("connection string is not valid"))
+			})
+
+			g.It("should resolve domain to IP", func() {
+				cs, err := ValidateAndResolveConnString("ellcrys://12D3KooWSpgHpR83HeYYqYkRKc7mVuT3vcG919fsUsebLwVqghFL@google.com:9000")
+				Expect(err).To(BeNil())
+				Expect(IsValidConnectionString(cs)).To(BeTrue())
+				connStrParts := ParseConnString(cs)
+				Expect(net.ParseIP(connStrParts.Address).To4()).ToNot(BeNil())
 			})
 		})
 
@@ -238,10 +256,10 @@ func TestAddress(t *testing.T) {
 		g.Describe(".ParseConnectionString", func() {
 			g.It("should return expected connection string data", func() {
 				str := "ell://12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy@127.0.0.1:9000"
-				expected := map[string]string{
-					"id":      "12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy",
-					"address": "127.0.0.1",
-					"port":    "9000",
+				expected := &ConnStringData{
+					ID:      "12D3KooWQJKY8C35U2JCZLaobGueSJnXGcx6Z9FStDXxQKtnhtwy",
+					Address: "127.0.0.1",
+					Port:    "9000",
 				}
 				Expect(ParseConnString(str)).To(Equal(expected))
 			})
