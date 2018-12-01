@@ -7,7 +7,7 @@
 import sys
 from subprocess import call
 
-v = raw_input("Are you sure? (n,Y): ")
+v = raw_input("Are you sure? (N,y): ")
 if v.lower() == "y":
     commands = sys.argv[1].split("&&")
     for cmd in commands:

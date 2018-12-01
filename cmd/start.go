@@ -31,7 +31,12 @@ import (
 )
 
 var (
-	boostrapAddresses = []string{}
+	boostrapAddresses = []string{
+		"ellcrys://12D3KooWSpgHpR83HeYYqYkRKc7mVuT3vcG919fsUsebLwVqghFL@n1.ellnode.com:9000",
+		"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
+		"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
+		"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
+	}
 )
 
 func devDefaultConfig(cfg *config.EngineConfig) {

@@ -593,43 +593,32 @@ func (n *Node) GetAddress() util.NodeAddr {
 	return n.address
 }
 
-// checkConnString checks whether a connection
-// string is valid for the current engine mode.
-func checkConnString(engine core.Engine, address string) error {
-
-	// Check whether the address is a valid connection string
-	if !util.IsValidConnectionString(address) {
-		return fmt.Errorf("not a valid connection address")
-	}
-
-	addr := util.AddressFromConnString(address)
-
-	// In production mode, only routable
-	// addresses are allowed
-	if engine.ProdMode() && !addr.IsRoutable() {
-		return fmt.Errorf("address is not routable")
-	}
-
-	return nil
-}
-
 // AddAddresses adds addresses which the engine can
 // establish connections to.
 func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 
 	for _, connStr := range connStrings {
 
-		// Check whether the connection string is valid.
-		// If not valid, proceed to the next immediately.
-		if err := checkConnString(n, connStr); err != nil {
-			n.log.Warn("Invalid bootstrap address",
-				"Err", err.Error(), "Address", connStr)
+		// Resolve the address in the connection string
+		// to an IP if it is currently a domain name
+		connStr, err := util.ValidateAndResolveConnString(connStr)
+		if err != nil {
+			n.log.Warn("Could not add or resolve connection string", "Err", err)
+			continue
+		}
+
+		addr := util.AddressFromConnString(connStr)
+
+		// In production mode, only routable
+		// addresses are allowed
+		if n.ProdMode() && !addr.IsRoutable() {
+			n.log.Warn("address is not routable", "Address", connStr)
 			continue
 		}
 
 		// Convert the connection string to a valid
 		// IPFS Multiaddr format
-		rp := n.NewRemoteNode(util.AddressFromConnString(connStr))
+		rp := n.NewRemoteNode(addr)
 		rp.SetHardcodedState(hardcoded)
 		rp.SetGossipManager(n.gProtoc)
 		n.peerManager.AddPeer(rp)
