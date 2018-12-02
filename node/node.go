@@ -74,6 +74,7 @@ type Node struct {
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
 	hardcodedPeers      map[string]struct{}
+	blockManager        types.BlockManager
 }
 
 // NewNode creates a node instance at the specified port
@@ -479,6 +480,11 @@ func (n *Node) IsSameID(id string) bool {
 // the engine
 func (n *Node) SetEventEmitter(e *emitter.Emitter) {
 	n.event = e
+}
+
+// SetBlockManager sets the block manager
+func (n *Node) SetBlockManager(bm types.BlockManager) {
+	n.blockManager = bm
 }
 
 // SetLocalNode sets the node as the

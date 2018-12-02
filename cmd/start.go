@@ -32,10 +32,10 @@ import (
 
 var (
 	boostrapAddresses = []string{
-		"ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
-		"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
-		"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
-		"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
+		// "ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
+		// "ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
+		// "ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
+		// "ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
 	}
 )
 
@@ -225,8 +225,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
 
-	// In debug mode, we set log level
-	// to DEBUG.
+	// In debug mode, we set log level to DEBUG.
 	if n.DevMode() {
 		log.SetToDebug()
 	}
@@ -241,8 +240,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("%s", err)
 	}
 
-	// Add bootstrap addresses supplied
-	// in the config file
+	// Add bootstrap addresses supplied in the config file
 	if err := n.AddAddresses(cfg.Node.BootstrapAddresses, false); err != nil {
 		log.Fatal("%s", err)
 	}
@@ -254,42 +252,47 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
 
-	// Instantiate the blockchain manager,
-	// set db, event emitter and pass it to the engine
-	bchain := blockchain.New(n.GetTxPool(), cfg, log)
-	bchain.SetDB(n.DB())
-	bchain.SetEventEmitter(event)
-	n.SetBlockchain(bchain)
+	// Initialize the blockchain, miner and block manager
+	bChain := blockchain.New(n.GetTxPool(), cfg, log)
+	miner := miner.NewMiner(nodeKey, bChain, event, cfg, log)
+	bm := node.NewBlockManager(bChain, event, log)
+	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
+
+	// Set the blockchain manager's db,
+	// event emitter and pass it to the engine
+	bChain.SetDB(n.DB())
+	bChain.SetEventEmitter(event)
+
+	// Set block manager's miner reference
+	bm.SetMiner(miner)
+
+	// Set the node's blockchain, global
+	// event and block manager references
+	n.SetBlockchain(bChain)
+	n.SetEventEmitter(event)
+	n.SetBlockManager(bm)
 
 	// power up the blockchain manager
-	if err := bchain.Up(); err != nil {
+	if err := bChain.Up(); err != nil {
 		log.Fatal("failed to load blockchain manager", "Err", err.Error())
 	}
 
-	// Set the event handler in the node
-	n.SetEventEmitter(event)
-
-	// Start the node
+	// Start the block manager and the node
+	bm.Handle()
 	n.Start()
 
-	// Initialized and start the miner if
-	// enabled via the cli flag.
-	miner := miner.NewMiner(nodeKey, bchain, event, cfg, log)
+	// Initialized and start the miner if enabled via the cli flag.
 	miner.SetNumThreads(numMiners)
 	if mine {
 		go miner.Begin()
 	}
-	// Initialize and start the RPCServer
-	// if enabled via the appropriate cli flag.
-	var rpcServer = rpc.NewServer(n.DB(), rpcAddress, cfg, log)
 
-	// Add the RPC APIs from various
-	// components.
+	// Add the RPC APIs from various components.
 	rpcServer.AddAPI(
 		n.APIs(),
 		miner.APIs(),
 		accountMgr.APIs(),
-		bchain.APIs(),
+		bChain.APIs(),
 		rpcServer.APIs(),
 	)
 
