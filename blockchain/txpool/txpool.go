@@ -12,18 +12,16 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
-// TxPool defines a structure and functionalities of a transaction pool
-// which is responsible for collecting, validating and providing processed
-// transactions for block inclusion and propagation.
+// TxPool stores transactions.
 type TxPool struct {
 	sync.RWMutex                  // general mutex
 	container    *TxContainer     // transaction queue
 	event        *emitter.Emitter // event emitter
 }
 
-// New creates a new instance of TxPool
-// Cap size is the max amount of transactions we can have in the
-// queue at any given time. If it is full, transactions will be dropped.
+// New creates a new instance of TxPool.
+// Cap size is the max amount of transactions
+// that can be maintained in the pool.
 func New(cap int64) *TxPool {
 	tp := new(TxPool)
 	tp.container = newTxContainer(cap)
@@ -34,26 +32,14 @@ func New(cap int64) *TxPool {
 // SetEventEmitter sets the event emitter
 func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
 	tp.event = ee
-	go tp.onNewBlock()
 }
 
-func (tp *TxPool) remove(txs ...types.Transaction) {
+// Remove removes transactions
+func (tp *TxPool) Remove(txs ...types.Transaction) {
 	tp.Lock()
 	defer tp.Unlock()
 	tp.container.Remove(txs...)
 	tp.clean()
-}
-
-// onNewBlock removes transactions from
-// the pool if they are contained in the broadcast
-// block that was appended to the chain
-func (tp *TxPool) onNewBlock() {
-	for {
-		select {
-		case evt := <-tp.event.Once(core.EventNewBlock):
-			tp.remove(evt.Args[0].(types.Block).GetTransactions()...)
-		}
-	}
 }
 
 // Put adds a transaction
@@ -97,8 +83,7 @@ func (tp *TxPool) PutSilently(tx types.Transaction) error {
 	return nil
 }
 
-// addTx adds a transaction to the queue
-// and sends out types.EventNewTransaction event.
+// addTx adds a transaction to the queue.
 // (Not thread-safe)
 func (tp *TxPool) addTx(tx types.Transaction) error {
 

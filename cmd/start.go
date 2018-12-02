@@ -252,24 +252,24 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
 
-	// Initialize the blockchain, miner and block manager
-	bChain := blockchain.New(n.GetTxPool(), cfg, log)
-	miner := miner.NewMiner(nodeKey, bChain, event, cfg, log)
-	bm := node.NewBlockManager(bChain, event, log)
-	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
-
-	// Set the blockchain manager's db,
+	// Initialize and set the blockchain manager's db,
 	// event emitter and pass it to the engine
+	bChain := blockchain.New(n.GetTxPool(), cfg, log)
 	bChain.SetDB(n.DB())
 	bChain.SetEventEmitter(event)
 
-	// Set block manager's miner reference
-	bm.SetMiner(miner)
+	// Initialize the miner, rpc server
+	miner := miner.NewMiner(nodeKey, bChain, event, cfg, log)
+	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
 
-	// Set the node's blockchain, global
-	// event and block manager references
+	// Set the node's references
 	n.SetBlockchain(bChain)
 	n.SetEventEmitter(event)
+
+	// Set block manager's references
+	bm := node.NewBlockManager(n)
+	bm.SetMiner(miner)
+	bm.SetTxPool(pool)
 	n.SetBlockManager(bm)
 
 	// power up the blockchain manager

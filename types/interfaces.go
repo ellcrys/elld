@@ -374,6 +374,7 @@ type TxPool interface {
 	PutSilently(tx Transaction) error
 	Has(tx Transaction) bool
 	HasByHash(hash string) bool
+	Remove(txs ...Transaction)
 	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
 	ByteSize() int64
 	Size() int64

@@ -53,7 +53,7 @@ type Node struct {
 	wg                  sync.WaitGroup       // wait group for preventing the main thread from exiting
 	localNode           *Node                // local node
 	peerManager         *peermanager.Manager // node manager for managing connections to other remote peers
-	gProtoc             core.Gossip          // gossip protocol instance
+	gossipMgr           core.Gossip          // gossip protocol instance
 	remote              bool                 // remote indicates the node represents a remote peer
 	lastSeen            time.Time            // the last time this node was seen
 	createdAt           time.Time            // the first time this node was seen/added
@@ -186,7 +186,7 @@ func (n *Node) NewRemoteNode(address util.NodeAddr) core.Engine {
 		mtx:            sync.RWMutex{},
 		syncMtx:        sync.RWMutex{},
 		localNode:      n,
-		gProtoc:        n.gProtoc,
+		gossipMgr:      n.gossipMgr,
 		createdAt:      time.Now(),
 		lastSeen:       time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
@@ -374,7 +374,7 @@ func (n *Node) isSyncing() bool {
 
 // Gossip returns the set protocol
 func (n *Node) Gossip() core.Gossip {
-	return n.gProtoc
+	return n.gossipMgr
 }
 
 // PM returns the peer manager
@@ -401,8 +401,8 @@ func (n *Node) GetBlockchain() types.Blockchain {
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain types.Blockchain) {
-	n.bChain = bchain
+func (n *Node) SetBlockchain(bChain types.Blockchain) {
+	n.bChain = bChain
 }
 
 // IsHardcodedSeed checks whether
@@ -516,8 +516,8 @@ func (n *Node) AddToPeerStore(node core.Engine) core.Engine {
 
 // SetGossipProtocol sets the
 // gossip protocol implementation
-func (n *Node) SetGossipProtocol(protoc *gossip.Gossip) {
-	n.gProtoc = protoc
+func (n *Node) SetGossipProtocol(mgr *gossip.GossipManager) {
+	n.gossipMgr = mgr
 }
 
 // GetHost returns the node's host
@@ -626,7 +626,7 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 		// IPFS Multiaddr format
 		rp := n.NewRemoteNode(addr)
 		rp.SetHardcodedState(hardcoded)
-		rp.SetGossipManager(n.gProtoc)
+		rp.SetGossipManager(n.gossipMgr)
 		n.peerManager.AddPeer(rp)
 	}
 
@@ -661,7 +661,7 @@ func (n *Node) SetHardcodedState(v bool) {
 
 // SetGossipManager sets the gossip manager
 func (n *Node) SetGossipManager(m core.Gossip) {
-	n.gProtoc = m
+	n.gossipMgr = m
 }
 
 // relayTx continuously relays transactions
@@ -709,23 +709,6 @@ func (n *Node) Start() {
 	}
 }
 
-// relayBlock attempts to relay non-genesis
-//  a block to active peers.
-func (n *Node) relayBlock(block types.Block) {
-	if block.GetNumber() > 1 {
-		n.Gossip().RelayBlock(block, n.peerManager.GetConnectedPeers())
-	}
-}
-
-func (n *Node) handleNewBlockEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventNewBlock):
-			n.relayBlock(evt.Args[0].(types.Block))
-		}
-	}
-}
-
 func (n *Node) handleNewTransactionEvent() {
 	for {
 		select {
@@ -738,48 +721,9 @@ func (n *Node) handleNewTransactionEvent() {
 	}
 }
 
-func (n *Node) handleOrphanBlockEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventOrphanBlock):
-			// We need to request the parent block from the
-			// peer who sent it to us (a.k.a broadcaster)
-			orphanBlock := evt.Args[0].(*core.Block)
-			parentHash := orphanBlock.GetHeader().GetParentHash()
-			n.log.Debug("Requesting orphan parent block from broadcaster",
-				"BlockNo", orphanBlock.GetNumber(),
-				"ParentBlockHash", parentHash.SS())
-			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
-		}
-	}
-}
-
-func (n *Node) handleAbortedMinerBlockEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventOrphanBlock):
-			// handle core.EventMinerProposedBlockAborted
-			// listens for aborted miner blocks and attempt
-			// to re-add the transactions to the pool.
-			abortedBlock := evt.Args[0].(*core.Block)
-			n.log.Debug("Attempting to re-add transactions "+
-				"in aborted miner block",
-				"NumTx", len(abortedBlock.Transactions), "BlockNo", abortedBlock.GetNumber())
-			for _, tx := range abortedBlock.Transactions {
-				if err := n.AddTransaction(tx); err != nil {
-					n.log.Debug("failed to re-add transaction",
-						"Err", err.Error())
-				}
-			}
-		}
-	}
-}
 
 func (n *Node) handleEvents() {
-	go n.handleNewBlockEvent()
 	go n.handleNewTransactionEvent()
-	go n.handleOrphanBlockEvent()
-	go n.handleAbortedMinerBlockEvent()
 }
 
 // ProcessBlockHashes collects hashes and request for their
@@ -837,7 +781,7 @@ func (n *Node) ProcessBlockHashes() {
 
 			// send block body request
 			if len(hashes) > 0 {
-				n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
+				n.gossipMgr.SendGetBlockBodies(broadcaster, hashes)
 			}
 
 		case <-n.tickerDone:
