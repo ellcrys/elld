@@ -427,7 +427,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 
 	// get the block.
 	// Returns ErrBlockNotFound if block does not exist
-	_, err = c.store.GetBlock(number, txOp)
+	block, err := c.store.GetBlock(number, txOp)
 	if err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
@@ -442,6 +442,15 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 			txOp.Finishable().Rollback()
 		}
 		return fmt.Errorf("failed to delete block: %s", err)
+	}
+
+	// delete the block's hash pointer
+	pointerKey := common.MakeKeyBlockHash(c.id.Bytes(), block.GetHash().Hex())
+	if err = c.store.Delete(pointerKey, txOp); err != nil {
+		if len(opts) == 0 {
+			txOp.Finishable().Rollback()
+		}
+		return fmt.Errorf("failed to delete block's hash pointer: %s", err)
 	}
 
 	// find account objects associated to this block

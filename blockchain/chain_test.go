@@ -291,7 +291,7 @@ func TestChain(t *testing.T) {
 					Expect(result).To(HaveLen(0))
 				})
 
-				g.Specify("accounts associated to the block must be deleted", func() {
+				g.Specify("accounts associated with the block must be deleted", func() {
 					acctKeys := common.MakeQueryKeyAccounts(genesisChain.id.Bytes())
 					result := db.GetByPrefix(acctKeys)
 					for _, r := range result {
@@ -300,13 +300,19 @@ func TestChain(t *testing.T) {
 					}
 				})
 
-				g.Specify("transactions associated to the block must be deleted", func() {
+				g.Specify("transactions associated with the block must be deleted", func() {
 					txsKeys := common.MakeQueryKeyTransactions(genesisChain.id.Bytes())
 					result := db.GetByPrefix(txsKeys)
 					for _, r := range result {
 						bn := util.DecodeNumber(r.Key)
 						Expect(bn).ToNot(Equal(block2.GetNumber()))
 					}
+				})
+
+				g.Specify("block hash pointer associated with the block must be deleted", func() {
+					blockHashPointer := common.MakeKeyBlockHash(genesisChain.id.Bytes(), block2.GetHash().Hex())
+					result := db.GetByPrefix(blockHashPointer)
+					Expect(result).To(BeEmpty())
 				})
 			})
 		})
