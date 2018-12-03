@@ -291,10 +291,6 @@ func (bm *BlockManager) sync() error {
 			"Progress(%)", syncStatus.ProgressPercent)
 	}
 
-	// Wait a few seconds before fetching more
-	// sync objects from this candidate.
-	time.Sleep(5 * time.Second)
-
 resync:
 	bm.syncMtx.Lock()
 	bm.syncing = false
