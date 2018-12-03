@@ -46,7 +46,7 @@ func (g *GossipManager) SendHandshake(rp core.Engine) error {
 	defer c()
 	defer s.Close()
 
-	g.log.Info("Sent handshake to peer", "PeerID", rpIDShort)
+	g.log.Debug("Sent handshake to peer", "PeerID", rpIDShort)
 
 	nodeMsg, err := createHandshakeMsg(&core.Handshake{
 		Version: g.engine.GetCfg().VersionInfo.BuildVersion,

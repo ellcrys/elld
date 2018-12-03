@@ -96,7 +96,7 @@ func (g *GossipManager) OnPing(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
-	g.log.Info("Received ping message", "PeerID", rp.ShortID())
+	g.log.Debug("Received ping message", "PeerID", rp.ShortID())
 
 	// read the message from the stream
 	msg := &core.Ping{}
