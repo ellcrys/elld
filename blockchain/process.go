@@ -390,7 +390,7 @@ process:
 	if createNewChain {
 		if chain, err = b.newChain(txOp.Tx, block, parentBlock, chain); err != nil {
 			txOp.SetFinishable(!hasInjectTx).Rollback()
-			return nil, fmt.Errorf("failed to create subtree out of stale block")
+			return nil, fmt.Errorf("failed to create subtree out of stale block: %s", err)
 		}
 
 		b.log.Debug("New chain created",
