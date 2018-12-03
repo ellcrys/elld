@@ -365,7 +365,7 @@ func (g *GossipManager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (
 
 	// do nothing if no hash is given
 	if len(hashes) == 0 {
-		return nil, nil
+		return &core.BlockBodies{}, nil
 	}
 
 	msg := core.GetBlockBodies{
