@@ -268,7 +268,7 @@ func (bm *BlockManager) sync() error {
 		_, err := bm.engine.GetBlockchain().ProcessBlock(&block)
 		if err != nil {
 			bm.log.Debug("Unable to process block", "Err", err)
-			goto resync
+			continue
 		}
 	}
 
