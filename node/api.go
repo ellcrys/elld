@@ -358,6 +358,7 @@ func (n *Node) APIs() jsonrpc.APISet {
 		},
 		"dumpPeers": {
 			Namespace:   types.NamespaceNet,
+			Private:     true,
 			Description: "Delete all peers in memory and on disk",
 			Func:        n.apiForgetPeers,
 		},
