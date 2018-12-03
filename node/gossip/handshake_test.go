@@ -7,7 +7,6 @@ import (
 	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/node/gossip"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
@@ -86,59 +85,46 @@ func TestHandshake(t *testing.T) {
 				})
 			})
 
-			g.Context("when remote node has a better (most difficulty, longest chain etc) chain", func() {
+			g.Context("check that core.EventPeerChainInfo is emitted", func() {
 
 				var block2 types.Block
-				var err error
 
 				g.BeforeEach(func() {
 					block2 = MakeBlockWithTotalDifficulty(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
-					Expect(err).To(BeNil())
-					_, err = rp.GetBlockchain().ProcessBlock(block2)
+					_, err := rp.GetBlockchain().ProcessBlock(block2)
 					Expect(err).To(BeNil())
 				})
 
-				g.Specify("local peer should send block hashes request with the current block as the locator", func(done Done) {
-					err := lp.Gossip().SendHandshake(rp)
-					Expect(err).To(BeNil())
-
+				g.Specify("local peer should emit core.EventPeerChainInfo event", func(done Done) {
 					go func() {
-						lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
-						Expect(err).To(BeNil())
+						evt := <-lp.GetEventEmitter().Once(core.EventPeerChainInfo)
+						peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
+						Expect(peerChainInfo.PeerID).To(Equal(rp.StringID()))
 
-						evt := <-lp.GetEventEmitter().Once(gossip.EventRequestedBlockHashes)
-						locators := evt.Args[0].([]util.Hash)
-						Expect(locators).To(HaveLen(1))
-						Expect(locators[0]).To(Equal(lpCurBlock.GetHash()))
-						done()
-					}()
-				})
-			})
-
-			g.Context("when local node has a better (most difficulty, longest chain etc) chain", func() {
-
-				var block2 types.Block
-
-				g.BeforeEach(func() {
-					block2 = MakeBlockWithTotalDifficulty(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
-					_, err := lp.GetBlockchain().ProcessBlock(block2)
-					Expect(err).To(BeNil())
-				})
-
-				g.Specify("remote peer should send block hashes request with its current block as the locator", func(done Done) {
-					err := lp.Gossip().SendHandshake(rp)
-					Expect(err).To(BeNil())
-
-					go func() {
 						rpCurBlock, err := rp.GetBlockchain().ChainReader().Current()
 						Expect(err).To(BeNil())
-						evt := <-rp.GetEventEmitter().Once(gossip.EventRequestedBlockHashes)
-
-						locators := evt.Args[0].([]util.Hash)
-						Expect(locators).To(HaveLen(1))
-						Expect(locators[0]).To(Equal(rpCurBlock.GetHash()))
+						Expect(peerChainInfo.PeerChainHeight).To(Equal(rpCurBlock.GetNumber()))
 						done()
 					}()
+
+					err := lp.Gossip().SendHandshake(rp)
+					Expect(err).To(BeNil())
+				})
+
+				g.Specify("remote peer should emit core.EventPeerChainInfo event", func(done Done) {
+					go func() {
+						evt := <-rp.GetEventEmitter().Once(core.EventPeerChainInfo)
+						peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
+						Expect(peerChainInfo.PeerID).To(Equal(lp.StringID()))
+
+						lpCurBlock, err := lp.GetBlockchain().ChainReader().Current()
+						Expect(err).To(BeNil())
+						Expect(peerChainInfo.PeerChainHeight).To(Equal(lpCurBlock.GetNumber()))
+						done()
+					}()
+
+					err := lp.Gossip().SendHandshake(rp)
+					Expect(err).To(BeNil())
 				})
 			})
 		})

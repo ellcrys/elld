@@ -9,7 +9,6 @@ import (
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/go-ethereum/log"
-	"github.com/jinzhu/copier"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
@@ -36,7 +35,7 @@ func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReader,
 }
 
 // SendHandshake sends an introductory message to a peer
-func (g *Gossip) SendHandshake(rp core.Engine) error {
+func (g *GossipManager) SendHandshake(rp core.Engine) error {
 
 	rpIDShort := rp.ShortID()
 
@@ -83,34 +82,19 @@ func (g *Gossip) SendHandshake(rp core.Engine) error {
 		"ClientVersion", resp.Version, "Height", resp.BestBlockNumber,
 		"TotalDifficulty", resp.BestBlockTotalDifficulty)
 
-	// compare best chain.
-	// If the blockchain best block has a lesser
-	// total difficulty, then need to start the block sync process
-	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().
-		Cmp(resp.BestBlockTotalDifficulty) == -1 {
-		g.log.Info("Local blockchain is behind peer",
-			"ChainHeight", bestBlock.GetNumber(),
-			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
-			"PeerID", rpIDShort,
-			"PeerChainHeight", resp.BestBlockNumber,
-			"PeerChainTotalDifficulty", resp.BestBlockTotalDifficulty)
-		g.log.Info("Attempting to sync blockchain with peer", "PeerID",
-			rpIDShort)
-		go g.SendGetBlockHashes(rp, nil)
-	}
-
-	// Update the current known best
-	// remote block information
-	var bestBlockInfo core.BestBlockInfo
-	copier.Copy(&bestBlockInfo, resp)
-	g.engine.UpdateSyncInfo(&bestBlockInfo)
+	// Broadcast the remote peer's chain information.
+	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+		PeerID:                   rp.StringID(),
+		PeerIDShort:              rp.ShortID(),
+		PeerChainHeight:          resp.BestBlockNumber,
+		PeerChainTotalDifficulty: resp.BestBlockTotalDifficulty,
+	})
 
 	return nil
 }
 
 // OnHandshake handles incoming handshake requests
-func (g *Gossip) OnHandshake(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnHandshake(s net.Stream, rp core.Engine) error {
 
 	msg := &core.Handshake{}
 	if err := ReadStream(s, msg); err != nil {
@@ -124,8 +108,7 @@ func (g *Gossip) OnHandshake(s net.Stream, rp core.Engine) error {
 
 	nodeMsg, err := createHandshakeMsg(&core.Handshake{
 		Version: g.engine.GetCfg().VersionInfo.BuildVersion,
-	}, g.GetBlockchain().
-		ChainReader(), g.log)
+	}, g.GetBlockchain().ChainReader(), g.log)
 	if err != nil {
 		return err
 	}
@@ -135,8 +118,8 @@ func (g *Gossip) OnHandshake(s net.Stream, rp core.Engine) error {
 		return g.logErr(err, rp, "[OnHandshake] Failed to send response")
 	}
 
-	// Set new peer as acquainted so that
-	// it will be allowed to send future messages
+	// Set new peer as acquainted so that it will
+	// be allowed to send future messages
 	g.PM().AddAcquainted(rp)
 
 	// Add or update peer 'last seen' timestamp
@@ -153,24 +136,13 @@ func (g *Gossip) OnHandshake(s net.Stream, rp core.Engine) error {
 		nodeMsg.Version, "TotalDifficulty",
 		nodeMsg.BestBlockTotalDifficulty)
 
-	// Compare best chain.
-	// If the blockchain best block has a less
-	// total difficulty, then we need to start the block sync process
-	bestBlock, _ := g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().
-		Cmp(msg.BestBlockTotalDifficulty) == -1 {
-		g.log.Info("Local blockchain is behind peer",
-			"ChainHeight", bestBlock.GetNumber(),
-			"TotalDifficulty", bestBlock.GetHeader().GetTotalDifficulty(),
-			"PeerID", rp.ShortID(),
-			"PeerChainHeight", msg.BestBlockNumber,
-			"PeerChainTotalDifficulty", msg.BestBlockTotalDifficulty)
-		go g.SendGetBlockHashes(rp, nil)
-	}
+	// Broadcast the remote peer's chain information.
+	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+		PeerID:                   rp.StringID(),
+		PeerIDShort:              rp.ShortID(),
+		PeerChainHeight:          msg.BestBlockNumber,
+		PeerChainTotalDifficulty: msg.BestBlockTotalDifficulty,
+	})
 
-	// Update the current known best remote block information
-	var bestBlockInfo core.BestBlockInfo
-	copier.Copy(&bestBlockInfo, msg)
-	g.engine.UpdateSyncInfo(&bestBlockInfo)
 	return nil
 }

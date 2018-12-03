@@ -25,7 +25,7 @@ func makeOrphanBlockHistoryKey(blockHash util.Hash,
 
 // RelayBlock sends a given block to remote peers.
 // The block is encapsulated in a BlockBody message.
-func (g *Gossip) RelayBlock(block types.Block, remotePeers []core.Engine) error {
+func (g *GossipManager) RelayBlock(block types.Block, remotePeers []core.Engine) error {
 
 	g.log.Debug("Relaying block to peer(s)", "BlockNo", block.GetNumber(),
 		"NumPeers", len(remotePeers))
@@ -60,7 +60,7 @@ func (g *Gossip) RelayBlock(block types.Block, remotePeers []core.Engine) error 
 		sent++
 	}
 
-	g.log.Info("Finished relaying block", "BlockNo",
+	g.log.Debug("Finished relaying block", "BlockNo",
 		block.GetNumber(), "NumPeersSentTo", sent)
 
 	return nil
@@ -70,7 +70,7 @@ func (g *Gossip) RelayBlock(block types.Block, remotePeers []core.Engine) error 
 // BlockBody messages contain information about a
 // block. It will attempt to process the received
 // block.
-func (g *Gossip) OnBlockBody(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnBlockBody(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -110,7 +110,7 @@ func (g *Gossip) OnBlockBody(s net.Stream, rp core.Engine) error {
 // The block's validation context is set to ContextBlockSync
 // which cause the transactions to not be required to exist
 // in the transaction pool.
-func (g *Gossip) RequestBlock(rp core.Engine, blockHash util.Hash) error {
+func (g *GossipManager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 
 	historyKey := makeOrphanBlockHistoryKey(blockHash, rp)
 	if g.engine.GetHistory().HasMulti(historyKey...) {
@@ -154,7 +154,7 @@ func (g *Gossip) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 // OnRequestBlock handles RequestBlock message.
 // A RequestBlock message includes information
 // a bout a block that a remote node needs.
-func (g *Gossip) OnRequestBlock(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnRequestBlock(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -212,32 +212,30 @@ func (g *Gossip) OnRequestBlock(s net.Stream, rp core.Engine) error {
 // SendGetBlockHashes sends a GetBlockHashes message to
 // the remotePeer asking for block hashes beginning from
 // a block they share in common. The local peer sends the
-// remote peer a list of hashes (locators) on its main chain
-// while the remote peer uses the locators to find the highest
-// block they share in common, then it collects and sends
-// block hashes after the selected shared block.
+// remote peer a list of hashes (locators) while the
+// remote peer use the locators to find the highest
+// block height they share in common, then it collects
+// and sends block hashes after the chosen shared block.
 //
 // If the locators is not provided via the locator argument,
 // they will be collected from the main chain.
-func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error {
+func (g *GossipManager) SendGetBlockHashes(rp core.Engine, locators []util.Hash) (*core.BlockHashes, error) {
 
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
 
 	s, c, err := g.NewStream(rp, config.Versions.GetBlockHashes)
 	if err != nil {
-		return g.logConnectErr(err, rp, "[SendGetBlockHashes] Failed to connect")
+		return nil, g.logConnectErr(err, rp, "[SendGetBlockHashes] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
-
-	g.engine.SetSyncing(true)
 
 	if len(locators) == 0 {
 		locators, err = g.GetBlockchain().GetLocators()
 		if err != nil {
 			g.log.Error("failed to get locators", "Err", err)
-			return err
+			return nil, err
 		}
 	}
 
@@ -247,7 +245,7 @@ func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error 
 	}
 
 	if err := WriteStream(s, msg); err != nil {
-		return g.logErr(err, rp, "[SendGetBlockHashes] Failed to write")
+		return nil, g.logErr(err, rp, "[SendGetBlockHashes] Failed to write")
 	}
 
 	g.engine.GetEventEmitter().Emit(EventRequestedBlockHashes,
@@ -256,22 +254,14 @@ func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error 
 	// Read the return block hashes
 	var blockHashes core.BlockHashes
 	if err := ReadStream(s, &blockHashes); err != nil {
-		return g.logErr(err, rp, "[SendGetBlockHashes] Failed to read")
-	}
-
-	// add all the hashes to the hash queue
-	for _, h := range blockHashes.Hashes {
-		g.engine.GetBlockHashQueue().Append(&core.BlockHash{
-			Hash:        h,
-			Broadcaster: rp,
-		})
+		return nil, g.logErr(err, rp, "[SendGetBlockHashes] Failed to read")
 	}
 
 	g.engine.GetEventEmitter().Emit(EventReceivedBlockHashes)
 	g.log.Info("Successfully requested block headers", "PeerID", rpID, "NumLocators",
 		len(msg.Locators))
 
-	return nil
+	return &blockHashes, nil
 }
 
 // OnGetBlockHashes processes a core.GetBlockHashes request.
@@ -286,7 +276,7 @@ func (g *Gossip) SendGetBlockHashes(rp core.Engine, locators []util.Hash) error 
 // not the same as its main chain (a branch), it will
 // send block hashes starting from the root parent block (oldest
 // ancestor) which exists on the main chain.
-func (g *Gossip) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -361,22 +351,21 @@ send:
 
 // SendGetBlockBodies sends a GetBlockBodies message
 // requesting for whole bodies of a collection blocks.
-func (g *Gossip) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) error {
+func (g *GossipManager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (*core.BlockBodies, error) {
 
 	rpID := rp.ShortID()
-	g.log.Debug("Requesting block bodies", "PeerID", rpID,
-		"NumHashes", len(hashes))
+	g.log.Debug("Requesting block bodies", "PeerID", rpID, "NumHashes", len(hashes))
 
 	s, c, err := g.NewStream(rp, config.Versions.GetBlockBodies)
 	if err != nil {
-		return g.logConnectErr(err, rp, "[SendGetBlockBodies] Failed to connect")
+		return nil, g.logConnectErr(err, rp, "[SendGetBlockBodies] Failed to connect")
 	}
 	defer c()
 	defer s.Close()
 
 	// do nothing if no hash is given
 	if len(hashes) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	msg := core.GetBlockBodies{
@@ -385,65 +374,22 @@ func (g *Gossip) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) error {
 
 	// write to the stream
 	if err := WriteStream(s, msg); err != nil {
-		return g.logErr(err, rp, "[SendGetBlockBodies] Failed to write")
+		return nil, g.logErr(err, rp, "[SendGetBlockBodies] Failed to write")
 	}
 
 	// Read the return block bodies
 	var blockBodies core.BlockBodies
 	if err := ReadStream(s, &blockBodies); err != nil {
-		return g.logErr(err, rp, "[SendGetBlockBodies] Failed to read")
+		return nil, g.logErr(err, rp, "[SendGetBlockBodies] Failed to read")
 	}
-
-	g.log.Info("Received block bodies",
-		"NumBlocks", len(blockBodies.Blocks))
-
-	// attempt to append the blocks to the blockchain
-	for _, bb := range blockBodies.Blocks {
-		var block core.Block
-		copier.Copy(&block, bb)
-
-		// Add an history that prevents other routines from
-		// relaying this same block to the remote peer.
-		historyKey := makeBlockHistoryKey(block.GetHashAsHex(), rp)
-		g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
-
-		// set core.ContextBlockSync to inform the block
-		// process to validate the block as synced block
-		// and set the broadcaster
-		block.SetValidationContexts(types.ContextBlockSync)
-		block.SetBroadcaster(rp)
-
-		// Process the block
-		_, err := g.GetBlockchain().ProcessBlock(&block)
-		if err != nil {
-			g.log.Debug("Unable to process block", "Err", err)
-			g.engine.GetEventEmitter().Emit(EventBlockProcessed, &block, err)
-		} else {
-			g.engine.GetEventEmitter().Emit(EventBlockProcessed, &block, nil)
-		}
-	}
-
-	// get sync status
-	syncStatus := g.engine.GetSyncStateInfo()
-	if syncStatus != nil {
-		g.log.Info("Current synchronization status",
-			"TargetTD", syncStatus.TargetTD,
-			"CurTD", syncStatus.CurrentTD,
-			"TargetChainHeight", syncStatus.TargetChainHeight,
-			"CurChainHeight", syncStatus.CurrentChainHeight,
-			"Progress(%)", syncStatus.ProgressPercent)
-	}
-
-	// Update the sync status
-	g.engine.UpdateSyncInfo(nil)
 
 	g.engine.GetEventEmitter().Emit(EventBlockBodiesProcessed)
 
-	return nil
+	return &blockBodies, nil
 }
 
 // OnGetBlockBodies handles GetBlockBodies requests
-func (g *Gossip) OnGetBlockBodies(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnGetBlockBodies(s net.Stream, rp core.Engine) error {
 	defer s.Close()
 
 	// Read the message

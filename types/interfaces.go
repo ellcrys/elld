@@ -388,9 +388,3 @@ type ChainInfo interface {
 	GetParentBlockNumber() uint64
 	GetTimestamp() int64
 }
-
-// BlockManager is responsible for handling
-// incoming, mined or processed blocks in a
-// concurrency safe way.
-type BlockManager interface {
-}

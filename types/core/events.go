@@ -15,4 +15,7 @@ const (
 	// EventFoundBlock represents an event about a
 	// block that has just been mined by the client
 	EventFoundBlock = "event.foundBlock"
+
+	// EventPeerChainInfo indicates an event about a peer's chain info
+	EventPeerChainInfo = "event.newPeerChainInfo"
 )

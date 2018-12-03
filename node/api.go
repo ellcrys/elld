@@ -28,7 +28,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		"address":            n.GetAddress().ConnectionString(),
 		"mode":               mode,
 		"netVersion":         config.Versions.Protocol,
-		"syncing":            n.isSyncing(),
+		"syncing":            n.blockManager.IsSyncing(),
 		"coinbasePublicKey":  n.signatory.PubKey().Base58(),
 		"coinbase":           n.signatory.Addr(),
 		"buildVersion":       n.cfg.VersionInfo.BuildVersion,
@@ -172,12 +172,6 @@ func (n *Node) apiNetStats(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(result)
 }
 
-// apiGetSyncQueueSize returns the
-// size of the block hash queue
-func (n *Node) apiGetSyncQueueSize(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.blockHashQueue.Size())
-}
-
 func (n *Node) apiForgetPeers(arg interface{}) *jsonrpc.Response {
 	n.PM().ForgetPeers()
 	return jsonrpc.Success(true)
@@ -218,12 +212,12 @@ func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
 
 // apiIsSyncing fetches the sync status
 func (n *Node) apiIsSyncing(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.isSyncing())
+	return jsonrpc.Success(n.blockManager.IsSyncing())
 }
 
 // apiGetSyncState fetches the sync status
 func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.GetSyncStateInfo())
+	return jsonrpc.Success(n.blockManager.GetSyncStateInfo())
 }
 
 // apiTxPoolSizeInfo fetches the size information
@@ -324,11 +318,6 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceNode,
 			Description: "Get blockchain synchronization status",
 			Func:        n.apiGetSyncState,
-		},
-		"getSyncQueueSize": {
-			Namespace:   types.NamespaceNode,
-			Description: "Get number of block hashes in the sync queue",
-			Func:        n.apiGetSyncQueueSize,
 		},
 
 		// namespace: "ell"

@@ -11,7 +11,7 @@ import (
 // random, connected peers. If intro is nil,
 // a new core.Intro message is created and
 // broadcast to the selected peers
-func (g *Gossip) SendIntro(intro *core.Intro) {
+func (g *GossipManager) SendIntro(intro *core.Intro) {
 
 	// Get the addresses of the nodes
 	// this peer is connected to.
@@ -75,7 +75,7 @@ func (g *Gossip) SendIntro(intro *core.Intro) {
 
 // OnIntro handles incoming core.Intro messages.
 // Received messages are relayed to 2 random peers.
-func (g *Gossip) OnIntro(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnIntro(s net.Stream, rp core.Engine) error {
 
 	defer s.Reset()
 

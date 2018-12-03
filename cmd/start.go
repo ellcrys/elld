@@ -278,8 +278,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	}
 
 	// Start the block manager and the node
-	bm.Handle()
 	n.Start()
+
+	go bm.Handle()
 
 	// Initialized and start the miner if enabled via the cli flag.
 	miner.SetNumThreads(numMiners)
@@ -355,6 +356,11 @@ var startCmd = &cobra.Command{
 		memProfile, _ := cmd.Flags().GetBool("memprofile")
 		if memProfile || os.Getenv("ELLD_MEM_PROFILING_ON") == "true" {
 			defer profile.Start(profile.MemProfile, profilePath).Stop()
+		}
+
+		mtxProfile, _ := cmd.Flags().GetBool("mutexprofile")
+		if mtxProfile || os.Getenv("ELLD_MTX_PROFILING_ON") == "true" {
+			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
 		n, rpcServer, _, miner := start(cmd, args, false)

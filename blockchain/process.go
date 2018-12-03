@@ -320,7 +320,7 @@ func (b *Blockchain) maybeAcceptBlock(block types.Block, chain *Chain,
 	// time when its parent is unknown/processed.
 	if chain == nil {
 		b.addOrphanBlock(block)
-		
+
 		// Emitting core.EventOrphanBlock will cause
 		// the block manager to request the parent block
 		// from the originating peer.
@@ -496,8 +496,8 @@ process:
 		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
-	b.log.Info("Block has been successfully processed",
-		"BlockNo", block.GetNumber())
+	b.log.Info("Block has been processed", "BlockNo", block.GetNumber())
+
 	return chain, nil
 }
 

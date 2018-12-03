@@ -55,6 +55,11 @@ var consoleCmd = &cobra.Command{
 			defer profile.Start(profile.MemProfile, profilePath).Stop()
 		}
 
+		mtxProfile, _ := cmd.Flags().GetBool("mutexprofile")
+		if mtxProfile || os.Getenv("ELLD_MTX_PROFILING_ON") == "true" {
+			defer profile.Start(profile.MutexProfile, profilePath).Stop()
+		}
+
 		node, rpcServer, cs, miner := start(cmd, args, true)
 		cs.OnStop(func() {
 			if miner != nil {

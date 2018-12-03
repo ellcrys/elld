@@ -126,3 +126,19 @@ type GenerateBlockParams struct {
 	// during block generation in tests
 	NoPoolAdditionInTest bool
 }
+
+// SyncPeerChainInfo holds information about
+// a peer that is a potential sync peer
+type SyncPeerChainInfo struct {
+	PeerID                   string
+	PeerIDShort              string
+	PeerChainHeight          uint64
+	PeerChainTotalDifficulty *big.Int
+}
+
+// ConnectError represents a connection error
+type ConnectError string
+
+func (c ConnectError) Error() string {
+	return string(c)
+}
