@@ -11,7 +11,6 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
-	"github.com/ellcrys/elld/util/queue"
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 )
@@ -85,7 +84,7 @@ type Engine interface {
 
 	// SetBlockchain stores a reference to the
 	// blockchain instance
-	SetBlockchain(bchain types.Blockchain)
+	SetBlockchain(types.Blockchain)
 
 	// ProdMode checks whether the engine
 	// is in production mode
@@ -125,19 +124,6 @@ type Engine interface {
 	// GetHistory returns the general items cache
 	GetHistory() *cache.Cache
 
-	// SetSyncing sets the sync status
-	SetSyncing(syncing bool)
-
-	// UpdateSyncInfo updates the sync state
-	UpdateSyncInfo(bi *BestBlockInfo)
-
-	// GetBlockHashQueue returns the block hash queue
-	GetBlockHashQueue() *queue.Queue
-
-	// GetSyncStateInfo generates status and progress
-	// information about the current blockchain sync operation
-	GetSyncStateInfo() *SyncStateInfo
-
 	// AddToPeerStore adds the ID of the engine
 	// to the peerstore
 	AddToPeerStore(node Engine) Engine
@@ -173,4 +159,12 @@ type SyncStateInfo struct {
 	CurrentTD          *big.Int `json:"currentTotalDifficulty" msgpack:"currentTotalDifficulty"`
 	CurrentChainHeight uint64   `json:"currentChainHeight" msgpack:"currentChainHeight"`
 	ProgressPercent    float64  `json:"progressPercent" msgpack:"progressPercent"`
+}
+
+// BlockManager is responsible for handling
+// incoming, mined or processed blocks in a
+// concurrency safe way.
+type BlockManager interface {
+	IsSyncing() bool
+	GetSyncStateInfo() *SyncStateInfo
 }

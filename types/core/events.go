@@ -1,9 +1,6 @@
 package core
 
 const (
-	// EventMinerProposedBlockAborted defines an event about an aborted PoW operation
-	EventMinerProposedBlockAborted = "event.aborted"
-
 	// EventNewBlock represents an event about a new block
 	// that was successfully added to the main chain
 	EventNewBlock = "event.newBlock"
@@ -14,4 +11,11 @@ const (
 
 	// EventOrphanBlock represents an event about an orphan block.
 	EventOrphanBlock = "event.orphanBlock"
+
+	// EventFoundBlock represents an event about a
+	// block that has just been mined by the client
+	EventFoundBlock = "event.foundBlock"
+
+	// EventPeerChainInfo indicates an event about a peer's chain info
+	EventPeerChainInfo = "event.newPeerChainInfo"
 )

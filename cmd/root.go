@@ -106,6 +106,7 @@ func init() {
 	rootCmd.PersistentFlags().Bool("debug", false, "Set log level to DEBUG")
 	rootCmd.PersistentFlags().Bool("cpuprofile", false, "Start CPU Profiling")
 	rootCmd.PersistentFlags().Bool("memprofile", false, "Start Memory Profiling")
+	rootCmd.PersistentFlags().Bool("mutexprofile", false, "Start Mutex Profiling")
 	cobra.OnInitialize(initConfig)
 }
 

@@ -49,8 +49,8 @@ const (
 	EventIntroReceived = "event.receivedIntro"
 )
 
-// Gossip represents the peer protocol
-type Gossip struct {
+// GossipManager represents the peer protocol
+type GossipManager struct {
 
 	// mtx is the general mutex
 	mtx sync.RWMutex
@@ -74,8 +74,8 @@ type Gossip struct {
 }
 
 // NewGossip creates a new instance of the Gossip protocol
-func NewGossip(p core.Engine, log logger.Logger) *Gossip {
-	return &Gossip{
+func NewGossip(p core.Engine, log logger.Logger) *GossipManager {
+	return &GossipManager{
 		engine:       p,
 		log:          log,
 		mtx:          sync.RWMutex{},
@@ -84,23 +84,23 @@ func NewGossip(p core.Engine, log logger.Logger) *Gossip {
 }
 
 // SetPeerManager sets the peer manager
-func (g *Gossip) SetPeerManager(pm *peermanager.Manager) {
+func (g *GossipManager) SetPeerManager(pm *peermanager.Manager) {
 	g.pm = pm
 }
 
 // PM returns the local peer's peer manager
-func (g *Gossip) PM() *peermanager.Manager {
+func (g *GossipManager) PM() *peermanager.Manager {
 	return g.pm
 }
 
 // GetBlockchain returns the blockchain manager
-func (g *Gossip) GetBlockchain() types.Blockchain {
+func (g *GossipManager) GetBlockchain() types.Blockchain {
 	return g.engine.GetBlockchain()
 }
 
 // NewStream creates a stream for a given protocol
 // ID and between the local peer and the given remote peer.
-func (g *Gossip) NewStream(remotePeer core.Engine, msgVersion string) (net.Stream,
+func (g *GossipManager) NewStream(remotePeer core.Engine, msgVersion string) (net.Stream,
 	context.CancelFunc, error) {
 	ctxDur := time.Second * time.Duration(g.engine.GetCfg().Node.MessageTimeout)
 	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
@@ -113,7 +113,7 @@ func (g *Gossip) NewStream(remotePeer core.Engine, msgVersion string) (net.Strea
 }
 
 // CheckRemotePeer performs validation against the remote peer.
-func (g *Gossip) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
+func (g *GossipManager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
 
 	s := ws.Stream
 	skipAcquaintanceCheck := false
@@ -144,7 +144,7 @@ func (g *Gossip) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
 
 // Handle wrappers a protocol handler providing an
 // interface to perform pre and post handling operations.
-func (g *Gossip) Handle(handler func(s net.Stream, remotePeer core.Engine) error) func(net.Stream) {
+func (g *GossipManager) Handle(handler func(s net.Stream, remotePeer core.Engine) error) func(net.Stream) {
 	return func(s net.Stream) {
 
 		remoteAddr := util.RemoteAddrFromStream(s)
@@ -181,7 +181,7 @@ func WriteStream(s net.Stream, msg interface{}) error {
 	return nil
 }
 
-func (g *Gossip) logErr(err error, rp core.Engine, msg string) error {
+func (g *GossipManager) logErr(err error, rp core.Engine, msg string) error {
 	g.log.Debug(msg, "Err", err, "PeerID", rp.ShortID())
 	return err
 }
@@ -189,7 +189,7 @@ func (g *Gossip) logErr(err error, rp core.Engine, msg string) error {
 // logConnectErr updates the failure count record of a node
 // that failed to connect. It will also add a 1 hour ban time
 // if the node failed to connect after n tries.
-func (g *Gossip) logConnectErr(err error, rp core.Engine, msg string) error {
+func (g *GossipManager) logConnectErr(err error, rp core.Engine, msg string) error {
 
 	// Increase connection fail count
 	g.PM().IncrConnFailCount(rp.GetAddress())
@@ -200,10 +200,12 @@ func (g *Gossip) logConnectErr(err error, rp core.Engine, msg string) error {
 		g.PM().AddTimeBan(rp, 15*time.Minute)
 	}
 
-	return g.logErr(err, rp, msg)
+	g.log.Debug(msg, "Err", err, "PeerID", rp.ShortID())
+
+	return types.ConnectError(err.Error())
 }
 
 // GetBroadcasters returns the broadcasters
-func (g *Gossip) GetBroadcasters() *core.BroadcastPeers {
+func (g *GossipManager) GetBroadcasters() *core.BroadcastPeers {
 	return g.broadcasters
 }

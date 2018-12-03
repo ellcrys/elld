@@ -3,9 +3,8 @@ package gossip
 import (
 	"fmt"
 
-	"github.com/jinzhu/copier"
-
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 
 	net "github.com/libp2p/go-libp2p-net"
@@ -15,7 +14,7 @@ import (
 // It receives the response Pong message and will start
 // blockchain synchronization if the Pong message includes
 // blockchain information that is better than the local blockchain
-func (g *Gossip) SendPingToPeer(remotePeer core.Engine) error {
+func (g *GossipManager) SendPingToPeer(remotePeer core.Engine) error {
 
 	rpIDShort := remotePeer.ShortID()
 	s, c, err := g.NewStream(remotePeer, config.Versions.Ping)
@@ -56,33 +55,21 @@ func (g *Gossip) SendPingToPeer(remotePeer core.Engine) error {
 	// update the remote peer's timestamp
 	g.PM().AddOrUpdateNode(remotePeer)
 
-	g.log.Info("Received pong response from peer", "PeerID", rpIDShort)
+	g.log.Debug("Received pong response from peer", "PeerID", rpIDShort)
 
-	// compare best chain.
-	// If the blockchain best block has a less
-	// total difficulty, then need to start the block sync process
-	bestBlock, _ = g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().
-		Cmp(pongMsg.BestBlockTotalDifficulty) == -1 {
-		g.log.Info("Local blockchain is behind peer",
-			"PeerID", rpIDShort,
-			"Height", pongMsg.BestBlockNumber,
-			"TotalDifficulty", pongMsg.BestBlockTotalDifficulty)
-		g.log.Info("Attempting to sync blockchain with peer", "PeerID", rpIDShort)
-		go g.SendGetBlockHashes(remotePeer, nil)
-	}
-
-	// Update the current known best
-	// remote block information
-	var bestBlockInfo core.BestBlockInfo
-	copier.Copy(&bestBlockInfo, pongMsg)
-	g.engine.UpdateSyncInfo(&bestBlockInfo)
+	// Broadcast the remote peer's chain information.
+	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+		PeerID:                   remotePeer.StringID(),
+		PeerIDShort:              remotePeer.ShortID(),
+		PeerChainHeight:          pongMsg.BestBlockNumber,
+		PeerChainTotalDifficulty: pongMsg.BestBlockTotalDifficulty,
+	})
 
 	return nil
 }
 
 // SendPing sends a ping message
-func (g *Gossip) SendPing(remotePeers []core.Engine) {
+func (g *GossipManager) SendPing(remotePeers []core.Engine) {
 	sent := 0
 	for _, peer := range remotePeers {
 		if !g.PM().IsAcquainted(peer) {
@@ -105,7 +92,7 @@ func (g *Gossip) SendPing(remotePeers []core.Engine) {
 // blockchain synchronization if the Ping message includes
 // blockchain information that is better than the local
 // blockchain
-func (g *Gossip) OnPing(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnPing(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -139,27 +126,13 @@ func (g *Gossip) OnPing(s net.Stream, rp core.Engine) error {
 
 	g.log.Debug("Sent pong response to peer", "PeerID", rp.ShortID())
 
-	// compare best chain.
-	// If the blockchain best block has a less
-	// total difficulty, then need to start the block sync process
-	bestBlock, _ = g.GetBlockchain().ChainReader().Current()
-	if bestBlock.GetHeader().GetTotalDifficulty().
-		Cmp(msg.BestBlockTotalDifficulty) == -1 {
-
-		g.log.Info("Local blockchain is behind peer",
-			"PeerID", rp.ShortID(),
-			"Height", msg.BestBlockNumber,
-			"TotalDifficulty", msg.BestBlockTotalDifficulty)
-		g.log.Info("Attempting to sync blockchain with peer",
-			"PeerID", rp.ShortID())
-		go g.SendGetBlockHashes(rp, nil)
-	}
-
-	// Update the current known best
-	// remote block information
-	var bestBlockInfo core.BestBlockInfo
-	copier.Copy(&bestBlockInfo, msg)
-	g.engine.UpdateSyncInfo(&bestBlockInfo)
+	// Broadcast the remote peer's chain information.
+	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+		PeerID:                   rp.StringID(),
+		PeerIDShort:              rp.ShortID(),
+		PeerChainHeight:          msg.BestBlockNumber,
+		PeerChainTotalDifficulty: msg.BestBlockTotalDifficulty,
+	})
 
 	return nil
 }

@@ -2,13 +2,13 @@
 package miner
 
 import (
-	crand "crypto/rand"
-	"math"
+	"fmt"
 	"math/big"
-	"math/rand"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/ellcrys/abool"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
@@ -18,18 +18,12 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/fatih/color"
 	"github.com/olebedev/emitter"
 )
 
 const (
-	// EventProposedBlock represent an event about a
-	// block to be mined.
-	EventProposedBlock = "event.proposedBlock"
-
-	// EventFoundBlock represents an event about
-	// a block with a valid PoW nonce
-	EventFoundBlock = "event.foundBlock"
+	// EventWorkerFoundBlock indicates that a worker found a block
+	EventWorkerFoundBlock = "event.workerFoundBlock"
 )
 
 var (
@@ -77,7 +71,7 @@ type Miner struct {
 
 	// processing indicates that a block is being
 	// processed for inclusion in a branch
-	processing bool
+	processing *abool.AtomicBool
 
 	// lastFoundBlockHash is the hash of the last
 	// block found by this miner
@@ -102,6 +96,7 @@ func NewMiner(mineKey *crypto.Key, blockMaker types.BlockMaker,
 		blakimoto:  blakimoto.ConfiguredBlakimoto(blakimoto.Mode(cfg.Miner.Mode), log),
 		hashrate:   metrics.NewMeter(),
 		done:       make(chan bool),
+		processing: abool.New(),
 	}
 }
 
@@ -111,19 +106,19 @@ func (m *Miner) Begin() error {
 
 	m.Lock()
 	m.done = make(chan bool)
-	m.Unlock()
 
 	// If the number of threads haven't been set,
-	// Set number of threads to the available
-	// number of CPUs
+	// set number of threads to the available number of CPUs
 	if m.numThreads == 0 {
 		m.numThreads = runtime.NumCPU()
 	}
 
-	// Handle incoming events
-	go m.handleEvents()
-	go m.handleInternalEvents()
+	m.Unlock()
 
+	// Handle incoming events
+	go m.handleWorkersEvents()
+
+	// start worker
 	if err := m.startWorkers(); err != nil {
 		return err
 	}
@@ -148,14 +143,14 @@ func (m *Miner) startWorkers() error {
 	}
 
 	// Prepare the proposed block.
-	m.blakimoto.Prepare(m.blockMaker.ChainReader(),
-		proposed.GetHeader())
+	m.blakimoto.Prepare(m.blockMaker.ChainReader(), proposed.GetHeader())
 
 	m.Lock()
 	m.workers = []*Worker{}
 	m.Unlock()
 
 	for i := 0; i < m.numThreads; i++ {
+		m.Lock()
 		w := &Worker{
 			event:      m.iEvent,
 			id:         i,
@@ -164,12 +159,9 @@ func (m *Miner) startWorkers() error {
 			blakimoto:  m.blakimoto,
 			hashrate:   m.hashrate,
 		}
-
-		m.Lock()
 		m.workers = append(m.workers, w)
-		m.Unlock()
-
 		go w.mine(proposed)
+		m.Unlock()
 	}
 
 	return nil
@@ -191,17 +183,14 @@ func (m *Miner) SetNumThreads(n int) {
 	}
 }
 
-// handleEvents handles events from
-// components and processes outside the miner.
-func (m *Miner) handleEvents() {
-	go func() {
-		for {
-			select {
-			case evt := <-m.event.Once(core.EventNewBlock):
-				m.OnNewBlock(evt.Args[0].(*core.Block), evt.Args[1].(types.ChainReader))
-			}
-		}
-	}()
+// RestartWorkers restarts workers. Any previous task
+// is immediately dropped and a new block is proposed and worked on
+func (m *Miner) RestartWorkers() error {
+	m.stopWorkers()
+	if !m.isMining() {
+		return fmt.Errorf("miner has stopped")
+	}
+	return m.startWorkers()
 }
 
 // processBlock computes hash and signature and
@@ -209,38 +198,93 @@ func (m *Miner) handleEvents() {
 func (m *Miner) processBlock(fb *FoundBlock) error {
 
 	// Update the block header with the found nonce
-	header := fb.block.GetHeader().Copy()
-	header.SetNonce(util.EncodeNonce(fb.nonce))
-	fb.block = fb.block.ReplaceHeader(header)
+	header := fb.Block.GetHeader().Copy()
+	header.SetNonce(util.EncodeNonce(fb.Nonce))
+	fb.Block = fb.Block.ReplaceHeader(header)
 
-	// Compute and set hash and signature
-	fb.block.SetHash(fb.block.ComputeHash())
-	blockSig, _ := core.BlockSign(fb.block, m.minerKey.PrivKey().Base58())
-	fb.block.SetSignature(blockSig)
+	// Compute and set block hash and signature
+	fb.Block.SetHash(fb.Block.ComputeHash())
+	blockSig, _ := core.BlockSign(fb.Block, m.minerKey.PrivKey().Base58())
+	fb.Block.SetSignature(blockSig)
 
-	m.Lock()
-	prev := m.lastFoundBlockHash
-	m.lastFoundBlockHash = fb.block.GetHash()
-	m.Unlock()
+	errCh := make(chan error)
+	m.event.Emit(core.EventFoundBlock, fb, errCh)
+	return <-errCh
+}
 
-	// Attempt to append the block to a branch
-	_, err := m.blockMaker.ProcessBlock(fb.block)
-	if err != nil {
-		m.log.Warn("Failed to process block", "Err", err.Error())
-		m.Lock()
-		m.lastFoundBlockHash = prev
-		m.Unlock()
-		return err
+// onFoundBlock is called when a worker finds a
+// valid nonce for the current proposed block.
+func (m *Miner) onFoundBlock(fb *FoundBlock) {
+
+	if !m.processing.SetToIf(false, true) {
+		m.log.Debug("Rejected a block. Currently processing a winner")
+		return
 	}
 
-	m.log.Info(color.GreenString("New block mined"),
-		"Number", fb.block.GetNumber(),
-		"Difficulty", fb.block.GetHeader().GetDifficulty(),
-		"TotalDifficulty", fb.block.GetHeader().GetTotalDifficulty(),
-		"Hashrate", m.blakimoto.Hashrate(),
-		"PoW Time", time.Since(fb.started))
+	// Stop all workers who are currently
+	// trying to solve PoW for the current round
+	// that has just been solved.
+	m.stopWorkers()
 
-	return nil
+	// Attempt to process the block.
+	// If it failed, restart the workers
+	if err := m.processBlock(fb); err != nil {
+		m.processing.SetTo(false)
+		m.RestartWorkers()
+		return
+	}
+
+	m.processing.SetTo(false)
+
+	if m.isMining() {
+
+		// If the new block timestamp is the same as the current
+		// time, we should wait for 1 second so we don't allow
+		// the workers create and work on an invalid block that
+		// share same time as their parent.
+		// This condition is common when difficulty is extremely low.
+		if fb.Block.GetHeader().GetTimestamp() == time.Now().Unix() {
+			time.Sleep(1 * time.Second)
+		}
+
+		if err := m.startWorkers(); err != nil {
+			m.log.Debug("Unable to start workers", "Err", err.Error())
+		}
+	}
+}
+
+// handleWorkersEvents handles events from
+// components and processes within the miner.
+func (m *Miner) handleWorkersEvents() {
+	for {
+		select {
+		case evt := <-m.iEvent.Once(EventWorkerFoundBlock, emitter.Sync):
+			m.onFoundBlock(evt.Args[0].(*FoundBlock))
+		}
+	}
+}
+
+// getProposedBlock creates a full valid block
+// compatible with the main chain.
+func (m *Miner) getProposedBlock(txs []types.Transaction) (types.Block, error) {
+	proposedBlock, err := m.blockMaker.Generate(&types.GenerateBlockParams{
+		Transactions: txs,
+		Creator:      m.minerKey,
+		Nonce:        util.EncodeNonce(1),
+		Difficulty:   new(big.Int).SetInt64(1),
+		AddFeeAlloc:  true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return proposedBlock, nil
+}
+
+// IsMining checks whether is active
+func (m *Miner) isMining() bool {
+	m.RLock()
+	defer m.RUnlock()
+	return m.mining
 }
 
 // Stop the miner
@@ -266,203 +310,4 @@ func (m *Miner) stopWorkers() {
 	for _, w := range workers {
 		w.Stop()
 	}
-}
-
-// onFoundBlock is called when a worker finds a
-// valid nonce for the current proposed block.
-func (m *Miner) onFoundBlock(fb *FoundBlock) {
-
-	m.Lock()
-	if m.processing {
-		m.Unlock()
-		m.log.Debug("Rejected a block. Currently processing a winner")
-		return
-	}
-
-	m.processing = true
-	m.Unlock()
-
-	// Stop all workers
-	m.stopWorkers()
-
-	// Process block
-	m.processBlock(fb)
-
-	// wait a second so the next block
-	// does not have same time as its parent
-	time.Sleep(1 * time.Second)
-
-	m.Lock()
-	m.processing = false
-	m.Unlock()
-
-	if m.isMining() {
-		if err := m.startWorkers(); err != nil {
-			m.log.Debug("Unable to start workers", "Err", err.Error())
-		}
-	}
-}
-
-// handleInternalEvents handles events from
-// components and processes within the miner.
-func (m *Miner) handleInternalEvents() {
-	go func() {
-		for {
-			select {
-			case evt := <-m.iEvent.Once(EventFoundBlock, emitter.Sync):
-				m.onFoundBlock(evt.Args[0].(*FoundBlock))
-			}
-		}
-	}()
-}
-
-// IsMining checks whether is active
-func (m *Miner) isMining() bool {
-	m.RLock()
-	defer m.RUnlock()
-	return m.mining
-}
-
-// getProposedBlock creates a full valid block
-// compatible with the main chain.
-func (m *Miner) getProposedBlock(txs []types.Transaction) (types.Block, error) {
-	proposedBlock, err := m.blockMaker.Generate(&types.GenerateBlockParams{
-		Transactions: txs,
-		Creator:      m.minerKey,
-		Nonce:        util.EncodeNonce(1),
-		Difficulty:   new(big.Int).SetInt64(1),
-		AddFeeAlloc:  true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return proposedBlock, nil
-}
-
-// OnNewBlock is called when a new block
-// has been appended to the main chain.
-// We must restart a new mining round.
-func (m *Miner) OnNewBlock(newBlock *core.Block, chain types.ChainReader) {
-
-	// If this block was the one that was previous found
-	// by this miner, we do not need to stop the workers
-	// as they had been stopped after the block was processed.
-	m.Lock()
-	if m.lastFoundBlockHash.Equal(newBlock.GetHash()) {
-		m.Unlock()
-		return
-	}
-	m.Unlock()
-
-	m.stopWorkers()
-
-	if err := m.startWorkers(); err != nil {
-		m.log.Debug("Unable to restart workers", "Err", err.Error())
-	}
-}
-
-// FoundBlock represents a block with a valid nonce
-type FoundBlock struct {
-	workerID int
-	block    types.Block
-	nonce    uint64
-	started  time.Time
-	finished time.Time
-}
-
-// Worker performs proof-of-work computation
-type Worker struct {
-	sync.RWMutex
-	event      *emitter.Emitter
-	id         int
-	log        logger.Logger
-	blakimoto  *blakimoto.Blakimoto
-	blockMaker types.BlockMaker
-	stop       bool
-	hashrate   metrics.Meter
-}
-
-// Stop the worker
-func (w *Worker) Stop() {
-	w.Lock()
-	w.stop = true
-	w.Unlock()
-}
-
-func (w *Worker) isStopped() bool {
-	w.RLock()
-	defer w.RUnlock()
-	return w.stop
-}
-
-func (w *Worker) mine(block types.Block) error {
-
-	// Generate random number source
-	source, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
-	if err != nil {
-		return err
-	}
-
-	r := rand.New(rand.NewSource(source.Int64()))
-	seed := uint64(r.Int63())
-	nonce := seed
-
-	// Extract some data from the header.
-	// Compute difficulty target
-	var (
-		header   = block.GetHeader()
-		hash     = header.GetHashNoNonce().Bytes()
-		target   = new(big.Int).Div(maxUint256, header.GetDifficulty())
-		attempts = int64(0)
-	)
-
-	w.log.Debug("Started search for new nonces", "Seed", seed, "WorkerID", w.id)
-
-	now := time.Now()
-	for !w.isStopped() {
-
-		// We don't have to update hash rate on every
-		// nonce, so update after after 2^X nonces
-		attempts++
-		if (attempts % (1 << 5)) == 0 {
-			w.hashrate.Mark(attempts)
-			attempts = 0
-		}
-
-		foundBlock := &FoundBlock{
-			block:    block,
-			workerID: w.id,
-			started:  now,
-		}
-
-		// Compute the PoW value of this nonce
-		result := blakimoto.BlakeHash(hash, nonce)
-		if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
-
-			foundBlock.finished = time.Now()
-			foundBlock.nonce = nonce
-
-			// Check whether there is a request to stop
-			// this current round
-			if w.isStopped() {
-				w.log.Debug("Nonce found but discarded", "Attempts", nonce-seed,
-					"Nonce", nonce,
-					"WorkerID", w.id)
-				break
-			}
-
-			w.log.Debug("Nonce found", "Attempts", nonce-seed, "Nonce", nonce,
-				"WorkerID", w.id)
-
-			// Broadcast this block
-			w.event.Emit(EventFoundBlock, foundBlock)
-
-			w.Stop()
-		}
-		nonce++
-	}
-
-	w.log.Debug("Miner worker has stopped", "ID", w.id)
-
-	return nil
 }

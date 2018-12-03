@@ -9,7 +9,7 @@ import (
 // SendGetAddrToPeer sends a core.GetAddr message to a remote peer.
 // The remote peer will respond with a core.Addr message which
 // must be processed using the OnAddr handler and return the response.
-func (g *Gossip) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
+func (g *GossipManager) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
 
 	s, c, err := g.NewStream(rp, config.Versions.GetAddr)
 	if err != nil {
@@ -39,7 +39,7 @@ func (g *Gossip) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
 // SendGetAddr sends simultaneous GetAddr message
 // to the given peers. GetAddr returns with a list
 // of address that should be relayed to other peers.
-func (g *Gossip) SendGetAddr(remotePeers []core.Engine) error {
+func (g *GossipManager) SendGetAddr(remotePeers []core.Engine) error {
 
 	// we need to know if we need more peers before we requests
 	// more addresses from other peers.
@@ -69,7 +69,7 @@ func (g *Gossip) SendGetAddr(remotePeers []core.Engine) error {
 
 // OnGetAddr processes a core.GetAddr request.
 // Sends a list of active addresses to the sender
-func (g *Gossip) OnGetAddr(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnGetAddr(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
