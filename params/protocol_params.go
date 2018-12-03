@@ -34,7 +34,7 @@ var (
 var (
 	// MaxGetBlockHashes is the max number of block headers to request
 	// from a remote peer per request.
-	MaxGetBlockHashes = int64(500)
+	MaxGetBlockHashes = int64(5)
 )
 
 var (
@@ -54,7 +54,7 @@ var (
 
 	// MaxBlockTxsSize is the maximum size of
 	// transactions that can fit in a block
-	MaxBlockTxsSize = int64(10000000)
+	MaxBlockTxsSize = int64(9998976)
 
 	// PoolCapacity is the max. number of transaction
 	// that can be added to the transaction pool at
