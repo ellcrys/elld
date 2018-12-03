@@ -9,7 +9,7 @@ import (
 
 // SelfAdvertise sends an Addr message containing
 // the address of the local peer to all connected peers.
-func (g *Gossip) SelfAdvertise(connectedPeers []core.Engine) int {
+func (g *GossipManager) SelfAdvertise(connectedPeers []core.Engine) int {
 
 	msg := &core.Addr{
 		Addresses: []*core.Address{

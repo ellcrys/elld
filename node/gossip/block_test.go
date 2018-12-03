@@ -194,6 +194,8 @@ func TestBlock(t *testing.T) {
 			// [1]
 			g.Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
 
+				var result *core.BlockHashes
+
 				g.BeforeEach(func() {
 					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
 					_, err := rp.GetBlockchain().ProcessBlock(block2)
@@ -203,21 +205,20 @@ func TestBlock(t *testing.T) {
 					_, err = rp.GetBlockchain().ProcessBlock(block3)
 					Expect(err).To(BeNil())
 
-					err = lp.Gossip().SendGetBlockHashes(rp, nil)
+					result, err = lp.Gossip().SendGetBlockHashes(rp, nil)
 					Expect(err).To(BeNil())
 				})
 
 				g.It("should get 2 block hashes from remote peer", func() {
-					Expect(lp.GetBlockHashQueue().Size()).To(Equal(2))
+					Expect(len(result.Hashes)).To(Equal(2))
 				})
 
 				g.Specify("first header number = 2 and second header number = 3", func() {
-					h2 := lp.GetBlockHashQueue().Head()
-					h3 := lp.GetBlockHashQueue().Head()
-					Expect(h2).To(BeAssignableToTypeOf(&core.BlockHash{}))
-					Expect(h2.(*core.BlockHash).Hash).To(Equal(block2.GetHash()))
-					Expect(h3).To(BeAssignableToTypeOf(&core.BlockHash{}))
-					Expect(h3.(*core.BlockHash).Hash).To(Equal(block3.GetHash()))
+					Expect(len(result.Hashes)).To(Equal(2))
+					h2 := result.Hashes[0]
+					h3 := result.Hashes[1]
+					Expect(h2).To(Equal(block2.GetHash()))
+					Expect(h3).To(Equal(block3.GetHash()))
 				})
 			})
 
@@ -230,24 +231,25 @@ func TestBlock(t *testing.T) {
 			g.Context("when remote blockchain shape is [1]-[2] and local peer blockchain shape is [1]", func() {
 
 				var block2 types.Block
+				var result *core.BlockHashes
 
 				g.BeforeEach(func() {
 					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
 					_, err := rp.GetBlockchain().ProcessBlock(block2)
 					Expect(err).To(BeNil())
 
-					err = lp.Gossip().SendGetBlockHashes(rp, nil)
+					result, err = lp.Gossip().SendGetBlockHashes(rp, nil)
 					Expect(err).To(BeNil())
 				})
 
 				g.It("should get 1 block hash from remote peer", func() {
-					Expect(lp.GetBlockHashQueue().Size()).To(Equal(1))
+					Expect(result.Hashes).To(HaveLen(1))
 				})
 
 				g.Specify("the block hash must match hash of block [2]", func() {
-					hash := lp.GetBlockHashQueue().Head()
-					Expect(hash).To(BeAssignableToTypeOf(&core.BlockHash{}))
-					Expect(hash.(*core.BlockHash).Hash).To(Equal(block2.GetHash()))
+					Expect(result.Hashes).To(HaveLen(1))
+					hash := result.Hashes[0]
+					Expect(hash).To(Equal(block2.GetHash()))
 				})
 			})
 
@@ -259,13 +261,16 @@ func TestBlock(t *testing.T) {
 			// [1]
 			g.Context("when remote peer's blockchain shape is [1] and local peer's blockchain shape is [1]", func() {
 
+				var result *core.BlockHashes
+				var err error
+
 				g.BeforeEach(func() {
-					err := lp.Gossip().SendGetBlockHashes(rp, nil)
+					result, err = lp.Gossip().SendGetBlockHashes(rp, nil)
 					Expect(err).To(BeNil())
 				})
 
 				g.Specify("local peer block hash queue should be empty", func() {
-					Expect(lp.GetBlockHashQueue().Size()).To(Equal(0))
+					Expect(result.Hashes).To(HaveLen(0))
 				})
 			})
 
@@ -296,34 +301,39 @@ func TestBlock(t *testing.T) {
 
 				g.When("locator hash is block [2] of Chain B", func() {
 
+					var err error
+					var result *core.BlockHashes
+
 					g.BeforeEach(func() {
-						err := lp.Gossip().SendGetBlockHashes(rp, []util.Hash{chainBBlock2.GetHash()})
+						result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{chainBBlock2.GetHash()})
 						Expect(err).To(BeNil())
 					})
 
 					g.Specify("the block hash queue should contain 2 hashes from ChainA", func() {
-						Expect(lp.GetBlockHashQueue().Size()).To(Equal(2))
+						Expect(result.Hashes).To(HaveCap(2))
+
 						g.Context("first header number = [2] and second header number = [3]", func() {
-							h2 := lp.GetBlockHashQueue().Head()
-							h3 := lp.GetBlockHashQueue().Head()
-							Expect(h2).To(BeAssignableToTypeOf(&core.BlockHash{}))
-							Expect(h2.(*core.BlockHash).Hash).To(Equal(block2.GetHash()))
-							Expect(h3).To(BeAssignableToTypeOf(&core.BlockHash{}))
-							Expect(h3.(*core.BlockHash).Hash).To(Equal(block3.GetHash()))
+							h2 := result.Hashes[0]
+							h3 := result.Hashes[1]
+							Expect(h2).To(Equal(block2.GetHash()))
+							Expect(h3).To(Equal(block3.GetHash()))
 						})
 					})
 				})
 			})
 
-			g.Context("when no locator/block hash is shared with the remote peer", func() {
+			g.Context("when no known locator/block hash is shared with the remote peer", func() {
+
+				var err error
+				var result *core.BlockHashes
 
 				g.BeforeEach(func() {
-					err := lp.Gossip().SendGetBlockHashes(rp, []util.Hash{util.StrToHash("unknown")})
+					result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{util.StrToHash("unknown")})
 					Expect(err).To(BeNil())
 				})
 
 				g.It("local peer's block hash queue should be empty", func() {
-					Expect(lp.GetBlockHashQueue().Size()).To(Equal(0))
+					Expect(result.Hashes).To(HaveLen(0))
 				})
 			})
 		})
@@ -350,27 +360,13 @@ func TestBlock(t *testing.T) {
 						Expect(err).To(BeNil())
 					})
 
-					g.It("should successfully fetch block [2] and [3] and append to local peer's chain", func() {
+					g.It("should successfully fetch block [2] and [3]", func() {
 						hashes := []util.Hash{block2.GetHash(), block3.GetHash()}
-						err := lp.Gossip().SendGetBlockBodies(rp, hashes)
+						blockBodies, err := lp.Gossip().SendGetBlockBodies(rp, hashes)
 						Expect(err).To(BeNil())
-
-						lpTip, err := lp.GetBlockchain().ChainReader().Current()
-						Expect(err).To(BeNil())
-						Expect(lpTip.GetNumber()).To(Equal(uint64(3)))
-					})
-				})
-
-				g.Context("no hash is requested", func() {
-					g.BeforeEach(func() {
-						err := lp.Gossip().SendGetBlockBodies(rp, []util.Hash{})
-						Expect(err).To(BeNil())
-					})
-
-					g.Specify("local chain tip should remain unchanged", func() {
-						lpTip, err := lp.GetBlockchain().ChainReader().Current()
-						Expect(err).To(BeNil())
-						Expect(lpTip.GetNumber()).To(Equal(uint64(1)))
+						Expect(blockBodies.Blocks).To(HaveCap(2))
+						Expect(blockBodies.Blocks[0].Header.Number).To(Equal(uint64(2)))
+						Expect(blockBodies.Blocks[1].Header.Number).To(Equal(uint64(3)))
 					})
 				})
 			})

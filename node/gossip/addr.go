@@ -14,7 +14,7 @@ import (
 )
 
 // onAddr processes core.Addr message
-func (g *Gossip) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
+func (g *GossipManager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 
 	resp := &core.Addr{}
 	if err := ReadStream(s, resp); err != nil {
@@ -61,7 +61,7 @@ func (g *Gossip) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 
 // OnAddr handles incoming core.Addr message.
 // Received addresses are relayed.
-func (g *Gossip) OnAddr(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnAddr(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -88,7 +88,7 @@ func (g *Gossip) OnAddr(s net.Stream, rp core.Engine) error {
 // They are returned on subsequent calls and only
 // renewed when there are less than N addresses or the
 // cache is over 24 hours since it was last updated.
-func (g *Gossip) PickBroadcasters(addresses []*core.Address, n int) *core.BroadcastPeers {
+func (g *GossipManager) PickBroadcasters(addresses []*core.Address, n int) *core.BroadcastPeers {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
@@ -166,7 +166,7 @@ func makeAddrRelayHistoryKey(addr *core.Addr, peer core.Engine) []interface{} {
 // * Only addresses within 60 minutes from
 //   the current time.
 // * Only routable addresses are allowed.
-func (g *Gossip) RelayAddresses(addrs []*core.Address) []error {
+func (g *GossipManager) RelayAddresses(addrs []*core.Address) []error {
 
 	var errs []error
 	var relayable []*core.Address

@@ -11,8 +11,6 @@ import (
 
 	"github.com/ellcrys/elld/node/peermanager"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
@@ -20,13 +18,11 @@ import (
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/node/gossip"
-	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/elld/util/queue"
 
 	"github.com/ellcrys/elld/config"
 
@@ -45,7 +41,6 @@ import (
 // Node represents a network node
 type Node struct {
 	mtx                 sync.RWMutex
-	syncMtx             sync.RWMutex
 	cfg                 *config.EngineConfig // node config
 	address             util.NodeAddr        // node address
 	IP                  net.IP               // node ip
@@ -53,7 +48,7 @@ type Node struct {
 	wg                  sync.WaitGroup       // wait group for preventing the main thread from exiting
 	localNode           *Node                // local node
 	peerManager         *peermanager.Manager // node manager for managing connections to other remote peers
-	gProtoc             core.Gossip          // gossip protocol instance
+	gossipMgr           core.Gossip          // gossip protocol instance
 	remote              bool                 // remote indicates the node represents a remote peer
 	lastSeen            time.Time            // the last time this node was seen
 	createdAt           time.Time            // the first time this node was seen/added
@@ -67,13 +62,12 @@ type Node struct {
 	event               *emitter.Emitter    // Provides access event emitting service
 	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
 	bChain              types.Blockchain    // The blockchain manager
-	blockHashQueue      *queue.Queue        // Contains headers collected during block syncing
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
-	syncing             bool                // Indicates the process of syncing the blockchain with peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	tickerDone          chan bool
 	hardcodedPeers      map[string]struct{}
+	blockManager        core.BlockManager
 }
 
 // NewNode creates a node instance at the specified port
@@ -111,7 +105,6 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 
 	node := &Node{
 		mtx:            sync.RWMutex{},
-		syncMtx:        sync.RWMutex{},
 		cfg:            cfg,
 		address:        util.AddressFromHost(host),
 		host:           host,
@@ -122,7 +115,6 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		db:             db,
 		event:          &emitter.Emitter{},
 		txsRelayQueue:  txpool.NewQueueNoSort(cfg.TxPool.Capacity),
-		blockHashQueue: queue.New(),
 		history:        cache.NewActiveCache(5000),
 		intros:         cache.NewActiveCache(50000),
 		tickerDone:     make(chan bool),
@@ -183,9 +175,8 @@ func (n *Node) NewRemoteNode(address util.NodeAddr) core.Engine {
 		address:        address,
 		remote:         true,
 		mtx:            sync.RWMutex{},
-		syncMtx:        sync.RWMutex{},
 		localNode:      n,
-		gProtoc:        n.gProtoc,
+		gossipMgr:      n.gossipMgr,
 		createdAt:      time.Now(),
 		lastSeen:       time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
@@ -201,7 +192,6 @@ func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
 		address:        util.NodeAddr(address.String()),
 		remote:         true,
 		mtx:            sync.RWMutex{},
-		syncMtx:        sync.RWMutex{},
 		localNode:      localNode,
 		createdAt:      time.Now(),
 		lastSeen:       time.Now(),
@@ -217,7 +207,6 @@ func NewAlmostEmptyNode() *Node {
 	return &Node{
 		createdAt:      time.Now(),
 		mtx:            sync.RWMutex{},
-		syncMtx:        sync.RWMutex{},
 		hardcodedPeers: make(map[string]struct{}),
 	}
 }
@@ -257,13 +246,6 @@ func (n *Node) DB() elldb.DB {
 	return n.db
 }
 
-// SetSyncing sets the sync status
-func (n *Node) SetSyncing(syncing bool) {
-	n.syncMtx.Lock()
-	defer n.syncMtx.Unlock()
-	n.syncing = syncing
-}
-
 // SetCfg sets the node's config
 func (n *Node) SetCfg(cfg *config.EngineConfig) {
 	*n.cfg = *cfg
@@ -284,96 +266,9 @@ func (n *Node) IsInbound() bool {
 	return n.inbound
 }
 
-// UpdateSyncInfo sets a given remote best
-// block info as the best known remote block
-// only when it is better than the local best block.
-// Using this information, it can tell when syncing
-// has stopped and as such, updates the syncing status.
-func (n *Node) UpdateSyncInfo(bi *core.BestBlockInfo) {
-	n.syncMtx.Lock()
-	defer n.syncMtx.Unlock()
-
-	if bi == nil {
-		goto compare
-	}
-
-	// If we have not seen block info of any
-	// remote peer, we can set to the bi.
-	// But if the current best remote block
-	// has a lower total difficulty than the
-	// latest, we update to the latests
-	if n.bestRemoteBlockInfo == nil {
-		n.bestRemoteBlockInfo = bi
-	} else if n.bestRemoteBlockInfo.BestBlockTotalDifficulty.
-		Cmp(bi.BestBlockTotalDifficulty) == -1 {
-		n.bestRemoteBlockInfo = bi
-	}
-
-compare:
-
-	// Do nothing if we still don't know the best remote
-	// block info. This means the local blockchain is still
-	// considered the better chain
-
-	if n.bestRemoteBlockInfo == nil {
-		return
-	}
-
-	// We need to compare the local best block
-	// with the best remote block. If the local
-	// block is equal or better, we set syncing status
-	// to false
-	localBestBlock, _ := n.GetBlockchain().ChainReader().Current()
-	if localBestBlock.GetHeader().GetTotalDifficulty().
-		Cmp(n.bestRemoteBlockInfo.BestBlockTotalDifficulty) > -1 {
-		n.syncing = false
-	}
-}
-
-// GetSyncStateInfo generates status and progress
-// information about the current blockchain sync operation
-func (n *Node) GetSyncStateInfo() *core.SyncStateInfo {
-
-	// No need to compute when we are
-	// not currently syncing
-	if !n.isSyncing() {
-		return nil
-	}
-
-	if n.bestRemoteBlockInfo == nil {
-		return nil
-	}
-
-	var syncState = &core.SyncStateInfo{}
-
-	// Get the current local best chain
-	localBestBlock, _ := n.GetBlockchain().ChainReader().Current()
-	syncState.TargetTD = n.bestRemoteBlockInfo.BestBlockTotalDifficulty
-	syncState.TargetChainHeight = n.bestRemoteBlockInfo.BestBlockNumber
-	syncState.CurrentTD = localBestBlock.GetHeader().GetTotalDifficulty()
-	syncState.CurrentChainHeight = localBestBlock.GetNumber()
-
-	// compute progress percentage based
-	// on block height differences
-	pct := float64(100) * (float64(syncState.CurrentChainHeight) /
-		float64(syncState.TargetChainHeight))
-	syncState.ProgressPercent, _ = decimal.NewFromFloat(pct).
-		Round(1).Float64()
-
-	return syncState
-}
-
-// isSyncing checks whether block
-// synchronization is ongoing
-func (n *Node) isSyncing() bool {
-	n.syncMtx.RLock()
-	defer n.syncMtx.RUnlock()
-	return n.syncing
-}
-
 // Gossip returns the set protocol
 func (n *Node) Gossip() core.Gossip {
-	return n.gProtoc
+	return n.gossipMgr
 }
 
 // PM returns the peer manager
@@ -400,8 +295,8 @@ func (n *Node) GetBlockchain() types.Blockchain {
 }
 
 // SetBlockchain sets the blockchain
-func (n *Node) SetBlockchain(bchain types.Blockchain) {
-	n.bChain = bchain
+func (n *Node) SetBlockchain(bChain types.Blockchain) {
+	n.bChain = bChain
 }
 
 // IsHardcodedSeed checks whether
@@ -481,6 +376,11 @@ func (n *Node) SetEventEmitter(e *emitter.Emitter) {
 	n.event = e
 }
 
+// SetBlockManager sets the block manager
+func (n *Node) SetBlockManager(bm core.BlockManager) {
+	n.blockManager = bm
+}
+
 // SetLocalNode sets the node as the
 // local node to n which makes n the "remote" node
 func (n *Node) SetLocalNode(node *Node) {
@@ -510,8 +410,8 @@ func (n *Node) AddToPeerStore(node core.Engine) core.Engine {
 
 // SetGossipProtocol sets the
 // gossip protocol implementation
-func (n *Node) SetGossipProtocol(protoc *gossip.Gossip) {
-	n.gProtoc = protoc
+func (n *Node) SetGossipProtocol(mgr *gossip.GossipManager) {
+	n.gossipMgr = mgr
 }
 
 // GetHost returns the node's host
@@ -522,11 +422,6 @@ func (n *Node) GetHost() host.Host {
 // SetHost sets the host
 func (n *Node) SetHost(h host.Host) {
 	n.host = h
-}
-
-// GetBlockHashQueue returns the block hash queue
-func (n *Node) GetBlockHashQueue() *queue.Queue {
-	return n.blockHashQueue
 }
 
 // Peerstore returns the Peerstore
@@ -620,7 +515,7 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 		// IPFS Multiaddr format
 		rp := n.NewRemoteNode(addr)
 		rp.SetHardcodedState(hardcoded)
-		rp.SetGossipManager(n.gProtoc)
+		rp.SetGossipManager(n.gossipMgr)
 		n.peerManager.AddPeer(rp)
 	}
 
@@ -655,7 +550,7 @@ func (n *Node) SetHardcodedState(v bool) {
 
 // SetGossipManager sets the gossip manager
 func (n *Node) SetGossipManager(m core.Gossip) {
-	n.gProtoc = m
+	n.gossipMgr = m
 }
 
 // relayTx continuously relays transactions
@@ -695,29 +590,6 @@ func (n *Node) Start() {
 
 	// Handle incoming events
 	go n.handleEvents()
-
-	// start a block body requester
-	// workers
-	for i := 0; i < params.NumBlockBodiesRequesters; i++ {
-		go n.ProcessBlockHashes()
-	}
-}
-
-// relayBlock attempts to relay non-genesis
-//  a block to active peers.
-func (n *Node) relayBlock(block types.Block) {
-	if block.GetNumber() > 1 {
-		n.Gossip().RelayBlock(block, n.peerManager.GetConnectedPeers())
-	}
-}
-
-func (n *Node) handleNewBlockEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventNewBlock):
-			n.relayBlock(evt.Args[0].(types.Block))
-		}
-	}
 }
 
 func (n *Node) handleNewTransactionEvent() {
@@ -732,113 +604,8 @@ func (n *Node) handleNewTransactionEvent() {
 	}
 }
 
-func (n *Node) handleOrphanBlockEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventOrphanBlock):
-			// We need to request the parent block from the
-			// peer who sent it to us (a.k.a broadcaster)
-			orphanBlock := evt.Args[0].(*core.Block)
-			parentHash := orphanBlock.GetHeader().GetParentHash()
-			n.log.Debug("Requesting orphan parent block from broadcaster",
-				"BlockNo", orphanBlock.GetNumber(),
-				"ParentBlockHash", parentHash.SS())
-			n.gProtoc.RequestBlock(orphanBlock.Broadcaster, parentHash)
-		}
-	}
-}
-
-func (n *Node) handleAbortedMinerBlockEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventOrphanBlock):
-			// handle core.EventMinerProposedBlockAborted
-			// listens for aborted miner blocks and attempt
-			// to re-add the transactions to the pool.
-			abortedBlock := evt.Args[0].(*core.Block)
-			n.log.Debug("Attempting to re-add transactions "+
-				"in aborted miner block",
-				"NumTx", len(abortedBlock.Transactions), "BlockNo", abortedBlock.GetNumber())
-			for _, tx := range abortedBlock.Transactions {
-				if err := n.AddTransaction(tx); err != nil {
-					n.log.Debug("failed to re-add transaction",
-						"Err", err.Error())
-				}
-			}
-		}
-	}
-}
-
 func (n *Node) handleEvents() {
-	go n.handleNewBlockEvent()
 	go n.handleNewTransactionEvent()
-	go n.handleOrphanBlockEvent()
-	go n.handleAbortedMinerBlockEvent()
-}
-
-// ProcessBlockHashes collects hashes and request for their
-// block bodies from the initial broadcaster if the headers.
-func (n *Node) ProcessBlockHashes() {
-
-	ticketDur := 5 * time.Second
-	if n.TestMode() {
-		ticketDur = 1 * time.Nanosecond
-	}
-
-	ticker := time.NewTicker(ticketDur)
-	for {
-		select {
-		case <-ticker.C:
-
-			if n.blockHashQueue.Empty() {
-				continue
-			}
-
-			hashes := []util.Hash{}
-			var broadcaster core.Engine
-			otherBlockHashes := []queue.Item{}
-
-			// Collect hash of headers sent by a
-			// particular broadcaster. Temporarily
-			// keep the others in a cache to be added back
-			// in the queue when we have collected some hashes
-			n.mtx.Lock()
-			for !n.blockHashQueue.Empty() && int64(len(hashes)) <
-				params.MaxGetBlockBodiesHashes {
-
-				bh := n.blockHashQueue.Head()
-				if bh == nil {
-					continue
-				}
-
-				if broadcaster != nil && bh.(*core.BlockHash).Broadcaster.StringID() !=
-					broadcaster.StringID() {
-					otherBlockHashes = append(otherBlockHashes, bh)
-					continue
-				}
-
-				hashes = append(hashes, bh.(*core.BlockHash).Hash)
-				broadcaster = bh.(*core.BlockHash).Broadcaster
-			}
-
-			// append the others that were not selected
-			// back to the block hash queue
-			for _, bh := range otherBlockHashes {
-				n.blockHashQueue.Append(bh)
-			}
-
-			n.mtx.Unlock()
-
-			// send block body request
-			if len(hashes) > 0 {
-				n.gProtoc.SendGetBlockBodies(broadcaster, hashes)
-			}
-
-		case <-n.tickerDone:
-			ticker.Stop()
-			return
-		}
-	}
 }
 
 // Wait forces the current thread to wait for the node

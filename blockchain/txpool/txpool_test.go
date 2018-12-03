@@ -11,7 +11,6 @@ import (
 
 	"github.com/ellcrys/elld/util"
 	. "github.com/ncodes/goblin"
-	"github.com/olebedev/emitter"
 	. "github.com/onsi/gomega"
 )
 
@@ -219,16 +218,13 @@ func TestTxPool(t *testing.T) {
 			})
 		})
 
-		g.Describe(".removeTransactionsInBlock", func() {
+		g.Describe(".Remove", func() {
 
 			var tp *TxPool
-			var ee *emitter.Emitter
 			var tx, tx2, tx3 types.Transaction
 
 			g.BeforeEach(func() {
 				tp = New(100)
-				ee = &emitter.Emitter{}
-				tp.SetEventEmitter(ee)
 
 				tx = core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 				tx.SetHash(tx.ComputeHash())
@@ -245,7 +241,7 @@ func TestTxPool(t *testing.T) {
 
 			g.It("should remove the transactions included in the block", func() {
 				txs := []types.Transaction{tx2, tx3}
-				tp.remove(txs...)
+				tp.Remove(txs...)
 				Expect(tp.Size()).To(Equal(int64(1)))
 				Expect(tp.container.container[0].Tx).To(Equal(tx))
 			})

@@ -316,10 +316,14 @@ func (b *Blockchain) maybeAcceptBlock(block types.Block, chain *Chain,
 	}
 
 	// Since we are unable to find a chain for this block,
-	// we will add it to the orphan cache awaiting a
-	// time when its parent is found and processed.
+	// we will add it to the orphan cache until a
+	// time when its parent is unknown/processed.
 	if chain == nil {
 		b.addOrphanBlock(block)
+
+		// Emitting core.EventOrphanBlock will cause
+		// the block manager to request the parent block
+		// from the originating peer.
 		b.eventEmitter.Emit(core.EventOrphanBlock, block)
 		return nil, nil
 	}
@@ -492,8 +496,8 @@ process:
 		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
-	b.log.Info("Block has been successfully processed",
-		"BlockNo", block.GetNumber())
+	b.log.Info("Block has been processed", "BlockNo", block.GetNumber())
+
 	return chain, nil
 }
 
@@ -540,10 +544,8 @@ func (b *Blockchain) ProcessBlock(block types.Block) (types.ChainReader, error) 
 
 	// Check whether the block has previously been detected as an orphan.
 	// We do not need to go re-process this block if it is an orphan.
-	// Emit an EventOrphanBlock event if the block is an orphan
 	if b.isOrphanBlock(block.GetHash()) {
-		b.log.Debug("Block is an orphan", "BlockNo", block.GetNumber())
-		b.eventEmitter.Emit(core.EventOrphanBlock, block)
+		b.log.Debug("Block is already known a an orphan", "BlockNo", block.GetNumber())
 		return nil, core.ErrOrphanBlock
 	}
 

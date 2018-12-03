@@ -19,7 +19,7 @@ func MakeTxHistoryKey(tx types.Transaction, peer core.Engine) []interface{} {
 }
 
 // OnTx handles incoming transaction message
-func (g *Gossip) OnTx(s net.Stream, rp core.Engine) error {
+func (g *GossipManager) OnTx(s net.Stream, rp core.Engine) error {
 	defer s.Close()
 
 	msg := &core.Transaction{}
@@ -79,7 +79,7 @@ func (g *Gossip) OnTx(s net.Stream, rp core.Engine) error {
 }
 
 // RelayTx relays transactions to peers
-func (g *Gossip) RelayTx(tx types.Transaction, remotePeers []core.Engine) error {
+func (g *GossipManager) RelayTx(tx types.Transaction, remotePeers []core.Engine) error {
 
 	txID := util.String(tx.GetID()).SS()
 	sent := 0

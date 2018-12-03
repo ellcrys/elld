@@ -129,18 +129,6 @@ type BlockHashes struct {
 	Hashes []util.Hash
 }
 
-// BlockHash represents a hash of a block
-// sent by a remote peer
-type BlockHash struct {
-	Hash        util.Hash
-	Broadcaster Engine
-}
-
-// ID is the unique identifier
-func (b *BlockHash) ID() interface{} {
-	return b.Hash.HexStr()
-}
-
 // BlockBody represents the body of a block
 type BlockBody struct {
 	Header       *Header        `json:"header" msgpack:"header"`
@@ -190,9 +178,9 @@ type Gossip interface {
 	OnBlockBody(s net.Stream, rp Engine) error
 	RequestBlock(rp Engine, blockHash util.Hash) error
 	OnRequestBlock(s net.Stream, rp Engine) error
-	SendGetBlockHashes(rp Engine, locators []util.Hash) error
+	SendGetBlockHashes(rp Engine, locators []util.Hash) (*BlockHashes, error)
 	OnGetBlockHashes(s net.Stream, rp Engine) error
-	SendGetBlockBodies(rp Engine, hashes []util.Hash) error
+	SendGetBlockBodies(rp Engine, hashes []util.Hash) (*BlockBodies, error)
 	OnGetBlockBodies(s net.Stream, rp Engine) error
 
 	// Handshake messages
