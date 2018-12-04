@@ -335,7 +335,7 @@ func (c *Chain) append(candidate types.Block, opts ...types.CallOp) error {
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
-	chainTip, err := c.store.Current(&common.TxOp{Tx: txOp.Tx})
+	chainTip, err := c.store.Current(&common.OpTx{Tx: txOp.Tx})
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			txOp.Rollback()
@@ -414,6 +414,14 @@ func (c *Chain) GetTransaction(hash util.Hash, opts ...types.CallOp) (types.Tran
 	return tx, nil
 }
 
+func (c *Chain) String() string {
+	parent := ""
+	if p := c.GetParent(); p != nil {
+		parent = p.GetID().String()
+	}
+	return fmt.Sprintf("<chain id=%s parent=%s>", c.id, parent)
+}
+
 // removeBlock deletes a block and all objects
 // associated to it such as transactions, accounts etc.
 func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
@@ -427,7 +435,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 
 	// get the block.
 	// Returns ErrBlockNotFound if block does not exist
-	_, err = c.store.GetBlock(number, txOp)
+	block, err := c.store.GetBlock(number, txOp)
 	if err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
@@ -442,6 +450,15 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 			txOp.Finishable().Rollback()
 		}
 		return fmt.Errorf("failed to delete block: %s", err)
+	}
+
+	// delete the block's hash pointer
+	pointerKey := common.MakeKeyBlockHash(c.id.Bytes(), block.GetHash().Hex())
+	if err = c.store.Delete(pointerKey, txOp); err != nil {
+		if len(opts) == 0 {
+			txOp.Finishable().Rollback()
+		}
+		return fmt.Errorf("failed to delete block's hash pointer: %s", err)
 	}
 
 	// find account objects associated to this block

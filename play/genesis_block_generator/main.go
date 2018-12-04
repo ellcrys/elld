@@ -82,7 +82,7 @@ func main() {
 	genesisChain := blockchain.NewChain("genesis", db, cfg, log)
 
 	// generate block
-	block, err := bc.Generate(params, &common.ChainerOp{Chain: genesisChain})
+	block, err := bc.Generate(params, &common.OpChainer{Chain: genesisChain})
 	if err != nil {
 		panic(err)
 	}

@@ -326,8 +326,7 @@ func (v *BlockValidator) CheckTransactions(opts ...types.CallOp) (errs []error) 
 	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain)
 	txValidator.addContext(v.contexts...)
 	for _, err := range txValidator.Validate(opts...) {
-		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(),
-			"index:", "tx:", -1)))
+		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))
 	}
 	return
 }

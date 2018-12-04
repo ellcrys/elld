@@ -135,9 +135,10 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 					var block core.Block
 					util.BytesToObject(kv.Value, &block)
 					m["value"] = block
+				} else if bytes.Index(kv.Key, common.TagBlockNumber) != -1 {
+					m["value"] = util.DecodeNumber(kv.Value)
 				} else {
-					// Attempt to decode to map for other types
-					var val map[string]interface{}
+					var val interface{}
 					err := util.BytesToObject(kv.Value, &val)
 					if err != nil {
 						errResp = jsonrpc.Error(types.ErrValueDecodeFailed, err.Error(), nil)

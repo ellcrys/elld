@@ -378,7 +378,7 @@ process:
 
 	// If a db transaction was not injected,
 	// then we must prevent methods that we pass
-	// this transaction to from finishing it
+	// this transaction to from finalising it
 	// (commit/rollback)
 	hasInjectTx := common.HasTxOp(opts...)
 	if !hasInjectTx {
@@ -390,30 +390,47 @@ process:
 	if createNewChain {
 		if chain, err = b.newChain(txOp.Tx, block, parentBlock, chain); err != nil {
 			txOp.SetFinishable(!hasInjectTx).Rollback()
-			return nil, fmt.Errorf("failed to create subtree out of stale block")
+			return nil, fmt.Errorf("failed to create subtree out of stale block: %s", err)
 		}
 
 		b.log.Debug("New chain created",
 			"ChainID", chain.GetID(),
 			"BlockNo", block.GetNumber(),
 			"ParentBlockNo", parentBlock.GetNumber())
+	}
 
+	if chain.HasParent() {
 		// Update the validator context to ContextBranch
-		// since we intend to add the block to a branch
+		// since we intend to add the block to a branch.
 		bValidator.setContext(types.ContextBranch)
 	}
 
 	// validate transactions in the block
-	chainOp := &common.ChainerOp{Chain: chain}
+	chainOp := &common.OpChainer{Chain: chain}
 	if errs := bValidator.CheckTransactions(txOp, chainOp); len(errs) > 0 {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, errs[0]
 	}
 
+	var batchObjs []*elldb.KVObject
+	var stateObjs []*common.StateObject
+	var newStateRoot util.Hash
+
+	// Do not perform state transition or
+	// validate state root for blocks belonging to
+	// branches and when OpAllowExec is set to false.
+	// When OpAllowExec is set to true, state transition
+	// will occur.
+	// Note: OpAllowExec is used in tests for
+	// mocking branch blocks with valid state.
+	if chain.HasParent() && !common.ExecAllowed(opts...) {
+		goto commit
+	}
+
 	// Execute block to derive the state objects and
 	// the resulting state root should the state
 	// object be applied to the blockchain state tree.
-	newStateRoot, stateObjs, err := b.execBlock(chain, block, txOp)
+	newStateRoot, stateObjs, err = b.execBlock(chain, block, txOp)
 	if err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.log.Error("Block execution failed", "BlockNo", block.GetNumber(), "Err", err)
@@ -423,9 +440,7 @@ process:
 	// Compare the state root in the block header with
 	// the root obtained from the mock execution of the block.
 	if !block.GetHeader().GetStateRoot().Equal(newStateRoot) {
-
 		txOp.SetFinishable(!hasInjectTx).Rollback()
-
 		b.log.Error("Compute state root and block state root do not match",
 			"BlockNo", block.GetNumber(),
 			"BlockStateRoot", block.GetHeader().GetStateRoot().HexStr(),
@@ -435,7 +450,6 @@ process:
 
 	// We need to update the world state using
 	// the latest state objects derived from executing the block
-	var batchObjs []*elldb.KVObject
 	for _, so := range stateObjs {
 		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
 	}
@@ -444,17 +458,14 @@ process:
 		return nil, fmt.Errorf("failed to add state object to store: %s", err)
 	}
 
-	// We will also index the transactions so
-	// they are queryable but only if the
-	// chain is not a side chain
-	if !chain.HasParent(txOp) {
-		if err := chain.PutTransactions(block.GetTransactions(),
-			block.GetNumber(), txOp); err != nil {
-			txOp.SetFinishable(!hasInjectTx).Rollback()
-			return nil, fmt.Errorf("put transaction failed: %s", err)
-		}
+	// Make transactions queryable by indexing them
+	if err := chain.PutTransactions(block.GetTransactions(),
+		block.GetNumber(), txOp); err != nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
+		return nil, fmt.Errorf("put transaction failed: %s", err)
 	}
 
+commit:
 	// At this point, the block is good to go.
 	// We add it to the chain
 	if err := chain.append(block, txOp); err != nil {
@@ -479,11 +490,10 @@ process:
 		var err error
 
 		if !hasInjectTx {
-			err = b.decideBestChain()
-		} else {
-			err = b.decideBestChain(txOp)
+			txOp = nil
 		}
 
+		err = b.decideBestChain(txOp)
 		if err != nil {
 			b.log.Error("Failed to decide best chain", "Err", err)
 			return nil, fmt.Errorf("failed to choose best chain: %s", err)
@@ -505,7 +515,9 @@ process:
 // and attempts to add it to the tip of one of the known
 // chains (main chain or forked chain). It returns a chain reader
 // pointing to the chain in which the block was added to.
-func (b *Blockchain) ProcessBlock(block types.Block) (types.ChainReader, error) {
+func (b *Blockchain) ProcessBlock(block types.Block,
+	opts ...types.CallOp) (types.ChainReader, error) {
+
 	b.processLock.Lock()
 	defer b.processLock.Unlock()
 
@@ -559,7 +571,7 @@ func (b *Blockchain) ProcessBlock(block types.Block) (types.ChainReader, error) 
 	}
 
 	// attempt to add the block to a chain
-	chain, err := b.maybeAcceptBlock(block, nil)
+	chain, err := b.maybeAcceptBlock(block, nil, opts...)
 	if err != nil {
 		return nil, err
 	}

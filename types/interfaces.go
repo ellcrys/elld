@@ -129,10 +129,10 @@ type Blockchain interface {
 	GetTransaction(util.Hash, ...CallOp) (Transaction, error)
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(Block) (ChainReader, error)
+	ProcessBlock(Block, ...CallOp) (ChainReader, error)
 
 	// Generate creates a new block for a target chain.
-	// The Chain is specified by passing to ChainOp.
+	// The Chain is specified by passing to OpChain.
 	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
 
 	// ChainReader gets a Reader for reading the main chain
@@ -192,14 +192,14 @@ type Blockchain interface {
 type BlockMaker interface {
 
 	// Generate creates a new block for a target chain.
-	// The Chain is specified by passing to ChainOp.
+	// The Chain is specified by passing to OpChain.
 	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
 
 	// ChainReader gets a Reader for reading the main chain
 	ChainReader() ChainReader
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(Block) (ChainReader, error)
+	ProcessBlock(Block, ...CallOp) (ChainReader, error)
 
 	// IsMainChain checks whether a chain is the main chain
 	IsMainChain(ChainReader) bool
