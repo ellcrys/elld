@@ -167,6 +167,14 @@
   revision = "02af3965c54e8cacf948b97fef38925c4120652c"
 
 [[projects]]
+  branch = "master"
+  digest = "1:93d6687fc19da8a35c7352d72117a6acd2072dfb7e9bfd65646227bf2a913b2a"
+  name = "github.com/ellcrys/abool"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9b9efcf221b50905aab9bbabd3daed56dc10f339"
+
+[[projects]]
   digest = "1:f34e8dee87ed7ebb9caceae96b7851d99ab5bca0afc345cf964c61dc0ad56eb8"
   name = "github.com/ellcrys/go-ethereum"
   packages = ["log"]
@@ -467,14 +475,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "7e38e58719c33e0d44d585c4ab477a30f8cb82dd"
-
-[[projects]]
-  digest = "1:16dd6b893b78a50564cdde1d9f7ea67224dece11bb0886bd882f1dc3dc1d440d"
-  name = "github.com/k0kubun/pp"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "027a6d1765d673d337e687394dbe780dd64e2a1e"
-  version = "v2.3.0"
 
 [[projects]]
   digest = "1:0a69a1c0db3591fcefb47f115b224592c8dfa4368b7ba9fae509d5e16cdc95c8"
@@ -880,14 +880,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "d229c224a219dcf41e9d2af4684b9782f33f5eb7"
-
-[[projects]]
-  digest = "1:5687f8b9476a155019fa7810c2737107df42a7ca5c88f10ae9161d377431c89a"
-  name = "github.com/ncodes/goblin"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "b90fe3147ca4d8280908a36144d547b00441c902"
-  version = "0.0.3"
 
 [[projects]]
   branch = "master"
@@ -1336,6 +1328,7 @@
     "github.com/cenkalti/rpc2",
     "github.com/dgrijalva/jwt-go",
     "github.com/dustin/go-humanize",
+    "github.com/ellcrys/abool",
     "github.com/ellcrys/go-ethereum/log",
     "github.com/ellcrys/go-libp2p-crypto",
     "github.com/ellcrys/merkletree",
@@ -1356,7 +1349,6 @@
     "github.com/imdario/mergo",
     "github.com/jinzhu/configor",
     "github.com/jinzhu/copier",
-    "github.com/k0kubun/pp",
     "github.com/lestrrat-go/file-rotatelogs",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",
@@ -1372,7 +1364,6 @@
     "github.com/multiformats/go-multihash",
     "github.com/ncodes/authtoken",
     "github.com/ncodes/go-prettyjson",
-    "github.com/ncodes/goblin",
     "github.com/ncodes/whereami",
     "github.com/olebedev/emitter",
     "github.com/onsi/ginkgo",
