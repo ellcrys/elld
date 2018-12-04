@@ -68,7 +68,7 @@ func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
 		// Add a QueryBlockRange containing the max chain height
 		// to the call options slice.
 		if maxChainHeight > 0 {
-			optsCopy = append(optsCopy, &common.BlockQueryRange{Max: maxChainHeight})
+			optsCopy = append(optsCopy, &common.OpBlockQueryRange{Max: maxChainHeight})
 		}
 
 		result, err = ch.GetAccount(address, optsCopy...)

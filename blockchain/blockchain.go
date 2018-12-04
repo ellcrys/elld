@@ -522,14 +522,14 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock types.Block,
 	chainID := makeChainID(initialBlock)
 	chain := NewChain(util.String(chainID), b.db, b.cfg, b.log)
 
-	// Set the parent block and parent chain on the
-	// new chain.
+	// Set the parent block and parent chain on the new chain.
 	chain.parentBlock = parentBlock
+	chain.parentChain = parentChain
 
 	// store a record of this chain in the store
 	b.saveChain(chain, parentChain.GetID(),
 		parentBlock.GetNumber(),
-		&common.TxOp{Tx: tx, CanFinish: false})
+		&common.OpTx{Tx: tx, CanFinish: false})
 
 	return chain, nil
 }

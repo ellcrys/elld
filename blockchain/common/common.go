@@ -26,8 +26,8 @@ const (
 func HasTxOp(opts ...types.CallOp) bool {
 	for _, op := range opts {
 		switch _op := op.(type) {
-		case *TxOp:
-			if _op.Tx != nil {
+		case *OpTx:
+			if _op != nil && _op.Tx != nil {
 				return true
 			}
 		}
@@ -38,17 +38,17 @@ func HasTxOp(opts ...types.CallOp) bool {
 // GetTxOp checks and return a transaction added in the supplied call
 // option slice. If none is found, a new transaction is created and
 // returned as a TxOp.
-func GetTxOp(db elldb.TxCreator, opts ...types.CallOp) *TxOp {
+func GetTxOp(db elldb.TxCreator, opts ...types.CallOp) *OpTx {
 	for _, op := range opts {
 		switch _op := op.(type) {
-		case *TxOp:
-			if _op.Tx != nil {
+		case *OpTx:
+			if _op != nil && _op.Tx != nil {
 				return _op
 			}
 		}
 	}
 
-	txOp := &TxOp{
+	txOp := &OpTx{
 		CanFinish: true,
 	}
 
@@ -68,14 +68,14 @@ func GetTxOp(db elldb.TxCreator, opts ...types.CallOp) *TxOp {
 
 // GetBlockQueryRangeOp is a convenience method to get QueryBlockRange
 // option from a slice of CallOps
-func GetBlockQueryRangeOp(opts ...types.CallOp) *BlockQueryRange {
+func GetBlockQueryRangeOp(opts ...types.CallOp) *OpBlockQueryRange {
 	for _, op := range opts {
 		switch _op := op.(type) {
-		case *BlockQueryRange:
+		case *OpBlockQueryRange:
 			return _op
 		}
 	}
-	return &BlockQueryRange{}
+	return &OpBlockQueryRange{}
 }
 
 // GetTransitions finds a Transitions option from a given
@@ -83,7 +83,7 @@ func GetBlockQueryRangeOp(opts ...types.CallOp) *BlockQueryRange {
 func GetTransitions(opts ...types.CallOp) (transitions []Transition) {
 	for _, op := range opts {
 		switch _op := op.(type) {
-		case *TransitionsOp:
+		case *OpTransitions:
 			for _, t := range *_op {
 				transitions = append(transitions, t)
 			}
@@ -95,14 +95,26 @@ func GetTransitions(opts ...types.CallOp) (transitions []Transition) {
 
 // GetChainerOp is a convenience method to get ChainerOp
 // option from a slice of CallOps
-func GetChainerOp(opts ...types.CallOp) *ChainerOp {
+func GetChainerOp(opts ...types.CallOp) *OpChainer {
 	for _, op := range opts {
 		switch _op := op.(type) {
-		case *ChainerOp:
+		case *OpChainer:
 			return _op
 		}
 	}
-	return &ChainerOp{}
+	return &OpChainer{}
+}
+
+// ExecAllowed is a convenience method to get
+// the value of OpAllowExec
+func ExecAllowed(opts ...types.CallOp) bool {
+	for _, op := range opts {
+		switch _op := op.(type) {
+		case OpAllowExec:
+			return bool(_op)
+		}
+	}
+	return false
 }
 
 // ComputeTxsRoot computes the merkle root of a set of transactions.

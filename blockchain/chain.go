@@ -335,7 +335,7 @@ func (c *Chain) append(candidate types.Block, opts ...types.CallOp) error {
 
 	// Get the current block at the tip of the chain.
 	// Continue if no error or no block currently exist on the chain.
-	chainTip, err := c.store.Current(&common.TxOp{Tx: txOp.Tx})
+	chainTip, err := c.store.Current(&common.OpTx{Tx: txOp.Tx})
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			txOp.Rollback()
@@ -412,6 +412,14 @@ func (c *Chain) GetTransaction(hash util.Hash, opts ...types.CallOp) (types.Tran
 		return nil, err
 	}
 	return tx, nil
+}
+
+func (c *Chain) String() string {
+	parent := ""
+	if p := c.GetParent(); p != nil {
+		parent = p.GetID().String()
+	}
+	return fmt.Sprintf("<chain id=%s parent=%s>", c.id, parent)
 }
 
 // removeBlock deletes a block and all objects

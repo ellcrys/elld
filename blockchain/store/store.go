@@ -240,7 +240,7 @@ func (s *ChainStore) putBlock(block types.Block, opts ...types.CallOp) error {
 	}
 
 	// check if block already exists. return nil if block exists.
-	hasBlock, err := s.hasBlock(block.GetNumber(), &common.TxOp{Tx: txOp.Tx})
+	hasBlock, err := s.hasBlock(block.GetNumber(), &common.OpTx{Tx: txOp.Tx})
 	if err != nil {
 		txOp.Rollback()
 		return fmt.Errorf("failed to check block existence: %s", err)
@@ -332,7 +332,7 @@ func (s *ChainStore) GetTransaction(hash util.Hash, opts ...types.CallOp) (types
 
 	var result []*elldb.KVObject
 	err := s.get(common.MakeQueryKeyTransaction(s.chainID.Bytes(),
-		hash.Hex()), &result, &common.TxOp{Tx: txOp.Tx})
+		hash.Hex()), &result, &common.OpTx{Tx: txOp.Tx})
 	if err != nil {
 		return nil, err
 	}

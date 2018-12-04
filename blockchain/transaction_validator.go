@@ -310,8 +310,7 @@ func (v *TxsValidator) checkSignature(tx types.Transaction) (errs []error) {
 }
 
 // consistencyCheck checks whether the transaction
-// exist as a duplicate in the main chain or in the
-// transaction pool. It also performs nonce checks.
+// against the current state of the blockchain.
 func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.CallOp) (errs []error) {
 
 	// No need for consistency check for
@@ -331,7 +330,7 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 	}
 
 	// If the caller intends to validate a block that was
-	// received when the client is not is a block sync state,
+	// received when the client is not sync with another peer,
 	// the transaction must exist in the transactions pool
 	if v.has(types.ContextBlock) && !v.has(types.ContextBlockSync) {
 		if !v.txpool.Has(tx) {
@@ -340,22 +339,27 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 		}
 	}
 
+	// No need performing nonce and balance checks for
+	// transactions inside a block that may be appended
+	// to a branch. This will be performed if the the
+	// branch grows long enough to cause a re-org.
+	if v.has(types.ContextBranch) {
+		return
+	}
+
 	// If the callers intent is not to append a block
-	// to a branch chain but the main chain, we must
-	// ensure the transaction does not exist on the
-	// main chain.
-	if !v.has(types.ContextBranch) {
-		_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
-		if err != nil {
-			if err != core.ErrTxNotFound {
-				errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
-				return
-			}
-		} else {
-			errs = append(errs, fieldErrorWithIndex(v.curIndex,
-				"", "transaction already exist in main chain"))
+	// to the main chain, we must ensure the transaction
+	// does not exist on the main chain.
+	_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
+	if err != nil {
+		if err != core.ErrTxNotFound {
+			errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
 			return
 		}
+	} else {
+		errs = append(errs, fieldErrorWithIndex(v.curIndex,
+			"", "transaction already exist in main chain"))
+		return
 	}
 
 	// Get the sender account
@@ -387,9 +391,9 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 	}
 
 	// If the caller does not intend to add the
-	// transaction into a block, then the nonce
-	// must be greater than the account's current
-	// nonce by at least 1
+	// transaction into a block (e.g the tx pool),
+	// then the nonce must be greater than the
+	// account's current nonce by at least 1
 	if !v.has(types.ContextBlock) && (tx.GetNonce() <= accountNonce) {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants from %d",
@@ -397,7 +401,7 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 		return
 	}
 
-	// If the caller intends to process a block of which
+	// If the caller intends to append a block of which
 	// this transaction is part of, then the nonce must
 	// be greater than the account's current nonce by 1
 	if v.has(types.ContextBlock) && tx.GetNonce() > accountNonce &&

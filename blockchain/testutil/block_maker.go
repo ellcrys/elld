@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
@@ -16,9 +15,8 @@ import (
 // the transactions in the transactions pool
 // attached to the blockchain instance
 func MakeTestBlock(bc types.Blockchain, chain types.Chainer, gp *types.GenerateBlockParams) types.Block {
-	blk, err := bc.Generate(gp, &common.ChainerOp{Chain: chain})
+	blk, err := bc.Generate(gp, &common.OpChainer{Chain: chain})
 	if err != nil {
-		fmt.Println(err)
 		panic(err)
 	}
 	if !gp.NoPoolAdditionInTest && bc.GetTxPool() != nil {
@@ -85,6 +83,22 @@ func MakeBlockWithSingleTx(bc types.Blockchain, ch types.Chainer, sender, receiv
 	})
 }
 
+// MakeBlockWithSingleTxAndTime creates a block with
+// only one balance transaction. Sender nonce
+// is required and Time
+func MakeBlockWithSingleTxAndTime(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key, senderNonce uint64, blockTime int64) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, senderNonce, sender.Addr(), sender, "0", "2.5", time.Now().UnixNano()),
+		},
+		Creator:           sender,
+		Nonce:             util.EncodeNonce(1),
+		Difficulty:        new(big.Int).SetInt64(131072),
+		OverrideTimestamp: blockTime,
+		AddFeeAlloc:       true,
+	})
+}
+
 // MakeBlockWithBalanceTx is like MakeBlockWithSingleTx
 // but does not require a sender nonce
 func MakeBlockWithBalanceTx(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
@@ -96,6 +110,21 @@ func MakeBlockWithBalanceTx(bc types.Blockchain, ch types.Chainer, sender, recei
 		Nonce:       util.EncodeNonce(1),
 		Difficulty:  new(big.Int).SetInt64(131072),
 		AddFeeAlloc: true,
+	})
+}
+
+// MakeBlockWithNoPoolAddition is like MakeBlockWithBalanceTx
+// but does not add the transactions in the pool
+func MakeBlockWithNoPoolAddition(bc types.Blockchain, ch types.Chainer, sender, receiver *crypto.Key) types.Block {
+	return MakeTestBlock(bc, ch, &types.GenerateBlockParams{
+		Transactions: []types.Transaction{
+			core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.5", time.Now().UnixNano()),
+		},
+		Creator:              sender,
+		Nonce:                util.EncodeNonce(1),
+		Difficulty:           new(big.Int).SetInt64(131072),
+		AddFeeAlloc:          true,
+		NoPoolAdditionInTest: true,
 	})
 }
 
