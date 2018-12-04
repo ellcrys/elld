@@ -3,6 +3,7 @@ package gossip_test
 import (
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/olebedev/emitter"
@@ -20,16 +21,14 @@ import (
 	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
+	. "github.com/onsi/ginkgo"
+
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/util/logger"
 )
 
 var log = logger.NewLogrusNoOp()
-
-func init() {
-	params.FeePerByte = decimal.NewFromFloat(0.01)
-}
 
 func getPort() int {
 	port, err := freeport.GetFreePort()
@@ -92,4 +91,10 @@ func closeNode(n *node.Node) {
 	go n.GetHost().Close()
 	err := os.RemoveAll(n.GetCfg().DataDir())
 	Expect(err).To(BeNil())
+}
+
+func TestGossip(t *testing.T) {
+	params.FeePerByte = decimal.NewFromFloat(0.01)
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Gossip Suite")
 }

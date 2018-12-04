@@ -15,26 +15,26 @@ type OrphanBlock struct {
 	Expiration time.Time
 }
 
-// TxOp is used to pass transactions to nested methods
-type TxOp struct {
+// OpTx is used to pass transactions to methods
+type OpTx struct {
 	Tx        elldb.Tx
 	CanFinish bool
 	finished  bool
 }
 
 // Closed gets the status of the transaction
-func (t *TxOp) Closed() bool {
+func (t *OpTx) Closed() bool {
 	return t.finished
 }
 
 // GetName returns the name of the op
-func (t *TxOp) GetName() string {
-	return "TxOp"
+func (t *OpTx) GetName() string {
+	return "OpTx"
 }
 
 // Discard the transaction. Do not call
 // functions in the transaction after this.
-func (t *TxOp) Discard() error {
+func (t *OpTx) Discard() error {
 	if !t.CanFinish || t.finished {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (t *TxOp) Discard() error {
 
 // Commit commits the transaction if it has not been done before.
 // It ignores the call if CanFinish is false.
-func (t *TxOp) Commit() error {
+func (t *OpTx) Commit() error {
 	if !t.CanFinish || t.finished {
 		return nil
 	}
@@ -58,7 +58,7 @@ func (t *TxOp) Commit() error {
 
 // Rollback rolls back the transaction if it has not been done before.
 // It ignores the call if CanFinish is false.
-func (t *TxOp) Rollback() error {
+func (t *OpTx) Rollback() error {
 	if !t.CanFinish || t.finished {
 		return nil
 	}
@@ -68,49 +68,58 @@ func (t *TxOp) Rollback() error {
 }
 
 // Finishable makes the transaction finishable
-func (t *TxOp) Finishable() *TxOp {
+func (t *OpTx) Finishable() *OpTx {
 	t.CanFinish = true
 	return t
 }
 
 // SetFinishable sets whether the transaction
 // can be finished
-func (t *TxOp) SetFinishable(finish bool) *TxOp {
+func (t *OpTx) SetFinishable(finish bool) *OpTx {
 	t.CanFinish = finish
 	return t
 }
 
-// BlockQueryRange defines the minimum and maximum
+// OpBlockQueryRange defines the minimum and maximum
 // block number of objects to access.
-type BlockQueryRange struct {
+type OpBlockQueryRange struct {
 	Min uint64
 	Max uint64
 }
 
 // GetName returns the name of the op
-func (o *BlockQueryRange) GetName() string {
-	return "QueryBlockRange"
+func (o *OpBlockQueryRange) GetName() string {
+	return "OpQueryBlockRange"
 }
 
-// TransitionsOp defines a CallOp for
+// OpTransitions defines a CallOp for
 // passing transition objects
-type TransitionsOp []Transition
+type OpTransitions []Transition
 
 // GetName implements core.CallOp. Allows transitions
-func (t *TransitionsOp) GetName() string {
-	return "TransitionsOp"
+func (t *OpTransitions) GetName() string {
+	return "OpTransitions"
 }
 
-// ChainerOp defines a CallOp for
+// OpAllowExec defines a CallOp that
+// indicates whether to execute something
+type OpAllowExec bool
+
+// GetName implements core.CallOp. Allows transitions
+func (t OpAllowExec) GetName() string {
+	return "OpAllowExec"
+}
+
+// OpChainer defines a CallOp for
 // passing a chain
-type ChainerOp struct {
+type OpChainer struct {
 	Chain types.Chainer
 	name  string
 }
 
 // GetName implements core.CallOp. Allows transitions
-func (t *ChainerOp) GetName() string {
-	return fmt.Sprintf("ChainerOp{%s}", t.name)
+func (t *OpChainer) GetName() string {
+	return fmt.Sprintf("<chainerOp %s>", t.name)
 }
 
 // Object represents an object that can be converted to JSON encoded byte slice

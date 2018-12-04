@@ -298,8 +298,8 @@ func (g *GossipManager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 	// tip block hash of the remote node
 	for _, hash := range msg.Locators {
 		locatorChain = g.GetBlockchain().GetChainReaderByHash(hash)
-		locatorHash = hash
 		if locatorChain != nil {
+			locatorHash = hash
 			break
 		}
 	}
@@ -321,8 +321,18 @@ func (g *GossipManager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 	if mainChain := g.GetBlockchain().GetBestChain(); mainChain.GetID() !=
 		locatorChain.GetID() {
 		startBlock = locatorChain.GetRoot()
+		g.log.Debug("Found locator chain root", "HasStartBlock", startBlock != nil)
 	} else {
 		startBlock, _ = locatorChain.GetBlockByHash(locatorHash)
+		g.log.Debug("Found locator block", "HasStartBlock", startBlock != nil)
+	}
+
+	// This should only be true when chain tree
+	// structure has been corrupted on disk.
+	if startBlock == nil {
+		g.log.Warn("Could not get the sync start block. " +
+			"Possible chain tree corruption.")
+		return nil
 	}
 
 	// Fetch block hashes starting from the block

@@ -133,7 +133,6 @@ func (b *Blockchain) chooseBestChain(opts ...types.CallOp) (*Chain, error) {
 // decideBestChain determines and sets the current best chain
 // based on the split resolution rules.
 func (b *Blockchain) decideBestChain(opts ...types.CallOp) error {
-
 	txOp := common.GetTxOp(b.db, opts...)
 	if txOp.Closed() {
 		return leveldb.ErrClosed
@@ -267,8 +266,10 @@ func (b *Blockchain) getReOrgs(opts ...types.CallOp) []*ReOrgInfo {
 	return reOrgs
 }
 
-// reOrg overwrites the main chain with the blocks of
-// the branch beginning from branch parent block + 1.
+// reOrg overwrites the main chain with blocks of
+// branch. The blocks after the branch's parent/root
+// blocks are deleted from the main branch and replaced
+// with the blocks of the branch.
 // Returns the re-organized chain or error.
 //
 // NOTE: This method must be called with write chain lock held by the caller.
