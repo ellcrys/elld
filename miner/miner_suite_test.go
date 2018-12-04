@@ -1,12 +1,13 @@
-package miner
+package miner_test
 
 import (
-	"github.com/ellcrys/elld/util/logger"
+	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-var log logger.Logger
-
-func init() {
-	log = logger.NewLogrusNoOp()
-	log.SetToDebug()
+func TestMiner(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Miner Suite")
 }

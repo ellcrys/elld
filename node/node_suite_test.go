@@ -1,34 +1,33 @@
-package node_test
+package node
 
 import (
 	"fmt"
 	"os"
+	"testing"
 	"time"
-
-	"github.com/olebedev/emitter"
-	"github.com/shopspring/decimal"
-
-	"github.com/phayes/freeport"
-	"github.com/thoas/go-funk"
-
-	. "github.com/onsi/gomega"
 
 	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/node"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/util"
-
 	"github.com/ellcrys/elld/util/logger"
+	"github.com/olebedev/emitter"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/phayes/freeport"
+	"github.com/shopspring/decimal"
+	funk "github.com/thoas/go-funk"
 )
 
 var log = logger.NewLogrusNoOp()
 
-func init() {
+func TestNode(t *testing.T) {
 	params.FeePerByte = decimal.NewFromFloat(0.01)
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Node Suite")
 }
 
 func getPort() int {
@@ -41,13 +40,13 @@ func getPort() int {
 
 // makeTestNode creates a node with
 // a blockchain attached to it.
-func makeTestNode(port int) *node.Node {
+func makeTestNode(port int) *Node {
 	return makeTestNodeWith(port, -1)
 }
 
 // makeTestNode creates a node with
 // a blockchain attached to it.
-func makeTestNodeWith(port int, seed int) *node.Node {
+func makeTestNodeWith(port int, seed int) *Node {
 
 	cfg, err := testutil.SetTestCfg()
 	if err != nil {
@@ -76,7 +75,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	}
 
 	sk := crypto.NewKeyFromIntSeed(seed)
-	n, err := node.NewNodeWithDB(db, cfg, fmt.Sprintf("127.0.0.1:%d", port), sk, log)
+	n, err := NewNodeWithDB(db, cfg, fmt.Sprintf("127.0.0.1:%d", port), sk, log)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +87,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	return n
 }
 
-func closeNode(n *node.Node) {
+func closeNode(n *Node) {
 	go n.GetHost().Close()
 	err := os.RemoveAll(n.GetCfg().DataDir())
 	Expect(err).To(BeNil())
