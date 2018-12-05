@@ -78,17 +78,33 @@ func (bm *BlockManager) SetTxPool(tp types.TxPool) {
 
 // Handle handles all incoming block related events.
 func (bm *BlockManager) Handle() {
+	go func() {
+		for {
+			evt := <-bm.evt.Once("*")
+			switch evt.OriginalTopic {
+
+			case core.EventFoundBlock:
+				go func(errCh chan error) {
+					bm.log.Debug("Received FoundBlock Event")
+					bm.log.Debug("Handling Mined Block")
+					errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
+					bm.log.Debug("Finished Handling Mined Block")
+				}(evt.Args[1].(chan error))
+			}
+		}
+	}()
+
 	for {
 		evt := <-bm.evt.Once("*")
 		switch evt.OriginalTopic {
 
-		case core.EventFoundBlock:
-			go func(errCh chan error) {
-				bm.log.Debug("Received FoundBlock Event")
-				bm.log.Debug("Handling Mined Block")
-				errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
-				bm.log.Debug("Finished Handling Mined Block")
-			}(evt.Args[1].(chan error))
+		// case core.EventFoundBlock:
+		// 	go func(errCh chan error) {
+		// 		bm.log.Debug("Received FoundBlock Event")
+		// 		bm.log.Debug("Handling Mined Block")
+		// 		errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
+		// 		bm.log.Debug("Finished Handling Mined Block")
+		// 	}(evt.Args[1].(chan error))
 
 		case core.EventNewBlock:
 			go bm.handleAppendedBlock(evt.Args[0].(*core.Block))
