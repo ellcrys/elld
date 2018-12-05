@@ -197,26 +197,20 @@ func (m *Miner) RestartWorkers() error {
 // attempts to append the block to a branch.
 func (m *Miner) processBlock(fb *FoundBlock) error {
 
-	m.log.Debug("Update FoundBlock Header")
 	// Update the block header with the found nonce
 	header := fb.Block.GetHeader().Copy()
 	header.SetNonce(util.EncodeNonce(fb.Nonce))
 	fb.Block = fb.Block.ReplaceHeader(header)
 
-	m.log.Debug("Compute Hash")
 	// Compute and set block hash and signature
 	fb.Block.SetHash(fb.Block.ComputeHash())
 	blockSig, _ := core.BlockSign(fb.Block, m.minerKey.PrivKey().Base58())
 	fb.Block.SetSignature(blockSig)
 
 	errCh := make(chan error)
-	m.log.Debug("Emitting Event")
 	<-m.event.Emit(core.EventFoundBlock, fb, errCh)
-	m.log.Debug("Emitted Event")
-	r := <-errCh
-	m.log.Debug("Waiting for Event Error")
 
-	return r
+	return <-errCh
 }
 
 // onFoundBlock is called when a worker finds a
@@ -233,22 +227,17 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 	// that has just been solved.
 	m.stopWorkers()
 
-	m.log.Debug("About to Process Found Block")
-
 	// Attempt to process the block.
 	// If it failed, restart the workers
 	if err := m.processBlock(fb); err != nil {
 		m.processing.SetTo(false)
 		m.RestartWorkers()
-		m.log.Debug("Block Processing Failed")
 		return
 	}
-	m.log.Debug("Finished Processing Found Block")
 
 	m.processing.SetTo(false)
 
 	if m.isMining() {
-		m.log.Debug("Restarting Mining")
 
 		// If the new block timestamp is the same as the current
 		// time, we should wait for 1 second so we don't allow
@@ -262,7 +251,6 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 		if err := m.startWorkers(); err != nil {
 			m.log.Debug("Unable to start workers", "Err", err.Error())
 		}
-		m.log.Debug("Restarted Mining")
 	}
 }
 
