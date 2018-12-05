@@ -84,7 +84,8 @@ func (g *GossipManager) OnBlockBody(s net.Stream, rp core.Engine) error {
 	copier.Copy(&block, blockBody)
 	block.SetBroadcaster(rp)
 
-	g.log.Info("Received a block", "BlockNo", block.GetNumber(),
+	g.log.Info("Received a block",
+		"BlockNo", block.GetNumber(),
 		"Difficulty", block.GetHeader().GetDifficulty())
 
 	historyKey := makeBlockHistoryKey(block.GetHashAsHex(), rp)
@@ -92,12 +93,10 @@ func (g *GossipManager) OnBlockBody(s net.Stream, rp core.Engine) error {
 		return nil
 	}
 
-	if _, err := g.GetBlockchain().ProcessBlock(&block); err != nil {
-		g.engine.GetEventEmitter().Emit(EventBlockProcessed, &block, err)
-		return err
-	}
+	// Emit core.EventRelayedBlock to have the block
+	// processed by the block manager.
+	g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
 
-	g.engine.GetEventEmitter().Emit(EventBlockProcessed, &block, nil)
 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
 
 	return nil
@@ -136,15 +135,13 @@ func (g *GossipManager) RequestBlock(rp core.Engine, blockHash util.Hash) error 
 		return g.logErr(err, rp, "[RequestBlock] Failed to read")
 	}
 
+	// Emit core.EventProcessBlock to have
+	// the block processed by the block manager.
 	var block core.Block
 	copier.Copy(&block, blockBody)
 	block.SetBroadcaster(rp)
 	block.SetValidationContexts(types.ContextBlockSync)
-	if _, err := g.GetBlockchain().ProcessBlock(&block); err != nil {
-		g.log.Debug("Unable to process block", "Err", err)
-		g.engine.GetEventEmitter().Emit(EventBlockProcessed, &block, err)
-		return err
-	}
+	g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
 
 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
 
@@ -214,12 +211,13 @@ func (g *GossipManager) OnRequestBlock(s net.Stream, rp core.Engine) error {
 // a block they share in common. The local peer sends the
 // remote peer a list of hashes (locators) while the
 // remote peer use the locators to find the highest
-// block height they share in common, then it collects
+// block height they share in common, then it gathers
 // and sends block hashes after the chosen shared block.
 //
 // If the locators is not provided via the locator argument,
 // they will be collected from the main chain.
-func (g *GossipManager) SendGetBlockHashes(rp core.Engine, locators []util.Hash) (*core.BlockHashes, error) {
+func (g *GossipManager) SendGetBlockHashes(rp core.Engine,
+	locators []util.Hash, seek util.Hash) (*core.BlockHashes, error) {
 
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
@@ -241,6 +239,7 @@ func (g *GossipManager) SendGetBlockHashes(rp core.Engine, locators []util.Hash)
 
 	msg := core.GetBlockHashes{
 		Locators:  locators,
+		Seek:      seek,
 		MaxBlocks: params.MaxGetBlockHashes,
 	}
 
@@ -291,6 +290,19 @@ func (g *GossipManager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 	var blockCursor uint64
 	var locatorChain types.ChainReader
 	var locatorHash util.Hash
+	var mainChain = g.GetBlockchain().GetBestChain()
+
+	// If there is a seek hash,
+	if !msg.Seek.IsEmpty() {
+		// Find the chain where a block matches the seek hash.
+		// If no such chain exist or the chain is not the main chain,
+		// We must fall back to locators, otherwise,
+		locatorChain = g.GetBlockchain().GetChainReaderByHash(msg.Seek)
+		if locatorChain != nil && locatorChain.GetID().Equal(mainChain.GetID()) {
+			// Discard all locators and use the seek hash as the sole locator
+			msg.Locators = []util.Hash{msg.Seek}
+		}
+	}
 
 	// Using the provided locator hashes, find a chain
 	// where one of the locator block exists. Expects the
@@ -318,8 +330,7 @@ func (g *GossipManager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 	// parent block from which the chain (and its parent)
 	// sprouted from. Otherwise, get the locator block
 	// and use as the start block.
-	if mainChain := g.GetBlockchain().GetBestChain(); mainChain.GetID() !=
-		locatorChain.GetID() {
+	if mainChain.GetID() != locatorChain.GetID() {
 		startBlock = locatorChain.GetRoot()
 		g.log.Debug("Found locator chain root", "HasStartBlock", startBlock != nil)
 	} else {
@@ -392,8 +403,6 @@ func (g *GossipManager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (
 	if err := ReadStream(s, &blockBodies); err != nil {
 		return nil, g.logErr(err, rp, "[SendGetBlockBodies] Failed to read")
 	}
-
-	g.engine.GetEventEmitter().Emit(EventBlockBodiesProcessed)
 
 	return &blockBodies, nil
 }

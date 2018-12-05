@@ -4,7 +4,6 @@ import (
 	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/node/gossip"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
@@ -51,33 +50,73 @@ var _ = Describe("Block", func() {
 	})
 
 	Describe(".RelayBlock", func() {
+		Context("when block is successfully relayed to a remote peer", func() {
+
+			var block types.Block
+
+			BeforeEach(func() {
+				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				bm := node.NewBlockManager(rp)
+				go bm.Handle()
+			})
+
+			It("remote peer must emit core.EventProcessBlock and core.EventBlockProcessed", func(done Done) {
+				wait := make(chan bool)
+
+				err := lp.Gossip().RelayBlock(block, []core.Engine{rp})
+				Expect(err).To(BeNil())
+
+				go func() {
+					defer GinkgoRecover()
+
+					evtArgs := <-rp.GetEventEmitter().Once(core.EventProcessBlock)
+					Expect(evtArgs.Args).To(HaveLen(1))
+					relayed := evtArgs.Args[0].(*core.Block)
+					Expect(relayed.GetHash()).To(Equal(block.GetHash()))
+
+					evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
+					Expect(evtArgs.Args).To(HaveLen(2))
+					close(wait)
+				}()
+
+				<-wait
+				close(done)
+			})
+		})
+
 		Context("when a block has a transaction that is not in the txs pool of the remote peer", func() {
-			Context("when block is successfully relayed to a remote peer", func() {
 
-				var block types.Block
+			var block types.Block
 
-				BeforeEach(func() {
-					block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
-				})
+			BeforeEach(func() {
+				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				bm := node.NewBlockManager(rp)
+				go bm.Handle()
+			})
 
-				Specify("relayed block must be processed by the remote peer", func(done Done) {
-					wait := make(chan bool)
+			It("should return error about the missing transaction in the pool", func(done Done) {
+				wait := make(chan bool)
 
-					err := lp.Gossip().RelayBlock(block, []core.Engine{rp})
-					Expect(err).To(BeNil())
+				err := lp.Gossip().RelayBlock(block, []core.Engine{rp})
+				Expect(err).To(BeNil())
 
-					go func() {
-						evtArgs := <-rp.GetEventEmitter().Once(gossip.EventBlockProcessed)
-						Expect(evtArgs.Args).To(HaveLen(2))
-						_, err := evtArgs.Args[0], evtArgs.Args[1]
-						Expect(err).ToNot(BeNil())
-						Expect(err.(error).Error()).To(Equal("tx:0, error:transaction does not exist in the transactions pool"))
-						close(wait)
-					}()
+				go func() {
+					defer GinkgoRecover()
 
-					<-wait
-					close(done)
-				})
+					evtArgs := <-rp.GetEventEmitter().Once(core.EventProcessBlock)
+					Expect(evtArgs.Args).To(HaveLen(1))
+					relayed := evtArgs.Args[0].(*core.Block)
+					Expect(relayed.GetHash()).To(Equal(block.GetHash()))
+
+					evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
+					Expect(evtArgs.Args).To(HaveLen(2))
+					err := evtArgs.Args[1]
+					Expect(err.(error).Error()).To(Equal("tx:0, error:transaction does not exist in the transactions pool"))
+					close(wait)
+				}()
+
+				<-wait
+				close(done)
 			})
 		})
 
@@ -91,9 +130,12 @@ var _ = Describe("Block", func() {
 
 				// Add the transaction to the remote node's
 				// transaction pool to prevent block rejection
-				// because of the tx being unknown.
+				// due to missing tx in the remote node's tx pool
 				err := rp.GetTxPool().Put(block.GetTransactions()[0])
 				Expect(err).To(BeNil())
+
+				bm := node.NewBlockManager(rp)
+				go bm.Handle()
 			})
 
 			Specify("relayed block must be processed by the remote peer", func(done Done) {
@@ -103,7 +145,7 @@ var _ = Describe("Block", func() {
 				Expect(err).To(BeNil())
 
 				go func() {
-					evtArgs = <-rp.GetEventEmitter().Once(gossip.EventBlockProcessed)
+					evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
 					Expect(evtArgs.Args).To(HaveLen(2))
 					processedBlock, err := evtArgs.Args[0], evtArgs.Args[1]
 					Expect(err).To(BeNil())
@@ -128,6 +170,9 @@ var _ = Describe("Block", func() {
 			var evtOrphanBlock = make(chan emitter.Event)
 
 			BeforeEach(func() {
+				bm := node.NewBlockManager(rp)
+				go bm.Handle()
+
 				block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 				_, err := lp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
@@ -149,7 +194,7 @@ var _ = Describe("Block", func() {
 				}()
 
 				go func() {
-					<-rp.GetEventEmitter().Once(gossip.EventBlockProcessed)
+					<-rp.GetEventEmitter().Once(core.EventBlockProcessed)
 
 					evt := <-evtOrphanBlock
 					Expect(evt).ToNot(BeNil())
@@ -173,22 +218,29 @@ var _ = Describe("Block", func() {
 		var block2 types.Block
 
 		BeforeEach(func() {
+			bm := node.NewBlockManager(rp)
+			go bm.Handle()
+
 			block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 			_, err := lp.GetBlockchain().ProcessBlock(block2)
 			Expect(err).To(BeNil())
 		})
 
-		It("Should request and process block from remote peer", func() {
+		It("Should request and process block from remote peer", func(done Done) {
 			err := rp.Gossip().RequestBlock(lp, block2.GetHash())
 			Expect(err).To(BeNil())
-			curBlock, err := rp.GetBlockchain().ChainReader().Current()
-			Expect(err).To(BeNil())
-			Expect(curBlock.GetHashAsHex()).To(Equal(block2.GetHashAsHex()))
+
+			go func() {
+				<-rp.GetEventEmitter().Once(core.EventBlockProcessed)
+				curBlock, err := rp.GetBlockchain().ChainReader().Current()
+				Expect(err).To(BeNil())
+				Expect(curBlock.GetHashAsHex()).To(Equal(block2.GetHashAsHex()))
+				close(done)
+			}()
 		})
 	})
 
 	Describe(".SendGetBlockHashes", func() {
-
 		var block2, block3 types.Block
 
 		// Target shape:
@@ -210,7 +262,7 @@ var _ = Describe("Block", func() {
 				_, err = rp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 
-				result, err = lp.Gossip().SendGetBlockHashes(rp, nil)
+				result, err = lp.Gossip().SendGetBlockHashes(rp, nil, util.Hash{})
 				Expect(err).To(BeNil())
 			})
 
@@ -224,6 +276,126 @@ var _ = Describe("Block", func() {
 				h3 := result.Hashes[1]
 				Expect(h2).To(Equal(block2.GetHash()))
 				Expect(h3).To(Equal(block3.GetHash()))
+			})
+		})
+
+		When("a valid seek hash is provided", func() {
+
+			// Target shape:
+			// Remote Peer
+			// [1]-[2]-[3]
+			//
+			// Local Peer
+			// [1]
+			Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
+
+				var result *core.BlockHashes
+
+				BeforeEach(func() {
+					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					_, err := rp.GetBlockchain().ProcessBlock(block2)
+					Expect(err).To(BeNil())
+
+					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+					_, err = rp.GetBlockchain().ProcessBlock(block3)
+					Expect(err).To(BeNil())
+
+					result, err = lp.Gossip().SendGetBlockHashes(rp, nil, block2.GetHash())
+					Expect(err).To(BeNil())
+				})
+
+				It("should get 1 block hash from remote peer", func() {
+					Expect(len(result.Hashes)).To(Equal(1))
+				})
+
+				Specify("returned hash should equal block3's hash", func() {
+					Expect(len(result.Hashes)).To(Equal(1))
+					h := result.Hashes[0]
+					Expect(h).To(Equal(block3.GetHash()))
+				})
+			})
+		})
+
+		When("seek hash does not exist on remote peer", func() {
+
+			// Target shape:
+			// Remote Peer
+			// [1]-[2]-[3]
+			//
+			// Local Peer
+			// [1]
+			Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
+
+				var result *core.BlockHashes
+
+				BeforeEach(func() {
+					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					_, err := rp.GetBlockchain().ProcessBlock(block2)
+					Expect(err).To(BeNil())
+
+					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+					_, err = rp.GetBlockchain().ProcessBlock(block3)
+					Expect(err).To(BeNil())
+
+					result, err = lp.Gossip().SendGetBlockHashes(rp, nil, util.Hash{1, 2, 3})
+					Expect(err).To(BeNil())
+				})
+
+				It("should get 2 block hash from remote peer", func() {
+					Expect(len(result.Hashes)).To(Equal(2))
+				})
+
+				Specify("first header number = 2 and second header number = 3", func() {
+					Expect(len(result.Hashes)).To(Equal(2))
+					h2 := result.Hashes[0]
+					h3 := result.Hashes[1]
+					Expect(h2).To(Equal(block2.GetHash()))
+					Expect(h3).To(Equal(block3.GetHash()))
+				})
+			})
+		})
+
+		When("seek hash does does not exist on the main chain of the remote peer", func() {
+
+			// Target shape:
+			// Remote Peer
+			// [1]-[2]-[3]
+			//  |__[2]
+			// Local Peer
+			// [1]
+			Context("when remote blockchain shape is [1]-[2]-[3] and local blockchain shape: [1]", func() {
+
+				var result *core.BlockHashes
+
+				BeforeEach(func() {
+					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					chain2block2 := MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					_, err := rp.GetBlockchain().ProcessBlock(block2)
+					Expect(err).To(BeNil())
+
+					_, err = rp.GetBlockchain().ProcessBlock(chain2block2)
+					Expect(err).To(BeNil())
+					Expect(rp.GetBlockchain().GetChainsReader()).To(HaveLen(2))
+
+					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+					_, err = rp.GetBlockchain().ProcessBlock(block3)
+					Expect(err).To(BeNil())
+
+					result, err = lp.Gossip().SendGetBlockHashes(rp, nil, chain2block2.GetHash())
+					Expect(err).To(BeNil())
+				})
+
+				It("should get 2 block hash from remote peer", func() {
+					Expect(len(result.Hashes)).To(Equal(2))
+				})
+
+				Specify("first header number = 2 and second header number = 3", func() {
+					Expect(len(result.Hashes)).To(Equal(2))
+					h2 := result.Hashes[0]
+					h3 := result.Hashes[1]
+					Expect(h2).To(Equal(block2.GetHash()))
+					Expect(h3).To(Equal(block3.GetHash()))
+				})
 			})
 		})
 
@@ -243,7 +415,7 @@ var _ = Describe("Block", func() {
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
-				result, err = lp.Gossip().SendGetBlockHashes(rp, nil)
+				result, err = lp.Gossip().SendGetBlockHashes(rp, nil, util.Hash{})
 				Expect(err).To(BeNil())
 			})
 
@@ -270,7 +442,7 @@ var _ = Describe("Block", func() {
 			var err error
 
 			BeforeEach(func() {
-				result, err = lp.Gossip().SendGetBlockHashes(rp, nil)
+				result, err = lp.Gossip().SendGetBlockHashes(rp, nil, util.Hash{})
 				Expect(err).To(BeNil())
 			})
 
@@ -310,7 +482,7 @@ var _ = Describe("Block", func() {
 				var result *core.BlockHashes
 
 				BeforeEach(func() {
-					result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{chainBBlock2.GetHash()})
+					result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{chainBBlock2.GetHash()}, util.Hash{})
 					Expect(err).To(BeNil())
 				})
 
@@ -333,7 +505,7 @@ var _ = Describe("Block", func() {
 			var result *core.BlockHashes
 
 			BeforeEach(func() {
-				result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{util.StrToHash("unknown")})
+				result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{util.StrToHash("unknown")}, util.Hash{})
 				Expect(err).To(BeNil())
 			})
 

@@ -29,12 +29,6 @@ const (
 	// EventTransactionProcessed describes an event about
 	// a processed transaction
 	EventTransactionProcessed = "event.transactionProcessed"
-	// EventBlockProcessed describes an event about
-	// a processed block
-	EventBlockProcessed = "event.blockProcessed"
-	// EventBlockBodiesProcessed describes an event about
-	// processed block bodies
-	EventBlockBodiesProcessed = "event.blockBodiesProcessed"
 	//EventAddrProcessed describes an event about
 	// a processed address
 	EventAddrProcessed = "event.addrProcessed"
