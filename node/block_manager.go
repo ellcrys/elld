@@ -100,15 +100,14 @@ func (bm *BlockManager) Handle() {
 			go bm.handleProcessBlock(evt.Args[0].(*core.Block))
 
 		case core.EventPeerChainInfo:
-			peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
-			if bm.isSyncCandidate(peerChainInfo) {
-				bm.addSyncCandidate(peerChainInfo)
-				go func() {
+			go func(peerChainInfo *types.SyncPeerChainInfo) {
+				if bm.isSyncCandidate(peerChainInfo) {
+					bm.addSyncCandidate(peerChainInfo)
 					if bm.sync() == nil {
 						bm.log.Info("Block synchronization complete")
 					}
-				}()
-			}
+				}
+			}(evt.Args[0].(*types.SyncPeerChainInfo))
 		}
 	}
 }
