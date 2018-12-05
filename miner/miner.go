@@ -197,11 +197,13 @@ func (m *Miner) RestartWorkers() error {
 // attempts to append the block to a branch.
 func (m *Miner) processBlock(fb *FoundBlock) error {
 
+	m.log.Debug("Update FoundBlock Header")
 	// Update the block header with the found nonce
 	header := fb.Block.GetHeader().Copy()
 	header.SetNonce(util.EncodeNonce(fb.Nonce))
 	fb.Block = fb.Block.ReplaceHeader(header)
 
+	m.log.Debug("Compute Hash")
 	// Compute and set block hash and signature
 	fb.Block.SetHash(fb.Block.ComputeHash())
 	blockSig, _ := core.BlockSign(fb.Block, m.minerKey.PrivKey().Base58())
