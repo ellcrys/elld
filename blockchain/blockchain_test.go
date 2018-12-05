@@ -432,11 +432,12 @@ var _ = Describe("IntegrationBlockchain", func() {
 					Expect(err).To(BeNil())
 				})
 
-				It("should return 12 locators", func() {
-					Expect(locators).To(HaveLen(12))
+				It("should return 13 locators", func() {
+					Expect(locators).To(HaveLen(13))
 				})
 
-				Specify("locators must have 2 b", func() {
+				Specify("locators must be expected", func() {
+					Expect(genesisBlock.GetHash()).To(Equal(locators[12]))
 					Expect(blocks[4].GetHash()).To(Equal(locators[11]))
 					Expect(blocks[8].GetHash()).To(Equal(locators[10]))
 					Expect(blocks[10].GetHash()).To(Equal(locators[9]))
