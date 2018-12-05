@@ -130,10 +130,26 @@ type GenerateBlockParams struct {
 // SyncPeerChainInfo holds information about
 // a peer that is a potential sync peer
 type SyncPeerChainInfo struct {
-	PeerID                   string
-	PeerIDShort              string
-	PeerChainHeight          uint64
-	PeerChainTotalDifficulty *big.Int
+
+	// PeerID is the sync peer ID
+	PeerID string
+
+	// PeerIDShort is the short loggable
+	// version of PeerID
+	PeerIDShort string
+
+	// PeerChainHeight is the height of the
+	// sync peer main chain
+	PeerChainHeight uint64
+
+	// PeerChainTD is the total difficulty
+	// of the sync peer's main chain
+	PeerChainTD *big.Int
+
+	// LastBlockSent is the last block
+	// received from the sync peer and
+	// was processed by the local peer.
+	LastBlockSent util.Hash
 }
 
 // ConnectError represents a connection error

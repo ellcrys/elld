@@ -94,13 +94,17 @@ func (bm *BlockManager) Handle() {
 		case core.EventOrphanBlock:
 			go bm.handleOrphan(evt.Args[0].(*core.Block))
 
+		case core.EventProcessBlock:
+			go bm.handleProcessBlock(evt.Args[0].(*core.Block))
+
 		case core.EventPeerChainInfo:
 			peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
 			if bm.isSyncCandidate(peerChainInfo) {
 				bm.addSyncCandidate(peerChainInfo)
 				go func() {
-					bm.sync()
-					bm.log.Info("Block synchronization complete")
+					if bm.sync() == nil {
+						bm.log.Info("Block synchronization complete")
+					}
 				}()
 			}
 		}
@@ -115,6 +119,23 @@ func (bm *BlockManager) handleOrphan(b *core.Block) {
 		"BlockNo", b.GetNumber(),
 		"ParentBlockHash", parentHash.SS())
 	bm.engine.gossipMgr.RequestBlock(b.Broadcaster, parentHash)
+}
+
+// handleProcessBlock processes a block.
+// It emits a core.EventBlockProcessed with two
+// arguments (1=processed block and 2=processing error)
+func (bm *BlockManager) handleProcessBlock(b *core.Block) error {
+	_, err := bm.bChain.ProcessBlock(b)
+	if err != nil {
+		bm.evt.Emit(core.EventBlockProcessed, b, err)
+		bm.log.Debug("Failed to process block", "Err", err.Error())
+		return err
+	}
+	bm.evt.Emit(core.EventBlockProcessed, b, nil)
+	bm.log.Debug("Received block has been processed",
+		"BlockNo", b.GetNumber(),
+		"BlockHash", b.GetHash().SS())
+	return nil
 }
 
 // handleMined attempts to append a block with a valid
@@ -164,13 +185,13 @@ func (bm *BlockManager) handleAppendedBlock(b types.Block) {
 // greater that of the local best block.
 func (bm *BlockManager) isSyncCandidate(info *types.SyncPeerChainInfo) bool {
 	localBestBlock, _ := bm.engine.GetBlockchain().ChainReader().Current()
-	if localBestBlock.GetHeader().GetTotalDifficulty().Cmp(info.PeerChainTotalDifficulty) == -1 {
+	if localBestBlock.GetHeader().GetTotalDifficulty().Cmp(info.PeerChainTD) == -1 {
 		bm.log.Info("Local blockchain is behind peer",
 			"ChainHeight", localBestBlock.GetNumber(),
 			"TotalDifficulty", localBestBlock.GetHeader().GetTotalDifficulty(),
 			"PeerID", info.PeerIDShort,
 			"PeerChainHeight", info.PeerChainHeight,
-			"PeerChainTotalDifficulty", info.PeerChainTotalDifficulty)
+			"PeerChainTotalDifficulty", info.PeerChainTD)
 		return true
 	}
 	return false
@@ -187,8 +208,8 @@ func (bm *BlockManager) pickBestSyncCandidate() *types.SyncPeerChainInfo {
 			bestCandidate = candidate
 			continue
 		}
-		if bestCandidate.PeerChainTotalDifficulty.
-			Cmp(candidate.PeerChainTotalDifficulty) == -1 {
+		if bestCandidate.PeerChainTD.
+			Cmp(candidate.PeerChainTD) == -1 {
 			bestCandidate = candidate
 		}
 	}
@@ -212,7 +233,7 @@ func (bm *BlockManager) sync() error {
 	var err error
 
 	if bm.IsSyncing() {
-		return nil
+		return fmt.Errorf("syncing")
 	}
 
 	bm.syncMtx.Lock()
@@ -237,7 +258,8 @@ func (bm *BlockManager) sync() error {
 	}
 
 	// Request block hashes from the peer
-	blockHashes, err = bm.engine.gossipMgr.SendGetBlockHashes(peer, nil)
+	blockHashes, err = bm.engine.gossipMgr.SendGetBlockHashes(peer, nil,
+		bm.bestSyncCandidate.LastBlockSent)
 	if err != nil {
 		bm.log.Debug("Failed to get block hashes", "Err", err.Error())
 		delete(bm.syncCandidate, bm.bestSyncCandidate.PeerID)
@@ -254,7 +276,6 @@ func (bm *BlockManager) sync() error {
 
 	// Attempt to append the block bodies to the blockchain
 	for _, bb := range blockBodies.Blocks {
-
 		var block core.Block
 		copier.Copy(&block, bb)
 
@@ -263,6 +284,7 @@ func (bm *BlockManager) sync() error {
 		// and set the broadcaster
 		block.SetValidationContexts(types.ContextBlockSync)
 		block.SetBroadcaster(peer)
+		bm.bestSyncCandidate.LastBlockSent = block.GetHash()
 
 		// Process the block
 		_, err := bm.engine.GetBlockchain().ProcessBlock(&block)
@@ -320,7 +342,7 @@ func (bm *BlockManager) GetSyncStateInfo() *core.SyncStateInfo {
 
 	// Get the current local best chain
 	localBestBlock, _ := bm.engine.GetBlockchain().ChainReader().Current()
-	syncState.TargetTD = bm.bestSyncCandidate.PeerChainTotalDifficulty
+	syncState.TargetTD = bm.bestSyncCandidate.PeerChainTD
 	syncState.TargetChainHeight = bm.bestSyncCandidate.PeerChainHeight
 	syncState.CurrentTD = localBestBlock.GetHeader().GetTotalDifficulty()
 	syncState.CurrentChainHeight = localBestBlock.GetNumber()
@@ -342,14 +364,18 @@ func (bm *BlockManager) GetSyncStateInfo() *core.SyncStateInfo {
 func (bm *BlockManager) addSyncCandidate(candidate *types.SyncPeerChainInfo) {
 	bm.syncMtx.Lock()
 
-	if c, ok := bm.syncCandidate[candidate.PeerID]; ok {
-		if c.PeerChainTotalDifficulty.Cmp(candidate.PeerChainTotalDifficulty) >= 1 {
+	existing, ok := bm.syncCandidate[candidate.PeerID]
+	if ok {
+		if existing.PeerChainTD.Cmp(candidate.PeerChainTD) == 0 {
 			bm.syncMtx.Unlock()
 			return
 		}
+		candidate.LastBlockSent = existing.LastBlockSent
+		bm.log.Debug("Updated sync candidate", "PeerID", candidate.PeerID)
+	} else {
+		bm.log.Debug("Added new sync candidate", "PeerID", candidate.PeerID)
 	}
 
-	bm.log.Debug("Added new sync candidate", "PeerID", candidate.PeerID)
 	bm.syncCandidate[candidate.PeerID] = candidate
 	bm.syncMtx.Unlock()
 }

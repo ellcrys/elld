@@ -84,10 +84,10 @@ func (g *GossipManager) SendHandshake(rp core.Engine) error {
 
 	// Broadcast the remote peer's chain information.
 	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
-		PeerID:                   rp.StringID(),
-		PeerIDShort:              rp.ShortID(),
-		PeerChainHeight:          resp.BestBlockNumber,
-		PeerChainTotalDifficulty: resp.BestBlockTotalDifficulty,
+		PeerID:          rp.StringID(),
+		PeerIDShort:     rp.ShortID(),
+		PeerChainHeight: resp.BestBlockNumber,
+		PeerChainTD:     resp.BestBlockTotalDifficulty,
 	})
 
 	return nil
@@ -138,10 +138,10 @@ func (g *GossipManager) OnHandshake(s net.Stream, rp core.Engine) error {
 
 	// Broadcast the remote peer's chain information.
 	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
-		PeerID:                   rp.StringID(),
-		PeerIDShort:              rp.ShortID(),
-		PeerChainHeight:          msg.BestBlockNumber,
-		PeerChainTotalDifficulty: msg.BestBlockTotalDifficulty,
+		PeerID:          rp.StringID(),
+		PeerIDShort:     rp.ShortID(),
+		PeerChainHeight: msg.BestBlockNumber,
+		PeerChainTD:     msg.BestBlockTotalDifficulty,
 	})
 
 	return nil

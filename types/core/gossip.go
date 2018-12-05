@@ -120,6 +120,7 @@ type RequestBlock struct {
 // blocks to send back.
 type GetBlockHashes struct {
 	Locators  []util.Hash `json:"hash" msgpack:"hash"`
+	Seek      util.Hash   `json:"seek" msgpack:"seek"`
 	MaxBlocks int64       `json:"maxBlocks" msgpack:"maxBlocks"`
 }
 
@@ -178,7 +179,7 @@ type Gossip interface {
 	OnBlockBody(s net.Stream, rp Engine) error
 	RequestBlock(rp Engine, blockHash util.Hash) error
 	OnRequestBlock(s net.Stream, rp Engine) error
-	SendGetBlockHashes(rp Engine, locators []util.Hash) (*BlockHashes, error)
+	SendGetBlockHashes(rp Engine, locators []util.Hash, seek util.Hash) (*BlockHashes, error)
 	OnGetBlockHashes(s net.Stream, rp Engine) error
 	SendGetBlockBodies(rp Engine, hashes []util.Hash) (*BlockBodies, error)
 	OnGetBlockBodies(s net.Stream, rp Engine) error
