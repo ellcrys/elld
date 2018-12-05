@@ -226,17 +226,22 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 	// that has just been solved.
 	m.stopWorkers()
 
+	m.log.Debug("About to Process Found Block")
+
 	// Attempt to process the block.
 	// If it failed, restart the workers
 	if err := m.processBlock(fb); err != nil {
 		m.processing.SetTo(false)
 		m.RestartWorkers()
+		m.log.Debug("Block Processing Failed")
 		return
 	}
+	m.log.Debug("Finished Processing Found Block")
 
 	m.processing.SetTo(false)
 
 	if m.isMining() {
+		m.log.Debug("Restarting Mining")
 
 		// If the new block timestamp is the same as the current
 		// time, we should wait for 1 second so we don't allow
@@ -250,6 +255,7 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 		if err := m.startWorkers(); err != nil {
 			m.log.Debug("Unable to start workers", "Err", err.Error())
 		}
+		m.log.Debug("Restarted Mining")
 	}
 }
 

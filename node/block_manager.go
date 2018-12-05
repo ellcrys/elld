@@ -85,7 +85,9 @@ func (bm *BlockManager) Handle() {
 		case core.EventFoundBlock:
 			errCh := evt.Args[1].(chan error)
 			go func(errCh chan error) {
+				bm.log.Debug("Handling Mined Block")
 				errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
+				bm.log.Debug("Finished Handling Mined Block")
 			}(errCh)
 
 		case core.EventNewBlock:
