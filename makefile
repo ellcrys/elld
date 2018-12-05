@@ -44,6 +44,13 @@ release:
 release-tagged:
 	env GOVERSION=$(GOVERSION) goreleaser release --skip-publish --rm-dist
 
+# Create a release 
+release-linux:
+	cd $(GOPATH)/src/github.com/ellcrys
+	git checkout ${b}
+	dep ensure -v
+	env GOVERSION=$(GOVERSION) goreleaser release --snapshot --rm-dist -f ".goreleaser.linux.yml"
+
 # Build an elld image 
 # use v=version to set Elld release tag
 build: 
@@ -62,7 +69,7 @@ else
 	docker build --build-arg="version=tags/${v}" -t ellcrys/elld --no-cache .
 endif
 
-build-local:
+build-local-linux: release-linux
 	docker build -t ellcrys/elld --no-cache -f ./Dockerfile.local --no-cache .
 	
 # Starts elld client in a docker container
