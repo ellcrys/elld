@@ -46,10 +46,10 @@ release-tagged:
 
 # Create a release 
 release-linux:
-	cd $(GOPATH)/src/github.com/ellcrys
-	git checkout ${b}
-	dep ensure -v
-	env GOVERSION=$(GOVERSION) goreleaser release --snapshot --rm-dist -f ".goreleaser.linux.yml"
+	cd $(GOPATH)/src/github.com/ellcrys/elld && \
+	 git checkout ${b} && \
+	 dep ensure -v \
+	 env GOVERSION=$(GOVERSION) goreleaser release --snapshot --rm-dist -f ".goreleaser.linux.yml"
 
 # Build an elld image 
 # use v=version to set Elld release tag
