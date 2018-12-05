@@ -208,8 +208,13 @@ func (m *Miner) processBlock(fb *FoundBlock) error {
 	fb.Block.SetSignature(blockSig)
 
 	errCh := make(chan error)
+	m.log.Debug("Emitting Event")
 	m.event.Emit(core.EventFoundBlock, fb, errCh)
-	return <-errCh
+	m.log.Debug("Emitted Event")
+	r := <-errCh
+	m.log.Debug("Waiting for Event Error")
+
+	return r
 }
 
 // onFoundBlock is called when a worker finds a
