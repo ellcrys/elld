@@ -59,10 +59,10 @@ func (g *GossipManager) SendPingToPeer(remotePeer core.Engine) error {
 
 	// Broadcast the remote peer's chain information.
 	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
-		PeerID:                   remotePeer.StringID(),
-		PeerIDShort:              remotePeer.ShortID(),
-		PeerChainHeight:          pongMsg.BestBlockNumber,
-		PeerChainTotalDifficulty: pongMsg.BestBlockTotalDifficulty,
+		PeerID:          remotePeer.StringID(),
+		PeerIDShort:     remotePeer.ShortID(),
+		PeerChainHeight: pongMsg.BestBlockNumber,
+		PeerChainTD:     pongMsg.BestBlockTotalDifficulty,
 	})
 
 	return nil
@@ -128,10 +128,10 @@ func (g *GossipManager) OnPing(s net.Stream, rp core.Engine) error {
 
 	// Broadcast the remote peer's chain information.
 	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
-		PeerID:                   rp.StringID(),
-		PeerIDShort:              rp.ShortID(),
-		PeerChainHeight:          msg.BestBlockNumber,
-		PeerChainTotalDifficulty: msg.BestBlockTotalDifficulty,
+		PeerID:          rp.StringID(),
+		PeerIDShort:     rp.ShortID(),
+		PeerChainHeight: msg.BestBlockNumber,
+		PeerChainTD:     msg.BestBlockTotalDifficulty,
 	})
 
 	return nil

@@ -147,20 +147,20 @@ func (b *Blockchain) Up() error {
 		return err
 	}
 
+	// If at this point the genesis block has not
+	// been set, we attempt to load it from the
+	// genesis.json file.
+	if b.genesisBlock == nil {
+		b.genesisBlock, err = LoadBlockFromFile("genesis.json")
+		if err != nil {
+			return err
+		}
+	}
+
 	// If there are no known chains described in the metadata and none
 	// in the cache, then we create a new chain and save it
 	if len(chains) == 0 {
 		b.log.Info("No branch found. Creating genesis state")
-
-		// If at this point the genesis block has not
-		// been set, we attempt to load it from the
-		// genesis.json file.
-		if b.genesisBlock == nil {
-			b.genesisBlock, err = LoadBlockFromFile("genesis.json")
-			if err != nil {
-				return err
-			}
-		}
 
 		// Create the genesis chain and the genesis block.
 		gBlock := b.genesisBlock
@@ -579,11 +579,13 @@ func (b *Blockchain) GetChainsReader() (readers []types.ChainReader) {
 	return
 }
 
-// GetLocators fetches a list of blockhashes used to
+// GetLocators fetches a list of block hashes used to
 // compare and sync the local chain with a remote chain.
 // We collect the most recent 10 block hashes and
 // then exponentially fetch more hashes until there are
 // no more blocks.
+// The genesis block must be added as the last hash
+// if not already included.
 func (b *Blockchain) GetLocators() ([]util.Hash, error) {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
@@ -616,6 +618,14 @@ func (b *Blockchain) GetLocators() ([]util.Hash, error) {
 		if len(locators) >= 10 {
 			step *= 2
 		}
+	}
+
+	// Add the genesis block hash as the final hash
+	// if it isn't already the last hash.
+	// We need to add the genesis block in case it got
+	// missed during the above exponential selection.
+	if !locators[len(locators)-1].Equal(b.genesisBlock.GetHash()) {
+		locators = append(locators, b.genesisBlock.GetHash())
 	}
 
 	return locators, nil
