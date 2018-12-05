@@ -211,7 +211,7 @@ func (m *Miner) processBlock(fb *FoundBlock) error {
 
 	errCh := make(chan error)
 	m.log.Debug("Emitting Event")
-	m.event.Emit(core.EventFoundBlock, fb, errCh)
+	<-m.event.Emit(core.EventFoundBlock, fb, errCh)
 	m.log.Debug("Emitted Event")
 	r := <-errCh
 	m.log.Debug("Waiting for Event Error")
