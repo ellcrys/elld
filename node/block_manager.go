@@ -80,32 +80,32 @@ func (bm *BlockManager) SetTxPool(tp types.TxPool) {
 func (bm *BlockManager) Handle() {
 
 	go func() {
-		for evt := range bm.evt.On(core.EventFoundBlock) {
+		for evt := range bm.evt.Once(core.EventFoundBlock) {
 			errCh := evt.Args[1].(chan error)
 			errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventNewBlock) {
+		for evt := range bm.evt.Once(core.EventNewBlock) {
 			bm.handleAppendedBlock(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventOrphanBlock) {
+		for evt := range bm.evt.Once(core.EventOrphanBlock) {
 			bm.handleOrphan(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventProcessBlock) {
+		for evt := range bm.evt.Once(core.EventProcessBlock) {
 			bm.handleProcessBlock(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventPeerChainInfo) {
+		for evt := range bm.evt.Once(core.EventPeerChainInfo) {
 			peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
 			if bm.isSyncCandidate(peerChainInfo) {
 				bm.addSyncCandidate(peerChainInfo)
