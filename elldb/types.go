@@ -66,7 +66,7 @@ func FromKeyValue(key []byte, value []byte) *KVObject {
 	var k, p []byte
 
 	// break down the key to determine the prefix and the original key.
-	parts := bytes.Split(key, []byte(KeyPrefixSeparator))
+	parts := bytes.SplitN(key, []byte(KeyPrefixSeparator), 2)
 
 	// If there are more than 2 parts, it is an invalid key.
 	// If there are only two parts, then the 0 index is the prefix

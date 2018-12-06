@@ -78,37 +78,43 @@ func (bm *BlockManager) SetTxPool(tp types.TxPool) {
 
 // Handle handles all incoming block related events.
 func (bm *BlockManager) Handle() {
-	for {
-		evt := <-bm.evt.Once("*")
-		switch evt.OriginalTopic {
 
-		case core.EventFoundBlock:
+	go func() {
+		for evt := range bm.evt.On(core.EventFoundBlock) {
 			errCh := evt.Args[1].(chan error)
-			go func(errCh chan error) {
-				errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
-			}(errCh)
+			errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
+		}
+	}()
 
-		case core.EventNewBlock:
-			go bm.handleAppendedBlock(evt.Args[0].(*core.Block))
+	go func() {
+		for evt := range bm.evt.On(core.EventNewBlock) {
+			bm.handleAppendedBlock(evt.Args[0].(*core.Block))
+		}
+	}()
 
-		case core.EventOrphanBlock:
-			go bm.handleOrphan(evt.Args[0].(*core.Block))
+	go func() {
+		for evt := range bm.evt.On(core.EventOrphanBlock) {
+			bm.handleOrphan(evt.Args[0].(*core.Block))
+		}
+	}()
 
-		case core.EventProcessBlock:
-			go bm.handleProcessBlock(evt.Args[0].(*core.Block))
+	go func() {
+		for evt := range bm.evt.On(core.EventProcessBlock) {
+			bm.handleProcessBlock(evt.Args[0].(*core.Block))
+		}
+	}()
 
-		case core.EventPeerChainInfo:
+	go func() {
+		for evt := range bm.evt.On(core.EventPeerChainInfo) {
 			peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
 			if bm.isSyncCandidate(peerChainInfo) {
 				bm.addSyncCandidate(peerChainInfo)
-				go func() {
-					if bm.sync() == nil {
-						bm.log.Info("Block synchronization complete")
-					}
-				}()
+				if bm.sync() == nil {
+					bm.log.Info("Block synchronization complete")
+				}
 			}
 		}
-	}
+	}()
 }
 
 // handleOrphan sends a RequestBlock message to

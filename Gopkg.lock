@@ -167,14 +167,6 @@
   revision = "02af3965c54e8cacf948b97fef38925c4120652c"
 
 [[projects]]
-  branch = "master"
-  digest = "1:93d6687fc19da8a35c7352d72117a6acd2072dfb7e9bfd65646227bf2a913b2a"
-  name = "github.com/ellcrys/abool"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9b9efcf221b50905aab9bbabd3daed56dc10f339"
-
-[[projects]]
   digest = "1:f34e8dee87ed7ebb9caceae96b7851d99ab5bca0afc345cf964c61dc0ad56eb8"
   name = "github.com/ellcrys/go-ethereum"
   packages = ["log"]
@@ -1328,7 +1320,6 @@
     "github.com/cenkalti/rpc2",
     "github.com/dgrijalva/jwt-go",
     "github.com/dustin/go-humanize",
-    "github.com/ellcrys/abool",
     "github.com/ellcrys/go-ethereum/log",
     "github.com/ellcrys/go-libp2p-crypto",
     "github.com/ellcrys/merkletree",
