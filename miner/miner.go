@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/abool"
-
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
@@ -36,6 +34,10 @@ var (
 // mine block for processing.
 type Miner struct {
 	sync.RWMutex
+
+	// processMtx is a mutex for processing
+	// blocks found by a worker
+	processMtx *sync.Mutex
 
 	// numThreads is the number of threads
 	// running the pow computation
@@ -71,7 +73,7 @@ type Miner struct {
 
 	// processing indicates that a block is being
 	// processed for inclusion in a branch
-	processing *abool.AtomicBool
+	processing bool
 
 	// lastFoundBlockHash is the hash of the last
 	// block found by this miner
@@ -96,7 +98,7 @@ func NewMiner(mineKey *crypto.Key, blockMaker types.BlockMaker,
 		blakimoto:  blakimoto.ConfiguredBlakimoto(blakimoto.Mode(cfg.Miner.Mode), log),
 		hashrate:   metrics.NewMeter(),
 		done:       make(chan bool),
-		processing: abool.New(),
+		processMtx: &sync.Mutex{},
 	}
 }
 
@@ -208,18 +210,31 @@ func (m *Miner) processBlock(fb *FoundBlock) error {
 	fb.Block.SetSignature(blockSig)
 
 	errCh := make(chan error)
-	m.event.Emit(core.EventFoundBlock, fb, errCh)
+	<-m.event.Emit(core.EventFoundBlock, fb, errCh)
+
 	return <-errCh
+}
+
+// isProcessing checks whether a mined block
+// is being processed.
+func (m *Miner) isProcessing() bool {
+	m.processMtx.Lock()
+	defer m.processMtx.Unlock()
+	return m.processing
 }
 
 // onFoundBlock is called when a worker finds a
 // valid nonce for the current proposed block.
 func (m *Miner) onFoundBlock(fb *FoundBlock) {
+	m.processMtx.Lock()
+	defer m.processMtx.Unlock()
 
-	if !m.processing.SetToIf(false, true) {
+	if m.processing {
 		m.log.Debug("Rejected a block. Currently processing a winner")
 		return
 	}
+
+	m.processing = true
 
 	// Stop all workers who are currently
 	// trying to solve PoW for the current round
@@ -229,12 +244,12 @@ func (m *Miner) onFoundBlock(fb *FoundBlock) {
 	// Attempt to process the block.
 	// If it failed, restart the workers
 	if err := m.processBlock(fb); err != nil {
-		m.processing.SetTo(false)
+		m.processing = false
 		m.RestartWorkers()
 		return
 	}
 
-	m.processing.SetTo(false)
+	m.processing = false
 
 	if m.isMining() {
 
@@ -259,7 +274,9 @@ func (m *Miner) handleWorkersEvents() {
 	for {
 		select {
 		case evt := <-m.iEvent.Once(EventWorkerFoundBlock, emitter.Sync):
-			m.onFoundBlock(evt.Args[0].(*FoundBlock))
+			if !m.isProcessing() {
+				m.onFoundBlock(evt.Args[0].(*FoundBlock))
+			}
 		}
 	}
 }
