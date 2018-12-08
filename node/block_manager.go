@@ -38,10 +38,7 @@ type BlockManager struct {
 	// miner is CPU miner
 	miner *miner.Miner
 
-	// txPool is the transaction pool
-	txPool types.TxPool
-
-	// peerMgr is the client peer manager
+	// engine is the node's instance
 	engine *Node
 
 	// syncCandidate are candidate peers to
@@ -71,13 +68,8 @@ func (bm *BlockManager) SetMiner(m *miner.Miner) {
 	bm.miner = m
 }
 
-// SetTxPool sets a reference of the transaction pool
-func (bm *BlockManager) SetTxPool(tp types.TxPool) {
-	bm.txPool = tp
-}
-
-// Handle handles all incoming block related events.
-func (bm *BlockManager) Handle() {
+// Manage handles all incoming block related events.
+func (bm *BlockManager) Manage() {
 
 	go func() {
 		for evt := range bm.evt.Once(core.EventFoundBlock) {
@@ -175,7 +167,7 @@ func (bm *BlockManager) relayAppendedBlock(b types.Block) {
 func (bm *BlockManager) handleAppendedBlock(b types.Block) {
 
 	// Remove the blocks transactions from the pool.
-	bm.txPool.Remove(b.GetTransactions()...)
+	bm.engine.txsPool.Remove(b.GetTransactions()...)
 
 	// Restart miner workers.
 	bm.miner.RestartWorkers()

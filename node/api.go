@@ -254,7 +254,7 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	}
 
 	// Attempt to add the transaction to the pool
-	if err := n.AddTransaction(&tx); err != nil {
+	if err := n.txManager.AddTx(&tx); err != nil {
 		return jsonrpc.Error(types.ErrCodeTxFailed, err.Error(), nil)
 	}
 

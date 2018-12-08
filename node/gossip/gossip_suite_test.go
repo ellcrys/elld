@@ -61,7 +61,6 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 
 	evtEmitter := &emitter.Emitter{}
 	txp := txpool.New(100)
-	txp.SetEventEmitter(evtEmitter)
 
 	bc := blockchain.New(txp, cfg, log)
 	bc.SetEventEmitter(evtEmitter)
@@ -83,6 +82,10 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 
 	n.SetTxsPool(txp)
 	n.SetBlockchain(bc)
+
+	tm := node.NewTxManager(n)
+	n.SetTxManager(tm)
+	go tm.Manage()
 
 	return n
 }

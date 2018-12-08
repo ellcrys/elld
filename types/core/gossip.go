@@ -154,6 +154,17 @@ type Intro struct {
 	PeerID string `json:"id" msgpack:"id"`
 }
 
+// TxInfo describes a transaction
+type TxInfo struct {
+	Hash util.Hash `json:"hash" msgpack:"hash"`
+}
+
+// TxOk describes a transaction hash received
+// in TxInfo as accepted/ok or not
+type TxOk struct {
+	Ok bool `json:"ok" msgpack:"ok"`
+}
+
 // Hash returns the hash representation
 func (m *Intro) Hash() util.Hash {
 	bs := util.ObjectToBytes([]interface{}{m.PeerID})
@@ -206,7 +217,7 @@ type Gossip interface {
 	OnIntro(s net.Stream, rp Engine) error
 
 	// Transaction messages
-	RelayTx(tx types.Transaction, remotePeers []Engine) error
+	BroadcastTx(tx types.Transaction, remotePeers []Engine) error
 	OnTx(s net.Stream, rp Engine) error
 
 	// PickBroadcasters selects N random addresses from

@@ -25,7 +25,7 @@ func makeOrphanBlockHistoryKey(blockHash util.Hash,
 
 // RelayBlock sends a given block to remote peers.
 // The block is encapsulated in a BlockBody message.
-func (g *GossipManager) RelayBlock(block types.Block, remotePeers []core.Engine) error {
+func (g *Manager) RelayBlock(block types.Block, remotePeers []core.Engine) error {
 
 	g.log.Debug("Relaying block to peer(s)", "BlockNo", block.GetNumber(),
 		"NumPeers", len(remotePeers))
@@ -70,7 +70,7 @@ func (g *GossipManager) RelayBlock(block types.Block, remotePeers []core.Engine)
 // BlockBody messages contain information about a
 // block. It will attempt to process the received
 // block.
-func (g *GossipManager) OnBlockBody(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnBlockBody(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -109,7 +109,7 @@ func (g *GossipManager) OnBlockBody(s net.Stream, rp core.Engine) error {
 // The block's validation context is set to ContextBlockSync
 // which cause the transactions to not be required to exist
 // in the transaction pool.
-func (g *GossipManager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
+func (g *Manager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 
 	historyKey := makeOrphanBlockHistoryKey(blockHash, rp)
 	if g.engine.GetHistory().HasMulti(historyKey...) {
@@ -151,7 +151,7 @@ func (g *GossipManager) RequestBlock(rp core.Engine, blockHash util.Hash) error 
 // OnRequestBlock handles RequestBlock message.
 // A RequestBlock message includes information
 // a bout a block that a remote node needs.
-func (g *GossipManager) OnRequestBlock(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnRequestBlock(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -216,7 +216,7 @@ func (g *GossipManager) OnRequestBlock(s net.Stream, rp core.Engine) error {
 //
 // If the locators is not provided via the locator argument,
 // they will be collected from the main chain.
-func (g *GossipManager) SendGetBlockHashes(rp core.Engine,
+func (g *Manager) SendGetBlockHashes(rp core.Engine,
 	locators []util.Hash, seek util.Hash) (*core.BlockHashes, error) {
 
 	rpID := rp.ShortID()
@@ -275,7 +275,7 @@ func (g *GossipManager) SendGetBlockHashes(rp core.Engine,
 // not the same as its main chain (a branch), it will
 // send block hashes starting from the root parent block (oldest
 // ancestor) which exists on the main chain.
-func (g *GossipManager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -372,7 +372,7 @@ send:
 
 // SendGetBlockBodies sends a GetBlockBodies message
 // requesting for whole bodies of a collection blocks.
-func (g *GossipManager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (*core.BlockBodies, error) {
+func (g *Manager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (*core.BlockBodies, error) {
 
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block bodies", "PeerID", rpID, "NumHashes", len(hashes))
@@ -408,7 +408,7 @@ func (g *GossipManager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (
 }
 
 // OnGetBlockBodies handles GetBlockBodies requests
-func (g *GossipManager) OnGetBlockBodies(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnGetBlockBodies(s net.Stream, rp core.Engine) error {
 	defer s.Close()
 
 	// Read the message

@@ -13,7 +13,6 @@ import (
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/txpool"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -65,9 +64,10 @@ type Node struct {
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
-	tickerDone          chan bool
+	blockManager        *BlockManager       // Block manager for handling block events
+	txManager           *TxManager          // Transaction manager for handling transaction events
+	tickerDone          chan bool           //
 	hardcodedPeers      map[string]struct{}
-	blockManager        core.BlockManager
 }
 
 // NewNode creates a node instance at the specified port
@@ -377,8 +377,13 @@ func (n *Node) SetEventEmitter(e *emitter.Emitter) {
 }
 
 // SetBlockManager sets the block manager
-func (n *Node) SetBlockManager(bm core.BlockManager) {
+func (n *Node) SetBlockManager(bm *BlockManager) {
 	n.blockManager = bm
+}
+
+// SetTxManager sets the transaction manager
+func (n *Node) SetTxManager(tm *TxManager) {
+	n.txManager = tm
 }
 
 // SetLocalNode sets the node as the
@@ -410,7 +415,7 @@ func (n *Node) AddToPeerStore(node core.Engine) core.Engine {
 
 // SetGossipProtocol sets the
 // gossip protocol implementation
-func (n *Node) SetGossipProtocol(mgr *gossip.GossipManager) {
+func (n *Node) SetGossipProtocol(mgr *gossip.Manager) {
 	n.gossipMgr = mgr
 }
 
@@ -565,7 +570,7 @@ func (n *Node) relayTx() {
 				continue
 			}
 			tx := q.First()
-			go n.Gossip().RelayTx(tx, n.peerManager.GetActivePeers(0))
+			go n.Gossip().BroadcastTx(tx, n.peerManager.GetActivePeers(0))
 		case <-n.tickerDone:
 			ticker.Stop()
 			return
@@ -679,16 +684,4 @@ func (n *Node) GetTxPool() types.TxPool {
 // SetTxsPool sets the transaction pool
 func (n *Node) SetTxsPool(txp *txpool.TxPool) {
 	n.txsPool = txp
-}
-
-// AddTransaction validates and adds a
-// transaction to the transaction pool.
-func (n *Node) AddTransaction(tx types.Transaction) error {
-
-	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain())
-	if errs := txValidator.Validate(); len(errs) > 0 {
-		return errs[0]
-	}
-
-	return n.GetTxPool().Put(tx)
 }

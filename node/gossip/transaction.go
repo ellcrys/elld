@@ -1,14 +1,10 @@
 package gossip
 
 import (
-	"fmt"
-
-	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/util/cache"
 	net "github.com/libp2p/go-libp2p-net"
 )
 
@@ -19,101 +15,136 @@ func MakeTxHistoryKey(tx types.Transaction, peer core.Engine) []interface{} {
 }
 
 // OnTx handles incoming transaction message
-func (g *GossipManager) OnTx(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnTx(s net.Stream, rp core.Engine) error {
 	defer s.Close()
 
-	msg := &core.Transaction{}
+	var txID string
+	tx := &core.Transaction{}
+
+	msg := &core.TxInfo{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
 		return g.logErr(err, rp, "[OnTx] Failed to read")
 	}
 
-	g.log.Info("Received new transaction", "PeerID", rp.ShortID())
-
-	historyKey := MakeTxHistoryKey(msg, rp)
-	if g.engine.GetHistory().HasMulti(historyKey...) {
-		return nil
+	// We can't accept a transaction that already
+	// exists in the transaction the pool.
+	if g.engine.GetTxPool().HasByHash(msg.Hash.HexStr()) {
+		goto tx_not_ok
 	}
 
-	// TxTypeAlloc transactions are not to
-	// be relayed like standard transactions.
-	if msg.Type == core.TxTypeAlloc {
+	// We can't accept a transaction that already
+	// exists on the main chain.
+	if existingTx, _ := g.engine.GetBlockchain().
+		GetTransaction(msg.Hash); existingTx != nil {
+		goto tx_not_ok
+	}
+
+	// Send back TxOk message indicating readiness
+	// to receive the transaction
+	if err := WriteStream(s, &core.TxOk{Ok: true}); err != nil {
 		s.Reset()
-		err := fmt.Errorf("Allocation transaction type is not allowed")
-		g.log.Debug(err.Error())
-		g.engine.GetEventEmitter().Emit(EventTransactionProcessed, err)
-		return err
+		return g.logErr(err, rp, "[OnTx] Failed to write TxOk message")
 	}
 
-	// Ignore the transaction if already
-	// in our transaction pool
-	if g.engine.GetTxPool().Has(msg) {
-		return nil
-	}
-
-	// Validate the transaction and check whether
-	// it already exists in the transactions pool,
-	// main chain and side chains. If so, reject it
-	errs := blockchain.NewTxValidator(msg, g.engine.GetTxPool(),
-		g.engine.GetBlockchain()).Validate()
-	if len(errs) > 0 {
+	// At this point, we expect the peer to send the transaction
+	if err := ReadStream(s, tx); err != nil {
 		s.Reset()
-		g.log.Debug("Transaction is not valid", "Err", errs[0])
-		g.engine.GetEventEmitter().Emit(EventTransactionProcessed, errs[0])
-		return errs[0]
+		return g.logErr(err, rp, "[OnTx] Failed to read")
 	}
 
-	// Add the transaction to the transaction
-	// pool and wait for error response
-	if err := g.engine.AddTransaction(msg); err != nil {
-		g.log.Error("Failed to add transaction to pool", "Err", msg)
-		g.engine.GetEventEmitter().Emit(EventTransactionProcessed, err)
-		return err
-	}
+	txID = util.String(tx.GetID()).SS()
+	g.log.Info("Received a new transaction", "PeerID", rp.ShortID(), "TxID", txID)
+	g.engine.GetEventEmitter().Emit(core.EventTransactionReceived, tx)
 
-	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
-	g.engine.GetEventEmitter().Emit(EventTransactionProcessed)
-	g.log.Info("Added new transaction to pool", "TxID", msg.GetID())
+tx_not_ok:
+	if err := WriteStream(s, &core.TxOk{Ok: false}); err != nil {
+		s.Reset()
+		return g.logErr(err, rp, "[OnTx] Failed to write TxOk message")
+	}
 
 	return nil
 }
 
-// RelayTx relays transactions to peers
-func (g *GossipManager) RelayTx(tx types.Transaction, remotePeers []core.Engine) error {
+// BroadcastTx broadcast transactions to selected peers
+func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) error {
 
 	txID := util.String(tx.GetID()).SS()
 	sent := 0
-	g.log.Debug("Relaying transaction to peers", "TxID", txID, "NumPeers",
-		len(remotePeers))
+	g.log.Debug("Attempting to broadcast a transaction",
+		"TxID", txID, "NumPeers", len(remotePeers))
 
-	for _, peer := range remotePeers {
-
-		historyKey := MakeTxHistoryKey(tx, peer)
-
-		if g.engine.GetHistory().HasMulti(historyKey...) {
-			continue
-		}
+	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
+	for _, peer := range broadcastPeers.Peers() {
 
 		s, c, err := g.NewStream(peer, config.Versions.Tx)
 		if err != nil {
-			g.logConnectErr(err, peer, "[RelayTx] Failed to connect")
+			g.logConnectErr(err, peer, "[BroadcastTx] Failed to connect")
 			continue
 		}
 		defer c()
-		defer s.Close()
 
-		if err := WriteStream(s, tx); err != nil {
+		// Send a transaction info describing the transaction.
+		// If the peer accepts the transaction, we can send the full tx.
+		txInfo := core.TxInfo{Hash: tx.GetHash()}
+		if err := WriteStream(s, txInfo); err != nil {
 			s.Reset()
-			g.log.Debug("Tx message failed. failed to write to stream",
-				"Err", err, "PeerID", peer.ShortID())
+			g.logErr(err, peer, "[BroadcastTx] Failed to write to stream")
 			continue
 		}
 
-		g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
+		// Read TxOk message to know whether to send the transaction
+		txOk := &core.TxOk{}
+		if err := ReadStream(s, txOk); err != nil {
+			s.Reset()
+			g.logErr(err, peer, "[BroadcastTx] Failed to read")
+			continue
+		}
 
-		sent++
+		if !txOk.Ok {
+			s.Reset()
+			g.log.Debug("Peer has rejected a transaction",
+				"PeerID", peer.ShortID(), "TxID", txID)
+			continue
+		}
+
+		// At this point, we can send the transaction to the peer
+		if err := WriteStream(s, tx); err != nil {
+			s.Reset()
+			g.logErr(err, peer, "[BroadcastTx] Failed to write to stream")
+			continue
+		}
+
+		g.log.Info("Transaction successfully broadcast to peer",
+			"TxID", txID, "NumPeersSentTo", sent)
+
+		s.Close()
 	}
 
-	g.log.Info("Finished relaying transaction", "TxID", txID, "NumPeersSentTo", sent)
 	return nil
 }
+
+// 	historyKey := MakeTxHistoryKey(tx, peer)
+
+// 	if g.engine.GetHistory().HasMulti(historyKey...) {
+// 		continue
+// 	}
+
+// 	s, c, err := g.NewStream(peer, config.Versions.Tx)
+// 	if err != nil {
+// 		g.logConnectErr(err, peer, "[BroadcastTx] Failed to connect")
+// 		continue
+// 	}
+// 	defer c()
+// 	defer s.Close()
+
+// 	if err := WriteStream(s, tx); err != nil {
+// 		s.Reset()
+// 		g.log.Debug("Tx message failed. failed to write to stream",
+// 			"Err", err, "PeerID", peer.ShortID())
+// 		continue
+// 	}
+
+// 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
+
+// 	sent++

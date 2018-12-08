@@ -21,7 +21,7 @@ func MakeTestBlock(bc types.Blockchain, chain types.Chainer, gp *types.GenerateB
 	}
 	if !gp.NoPoolAdditionInTest && bc.GetTxPool() != nil {
 		for _, tx := range blk.GetTransactions() {
-			bc.GetTxPool().PutSilently(tx)
+			bc.GetTxPool().Put(tx)
 		}
 	}
 	return blk

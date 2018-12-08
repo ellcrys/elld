@@ -13,6 +13,18 @@ const (
 	// transaction that was received
 	EventNewTransaction = "event.newTx"
 
+	// EventTransactionReceived indicates that a transaction
+	// has been received.
+	EventTransactionReceived = "event.txReceived"
+
+	// EventTransactionPooled indicates that a transaction
+	// has been added to the transaction pool
+	EventTransactionPooled = "event.txPooled"
+
+	// EventTransactionInvalid indicates that a transaction
+	// has been declared invalid
+	EventTransactionInvalid = "event.txInvalid"
+
 	// EventOrphanBlock represents an event about an orphan block.
 	EventOrphanBlock = "event.orphanBlock"
 

@@ -57,7 +57,7 @@ var _ = Describe("Block", func() {
 			BeforeEach(func() {
 				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 				bm := node.NewBlockManager(rp)
-				go bm.Handle()
+				go bm.Manage()
 			})
 
 			It("remote peer must emit core.EventProcessBlock and core.EventBlockProcessed", func(done Done) {
@@ -91,7 +91,7 @@ var _ = Describe("Block", func() {
 			BeforeEach(func() {
 				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 				bm := node.NewBlockManager(rp)
-				go bm.Handle()
+				go bm.Manage()
 			})
 
 			It("should return error about the missing transaction in the pool", func(done Done) {
@@ -135,7 +135,7 @@ var _ = Describe("Block", func() {
 				Expect(err).To(BeNil())
 
 				bm := node.NewBlockManager(rp)
-				go bm.Handle()
+				go bm.Manage()
 			})
 
 			Specify("relayed block must be processed by the remote peer", func(done Done) {
@@ -171,7 +171,7 @@ var _ = Describe("Block", func() {
 
 			BeforeEach(func() {
 				bm := node.NewBlockManager(rp)
-				go bm.Handle()
+				go bm.Manage()
 
 				block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 				_, err := lp.GetBlockchain().ProcessBlock(block2)
@@ -219,7 +219,7 @@ var _ = Describe("Block", func() {
 
 		BeforeEach(func() {
 			bm := node.NewBlockManager(rp)
-			go bm.Handle()
+			go bm.Manage()
 
 			block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
 			_, err := lp.GetBlockchain().ProcessBlock(block2)

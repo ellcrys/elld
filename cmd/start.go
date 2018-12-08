@@ -32,10 +32,10 @@ import (
 
 var (
 	boostrapAddresses = []string{
-		"ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
-		"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
-		"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
-		"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
+		// "ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
+		// "ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
+		// "ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
+		// "ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
 	}
 )
 
@@ -232,7 +232,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Configure transactions pool and assign to node
 	pool := txpool.New(params.PoolCapacity)
-	pool.SetEventEmitter(event)
 	n.SetTxsPool(pool)
 
 	// Add hardcoded bootstrap addresses
@@ -266,11 +265,16 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetBlockchain(bChain)
 	n.SetEventEmitter(event)
 
-	// Set block manager's references
+	// Setup block manager
 	bm := node.NewBlockManager(n)
 	bm.SetMiner(miner)
-	bm.SetTxPool(pool)
+	go bm.Manage()
 	n.SetBlockManager(bm)
+
+	// Set transaction manager
+	tm := node.NewTxManager(n)
+	go tm.Manage()
+	n.SetTxManager(tm)
 
 	// power up the blockchain manager
 	if err := bChain.Up(); err != nil {
@@ -279,8 +283,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Start the block manager and the node
 	n.Start()
-
-	go bm.Handle()
 
 	// Initialized and start the miner if enabled via the cli flag.
 	miner.SetNumThreads(numMiners)
