@@ -369,9 +369,7 @@ type TxContainer interface {
 
 // TxPool represents a transactions pool
 type TxPool interface {
-	SetEventEmitter(ee *emitter.Emitter)
 	Put(tx Transaction) error
-	PutSilently(tx Transaction) error
 	Has(tx Transaction) bool
 	HasByHash(hash string) bool
 	Remove(txs ...Transaction)

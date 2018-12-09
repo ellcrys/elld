@@ -14,7 +14,7 @@ import (
 )
 
 // onAddr processes core.Addr message
-func (g *GossipManager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
+func (g *Manager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 
 	resp := &core.Addr{}
 	if err := ReadStream(s, resp); err != nil {
@@ -61,7 +61,7 @@ func (g *GossipManager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, e
 
 // OnAddr handles incoming core.Addr message.
 // Received addresses are relayed.
-func (g *GossipManager) OnAddr(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnAddr(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
@@ -88,7 +88,7 @@ func (g *GossipManager) OnAddr(s net.Stream, rp core.Engine) error {
 // They are returned on subsequent calls and only
 // renewed when there are less than N addresses or the
 // cache is over 24 hours since it was last updated.
-func (g *GossipManager) PickBroadcasters(addresses []*core.Address, n int) *core.BroadcastPeers {
+func (g *Manager) PickBroadcasters(addresses []*core.Address, n int) *core.BroadcastPeers {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
@@ -153,6 +153,19 @@ func (g *GossipManager) PickBroadcasters(addresses []*core.Address, n int) *core
 
 }
 
+// PickBroadcastersFromPeers is like PickBroadcasters except it
+// accepts a slice of peer engine objects.
+func (g *Manager) PickBroadcastersFromPeers(peers []core.Engine, n int) *core.BroadcastPeers {
+	peerAddrs := []*core.Address{}
+	for _, peer := range peers {
+		peerAddrs = append(peerAddrs, &core.Address{
+			Address:   peer.GetAddress(),
+			Timestamp: peer.GetLastSeen().Unix(),
+		})
+	}
+	return g.PickBroadcasters(peerAddrs, n)
+}
+
 func makeAddrRelayHistoryKey(addr *core.Addr, peer core.Engine) []interface{} {
 	return []interface{}{util.SerializeMsg(addr), peer.StringID()}
 }
@@ -166,7 +179,7 @@ func makeAddrRelayHistoryKey(addr *core.Addr, peer core.Engine) []interface{} {
 // * Only addresses within 60 minutes from
 //   the current time.
 // * Only routable addresses are allowed.
-func (g *GossipManager) RelayAddresses(addrs []*core.Address) []error {
+func (g *Manager) RelayAddresses(addrs []*core.Address) []error {
 
 	var errs []error
 	var relayable []*core.Address

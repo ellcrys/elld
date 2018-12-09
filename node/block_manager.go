@@ -38,10 +38,7 @@ type BlockManager struct {
 	// miner is CPU miner
 	miner *miner.Miner
 
-	// txPool is the transaction pool
-	txPool types.TxPool
-
-	// peerMgr is the client peer manager
+	// engine is the node's instance
 	engine *Node
 
 	// syncCandidate are candidate peers to
@@ -71,41 +68,36 @@ func (bm *BlockManager) SetMiner(m *miner.Miner) {
 	bm.miner = m
 }
 
-// SetTxPool sets a reference of the transaction pool
-func (bm *BlockManager) SetTxPool(tp types.TxPool) {
-	bm.txPool = tp
-}
-
-// Handle handles all incoming block related events.
-func (bm *BlockManager) Handle() {
+// Manage handles all incoming block related events.
+func (bm *BlockManager) Manage() {
 
 	go func() {
-		for evt := range bm.evt.On(core.EventFoundBlock) {
+		for evt := range bm.evt.Once(core.EventFoundBlock) {
 			errCh := evt.Args[1].(chan error)
 			errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventNewBlock) {
+		for evt := range bm.evt.Once(core.EventNewBlock) {
 			bm.handleAppendedBlock(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventOrphanBlock) {
+		for evt := range bm.evt.Once(core.EventOrphanBlock) {
 			bm.handleOrphan(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventProcessBlock) {
+		for evt := range bm.evt.Once(core.EventProcessBlock) {
 			bm.handleProcessBlock(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.On(core.EventPeerChainInfo) {
+		for evt := range bm.evt.Once(core.EventPeerChainInfo) {
 			peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
 			if bm.isSyncCandidate(peerChainInfo) {
 				bm.addSyncCandidate(peerChainInfo)
@@ -166,7 +158,7 @@ func (bm *BlockManager) handleMined(fb *miner.FoundBlock) error {
 // relayAppendedBlock a block to connected peers
 func (bm *BlockManager) relayAppendedBlock(b types.Block) {
 	if b.GetNumber() > 1 {
-		bm.engine.Gossip().RelayBlock(b, bm.engine.PM().GetConnectedPeers())
+		bm.engine.Gossip().BroadcastBlock(b, bm.engine.PM().GetConnectedPeers())
 	}
 }
 
@@ -175,7 +167,7 @@ func (bm *BlockManager) relayAppendedBlock(b types.Block) {
 func (bm *BlockManager) handleAppendedBlock(b types.Block) {
 
 	// Remove the blocks transactions from the pool.
-	bm.txPool.Remove(b.GetTransactions()...)
+	bm.engine.txsPool.Remove(b.GetTransactions()...)
 
 	// Restart miner workers.
 	bm.miner.RestartWorkers()

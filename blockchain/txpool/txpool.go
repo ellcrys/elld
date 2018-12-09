@@ -4,8 +4,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/olebedev/emitter"
-
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
@@ -14,9 +12,8 @@ import (
 
 // TxPool stores transactions.
 type TxPool struct {
-	sync.RWMutex                  // general mutex
-	container    *TxContainer     // transaction queue
-	event        *emitter.Emitter // event emitter
+	sync.RWMutex              // general mutex
+	container    *TxContainer // transaction queue
 }
 
 // New creates a new instance of TxPool.
@@ -25,13 +22,7 @@ type TxPool struct {
 func New(cap int64) *TxPool {
 	tp := new(TxPool)
 	tp.container = newTxContainer(cap)
-	tp.event = &emitter.Emitter{}
 	return tp
-}
-
-// SetEventEmitter sets the event emitter
-func (tp *TxPool) SetEventEmitter(ee *emitter.Emitter) {
-	tp.event = ee
 }
 
 // Remove removes transactions
@@ -51,9 +42,6 @@ func (tp *TxPool) Put(tx types.Transaction) error {
 		return err
 	}
 
-	// Emit an event about the accepted transaction
-	tp.event.Emit(core.EventNewTransaction, tx)
-
 	tp.clean()
 
 	return nil
@@ -68,19 +56,6 @@ func (tp *TxPool) clean() {
 		}
 		return false
 	})
-}
-
-// PutSilently is like Put but it does not
-// emit an event on success.
-func (tp *TxPool) PutSilently(tx types.Transaction) error {
-	tp.Lock()
-	defer tp.Unlock()
-
-	if err := tp.addTx(tx); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // addTx adds a transaction to the queue.

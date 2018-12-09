@@ -35,7 +35,7 @@ func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReader,
 }
 
 // SendHandshake sends an introductory message to a peer
-func (g *GossipManager) SendHandshake(rp core.Engine) error {
+func (g *Manager) SendHandshake(rp core.Engine) error {
 
 	rpIDShort := rp.ShortID()
 
@@ -94,7 +94,7 @@ func (g *GossipManager) SendHandshake(rp core.Engine) error {
 }
 
 // OnHandshake handles incoming handshake requests
-func (g *GossipManager) OnHandshake(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnHandshake(s net.Stream, rp core.Engine) error {
 
 	msg := &core.Handshake{}
 	if err := ReadStream(s, msg); err != nil {

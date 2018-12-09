@@ -131,10 +131,6 @@ type Engine interface {
 	// GetIntros returns the cache containing received intros
 	GetIntros() *cache.Cache
 
-	// AddTransaction validates and adds a
-	// transaction to the transaction pool.
-	AddTransaction(tx types.Transaction) error
-
 	// SetHardcodedState sets the hardcoded seed state
 	// of the engine.
 	SetHardcodedState(v bool)
@@ -159,12 +155,4 @@ type SyncStateInfo struct {
 	CurrentTD          *big.Int `json:"currentTotalDifficulty" msgpack:"currentTotalDifficulty"`
 	CurrentChainHeight uint64   `json:"currentChainHeight" msgpack:"currentChainHeight"`
 	ProgressPercent    float64  `json:"progressPercent" msgpack:"progressPercent"`
-}
-
-// BlockManager is responsible for handling
-// incoming, mined or processed blocks in a
-// concurrency safe way.
-type BlockManager interface {
-	IsSyncing() bool
-	GetSyncStateInfo() *SyncStateInfo
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/node/gossip"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
@@ -47,7 +46,7 @@ var _ = Describe("Transaction", func() {
 		closeNode(rp)
 	})
 
-	Describe(".RelayTx", func() {
+	Describe(".BroadcastTx", func() {
 		tx := core.NewTransaction(core.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "2.4", time.Now().Unix())
 		tx.From = util.String(sender.Addr())
 		tx.Hash = tx.ComputeHash()
@@ -58,24 +57,19 @@ var _ = Describe("Transaction", func() {
 
 			var evt emitter.Event
 			BeforeEach(func() {
-				err := lp.Gossip().RelayTx(tx, []core.Engine{rp})
+				err := lp.Gossip().BroadcastTx(tx, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				done := make(chan bool)
 				go func() {
-					evt = <-rp.GetEventEmitter().On(gossip.EventTransactionProcessed)
+					evt = <-rp.GetEventEmitter().On(core.EventTransactionPooled)
+					Expect(evt.Args).ToNot(BeEmpty())
 					close(done)
 				}()
 				<-done
 			})
 
-			It("expects the history cache to have an item for the transaction", func() {
-				Expect(evt.Args).To(BeEmpty())
-				Expect(lp.GetHistory().Len()).To(Equal(1))
-				Expect(lp.GetHistory().HasMulti(gossip.MakeTxHistoryKey(tx, rp)...)).To(BeTrue())
-			})
-
-			Specify("remote peer's must have the transaction in its pool", func() {
+			Specify("remote peer must have the transaction in its pool", func() {
 				Expect(rp.GetTxPool().Has(tx)).To(BeTrue())
 			})
 		})
@@ -86,20 +80,20 @@ var _ = Describe("Transaction", func() {
 			BeforeEach(func() {
 				var tx2 = *tx
 				tx2.Sig = []byte("invalid signature")
-				err := lp.Gossip().RelayTx(&tx2, []core.Engine{rp})
+				err := lp.Gossip().BroadcastTx(&tx2, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				done := make(chan bool)
 				go func() {
-					evt = <-rp.GetEventEmitter().On(gossip.EventTransactionProcessed)
+					evt = <-rp.GetEventEmitter().On(core.EventTransactionInvalid)
 					close(done)
 				}()
 				<-done
 			})
 
 			It("should return error about the transaction's invalid signature", func() {
-				Expect(evt.Args).To(HaveLen(1))
-				Expect(evt.Args[0].(error).Error()).To(Equal("index:0, field:sig, error:signature is not valid"))
+				Expect(evt.Args).To(HaveLen(2))
+				Expect(evt.Args[1].(error).Error()).To(Equal("index:0, field:sig, error:signature is not valid"))
 			})
 		})
 
@@ -112,19 +106,19 @@ var _ = Describe("Transaction", func() {
 
 				done := make(chan bool)
 				go func() {
-					evt = <-rp.GetEventEmitter().On(gossip.EventTransactionProcessed)
+					evt = <-rp.GetEventEmitter().On(core.EventTransactionInvalid)
 					close(done)
 				}()
 
-				err := lp.Gossip().RelayTx(&tx2, []core.Engine{rp})
+				err := lp.Gossip().BroadcastTx(&tx2, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				<-done
 			})
 
 			It("should return error about unexpected allocation transaction", func() {
-				Expect(evt.Args).To(HaveLen(1))
-				Expect(evt.Args[0].(error).Error()).To(Equal("Allocation transaction type is not allowed"))
+				Expect(evt.Args).To(HaveLen(2))
+				Expect(evt.Args[1].(error).Error()).To(Equal("allocation transaction type is not allowed"))
 			})
 		})
 
@@ -133,20 +127,20 @@ var _ = Describe("Transaction", func() {
 			var eventArgs emitter.Event
 			BeforeEach(func() {
 				rp.SetTxsPool(txpool.New(0))
-				err := lp.Gossip().RelayTx(tx, []core.Engine{rp})
+				err := lp.Gossip().BroadcastTx(tx, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				done := make(chan bool)
 				go func() {
-					eventArgs = <-rp.GetEventEmitter().On(gossip.EventTransactionProcessed)
+					eventArgs = <-rp.GetEventEmitter().On(core.EventTransactionInvalid)
 					close(done)
 				}()
 				<-done
 			})
 
 			It("should not add the transaction to the remote peer's transaction pool", func() {
-				Expect(eventArgs.Args).To(HaveLen(1))
-				Expect(eventArgs.Args[0].(error).Error()).To(Equal("container is full"))
+				Expect(eventArgs.Args).To(HaveLen(2))
+				Expect(eventArgs.Args[1].(error).Error()).To(Equal("container is full"))
 				Expect(rp.GetTxPool().Has(tx)).To(BeFalse())
 			})
 		})

@@ -58,21 +58,6 @@ var _ = Describe("TxPool", func() {
 			Expect(err).To(BeNil())
 			Expect(tp.container.Size()).To(Equal(int64(1)))
 		})
-
-		It("should emit core.EventNewTransaction", func() {
-			tp := New(1)
-			a, _ := crypto.NewKey(nil)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
-			go func() {
-				sig, _ := core.TxSign(tx, a.PrivKey().Base58())
-				tx.Sig = sig
-				err := tp.Put(tx)
-				Expect(err).To(BeNil())
-				Expect(tp.container.Size()).To(Equal(int64(1)))
-			}()
-			event := <-tp.event.Once(core.EventNewTransaction)
-			Expect(event.Args[0]).To(Equal(tx))
-		})
 	})
 
 	Describe(".HasTxWithSameNonce", func() {

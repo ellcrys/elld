@@ -14,7 +14,7 @@ import (
 // It receives the response Pong message and will start
 // blockchain synchronization if the Pong message includes
 // blockchain information that is better than the local blockchain
-func (g *GossipManager) SendPingToPeer(remotePeer core.Engine) error {
+func (g *Manager) SendPingToPeer(remotePeer core.Engine) error {
 
 	rpIDShort := remotePeer.ShortID()
 	s, c, err := g.NewStream(remotePeer, config.Versions.Ping)
@@ -69,7 +69,7 @@ func (g *GossipManager) SendPingToPeer(remotePeer core.Engine) error {
 }
 
 // SendPing sends a ping message
-func (g *GossipManager) SendPing(remotePeers []core.Engine) {
+func (g *Manager) SendPing(remotePeers []core.Engine) {
 	sent := 0
 	for _, peer := range remotePeers {
 		if !g.PM().IsAcquainted(peer) {
@@ -92,7 +92,7 @@ func (g *GossipManager) SendPing(remotePeers []core.Engine) {
 // blockchain synchronization if the Ping message includes
 // blockchain information that is better than the local
 // blockchain
-func (g *GossipManager) OnPing(s net.Stream, rp core.Engine) error {
+func (g *Manager) OnPing(s net.Stream, rp core.Engine) error {
 
 	defer s.Close()
 
