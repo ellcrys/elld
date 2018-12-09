@@ -24,7 +24,7 @@ func (g *Manager) OnTx(s net.Stream, rp core.Engine) error {
 	msg := &core.TxInfo{}
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
-		return g.logErr(err, rp, "[OnTx] Failed to read")
+		return g.logErr(err, rp, "[OnTx] Failed to read TxInfo message")
 	}
 
 	// We can't accept a transaction that already
@@ -84,7 +84,7 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 		}
 		defer c()
 
-		// Send a transaction info describing the transaction.
+		// Send a message describing the transaction.
 		// If the peer accepts the transaction, we can send the full tx.
 		txInfo := core.TxInfo{Hash: tx.GetHash()}
 		if err := WriteStream(s, txInfo); err != nil {
@@ -103,7 +103,7 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 
 		if !txOk.Ok {
 			s.Reset()
-			g.log.Debug("Peer has rejected a transaction",
+			g.log.Debug("Peer rejected our intent to broadcast a transaction",
 				"PeerID", peer.ShortID(), "TxID", txID)
 			continue
 		}
@@ -115,7 +115,7 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 			continue
 		}
 
-		g.log.Info("Transaction successfully broadcast to peer",
+		g.log.Info("Transaction successfully broadcast",
 			"TxID", txID, "NumPeersSentTo", sent)
 
 		s.Close()
@@ -123,28 +123,3 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 
 	return nil
 }
-
-// 	historyKey := MakeTxHistoryKey(tx, peer)
-
-// 	if g.engine.GetHistory().HasMulti(historyKey...) {
-// 		continue
-// 	}
-
-// 	s, c, err := g.NewStream(peer, config.Versions.Tx)
-// 	if err != nil {
-// 		g.logConnectErr(err, peer, "[BroadcastTx] Failed to connect")
-// 		continue
-// 	}
-// 	defer c()
-// 	defer s.Close()
-
-// 	if err := WriteStream(s, tx); err != nil {
-// 		s.Reset()
-// 		g.log.Debug("Tx message failed. failed to write to stream",
-// 			"Err", err, "PeerID", peer.ShortID())
-// 		continue
-// 	}
-
-// 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
-
-// 	sent++

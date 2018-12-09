@@ -165,6 +165,17 @@ type TxOk struct {
 	Ok bool `json:"ok" msgpack:"ok"`
 }
 
+// BlockInfo describes a block
+type BlockInfo struct {
+	Hash util.Hash `json:"hash" msgpack:"hash"`
+}
+
+// BlockOk describes a block hash received
+// in BlockInfo as accepted/ok or not
+type BlockOk struct {
+	Ok bool `json:"ok" msgpack:"ok"`
+}
+
 // Hash returns the hash representation
 func (m *Intro) Hash() util.Hash {
 	bs := util.ObjectToBytes([]interface{}{m.PeerID})
@@ -186,7 +197,8 @@ type Gossip interface {
 	RelayAddresses(addrs []*Address) []error
 
 	// Block messages
-	RelayBlock(block types.Block, remotePeers []Engine) error
+	BroadcastBlock(block types.Block, remotePeers []Engine) error
+	OnBlockInfo(s net.Stream, rp Engine) error
 	OnBlockBody(s net.Stream, rp Engine) error
 	RequestBlock(rp Engine, blockHash util.Hash) error
 	OnRequestBlock(s net.Stream, rp Engine) error

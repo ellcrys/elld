@@ -135,6 +135,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	node.SetProtocolHandler(config.Versions.Addr, g.Handle(g.OnAddr))
 	node.SetProtocolHandler(config.Versions.Intro, g.Handle(g.OnIntro))
 	node.SetProtocolHandler(config.Versions.Tx, g.Handle(g.OnTx))
+	node.SetProtocolHandler(config.Versions.BlockInfo, g.Handle(g.OnBlockInfo))
 	node.SetProtocolHandler(config.Versions.BlockBody, g.Handle(g.OnBlockBody))
 	node.SetProtocolHandler(config.Versions.RequestBlock, g.Handle(g.OnRequestBlock))
 	node.SetProtocolHandler(config.Versions.GetBlockHashes, g.Handle(g.OnGetBlockHashes))
@@ -558,26 +559,6 @@ func (n *Node) SetGossipManager(m core.Gossip) {
 	n.gossipMgr = m
 }
 
-// relayTx continuously relays transactions
-// in the tx relay queue
-func (n *Node) relayTx() {
-	ticker := time.NewTicker(3 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			q := n.GetTxRelayQueue()
-			if q.Size() == 0 {
-				continue
-			}
-			tx := q.First()
-			go n.Gossip().BroadcastTx(tx, n.peerManager.GetActivePeers(0))
-		case <-n.tickerDone:
-			ticker.Stop()
-			return
-		}
-	}
-}
-
 // Start starts the node.
 func (n *Node) Start() {
 
@@ -588,10 +569,6 @@ func (n *Node) Start() {
 	for _, node := range n.PM().GetActivePeers(0) {
 		go n.peerManager.ConnectToPeer(node.StringID())
 	}
-
-	// Start the sub-routine that
-	// relays transactions
-	go n.relayTx()
 
 	// Handle incoming events
 	go n.handleEvents()

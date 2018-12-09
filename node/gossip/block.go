@@ -23,50 +23,121 @@ func makeOrphanBlockHistoryKey(blockHash util.Hash,
 	return []interface{}{"ob", blockHash.HexStr(), peer.StringID()}
 }
 
-// RelayBlock sends a given block to remote peers.
+// BroadcastBlock sends a given block to remote peers.
 // The block is encapsulated in a BlockBody message.
-func (g *Manager) RelayBlock(block types.Block, remotePeers []core.Engine) error {
+func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) error {
 
-	g.log.Debug("Relaying block to peer(s)", "BlockNo", block.GetNumber(),
+	g.log.Debug("Attempting to broadcast a block",
+		"BlockNo", block.GetNumber(),
+		"BlockHash", block.GetHash().SS(),
 		"NumPeers", len(remotePeers))
 
-	sent := 0
-	for _, peer := range remotePeers {
+	var sent int
+	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
+	for _, peer := range broadcastPeers.Peers() {
 
-		historyKey := makeBlockHistoryKey(block.GetHashAsHex(), peer)
-
-		if g.engine.GetHistory().HasMulti(historyKey...) {
-			continue
-		}
-
-		s, c, err := g.NewStream(peer, config.Versions.BlockBody)
+		s, c, err := g.NewStream(peer, config.Versions.BlockInfo)
 		if err != nil {
-			g.logConnectErr(err, peer, "[RelayBlock] Failed to connect to peer")
+			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect")
 			continue
 		}
 		defer c()
-		defer s.Close()
+
+		// Send a message describing the block.
+		// If the peer accepts the block, we can send the full block.
+		blockInfo := core.BlockInfo{Hash: block.GetHash()}
+		if err := WriteStream(s, blockInfo); err != nil {
+			s.Reset()
+			g.logErr(err, peer, "[BroadcastBlock] Failed to write to stream")
+			continue
+		}
+
+		// Read BlockOk message to know whether to send the block
+		blockOk := &core.BlockOk{}
+		if err := ReadStream(s, blockOk); err != nil {
+			s.Reset()
+			g.logErr(err, peer, "[BroadcastBlock] Failed to read BlockOk message")
+			continue
+		}
+
+		if !blockOk.Ok {
+			s.Reset()
+			g.log.Debug("Peer rejected our intent to broadcast a block",
+				"PeerID", peer.ShortID(),
+				"BlockNo", block.GetNumber(),
+				"BlockHash", block.GetHash().SS())
+			continue
+		}
+
+		s.Close()
+
+		// At this point, we can send the block to the peer.
+		// First we need to create a new stream targeting the
+		// BlockBody handler
+		s, c2, err := g.NewStream(peer, config.Versions.BlockBody)
+		if err != nil {
+			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect to peer")
+			continue
+		}
+		defer c2()
 
 		var blockBody core.BlockBody
 		copier.Copy(&blockBody, block)
 		if err := WriteStream(s, blockBody); err != nil {
 			s.Reset()
-			g.logErr(err, peer, "[RelayBlock] Failed to write to peer")
+			g.logErr(err, peer, "[BroadcastBlock] Failed to write BlockBody")
 			continue
 		}
 
-		g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
+		s.Close()
 
 		sent++
 	}
 
-	g.log.Debug("Finished relaying block", "BlockNo",
-		block.GetNumber(), "NumPeersSentTo", sent)
+	g.log.Debug("Block successfully broadcast",
+		"BlockNo", block.GetNumber(),
+		"BlockHash", block.GetHash().SS(),
+		"NumPeersSentTo", sent)
 
 	return nil
 }
 
-// OnBlockBody handles incoming BlockBody message.
+// OnBlockInfo handles incoming BlockInfo messages.
+// BlockInfo messages describe a block that a peer
+// intends to send. The local peer responds with a
+// BlockOk message if it accepts the block.
+func (g *Manager) OnBlockInfo(s net.Stream, rp core.Engine) error {
+	defer s.Close()
+
+	msg := &core.BlockInfo{}
+	if err := ReadStream(s, msg); err != nil {
+		s.Reset()
+		return g.logErr(err, rp, "[OnBlockInfo] Failed to read BlockInfo message")
+	}
+
+	// We can't accept a block we already know
+	if existingBlock, _ := g.engine.GetBlockchain().
+		HaveBlock(msg.Hash); existingBlock {
+		goto blk_not_ok
+	}
+
+	// Send back BlockOk message indicating readiness
+	// to receive the block
+	if err := WriteStream(s, &core.BlockOk{Ok: true}); err != nil {
+		s.Reset()
+		return g.logErr(err, rp, "[OnBlockInfo] Failed to write BlockOk message")
+	}
+
+blk_not_ok:
+	if err := WriteStream(s, &core.BlockOk{Ok: false}); err != nil {
+		s.Reset()
+		return g.logErr(err, rp, "[OnBlockInfo] Failed to write BlockInfo message")
+	}
+
+	return nil
+}
+
+// OnBlockBody handles incoming BlockBody messages.
 // BlockBody messages contain information about a
 // block. It will attempt to process the received
 // block.
@@ -86,6 +157,7 @@ func (g *Manager) OnBlockBody(s net.Stream, rp core.Engine) error {
 
 	g.log.Info("Received a block",
 		"BlockNo", block.GetNumber(),
+		"BlockHash", block.GetHash().SS(),
 		"Difficulty", block.GetHeader().GetDifficulty())
 
 	historyKey := makeBlockHistoryKey(block.GetHashAsHex(), rp)
@@ -332,10 +404,8 @@ func (g *Manager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 	// and use as the start block.
 	if mainChain.GetID() != locatorChain.GetID() {
 		startBlock = locatorChain.GetRoot()
-		g.log.Debug("Found locator chain root", "HasStartBlock", startBlock != nil)
 	} else {
 		startBlock, _ = locatorChain.GetBlockByHash(locatorHash)
-		g.log.Debug("Found locator block", "HasStartBlock", startBlock != nil)
 	}
 
 	// This should only be true when chain tree

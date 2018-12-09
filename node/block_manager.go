@@ -158,7 +158,7 @@ func (bm *BlockManager) handleMined(fb *miner.FoundBlock) error {
 // relayAppendedBlock a block to connected peers
 func (bm *BlockManager) relayAppendedBlock(b types.Block) {
 	if b.GetNumber() > 1 {
-		bm.engine.Gossip().RelayBlock(b, bm.engine.PM().GetConnectedPeers())
+		bm.engine.Gossip().BroadcastBlock(b, bm.engine.PM().GetConnectedPeers())
 	}
 }
 

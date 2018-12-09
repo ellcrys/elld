@@ -49,7 +49,7 @@ var _ = Describe("Block", func() {
 		closeNode(rp)
 	})
 
-	Describe(".RelayBlock", func() {
+	Describe(".BroadcastBlock", func() {
 		Context("when block is successfully relayed to a remote peer", func() {
 
 			var block types.Block
@@ -63,7 +63,7 @@ var _ = Describe("Block", func() {
 			It("remote peer must emit core.EventProcessBlock and core.EventBlockProcessed", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().RelayBlock(block, []core.Engine{rp})
+				err := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				go func() {
@@ -97,7 +97,7 @@ var _ = Describe("Block", func() {
 			It("should return error about the missing transaction in the pool", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().RelayBlock(block, []core.Engine{rp})
+				err := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				go func() {
@@ -141,7 +141,7 @@ var _ = Describe("Block", func() {
 			Specify("relayed block must be processed by the remote peer", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().RelayBlock(block, []core.Engine{rp})
+				err := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				go func() {
@@ -185,7 +185,7 @@ var _ = Describe("Block", func() {
 			It("should emit core.EventOrphanBlock", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().RelayBlock(block3, []core.Engine{rp})
+				err := lp.Gossip().BroadcastBlock(block3, []core.Engine{rp})
 				Expect(err).To(BeNil())
 
 				go func() {
