@@ -59,14 +59,12 @@ type Node struct {
 	signatory           *d_crypto.Key       // signatory address used to get node ID and for signing
 	history             *cache.Cache        // Used to track things we want to remember
 	event               *emitter.Emitter    // Provides access event emitting service
-	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
 	bChain              types.Blockchain    // The blockchain manager
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	blockManager        *BlockManager       // Block manager for handling block events
 	txManager           *TxManager          // Transaction manager for handling transaction events
-	tickerDone          chan bool           //
 	hardcodedPeers      map[string]struct{}
 }
 
@@ -114,10 +112,8 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		signatory:      coinbase,
 		db:             db,
 		event:          &emitter.Emitter{},
-		txsRelayQueue:  txpool.NewQueueNoSort(cfg.TxPool.Capacity),
 		history:        cache.NewActiveCache(5000),
 		intros:         cache.NewActiveCache(50000),
-		tickerDone:     make(chan bool),
 		createdAt:      time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
 	}
@@ -569,25 +565,6 @@ func (n *Node) Start() {
 	for _, node := range n.PM().GetActivePeers(0) {
 		go n.peerManager.ConnectToPeer(node.StringID())
 	}
-
-	// Handle incoming events
-	go n.handleEvents()
-}
-
-func (n *Node) handleNewTransactionEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventNewTransaction):
-			if !n.GetTxRelayQueue().Add(evt.Args[0].(types.Transaction)) {
-				n.log.Debug("Failed to add transaction to relay queue.",
-					"Err", "Capacity reached")
-			}
-		}
-	}
-}
-
-func (n *Node) handleEvents() {
-	go n.handleNewTransactionEvent()
 }
 
 // Wait forces the current thread to wait for the node
@@ -646,11 +623,6 @@ func (n *Node) Stop() {
 // ip returns the IP address
 func (n *Node) ip() net.IP {
 	return n.address.IP()
-}
-
-// GetTxRelayQueue returns the transaction relay queue
-func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
-	return n.txsRelayQueue
 }
 
 // GetTxPool returns the unsigned transaction pool
