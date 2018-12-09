@@ -5,7 +5,34 @@ import (
 	"time"
 )
 
+// Gossip parameters
 var (
+	// MaxGetBlockHashes is the max number of block headers to request
+	// from a remote peer per request.
+	MaxGetBlockHashes = int64(5)
+)
+
+// Monetary parameters
+var (
+	// Decimals is the number of coin decimal places
+	Decimals = int32(18)
+)
+
+// Block parameters
+var (
+	// AllowedFutureBlockTime is the number of seconds
+	// a block's timestamp can have beyond the current timestamp
+	AllowedFutureBlockTime = 15 * time.Second
+
+	// MaxBlockNonTxsSize is the maximum size
+	// of the non-transactional data a block
+	// can have (headers, signature, hash).
+	MaxBlockNonTxsSize = int64(1024)
+
+	// MaxBlockTxsSize is the maximum size of
+	// transactions that can fit in a block
+	MaxBlockTxsSize = int64(9998976)
+
 	// MaximumExtraDataSize is the size of extra data a block can contain.
 	MaximumExtraDataSize uint64 = 32
 
@@ -31,31 +58,8 @@ var (
 	MinimumDurationIncrease = big.NewFloat(2)
 )
 
+// Transaction parameters
 var (
-	// MaxGetBlockHashes is the max number of block headers to request
-	// from a remote peer per request.
-	MaxGetBlockHashes = int64(5)
-)
-
-var (
-	// Decimals is the number of coin decimal places
-	Decimals = int32(18)
-)
-
-var (
-	// AllowedFutureBlockTime is the number of seconds
-	// a block's timestamp can have beyond the current timestamp
-	AllowedFutureBlockTime = 15 * time.Second
-
-	// MaxBlockNonTxsSize is the maximum size
-	// of the non-transactional data a block
-	// can have (headers, signature, hash).
-	MaxBlockNonTxsSize = int64(1024)
-
-	// MaxBlockTxsSize is the maximum size of
-	// transactions that can fit in a block
-	MaxBlockTxsSize = int64(9998976)
-
 	// PoolCapacity is the max. number of transaction
 	// that can be added to the transaction pool at
 	// any given time.

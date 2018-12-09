@@ -343,8 +343,8 @@ var _ = Describe("TransactionValidator", func() {
 			BeforeEach(func() {
 				block2 = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
 					Transactions: []types.Transaction{
-						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", 1532730723),
-						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", 1532730725),
+						core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
+						core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()+1),
 					},
 					Creator:    sender,
 					Nonce:      util.EncodeNonce(1),

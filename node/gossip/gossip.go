@@ -26,9 +26,6 @@ const (
 	// EventRequestedBlockHashes describes an event about
 	// sending a request for block hashes
 	EventRequestedBlockHashes = "event.requestedBlockHashes"
-	// EventTransactionProcessed describes an event about
-	// a processed transaction
-	EventTransactionProcessed = "event.transactionProcessed"
 	//EventAddrProcessed describes an event about
 	// a processed address
 	EventAddrProcessed = "event.addrProcessed"
@@ -43,8 +40,8 @@ const (
 	EventIntroReceived = "event.receivedIntro"
 )
 
-// GossipManager represents the peer protocol
-type GossipManager struct {
+// Manager represents the peer protocol
+type Manager struct {
 
 	// mtx is the general mutex
 	mtx sync.RWMutex
@@ -68,8 +65,8 @@ type GossipManager struct {
 }
 
 // NewGossip creates a new instance of the Gossip protocol
-func NewGossip(p core.Engine, log logger.Logger) *GossipManager {
-	return &GossipManager{
+func NewGossip(p core.Engine, log logger.Logger) *Manager {
+	return &Manager{
 		engine:       p,
 		log:          log,
 		mtx:          sync.RWMutex{},
@@ -78,23 +75,23 @@ func NewGossip(p core.Engine, log logger.Logger) *GossipManager {
 }
 
 // SetPeerManager sets the peer manager
-func (g *GossipManager) SetPeerManager(pm *peermanager.Manager) {
+func (g *Manager) SetPeerManager(pm *peermanager.Manager) {
 	g.pm = pm
 }
 
 // PM returns the local peer's peer manager
-func (g *GossipManager) PM() *peermanager.Manager {
+func (g *Manager) PM() *peermanager.Manager {
 	return g.pm
 }
 
 // GetBlockchain returns the blockchain manager
-func (g *GossipManager) GetBlockchain() types.Blockchain {
+func (g *Manager) GetBlockchain() types.Blockchain {
 	return g.engine.GetBlockchain()
 }
 
 // NewStream creates a stream for a given protocol
 // ID and between the local peer and the given remote peer.
-func (g *GossipManager) NewStream(remotePeer core.Engine, msgVersion string) (net.Stream,
+func (g *Manager) NewStream(remotePeer core.Engine, msgVersion string) (net.Stream,
 	context.CancelFunc, error) {
 	ctxDur := time.Second * time.Duration(g.engine.GetCfg().Node.MessageTimeout)
 	ctx, cf := context.WithTimeout(context.TODO(), ctxDur)
@@ -107,7 +104,7 @@ func (g *GossipManager) NewStream(remotePeer core.Engine, msgVersion string) (ne
 }
 
 // CheckRemotePeer performs validation against the remote peer.
-func (g *GossipManager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
+func (g *Manager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error {
 
 	s := ws.Stream
 	skipAcquaintanceCheck := false
@@ -138,7 +135,7 @@ func (g *GossipManager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) 
 
 // Handle wrappers a protocol handler providing an
 // interface to perform pre and post handling operations.
-func (g *GossipManager) Handle(handler func(s net.Stream, remotePeer core.Engine) error) func(net.Stream) {
+func (g *Manager) Handle(handler func(s net.Stream, remotePeer core.Engine) error) func(net.Stream) {
 	return func(s net.Stream) {
 
 		remoteAddr := util.RemoteAddrFromStream(s)
@@ -175,7 +172,7 @@ func WriteStream(s net.Stream, msg interface{}) error {
 	return nil
 }
 
-func (g *GossipManager) logErr(err error, rp core.Engine, msg string) error {
+func (g *Manager) logErr(err error, rp core.Engine, msg string) error {
 	g.log.Debug(msg, "Err", err, "PeerID", rp.ShortID())
 	return err
 }
@@ -183,7 +180,7 @@ func (g *GossipManager) logErr(err error, rp core.Engine, msg string) error {
 // logConnectErr updates the failure count record of a node
 // that failed to connect. It will also add a 1 hour ban time
 // if the node failed to connect after n tries.
-func (g *GossipManager) logConnectErr(err error, rp core.Engine, msg string) error {
+func (g *Manager) logConnectErr(err error, rp core.Engine, msg string) error {
 
 	// Increase connection fail count
 	g.PM().IncrConnFailCount(rp.GetAddress())
@@ -200,6 +197,6 @@ func (g *GossipManager) logConnectErr(err error, rp core.Engine, msg string) err
 }
 
 // GetBroadcasters returns the broadcasters
-func (g *GossipManager) GetBroadcasters() *core.BroadcastPeers {
+func (g *Manager) GetBroadcasters() *core.BroadcastPeers {
 	return g.broadcasters
 }

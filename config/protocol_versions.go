@@ -62,6 +62,9 @@ type ProtocolVersions struct {
 	// Tx is the message version for handing wire.Transaction messages
 	Tx string
 
+	// BlockInfo is the message version for handling wire.BlockInfo messages
+	BlockInfo string
+
 	// BlockBody is the message version for handling wire.BlockBody messages
 	BlockBody string
 

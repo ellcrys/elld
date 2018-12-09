@@ -698,11 +698,9 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []types.Tran
 		cache = append(cache, tx)
 	}
 
-	// put the cached transactions
-	// back to the pool. But this time,
-	// we do it silently (no events, etc)
+	// put the cached transactions back to the pool
 	for _, tx := range cache {
-		b.txPool.PutSilently(tx)
+		b.txPool.Put(tx)
 	}
 
 	return

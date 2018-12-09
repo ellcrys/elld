@@ -13,7 +13,6 @@ import (
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/blockchain"
 	"github.com/ellcrys/elld/blockchain/txpool"
 	d_crypto "github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
@@ -60,14 +59,13 @@ type Node struct {
 	signatory           *d_crypto.Key       // signatory address used to get node ID and for signing
 	history             *cache.Cache        // Used to track things we want to remember
 	event               *emitter.Emitter    // Provides access event emitting service
-	txsRelayQueue       *txpool.TxContainer // stores transactions waiting to be relayed
 	bChain              types.Blockchain    // The blockchain manager
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
-	tickerDone          chan bool
+	blockManager        *BlockManager       // Block manager for handling block events
+	txManager           *TxManager          // Transaction manager for handling transaction events
 	hardcodedPeers      map[string]struct{}
-	blockManager        core.BlockManager
 }
 
 // NewNode creates a node instance at the specified port
@@ -114,10 +112,8 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		signatory:      coinbase,
 		db:             db,
 		event:          &emitter.Emitter{},
-		txsRelayQueue:  txpool.NewQueueNoSort(cfg.TxPool.Capacity),
 		history:        cache.NewActiveCache(5000),
 		intros:         cache.NewActiveCache(50000),
-		tickerDone:     make(chan bool),
 		createdAt:      time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
 	}
@@ -135,6 +131,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	node.SetProtocolHandler(config.Versions.Addr, g.Handle(g.OnAddr))
 	node.SetProtocolHandler(config.Versions.Intro, g.Handle(g.OnIntro))
 	node.SetProtocolHandler(config.Versions.Tx, g.Handle(g.OnTx))
+	node.SetProtocolHandler(config.Versions.BlockInfo, g.Handle(g.OnBlockInfo))
 	node.SetProtocolHandler(config.Versions.BlockBody, g.Handle(g.OnBlockBody))
 	node.SetProtocolHandler(config.Versions.RequestBlock, g.Handle(g.OnRequestBlock))
 	node.SetProtocolHandler(config.Versions.GetBlockHashes, g.Handle(g.OnGetBlockHashes))
@@ -377,8 +374,13 @@ func (n *Node) SetEventEmitter(e *emitter.Emitter) {
 }
 
 // SetBlockManager sets the block manager
-func (n *Node) SetBlockManager(bm core.BlockManager) {
+func (n *Node) SetBlockManager(bm *BlockManager) {
 	n.blockManager = bm
+}
+
+// SetTxManager sets the transaction manager
+func (n *Node) SetTxManager(tm *TxManager) {
+	n.txManager = tm
 }
 
 // SetLocalNode sets the node as the
@@ -410,7 +412,7 @@ func (n *Node) AddToPeerStore(node core.Engine) core.Engine {
 
 // SetGossipProtocol sets the
 // gossip protocol implementation
-func (n *Node) SetGossipProtocol(mgr *gossip.GossipManager) {
+func (n *Node) SetGossipProtocol(mgr *gossip.Manager) {
 	n.gossipMgr = mgr
 }
 
@@ -553,26 +555,6 @@ func (n *Node) SetGossipManager(m core.Gossip) {
 	n.gossipMgr = m
 }
 
-// relayTx continuously relays transactions
-// in the tx relay queue
-func (n *Node) relayTx() {
-	ticker := time.NewTicker(3 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			q := n.GetTxRelayQueue()
-			if q.Size() == 0 {
-				continue
-			}
-			tx := q.First()
-			go n.Gossip().RelayTx(tx, n.peerManager.GetActivePeers(0))
-		case <-n.tickerDone:
-			ticker.Stop()
-			return
-		}
-	}
-}
-
 // Start starts the node.
 func (n *Node) Start() {
 
@@ -583,29 +565,6 @@ func (n *Node) Start() {
 	for _, node := range n.PM().GetActivePeers(0) {
 		go n.peerManager.ConnectToPeer(node.StringID())
 	}
-
-	// Start the sub-routine that
-	// relays transactions
-	go n.relayTx()
-
-	// Handle incoming events
-	go n.handleEvents()
-}
-
-func (n *Node) handleNewTransactionEvent() {
-	for {
-		select {
-		case evt := <-n.event.Once(core.EventNewTransaction):
-			if !n.GetTxRelayQueue().Add(evt.Args[0].(types.Transaction)) {
-				n.log.Debug("Failed to add transaction to relay queue.",
-					"Err", "Capacity reached")
-			}
-		}
-	}
-}
-
-func (n *Node) handleEvents() {
-	go n.handleNewTransactionEvent()
 }
 
 // Wait forces the current thread to wait for the node
@@ -666,11 +625,6 @@ func (n *Node) ip() net.IP {
 	return n.address.IP()
 }
 
-// GetTxRelayQueue returns the transaction relay queue
-func (n *Node) GetTxRelayQueue() *txpool.TxContainer {
-	return n.txsRelayQueue
-}
-
 // GetTxPool returns the unsigned transaction pool
 func (n *Node) GetTxPool() types.TxPool {
 	return n.txsPool
@@ -679,16 +633,4 @@ func (n *Node) GetTxPool() types.TxPool {
 // SetTxsPool sets the transaction pool
 func (n *Node) SetTxsPool(txp *txpool.TxPool) {
 	n.txsPool = txp
-}
-
-// AddTransaction validates and adds a
-// transaction to the transaction pool.
-func (n *Node) AddTransaction(tx types.Transaction) error {
-
-	txValidator := blockchain.NewTxValidator(tx, n.GetTxPool(), n.GetBlockchain())
-	if errs := txValidator.Validate(); len(errs) > 0 {
-		return errs[0]
-	}
-
-	return n.GetTxPool().Put(tx)
 }
