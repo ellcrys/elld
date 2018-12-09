@@ -654,9 +654,16 @@ func (m *Manager) LoadPeers() error {
 
 		addr := util.NodeAddr(addrData["address"].(string))
 		peer := m.localNode.NewRemoteNode(addr)
+
+		// Do not overwrite peer if it already exists
+		// in the peer list. The peer might have been
+		// added by a different process during bootstrap.
+		if m.PeerExist(peer.StringID()) {
+			continue
+		}
+
 		peer.SetCreatedAt(time.Unix(int64(addrData["createdAt"].(uint32)), 0))
 		peer.SetLastSeen(time.Unix(int64(addrData["lastSeen"].(uint32)), 0))
-
 		m.AddPeer(peer)
 
 		if addrData["banTime"] != nil {
