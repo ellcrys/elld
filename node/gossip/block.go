@@ -36,6 +36,13 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
 	for _, peer := range broadcastPeers.Peers() {
 
+		// We need to remove the broadcast peer
+		// if it is no longer connected
+		if !peer.Connected() {
+			broadcastPeers.Remove(peer)
+			continue
+		}
+
 		s, c, err := g.NewStream(peer, config.Versions.BlockInfo)
 		if err != nil {
 			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect")
@@ -61,7 +68,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		}
 
 		if !blockOk.Ok {
-			s.Reset()
+			s.Close()
 			g.log.Debug("Peer rejected our intent to broadcast a block",
 				"PeerID", peer.ShortID(),
 				"BlockNo", block.GetNumber(),
@@ -74,7 +81,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		// At this point, we can send the block to the peer.
 		// First we need to create a new stream targeting the
 		// BlockBody handler
-		s, c2, err := g.NewStream(peer, config.Versions.BlockBody)
+		s2, c2, err := g.NewStream(peer, config.Versions.BlockBody)
 		if err != nil {
 			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect to peer")
 			continue
@@ -83,18 +90,18 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 
 		var blockBody core.BlockBody
 		copier.Copy(&blockBody, block)
-		if err := WriteStream(s, blockBody); err != nil {
-			s.Reset()
+		if err := WriteStream(s2, blockBody); err != nil {
+			s2.Reset()
 			g.logErr(err, peer, "[BroadcastBlock] Failed to write BlockBody")
 			continue
 		}
 
-		s.Close()
+		s2.Close()
 
 		sent++
 	}
 
-	g.log.Debug("Block successfully broadcast",
+	g.log.Debug("Block broadcast completed",
 		"BlockNo", block.GetNumber(),
 		"BlockHash", block.GetHash().SS(),
 		"NumPeersSentTo", sent)
@@ -107,7 +114,6 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 // intends to send. The local peer responds with a
 // BlockOk message if it accepts the block.
 func (g *Manager) OnBlockInfo(s net.Stream, rp core.Engine) error {
-	defer s.Close()
 
 	msg := &core.BlockInfo{}
 	if err := ReadStream(s, msg); err != nil {
@@ -134,7 +140,7 @@ blk_not_ok:
 		return g.logErr(err, rp, "[OnBlockInfo] Failed to write BlockInfo message")
 	}
 
-	return nil
+	return s.Close()
 }
 
 // OnBlockBody handles incoming BlockBody messages.

@@ -50,6 +50,11 @@ var _ = Describe("Block", func() {
 	})
 
 	Describe(".BroadcastBlock", func() {
+
+		BeforeEach(func() {
+			Expect(lp.Connect(rp)).To(BeNil())
+		})
+
 		Context("when block is successfully relayed to a remote peer", func() {
 
 			var block types.Block
