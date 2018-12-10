@@ -16,7 +16,6 @@ func MakeTxHistoryKey(tx types.Transaction, peer core.Engine) []interface{} {
 
 // OnTx handles incoming transaction message
 func (g *Manager) OnTx(s net.Stream, rp core.Engine) error {
-	defer s.Close()
 
 	var txID string
 	tx := &core.Transaction{}
@@ -63,7 +62,7 @@ tx_not_ok:
 		return g.logErr(err, rp, "[OnTx] Failed to write TxOk message")
 	}
 
-	return nil
+	return s.Close()
 }
 
 // BroadcastTx broadcast transactions to selected peers
@@ -76,7 +75,14 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 
 	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
 	for _, peer := range broadcastPeers.Peers() {
-
+		
+		// We need to remove the broadcast peer
+		// if it is no longer connected
+		if !peer.Connected() {
+			broadcastPeers.Remove(peer)
+			continue
+		}
+		
 		s, c, err := g.NewStream(peer, config.Versions.Tx)
 		if err != nil {
 			g.logConnectErr(err, peer, "[BroadcastTx] Failed to connect")
@@ -102,7 +108,7 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 		}
 
 		if !txOk.Ok {
-			s.Reset()
+			s.Close()
 			g.log.Debug("Peer rejected our intent to broadcast a transaction",
 				"PeerID", peer.ShortID(), "TxID", txID)
 			continue

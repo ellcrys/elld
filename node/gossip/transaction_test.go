@@ -53,6 +53,10 @@ var _ = Describe("Transaction", func() {
 		sig, _ := core.TxSign(tx, sender.PrivKey().Base58())
 		tx.Sig = sig
 
+		BeforeEach(func() {
+			Expect(lp.Connect(rp)).To(BeNil())
+		})
+
 		Context("when a transaction is successfully relayed", func() {
 
 			var evt emitter.Event

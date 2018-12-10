@@ -468,6 +468,14 @@ func (n *Node) Connected() bool {
 	return len(n.localNode.host.Network().ConnsToPeer(n.ID())) > 0
 }
 
+// Connect connects n to
+func (n *Node) Connect(rn core.Engine) error {
+	h := n.GetHost()
+	rnH := rn.GetHost()
+	h.Peerstore().AddAddr(rnH.ID(), rn.GetAddress().DecapIPFS(), pstore.TempAddrTTL)
+	return h.Connect(context.TODO(), h.Peerstore().PeerInfo(rn.ID()))
+}
+
 // PrivKey returns the node's private key
 func (n *Node) PrivKey() crypto.PrivKey {
 	return n.host.Peerstore().PrivKey(n.host.ID())

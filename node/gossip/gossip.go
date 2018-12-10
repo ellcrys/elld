@@ -3,6 +3,8 @@ package gossip
 import (
 	"bufio"
 	"context"
+	"math/big"
+	"sort"
 	"sync"
 	"time"
 
@@ -87,6 +89,90 @@ func (g *Manager) PM() *peermanager.Manager {
 // GetBlockchain returns the blockchain manager
 func (g *Manager) GetBlockchain() types.Blockchain {
 	return g.engine.GetBlockchain()
+}
+
+// PickBroadcasters selects N random addresses from
+// the given slice of addresses and caches them to
+// be used as broadcasters.
+// They are returned on subsequent calls and only
+// renewed when there are less than N addresses or the
+// cache is over 24 hours since it was last updated.
+func (g *Manager) PickBroadcasters(addresses []*core.Address, n int) *core.BroadcastPeers {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+
+	now := time.Now()
+	if g.broadcasters.Len() == n && !g.broadcastersUpdatedAt.
+		Add(24*time.Hour).Before(now) {
+		return g.broadcasters
+	}
+
+	type addrInfo struct {
+		hash      *big.Int
+		address   util.NodeAddr
+		timestamp int64
+	}
+
+	var candidatesInfo []addrInfo
+	for _, c := range addresses {
+
+		// Make sure the address isn't the same
+		// as the address of the local node
+		if g.engine.IsSameID(c.Address.ID().Pretty()) {
+			continue
+		}
+
+		// We need to get a numeric representation
+		// of the address
+		addrHash := util.Blake2b256([]byte(c.Address))
+		addrBigInt := new(big.Int).SetBytes(addrHash)
+
+		// Add the address along with other
+		// info into to slice of valid addresses
+		candidatesInfo = append(candidatesInfo, addrInfo{
+			hash:      addrBigInt,
+			address:   c.Address,
+			timestamp: c.Timestamp,
+		})
+	}
+
+	// sort the filtered candidates in ascending order.
+	sort.Slice(candidatesInfo, func(i, j int) bool {
+		return candidatesInfo[i].hash.Cmp(candidatesInfo[j].hash) == -1
+	})
+
+	// Clear the cache if we have at least N cached
+	if len(candidatesInfo) >= n {
+		g.broadcasters.Clear()
+	}
+
+	// Create a remote engine object from the first N addresses.
+	for _, info := range candidatesInfo {
+		node := g.engine.NewRemoteNode(info.address)
+		node.SetLastSeen(time.Unix(info.timestamp, 0))
+		g.broadcasters.Add(node)
+		if g.broadcasters.Len() == n {
+			break
+		}
+	}
+
+	g.broadcastersUpdatedAt = time.Now()
+
+	return g.broadcasters
+
+}
+
+// PickBroadcastersFromPeers is like PickBroadcasters except it
+// accepts a slice of peer engine objects.
+func (g *Manager) PickBroadcastersFromPeers(peers []core.Engine, n int) *core.BroadcastPeers {
+	peerAddrs := []*core.Address{}
+	for _, peer := range peers {
+		peerAddrs = append(peerAddrs, &core.Address{
+			Address:   peer.GetAddress(),
+			Timestamp: peer.GetLastSeen().Unix(),
+		})
+	}
+	return g.PickBroadcasters(peerAddrs, n)
 }
 
 // NewStream creates a stream for a given protocol
