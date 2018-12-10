@@ -72,32 +72,33 @@ func (bm *BlockManager) SetMiner(m *miner.Miner) {
 func (bm *BlockManager) Manage() {
 
 	go func() {
-		for evt := range bm.evt.Once(core.EventFoundBlock) {
+		for evt := range bm.evt.On(core.EventFoundBlock) {
+			b := evt.Args[0].(*miner.FoundBlock)
 			errCh := evt.Args[1].(chan error)
-			errCh <- bm.handleMined(evt.Args[0].(*miner.FoundBlock))
+			errCh <- bm.handleMined(b)
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.Once(core.EventNewBlock) {
+		for evt := range bm.evt.On(core.EventNewBlock) {
 			bm.handleAppendedBlock(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.Once(core.EventOrphanBlock) {
+		for evt := range bm.evt.On(core.EventOrphanBlock) {
 			bm.handleOrphan(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.Once(core.EventProcessBlock) {
+		for evt := range bm.evt.On(core.EventProcessBlock) {
 			bm.handleProcessBlock(evt.Args[0].(*core.Block))
 		}
 	}()
 
 	go func() {
-		for evt := range bm.evt.Once(core.EventPeerChainInfo) {
+		for evt := range bm.evt.On(core.EventPeerChainInfo) {
 			peerChainInfo := evt.Args[0].(*types.SyncPeerChainInfo)
 			if bm.isSyncCandidate(peerChainInfo) {
 				bm.addSyncCandidate(peerChainInfo)
@@ -142,7 +143,6 @@ func (bm *BlockManager) handleMined(fb *miner.FoundBlock) error {
 
 	_, err := bm.bChain.ProcessBlock(fb.Block)
 	if err != nil {
-		bm.log.Warn("Failed to process block", "Err", err.Error())
 		return err
 	}
 
@@ -271,6 +271,10 @@ func (bm *BlockManager) sync() error {
 		delete(bm.syncCandidate, bm.bestSyncCandidate.PeerID)
 		goto resync
 	}
+
+	bm.log.Debug("Received block bodies",
+		"PeerID", bm.bestSyncCandidate.PeerID,
+		"NumBlockBodies", len(blockBodies.Blocks))
 
 	// Attempt to append the block bodies to the blockchain
 	for _, bb := range blockBodies.Blocks {

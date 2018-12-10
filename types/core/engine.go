@@ -79,6 +79,9 @@ type Engine interface {
 	// to the local node
 	Connected() bool
 
+	// Connect connects to rn
+	Connect(rn Engine) error
+
 	// GetBlockchain returns the blockchain instance
 	GetBlockchain() types.Blockchain
 

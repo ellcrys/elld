@@ -319,3 +319,10 @@ func (b *BroadcastPeers) PeersID() (ids []string) {
 	}
 	return
 }
+
+// Remove removes a peer
+func (b *BroadcastPeers) Remove(peer Engine) {
+	b.Lock()
+	defer b.Unlock()
+	delete(b.peers, peer.StringID())
+}
