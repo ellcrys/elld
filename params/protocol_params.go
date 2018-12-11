@@ -65,3 +65,11 @@ var (
 	// any given time.
 	PoolCapacity = int64(10000)
 )
+
+// Engine parameters
+var (
+	// QueueProcessorInterval is the duration between each
+	// attempt to process a job from the queues managed by
+	// the block manager
+	QueueProcessorInterval = 1 * time.Second
+)

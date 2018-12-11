@@ -631,8 +631,6 @@ func (m *Manager) SavePeers() error {
 		return err
 	}
 
-	m.log.Debug("Saved peer addresses", "NumAddrs", numAddrs)
-
 	return nil
 }
 

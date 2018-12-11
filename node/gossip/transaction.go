@@ -2,23 +2,20 @@ package gossip
 
 import (
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/node/common"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/cache"
 	net "github.com/libp2p/go-libp2p-net"
 )
-
-// MakeTxHistoryKey creates an GetHistory() cache key
-// for recording a received/sent transaction
-func MakeTxHistoryKey(tx types.Transaction, peer core.Engine) []interface{} {
-	return []interface{}{tx.GetID(), peer.StringID()}
-}
 
 // OnTx handles incoming transaction message
 func (g *Manager) OnTx(s net.Stream, rp core.Engine) error {
 
 	var txID string
 	tx := &core.Transaction{}
+	var hk []interface{}
 
 	msg := &core.TxInfo{}
 	if err := ReadStream(s, msg); err != nil {
@@ -56,6 +53,11 @@ func (g *Manager) OnTx(s net.Stream, rp core.Engine) error {
 	g.log.Info("Received a new transaction", "PeerID", rp.ShortID(), "TxID", txID)
 	go g.engine.GetEventEmitter().Emit(core.EventTransactionReceived, tx)
 
+	// Keep a record of us receiving this transaction,
+	// so that we won't rebroadcast it to the sender
+	hk = common.KeyTx(tx, rp)
+	g.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
+
 tx_not_ok:
 	if err := WriteStream(s, &core.TxOk{Ok: false}); err != nil {
 		s.Reset()
@@ -71,18 +73,27 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 	txID := util.String(tx.GetID()).SS()
 	sent := 0
 	g.log.Debug("Attempting to broadcast a transaction",
-		"TxID", txID, "NumPeers", len(remotePeers))
+		"TxID", txID,
+		"NumPeers", len(remotePeers))
 
 	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
 	for _, peer := range broadcastPeers.Peers() {
-		
+
 		// We need to remove the broadcast peer
 		// if it is no longer connected
 		if !peer.Connected() {
 			broadcastPeers.Remove(peer)
 			continue
 		}
-		
+
+		// Check if we have an history of receiving
+		// this transaction from this peer recently. If yes,
+		// we will not proceed further
+		hk := common.KeyTx(tx, peer)
+		if g.engine.GetHistory().HasMulti(hk...) {
+			continue
+		}
+
 		s, c, err := g.NewStream(peer, config.Versions.Tx)
 		if err != nil {
 			g.logConnectErr(err, peer, "[BroadcastTx] Failed to connect")
@@ -110,7 +121,8 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 		if !txOk.Ok {
 			s.Close()
 			g.log.Debug("Peer rejected our intent to broadcast a transaction",
-				"PeerID", peer.ShortID(), "TxID", txID)
+				"PeerID", peer.ShortID(),
+				"TxID", txID)
 			continue
 		}
 
@@ -122,7 +134,8 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 		}
 
 		g.log.Info("Transaction successfully broadcast",
-			"TxID", txID, "NumPeersSentTo", sent)
+			"TxID", txID,
+			"NumPeersSentTo", sent)
 
 		s.Close()
 	}
