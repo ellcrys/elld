@@ -54,7 +54,7 @@ func (g *Manager) OnTx(s net.Stream, rp core.Engine) error {
 
 	txID = util.String(tx.GetID()).SS()
 	g.log.Info("Received a new transaction", "PeerID", rp.ShortID(), "TxID", txID)
-	g.engine.GetEventEmitter().Emit(core.EventTransactionReceived, tx)
+	go g.engine.GetEventEmitter().Emit(core.EventTransactionReceived, tx)
 
 tx_not_ok:
 	if err := WriteStream(s, &core.TxOk{Ok: false}); err != nil {

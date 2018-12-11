@@ -66,7 +66,7 @@ func (g *Manager) OnAddr(s net.Stream, rp core.Engine) error {
 	// process the stream and return the addresses set
 	addresses, err := g.onAddr(s, rp)
 	if err != nil {
-		g.engine.GetEventEmitter().Emit(EventAddrProcessed, err)
+		go g.engine.GetEventEmitter().Emit(EventAddrProcessed, err)
 		return err
 	}
 
@@ -76,7 +76,7 @@ func (g *Manager) OnAddr(s net.Stream, rp core.Engine) error {
 		g.RelayAddresses(addresses)
 	}
 
-	g.engine.GetEventEmitter().Emit(EventAddrProcessed)
+	go g.engine.GetEventEmitter().Emit(EventAddrProcessed)
 	return nil
 }
 
@@ -209,7 +209,7 @@ func (g *Manager) RelayAddresses(addrs []*core.Address) []error {
 	}
 
 	g.log.Debug("Address relayed", "NumAddrs", len(relayable), "NumRelayed", relayed)
-	g.engine.GetEventEmitter().Emit(EventAddressesRelayed)
+	go g.engine.GetEventEmitter().Emit(EventAddressesRelayed)
 
 	return errs
 }

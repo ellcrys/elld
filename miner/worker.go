@@ -110,7 +110,7 @@ func (w *Worker) mine(block types.Block) error {
 				"WorkerID", w.id)
 
 			// Broadcast this block
-			w.event.Emit(EventWorkerFoundBlock, foundBlock)
+			go w.event.Emit(EventWorkerFoundBlock, foundBlock)
 
 			w.Stop()
 		}
