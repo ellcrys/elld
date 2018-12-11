@@ -504,11 +504,6 @@ commit:
 		go b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
-	b.log.Info("Block has been processed",
-		"BlockNo", block.GetNumber(),
-		"BlockHash", block.GetHash().SS(),
-		"ChainID", chain.GetID().SS())
-
 	return chain, nil
 }
 

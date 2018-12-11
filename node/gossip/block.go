@@ -3,6 +3,7 @@ package gossip
 import (
 	"fmt"
 
+	"github.com/ellcrys/elld/node/common"
 	"github.com/ellcrys/elld/util/cache"
 	"github.com/jinzhu/copier"
 
@@ -14,23 +15,9 @@ import (
 	net "github.com/libp2p/go-libp2p-net"
 )
 
-func makeBlockHistoryKey(hash string, peer core.Engine) []interface{} {
-	return []interface{}{"b", hash, peer.StringID()}
-}
-
-func makeOrphanBlockHistoryKey(blockHash util.Hash,
-	peer core.Engine) []interface{} {
-	return []interface{}{"ob", blockHash.HexStr(), peer.StringID()}
-}
-
 // BroadcastBlock sends a given block to remote peers.
 // The block is encapsulated in a BlockBody message.
 func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) error {
-
-	g.log.Debug("Attempting to broadcast a block",
-		"BlockNo", block.GetNumber(),
-		"BlockHash", block.GetHash().SS(),
-		"NumPeers", len(remotePeers))
 
 	var sent int
 	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
@@ -42,6 +29,20 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 			broadcastPeers.Remove(peer)
 			continue
 		}
+
+		// Check if we have an history of receiving
+		// this block from this peer recently. If yes,
+		// we will not proceed further
+		hk := common.KeyBlock(block.GetHashAsHex(), peer)
+		if g.engine.GetHistory().HasMulti(hk...) {
+			continue
+		}
+
+		g.log.Debug("Broadcasting a block",
+			"PeerID", peer.ShortID(),
+			"BlockNo", block.GetNumber(),
+			"BlockHash", block.GetHash().SS(),
+			"NumPeers", len(remotePeers))
 
 		s, c, err := g.NewStream(peer, config.Versions.BlockInfo)
 		if err != nil {
@@ -166,16 +167,15 @@ func (g *Manager) OnBlockBody(s net.Stream, rp core.Engine) error {
 		"BlockHash", block.GetHash().SS(),
 		"Difficulty", block.GetHeader().GetDifficulty())
 
-	historyKey := makeBlockHistoryKey(block.GetHashAsHex(), rp)
-	if g.engine.GetHistory().HasMulti(historyKey...) {
-		return nil
-	}
+	// Keep a record of the receipt of this block.
+	// This will help us avoiding broadcasting the same
+	// block to the sender.
+	hk := common.KeyBlock(block.GetHashAsHex(), rp)
+	g.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
 
 	// Emit core.EventRelayedBlock to have the block
 	// processed by the block manager.
 	go g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
-
-	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
 
 	return nil
 }
@@ -189,8 +189,8 @@ func (g *Manager) OnBlockBody(s net.Stream, rp core.Engine) error {
 // in the transaction pool.
 func (g *Manager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 
-	historyKey := makeOrphanBlockHistoryKey(blockHash, rp)
-	if g.engine.GetHistory().HasMulti(historyKey...) {
+	hk := common.KeyOrphanBlock(blockHash, rp)
+	if g.engine.GetHistory().HasMulti(hk...) {
 		return nil
 	}
 
@@ -221,7 +221,7 @@ func (g *Manager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 	block.SetValidationContexts(types.ContextBlockSync)
 	go g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
 
-	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
+	g.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
 
 	return nil
 }
