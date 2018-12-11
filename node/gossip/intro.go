@@ -91,7 +91,7 @@ func (g *Manager) OnIntro(s net.Stream, rp core.Engine) error {
 
 	g.log.Debug("Received and cached intro message", "Total", introCache.Len())
 
-	g.engine.GetEventEmitter().Emit(EventIntroReceived)
+	go g.engine.GetEventEmitter().Emit(EventIntroReceived)
 
 	// Relay the received message to our own peers
 	go g.SendIntro(&msg)

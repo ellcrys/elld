@@ -58,7 +58,7 @@ func (g *Manager) SendPingToPeer(remotePeer core.Engine) error {
 	g.log.Debug("Received pong response from peer", "PeerID", rpIDShort)
 
 	// Broadcast the remote peer's chain information.
-	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+	go g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
 		PeerID:          remotePeer.StringID(),
 		PeerIDShort:     remotePeer.ShortID(),
 		PeerChainHeight: pongMsg.BestBlockNumber,
@@ -127,7 +127,7 @@ func (g *Manager) OnPing(s net.Stream, rp core.Engine) error {
 	g.log.Debug("Sent pong response to peer", "PeerID", rp.ShortID())
 
 	// Broadcast the remote peer's chain information.
-	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+	go g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
 		PeerID:          rp.StringID(),
 		PeerIDShort:     rp.ShortID(),
 		PeerChainHeight: msg.BestBlockNumber,

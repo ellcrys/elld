@@ -71,7 +71,7 @@ func (tm *TxManager) AddTx(tx types.Transaction) error {
 	// TxTypeAlloc transactions are not allowed
 	if tx.GetType() == core.TxTypeAlloc {
 		err := fmt.Errorf("allocation transaction type is not allowed")
-		tm.evt.Emit(core.EventTransactionInvalid, tx, err)
+		go tm.evt.Emit(core.EventTransactionInvalid, tx, err)
 		return err
 	}
 
@@ -79,14 +79,14 @@ func (tm *TxManager) AddTx(tx types.Transaction) error {
 	// the first error we find.
 	txValidator := blockchain.NewTxValidator(tx, tm.engine.txsPool, tm.bChain)
 	if errs := txValidator.Validate(); len(errs) > 0 {
-		tm.evt.Emit(core.EventTransactionInvalid, tx, errs[0])
+		go tm.evt.Emit(core.EventTransactionInvalid, tx, errs[0])
 		return errs[0]
 	}
 
 	// Next we attempt to add the transaction
 	// to the transactions pool.
 	if err := tm.engine.GetTxPool().Put(tx); err != nil {
-		tm.evt.Emit(core.EventTransactionInvalid, tx, err)
+		go tm.evt.Emit(core.EventTransactionInvalid, tx, err)
 		return err
 	}
 
@@ -95,7 +95,7 @@ func (tm *TxManager) AddTx(tx types.Transaction) error {
 	// broadcast queue so it will be broadcast to peers
 	tm.txBroadcastQueue.Append(tx)
 
-	tm.evt.Emit(core.EventTransactionPooled, tx)
+	go tm.evt.Emit(core.EventTransactionPooled, tx)
 
 	return nil
 }

@@ -324,7 +324,7 @@ func (b *Blockchain) maybeAcceptBlock(block types.Block, chain *Chain,
 		// Emitting core.EventOrphanBlock will cause
 		// the block manager to request the parent block
 		// from the originating peer.
-		b.eventEmitter.Emit(core.EventOrphanBlock, block)
+		go b.eventEmitter.Emit(core.EventOrphanBlock, block)
 		return nil, nil
 	}
 
@@ -464,7 +464,6 @@ process:
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("put transaction failed: %s", err)
 	}
-
 commit:
 	// At this point, the block is good to go.
 	// We add it to the chain
@@ -488,7 +487,6 @@ commit:
 	// We will skip this step if a reorganization is ongoing
 	if !b.reOrgIsActive() {
 		var err error
-
 		if !hasInjectTx {
 			txOp = nil
 		}
@@ -503,7 +501,7 @@ commit:
 	// if the chain is the best chain, emit a new block
 	// event for other processes to act on the new block
 	if b.bestChain.GetID() == chain.GetID() {
-		b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
+		go b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
 	b.log.Info("Block has been processed",
