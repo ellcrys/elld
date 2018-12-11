@@ -83,7 +83,7 @@ func (g *Manager) SendHandshake(rp core.Engine) error {
 		"TotalDifficulty", resp.BestBlockTotalDifficulty)
 
 	// Broadcast the remote peer's chain information.
-	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+	go g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
 		PeerID:          rp.StringID(),
 		PeerIDShort:     rp.ShortID(),
 		PeerChainHeight: resp.BestBlockNumber,
@@ -137,7 +137,7 @@ func (g *Manager) OnHandshake(s net.Stream, rp core.Engine) error {
 		nodeMsg.BestBlockTotalDifficulty)
 
 	// Broadcast the remote peer's chain information.
-	g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
+	go g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{
 		PeerID:          rp.StringID(),
 		PeerIDShort:     rp.ShortID(),
 		PeerChainHeight: msg.BestBlockNumber,

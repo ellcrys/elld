@@ -31,7 +31,7 @@ func (g *Manager) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
 		return nil, err
 	}
 
-	g.engine.GetEventEmitter().Emit(EventReceivedAddr)
+	go g.engine.GetEventEmitter().Emit(EventReceivedAddr)
 
 	return addr, nil
 }

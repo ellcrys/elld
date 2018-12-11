@@ -126,14 +126,16 @@ func (bm *BlockManager) handleOrphan(b *core.Block) {
 func (bm *BlockManager) handleProcessBlock(b *core.Block) error {
 	_, err := bm.bChain.ProcessBlock(b)
 	if err != nil {
-		bm.evt.Emit(core.EventBlockProcessed, b, err)
+		go bm.evt.Emit(core.EventBlockProcessed, b, err)
 		bm.log.Debug("Failed to process block", "Err", err.Error())
 		return err
 	}
-	bm.evt.Emit(core.EventBlockProcessed, b, nil)
+
+	go bm.evt.Emit(core.EventBlockProcessed, b, nil)
 	bm.log.Debug("Received block has been processed",
 		"BlockNo", b.GetNumber(),
 		"BlockHash", b.GetHash().SS())
+
 	return nil
 }
 

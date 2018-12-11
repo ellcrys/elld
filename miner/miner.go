@@ -210,7 +210,7 @@ func (m *Miner) processBlock(fb *FoundBlock) error {
 	fb.Block.SetSignature(blockSig)
 
 	errCh := make(chan error)
-	<-m.event.Emit(core.EventFoundBlock, fb, errCh)
+	go m.event.Emit(core.EventFoundBlock, fb, errCh)
 
 	return <-errCh
 }

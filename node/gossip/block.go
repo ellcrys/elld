@@ -173,7 +173,7 @@ func (g *Manager) OnBlockBody(s net.Stream, rp core.Engine) error {
 
 	// Emit core.EventRelayedBlock to have the block
 	// processed by the block manager.
-	g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
+	go g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
 
 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
 
@@ -219,7 +219,7 @@ func (g *Manager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 	copier.Copy(&block, blockBody)
 	block.SetBroadcaster(rp)
 	block.SetValidationContexts(types.ContextBlockSync)
-	g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
+	go g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
 
 	g.engine.GetHistory().AddMulti(cache.Sec(600), historyKey...)
 
@@ -296,7 +296,6 @@ func (g *Manager) OnRequestBlock(s net.Stream, rp core.Engine) error {
 // they will be collected from the main chain.
 func (g *Manager) SendGetBlockHashes(rp core.Engine,
 	locators []util.Hash, seek util.Hash) (*core.BlockHashes, error) {
-
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
 
@@ -325,7 +324,7 @@ func (g *Manager) SendGetBlockHashes(rp core.Engine,
 		return nil, g.logErr(err, rp, "[SendGetBlockHashes] Failed to write")
 	}
 
-	g.engine.GetEventEmitter().Emit(EventRequestedBlockHashes,
+	go g.engine.GetEventEmitter().Emit(EventRequestedBlockHashes,
 		msg.Locators, msg.MaxBlocks)
 
 	// Read the return block hashes
@@ -334,7 +333,7 @@ func (g *Manager) SendGetBlockHashes(rp core.Engine,
 		return nil, g.logErr(err, rp, "[SendGetBlockHashes] Failed to read")
 	}
 
-	g.engine.GetEventEmitter().Emit(EventReceivedBlockHashes)
+	go g.engine.GetEventEmitter().Emit(EventReceivedBlockHashes)
 	g.log.Info("Successfully requested block headers", "PeerID", rpID, "NumLocators",
 		len(msg.Locators))
 
