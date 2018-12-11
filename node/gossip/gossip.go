@@ -224,6 +224,13 @@ func (g *Manager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error 
 func (g *Manager) Handle(handler func(s net.Stream, remotePeer core.Engine) error) func(net.Stream) {
 	return func(s net.Stream) {
 
+		// Close the stream and exist if
+		// engine has been stopped
+		if g.engine.HasStopped() {
+			s.Close()
+			return
+		}
+
 		remoteAddr := util.RemoteAddrFromStream(s)
 		rp := g.engine.NewRemoteNode(remoteAddr)
 
