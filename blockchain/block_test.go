@@ -62,10 +62,6 @@ var _ = Describe("Block", func() {
 		Expect(err).To(BeNil())
 	})
 
-	It("", func() {
-
-	})
-
 	Describe(".HaveBlock", func() {
 		var block types.Block
 

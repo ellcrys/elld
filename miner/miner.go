@@ -16,6 +16,7 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/fatih/color"
 	"github.com/olebedev/emitter"
 )
 
@@ -211,6 +212,12 @@ func (m *Miner) processBlock(fb *FoundBlock) error {
 
 	errCh := make(chan error)
 	go m.event.Emit(core.EventFoundBlock, fb, errCh)
+
+	m.log.Info(color.GreenString("New block mined"),
+		"Number", fb.Block.GetNumber(),
+		"Difficulty", fb.Block.GetHeader().GetDifficulty(),
+		"TotalDifficulty", fb.Block.GetHeader().GetTotalDifficulty(),
+		"PoW Time", time.Since(fb.Started))
 
 	return <-errCh
 }

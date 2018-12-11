@@ -98,6 +98,7 @@ func closeNode(n *node.Node) {
 
 func TestGossip(t *testing.T) {
 	params.FeePerByte = decimal.NewFromFloat(0.01)
+	params.QueueProcessorInterval = 10 * time.Millisecond
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Gossip Suite")
 }

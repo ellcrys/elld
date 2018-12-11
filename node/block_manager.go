@@ -5,15 +5,32 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/params"
+
+	"github.com/ellcrys/elld/node/common"
+
+	"github.com/ellcrys/elld/util/cache"
+
+	"gopkg.in/oleiade/lane.v1"
+
 	"github.com/ellcrys/elld/miner"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/fatih/color"
 	"github.com/jinzhu/copier"
 	"github.com/olebedev/emitter"
 	"github.com/shopspring/decimal"
 )
+
+// unprocessedBlock represents a block the requires processing.
+type unprocessedBlock struct {
+
+	// block is the block that needs to be processed
+	block types.Block
+
+	// done is a channel to send the processing error status
+	done chan error
+}
 
 // BlockManager is responsible for handling
 // incoming, mined or processed blocks in a
@@ -48,17 +65,29 @@ type BlockManager struct {
 	// bestSyncCandidate is the current best sync
 	// candidate to perform block synchronization with.
 	bestSyncCandidate *types.SyncPeerChainInfo
+
+	// unprocessedBlocks hold blocks that are yet to be processed
+	unprocessedBlocks *lane.Deque
+
+	// processedBlocks hold blocks that have been processed
+	processedBlocks *lane.Deque
+
+	// mined holds the hash of blocks mined by the client
+	mined *cache.Cache
 }
 
 // NewBlockManager creates a new BlockManager
 func NewBlockManager(node *Node) *BlockManager {
 	bm := &BlockManager{
-		syncMtx:       &sync.RWMutex{},
-		log:           node.log,
-		evt:           node.event,
-		bChain:        node.bChain,
-		engine:        node,
-		syncCandidate: make(map[string]*types.SyncPeerChainInfo),
+		syncMtx:           &sync.RWMutex{},
+		log:               node.log,
+		evt:               node.event,
+		bChain:            node.bChain,
+		engine:            node,
+		unprocessedBlocks: lane.NewDeque(),
+		processedBlocks:   lane.NewDeque(),
+		mined:             cache.NewCache(100),
+		syncCandidate:     make(map[string]*types.SyncPeerChainInfo),
 	}
 	return bm
 }
@@ -74,14 +103,18 @@ func (bm *BlockManager) Manage() {
 	go func() {
 		for evt := range bm.evt.On(core.EventFoundBlock) {
 			b := evt.Args[0].(*miner.FoundBlock)
+			bm.mined.Add(b.Block.GetHash().HexStr(), struct{}{})
 			errCh := evt.Args[1].(chan error)
-			errCh <- bm.handleMined(b)
+			bm.unprocessedBlocks.Append(&unprocessedBlock{
+				block: b.Block,
+				done:  errCh,
+			})
 		}
 	}()
 
 	go func() {
 		for evt := range bm.evt.On(core.EventNewBlock) {
-			bm.handleAppendedBlock(evt.Args[0].(*core.Block))
+			bm.processedBlocks.Append(evt.Args[0].(*core.Block))
 		}
 	}()
 
@@ -93,7 +126,9 @@ func (bm *BlockManager) Manage() {
 
 	go func() {
 		for evt := range bm.evt.On(core.EventProcessBlock) {
-			bm.handleProcessBlock(evt.Args[0].(*core.Block))
+			bm.unprocessedBlocks.Append(&unprocessedBlock{
+				block: evt.Args[0].(*core.Block),
+			})
 		}
 	}()
 
@@ -108,6 +143,97 @@ func (bm *BlockManager) Manage() {
 			}
 		}
 	}()
+
+	go func() {
+		ticker := time.NewTicker(params.QueueProcessorInterval)
+		for {
+			select {
+			case <-ticker.C:
+				for !bm.processedBlocks.Empty() {
+					bm.handleProcessedBlocks()
+				}
+			}
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(params.QueueProcessorInterval)
+		for {
+			select {
+			case <-ticker.C:
+				for !bm.unprocessedBlocks.Empty() {
+					bm.handleUnprocessedBlocks()
+				}
+			}
+		}
+	}()
+}
+
+// handleProcessedBlocks fetches blocks from the processed
+// block queue to perform post-append operations such as
+// updating clearing processed transactions from the pool,
+// restarting miners and relaying the processed block.
+func (bm *BlockManager) handleProcessedBlocks() error {
+
+	var b = bm.processedBlocks.Shift()
+	if b == nil {
+		return nil
+	}
+
+	// Remove the blocks transactions from the pool.
+	bm.engine.txsPool.Remove(b.(*core.Block).GetTransactions()...)
+
+	// Restart miner workers if some block was created
+	// by another peer. The miner typically manages its
+	// restart when it finds a block. But when a remote
+	// peer finds a block, we need to force the miner to restart.
+	if !bm.mined.Has(b.(*core.Block).GetHash().HexStr()) {
+		bm.miner.RestartWorkers()
+	}
+
+	// Relay the block to peers.
+	if b.(*core.Block).GetNumber() > 1 {
+		bm.engine.Gossip().BroadcastBlock(b.(*core.Block),
+			bm.engine.PM().GetConnectedPeers())
+	}
+
+	return nil
+}
+
+// handleUnprocessedBlocks fetches unprocessed blocks
+// from the unprocessed block queue and attempts to
+// append them to the blockchain.
+func (bm *BlockManager) handleUnprocessedBlocks() error {
+
+	var upb = bm.unprocessedBlocks.Shift()
+	if upb == nil {
+		return nil
+	}
+
+	b := upb.(*unprocessedBlock).block
+	errCh := upb.(*unprocessedBlock).done
+	_, err := bm.bChain.ProcessBlock(b)
+	if err != nil {
+		go bm.evt.Emit(core.EventBlockProcessed, b, err)
+		bm.log.Debug("Failed to process block", "Err", err.Error())
+
+		if errCh != nil {
+			errCh <- err
+		}
+
+		return err
+	}
+
+	go bm.evt.Emit(core.EventBlockProcessed, b, nil)
+	bm.log.Info("Block has been processed",
+		"BlockNo", b.GetNumber(),
+		"BlockHash", b.GetHash().SS())
+
+	if errCh != nil {
+		errCh <- err
+	}
+
+	return nil
 }
 
 // handleOrphan sends a RequestBlock message to
@@ -118,64 +244,6 @@ func (bm *BlockManager) handleOrphan(b *core.Block) {
 		"BlockNo", b.GetNumber(),
 		"ParentBlockHash", parentHash.SS())
 	bm.engine.gossipMgr.RequestBlock(b.Broadcaster, parentHash)
-}
-
-// handleProcessBlock processes a block.
-// It emits a core.EventBlockProcessed with two
-// arguments (1=processed block and 2=processing error)
-func (bm *BlockManager) handleProcessBlock(b *core.Block) error {
-	_, err := bm.bChain.ProcessBlock(b)
-	if err != nil {
-		go bm.evt.Emit(core.EventBlockProcessed, b, err)
-		bm.log.Debug("Failed to process block", "Err", err.Error())
-		return err
-	}
-
-	go bm.evt.Emit(core.EventBlockProcessed, b, nil)
-	bm.log.Debug("Received block has been processed",
-		"BlockNo", b.GetNumber(),
-		"BlockHash", b.GetHash().SS())
-
-	return nil
-}
-
-// handleMined attempts to append a block with a valid
-// PoW to the block chain
-func (bm *BlockManager) handleMined(fb *miner.FoundBlock) error {
-
-	_, err := bm.bChain.ProcessBlock(fb.Block)
-	if err != nil {
-		return err
-	}
-
-	bm.log.Info(color.GreenString("New block mined"),
-		"Number", fb.Block.GetNumber(),
-		"Difficulty", fb.Block.GetHeader().GetDifficulty(),
-		"TotalDifficulty", fb.Block.GetHeader().GetTotalDifficulty(),
-		"PoW Time", time.Since(fb.Started))
-
-	return nil
-}
-
-// relayAppendedBlock a block to connected peers
-func (bm *BlockManager) relayAppendedBlock(b types.Block) {
-	if b.GetNumber() > 1 {
-		bm.engine.Gossip().BroadcastBlock(b, bm.engine.PM().GetConnectedPeers())
-	}
-}
-
-// handleAppendedBlock handles an event about a block
-// that got appended to the main chain.
-func (bm *BlockManager) handleAppendedBlock(b types.Block) {
-
-	// Remove the blocks transactions from the pool.
-	bm.engine.txsPool.Remove(b.GetTransactions()...)
-
-	// Restart miner workers.
-	bm.miner.RestartWorkers()
-
-	// Relay the block to peers.
-	bm.relayAppendedBlock(b)
 }
 
 // isSyncCandidate checks whether a peer is a
@@ -290,12 +358,13 @@ func (bm *BlockManager) sync() error {
 		block.SetBroadcaster(peer)
 		bm.bestSyncCandidate.LastBlockSent = block.GetHash()
 
+		hk := common.KeyBlock2(block.GetHashAsHex(), bm.bestSyncCandidate.PeerID)
+		bm.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
+
 		// Process the block
-		_, err := bm.engine.GetBlockchain().ProcessBlock(&block)
-		if err != nil {
-			bm.log.Debug("Unable to process block", "Err", err)
-			continue
-		}
+		bm.unprocessedBlocks.Append(&unprocessedBlock{
+			block: &block,
+		})
 	}
 
 	// Let's check if the candidate is still a viable

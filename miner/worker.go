@@ -102,11 +102,15 @@ func (w *Worker) mine(block types.Block) error {
 			if w.isStopped() {
 				w.log.Debug("Nonce found but discarded", "Attempts", nonce-seed,
 					"Nonce", nonce,
+					"BlockNo", block.GetNumber(),
 					"WorkerID", w.id)
 				break
 			}
 
-			w.log.Debug("Nonce found", "Attempts", nonce-seed, "Nonce", nonce,
+			w.log.Debug("Nonce found",
+				"Attempts", nonce-seed,
+				"BlockNo", block.GetNumber(),
+				"Nonce", nonce,
 				"WorkerID", w.id)
 
 			// Broadcast this block
