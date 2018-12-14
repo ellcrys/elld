@@ -41,6 +41,7 @@ func main() {
 
 	maxTxs := flag.Int64("numTxs", 1000, "number of transaction")
 	difficulty := flag.Int64("diff", params.GenesisDifficulty.Int64(), "Block difficulty")
+	allocAmt := flag.Int64("allocAmt", 100, "Allocation amount")
 	flag.Parse()
 
 	// create temporary database
@@ -64,7 +65,8 @@ func main() {
 
 	for i := int64(1); i < *maxTxs+1; i++ {
 		recipient := crypto.NewKeyFromIntSeed(int(i))
-		allocTx := core.NewTx(core.TxTypeAlloc, 0, util.String(recipient.Addr()), creator, "100", "0", time.Now().Unix())
+		allocTx := core.NewTx(core.TxTypeAlloc, 0, util.String(recipient.Addr()), creator,
+			util.String(fmt.Sprintf("%d", *allocAmt)), "0", time.Now().Unix())
 		txs = append(txs, allocTx)
 		addrsPrivateKey[recipient.Addr().String()] = recipient.PrivKey().Base58()
 	}
