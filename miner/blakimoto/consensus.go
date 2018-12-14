@@ -98,11 +98,6 @@ func (b *Blakimoto) VerifyHeader(header, parent types.Header, seal bool) error {
 // new block should have when created at time
 // given the parent block's time and difficulty.
 func (b *Blakimoto) CalcDifficulty(blockHeader types.Header, parent types.Header) *big.Int {
-
-	if sameDiffEpoch(parent.GetNumber(), blockHeader.GetNumber()) {
-		return parent.GetDifficulty()
-	}
-
 	return CalcDifficulty(blockHeader, parent)
 }
 
@@ -115,69 +110,32 @@ func CalcDifficulty(blockHeader types.Header, parent types.Header) *big.Int {
 		parent)
 }
 
-// Some weird constants to avoid constant memory
-// allocs for them.
-var (
-	expDiffPeriod = big.NewInt(3)
-	big0          = big.NewInt(0)
-	big1          = big.NewInt(1)
-	big2          = big.NewInt(2)
-	big100F       = big.NewFloat(100)
-)
-
-func sameDiffEpoch(parentBlockNumber, blockNumber uint64) bool {
-	parentEpoch := int(parentBlockNumber / params.DifficultyEpoch)
-	blockEpoch := int(blockNumber / params.DifficultyEpoch)
-	return parentEpoch == blockEpoch
-}
-
 func calcDifficultyInception(time uint64, parent types.Header) *big.Int {
 
 	diff := new(big.Int)
-	bigTime := new(big.Int).SetUint64(time)
-	bigParentTime := new(big.Int).Set(new(big.Int).
-		SetInt64(parent.GetTimestamp()))
-
-	// Define the value to adjust difficulty by
-	// when the block time is within or above the duration limit.
 	adjust := new(big.Int).Div(parent.GetDifficulty(), params.DifficultyBoundDivisor)
+	bigTime := new(big.Int)
+	bigParentTime := new(big.Int)
 
-	// Calculate the time difference between the
-	// new block time and parent block time. We'll
-	// use this to determine whether on not to increase
-	// or decrease difficulty
-	blockTimeDiff := bigTime.Sub(bigTime, bigParentTime)
+	bigTime.SetUint64(time)
+	bigParentTime.SetInt64(parent.GetTimestamp())
 
-	// When block time difference is within the expected
-	// block duration limit, we increasse difficulty
-	if blockTimeDiff.Cmp(params.DurationLimit) < 0 {
+	// calculate the time difference between the parent time
+	// and the current block time
+	timespan := bigTime.Sub(bigTime, bigParentTime)
+
+	// Increase difficulty when timespan is lower than
+	// the expected time span between blocks.
+	if timespan.Cmp(params.DurationLimit) < 0 {
 		diff.Add(parent.GetDifficulty(), adjust)
+	} else {
+		// Reduce difficulty when timespan is greater than
+		// the expected time span between blocks
+		diff.Sub(parent.GetDifficulty(), adjust)
 	}
 
-	// When block time difference is equal or greater than
-	// the expected block duration limit, we decrease difficulty
-	if blockTimeDiff.Cmp(params.DurationLimit) >= 0 {
-
-		// We need to determine the percentage increase of the
-		// new block time compared to the duration limit
-		durLimitF := new(big.Float).SetInt(params.DurationLimit)
-		blockTimeF := new(big.Float).SetInt(bigTime)
-		timeDiff := new(big.Float).Sub(blockTimeF, durLimitF)
-		pctDiff := new(big.Float).Mul(new(big.Float).Quo(timeDiff, durLimitF), big100F)
-
-		// If the percentage difference is below the allowed mimimum
-		// reset to the minimum
-		if pctDiff.Cmp(params.MinimumDurationIncrease) < 0 {
-			pctDiff = new(big.Float).Set(params.MinimumDurationIncrease)
-		}
-
-		// Calculate the new adjustment based on time difference percentage
-		pctDiff = pctDiff.Quo(pctDiff, big100F)
-		timeDiffAdjust, _ := new(big.Float).Mul(pctDiff, new(big.Float).SetInt(adjust)).Int(nil)
-		diff.Sub(parent.GetDifficulty(), timeDiffAdjust)
-	}
-
-	// Ensure difficulty does not go below the required minimum
+	// Normalize to the minimum difficulty if
+	// the calculated difficulty is below the minimum.
 	if diff.Cmp(params.MinimumDifficulty) < 0 {
 		diff.Set(params.MinimumDifficulty)
 	}
