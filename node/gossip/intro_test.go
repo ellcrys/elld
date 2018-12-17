@@ -41,6 +41,8 @@ var _ = Describe("Intro", func() {
 			Address: util.String(sender.Addr()),
 			Balance: "100",
 		})).To(BeNil())
+
+		Expect(lp.Connect(rp)).To(BeNil())
 	})
 
 	AfterEach(func() {

@@ -54,13 +54,14 @@ type Manager struct {
 	// log is used for logging events
 	log logger.Logger
 
-	// broadcastersUpdatedAt is the time the
-	// last relay peers where selected
-	broadcastersUpdatedAt time.Time
-
 	// broadcasters contains randomly selected
-	// peers to broadcast messages to.
+	// and acquainted peers to broadcast messages to.
 	broadcasters *core.BroadcastPeers
+
+	// randBroadcasters contains randomly selected
+	// peers for broadcasting messages that do not
+	// require acquaintance between peers
+	randBroadcasters *core.BroadcastPeers
 
 	// pm is the peer manager
 	pm *peermanager.Manager
@@ -69,10 +70,11 @@ type Manager struct {
 // NewGossip creates a new instance of the Gossip protocol
 func NewGossip(p core.Engine, log logger.Logger) *Manager {
 	return &Manager{
-		engine:       p,
-		log:          log,
-		mtx:          sync.RWMutex{},
-		broadcasters: core.NewBroadcastPeers(),
+		engine:           p,
+		log:              log,
+		mtx:              sync.RWMutex{},
+		broadcasters:     core.NewBroadcastPeers(),
+		randBroadcasters: core.NewBroadcastPeers(),
 	}
 }
 
@@ -92,19 +94,20 @@ func (g *Manager) GetBlockchain() types.Blockchain {
 }
 
 // PickBroadcasters selects N random addresses from
-// the given slice of addresses and caches them to
-// be used as broadcasters.
+// the given slice of addresses and adds them to cache
+// to be used as broadcasters.
+//
 // They are returned on subsequent calls and only
-// renewed when there are less than N addresses or the
-// cache is over 24 hours since it was last updated.
-func (g *Manager) PickBroadcasters(addresses []*core.Address, n int) *core.BroadcastPeers {
+// renewed when there are less than N addresses or
+// when cache was last update at over 24 hours ago.
+func (g *Manager) PickBroadcasters(cache *core.BroadcastPeers, addresses []*core.Address,
+	n int) *core.BroadcastPeers {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
 
 	now := time.Now()
-	if g.broadcasters.Len() == n && !g.broadcastersUpdatedAt.
-		Add(24*time.Hour).Before(now) {
-		return g.broadcasters
+	if cache.Len() == n && !cache.LastUpdated().Add(24*time.Hour).Before(now) {
+		return cache
 	}
 
 	type addrInfo struct {
@@ -141,30 +144,28 @@ func (g *Manager) PickBroadcasters(addresses []*core.Address, n int) *core.Broad
 		return candidatesInfo[i].hash.Cmp(candidatesInfo[j].hash) == -1
 	})
 
-	// Clear the cache if we have at least N cached
+	// Clear the cache if we have at least N candidates
 	if len(candidatesInfo) >= n {
-		g.broadcasters.Clear()
+		cache.Clear()
 	}
 
 	// Create a remote engine object from the first N addresses.
 	for _, info := range candidatesInfo {
 		node := g.engine.NewRemoteNode(info.address)
 		node.SetLastSeen(time.Unix(info.timestamp, 0))
-		g.broadcasters.Add(node)
-		if g.broadcasters.Len() == n {
+		cache.Add(node)
+		if cache.Len() == n {
 			break
 		}
 	}
 
-	g.broadcastersUpdatedAt = time.Now()
-
-	return g.broadcasters
-
+	return cache
 }
 
 // PickBroadcastersFromPeers is like PickBroadcasters except it
 // accepts a slice of peer engine objects.
-func (g *Manager) PickBroadcastersFromPeers(peers []core.Engine, n int) *core.BroadcastPeers {
+func (g *Manager) PickBroadcastersFromPeers(cache *core.BroadcastPeers,
+	peers []core.Engine, n int) *core.BroadcastPeers {
 	peerAddrs := []*core.Address{}
 	for _, peer := range peers {
 		peerAddrs = append(peerAddrs, &core.Address{
@@ -172,7 +173,7 @@ func (g *Manager) PickBroadcastersFromPeers(peers []core.Engine, n int) *core.Br
 			Timestamp: peer.GetLastSeen().Unix(),
 		})
 	}
-	return g.PickBroadcasters(peerAddrs, n)
+	return g.PickBroadcasters(cache, peerAddrs, n)
 }
 
 // NewStream creates a stream for a given protocol
@@ -292,4 +293,10 @@ func (g *Manager) logConnectErr(err error, rp core.Engine, msg string) error {
 // GetBroadcasters returns the broadcasters
 func (g *Manager) GetBroadcasters() *core.BroadcastPeers {
 	return g.broadcasters
+}
+
+// GetRandBroadcasters returns the random,
+// possibly unacquainted broadcasters
+func (g *Manager) GetRandBroadcasters() *core.BroadcastPeers {
+	return g.randBroadcasters
 }

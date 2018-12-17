@@ -23,6 +23,8 @@ var _ = Describe("SelfAdv", func() {
 
 		rp = makeTestNode(rpPort)
 		Expect(rp.GetBlockchain().Up()).To(BeNil())
+
+		Expect(lp.Connect(rp)).To(BeNil())
 	})
 
 	AfterEach(func() {
