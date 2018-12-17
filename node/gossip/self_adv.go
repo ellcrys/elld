@@ -17,20 +17,11 @@ func (g *Manager) SelfAdvertise(connectedPeers []core.Engine) int {
 		},
 	}
 
-	// Get the address of connected peers into a core.Address
-	var peersAddress = []*core.Address{}
-	for _, p := range connectedPeers {
-		peersAddress = append(peersAddress, &core.Address{
-			Address:   p.GetAddress(),
-			Timestamp: p.GetLastSeen().Unix(),
-		})
-	}
-
 	// Select up to 2 peers to act as broadcasters
-	g.PickBroadcasters(peersAddress, 2)
+	bp := g.PickBroadcastersFromPeers(g.randBroadcasters, connectedPeers, 3)
 
 	sent := 0
-	for _, peer := range g.broadcasters.Peers() {
+	for _, peer := range bp.Peers() {
 
 		s, c, err := g.NewStream(peer, config.Versions.Addr)
 		if err != nil {

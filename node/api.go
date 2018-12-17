@@ -273,6 +273,22 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(txs)
 }
 
+func (n *Node) apiBroadcastPeers(arg interface{}) *jsonrpc.Response {
+	var result = map[string][]string{
+		"broadcasters":       []string{},
+		"randomBroadcasters": []string{},
+	}
+	for _, p := range n.Gossip().GetBroadcasters().Peers() {
+		result["broadcasters"] = append(result["broadcasters"],
+			p.GetAddress().ConnectionString())
+	}
+	for _, p := range n.Gossip().GetRandBroadcasters().Peers() {
+		result["randomBroadcasters"] = append(result["randomBroadcasters"],
+			p.GetAddress().ConnectionString())
+	}
+	return jsonrpc.Success(result)
+}
+
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -361,6 +377,11 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Private:     true,
 			Description: "Delete all peers in memory and on disk",
 			Func:        n.apiForgetPeers,
+		},
+		"broadcasters": {
+			Namespace:   types.NamespaceNet,
+			Description: "Get broadcast peers",
+			Func:        n.apiBroadcastPeers,
 		},
 
 		// namespace: "pool"

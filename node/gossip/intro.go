@@ -13,18 +13,8 @@ import (
 // broadcast to the selected peers
 func (g *Manager) SendIntro(intro *core.Intro) {
 
-	// Get the addresses of the nodes
-	// this peer is connected to.
-	var connectedAddresses = []*core.Address{}
-	for _, p := range g.PM().GetConnectedPeers() {
-		connectedAddresses = append(connectedAddresses, &core.Address{
-			Address:   p.GetAddress(),
-			Timestamp: p.GetLastSeen().Unix(),
-		})
-	}
-
 	// Select up to 2 peers to act as broadcasters
-	g.PickBroadcasters(connectedAddresses, 2)
+	bp := g.PickBroadcastersFromPeers(g.randBroadcasters, g.PM().GetConnectedPeers(), 3)
 
 	var msg = intro
 	if msg == nil {
@@ -34,7 +24,7 @@ func (g *Manager) SendIntro(intro *core.Intro) {
 	// Send intro message to the selected
 	// broadcast nodes.
 	sent := 0
-	for _, peer := range g.broadcasters.Peers() {
+	for _, peer := range bp.Peers() {
 
 		// Don't relay an intro back to the
 		// peer that authored it

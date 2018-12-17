@@ -76,7 +76,7 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 		"TxID", txID,
 		"NumPeers", len(remotePeers))
 
-	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
+	broadcastPeers := g.PickBroadcastersFromPeers(g.broadcasters, remotePeers, 3)
 	for _, peer := range broadcastPeers.Peers() {
 
 		// We need to remove the broadcast peer
@@ -133,12 +133,14 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 			continue
 		}
 
-		g.log.Info("Transaction successfully broadcast",
-			"TxID", txID,
-			"NumPeersSentTo", sent)
+		sent++
 
 		s.Close()
 	}
+
+	g.log.Info("Transaction successfully broadcast",
+		"TxID", txID,
+		"NumPeersSentTo", sent)
 
 	return nil
 }

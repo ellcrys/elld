@@ -39,14 +39,14 @@ var _ = Describe("TestAddr", func() {
 			Address: util.String(sender.Addr()),
 			Balance: "100",
 		})).To(BeNil())
+
+		Expect(lp.Connect(rp)).To(BeNil())
 	})
 
 	AfterEach(func() {
 		closeNode(lp)
 		closeNode(rp)
 	})
-
-
 
 	Describe(".RelayAddresses", func() {
 
@@ -114,16 +114,16 @@ var _ = Describe("TestAddr", func() {
 					{Address: p2.GetAddress(), Timestamp: time.Now().Unix()},
 					{Address: p3.GetAddress(), Timestamp: time.Now().Unix()},
 				}
-				Expect(p.Gossip().GetBroadcasters().Len()).To(Equal(0))
+				Expect(p.Gossip().GetRandBroadcasters().Len()).To(Equal(0))
 				p.Gossip().RelayAddresses(addrs)
-				Expect(p.Gossip().GetBroadcasters().Len()).To(Equal(2))
+				Expect(p.Gossip().GetRandBroadcasters().Len()).To(Equal(2))
 			})
 		})
 	})
 
 	Describe(".OnAddr", func() {
 
-		var p, p2, p3 *node.Node
+		var p, p2, p3, p4 *node.Node
 		var evt emitter.Event
 		var addrMsg *core.Addr
 
@@ -131,11 +131,13 @@ var _ = Describe("TestAddr", func() {
 			p = makeTestNode(getPort())
 			p2 = makeTestNode(getPort())
 			p3 = makeTestNode(getPort())
+			p4 = makeTestNode(getPort())
 			addrMsg = &core.Addr{
 				Addresses: []*core.Address{
 					{Address: p.GetAddress(), Timestamp: time.Now().Unix()},
 					{Address: p2.GetAddress(), Timestamp: time.Now().Unix()},
 					{Address: p3.GetAddress(), Timestamp: time.Now().Unix()},
+					{Address: p4.GetAddress(), Timestamp: time.Now().Unix()},
 				},
 			}
 		})
@@ -144,6 +146,7 @@ var _ = Describe("TestAddr", func() {
 			closeNode(p)
 			closeNode(p2)
 			closeNode(p3)
+			closeNode(p4)
 		})
 
 		Describe("when the number of addresses is below max address expected", func() {
@@ -163,7 +166,7 @@ var _ = Describe("TestAddr", func() {
 					defer GinkgoRecover()
 					evt = <-rp.GetEventEmitter().On(gossip.EventAddressesRelayed)
 					Expect(evt.Args).To(BeEmpty())
-					Expect(rp.Gossip().GetBroadcasters().Len()).To(Equal(2))
+					Expect(rp.Gossip().GetRandBroadcasters().Len()).To(Equal(3))
 					close(wait)
 				}()
 
