@@ -53,6 +53,11 @@ var (
 	// MinimumDurationIncrease is the minimum percent increase
 	// a block's time can be when compared to its parent's
 	MinimumDurationIncrease = big.NewFloat(2)
+
+	// SyncMinHeightDiff is the number of blocks
+	// a remote peer can have more than the local
+	// peer to trigger block sync with the peer
+	SyncMinHeightDiff = uint64(3)
 )
 
 // Transaction parameters
