@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util"
@@ -238,10 +239,11 @@ type Gossip interface {
 	// They are returned on subsequent calls and only
 	// renewed when there are less than N addresses or the
 	// cache is over 24 hours since it was last updated.
-	PickBroadcasters(addresses []*Address, n int) *BroadcastPeers
+	PickBroadcasters(cache *BroadcastPeers, addresses []*Address, n int) *BroadcastPeers
 
 	// GetBroadcasters returns the broadcasters
 	GetBroadcasters() *BroadcastPeers
+	GetRandBroadcasters() *BroadcastPeers
 
 	// NewStream creates a stream for a given protocol
 	// ID and between the local peer and the given remote peer.
@@ -261,13 +263,15 @@ type Gossip interface {
 // broadcast to.
 type BroadcastPeers struct {
 	sync.RWMutex
-	peers map[string]Engine
+	peers       map[string]Engine
+	lastUpdated time.Time
 }
 
 // NewBroadcastPeers creates a new BroadcastPeers instance
 func NewBroadcastPeers() *BroadcastPeers {
 	return &BroadcastPeers{
-		peers: make(map[string]Engine),
+		peers:       make(map[string]Engine),
+		lastUpdated: time.Now(),
 	}
 }
 
@@ -284,6 +288,7 @@ func (b *BroadcastPeers) Add(p Engine) {
 	b.Lock()
 	defer b.Unlock()
 	b.peers[p.StringID()] = p
+	b.lastUpdated = time.Now()
 }
 
 // Clear removes all peers
@@ -291,6 +296,7 @@ func (b *BroadcastPeers) Clear() {
 	b.Lock()
 	defer b.Unlock()
 	b.peers = make(map[string]Engine)
+	b.lastUpdated = time.Now()
 }
 
 // Len returns the number of peers
@@ -325,4 +331,12 @@ func (b *BroadcastPeers) Remove(peer Engine) {
 	b.Lock()
 	defer b.Unlock()
 	delete(b.peers, peer.StringID())
+	b.lastUpdated = time.Now()
+}
+
+// LastUpdated is the last time the peers were updated
+func (b *BroadcastPeers) LastUpdated() time.Time {
+	b.RLock()
+	defer b.RUnlock()
+	return b.lastUpdated
 }

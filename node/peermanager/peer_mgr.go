@@ -243,10 +243,20 @@ func (m *Manager) GetLonelyPeers() (peers []core.Engine) {
 	return
 }
 
-// GetConnectedPeers returns the connected peers
+// GetConnectedPeers returns connected peers
 func (m *Manager) GetConnectedPeers() (peers []core.Engine) {
 	for _, p := range m.GetPeers() {
 		if p.Connected() {
+			peers = append(peers, p)
+		}
+	}
+	return
+}
+
+// GetAcquaintedPeers returns connected and acquainted peers
+func (m *Manager) GetAcquaintedPeers() (peers []core.Engine) {
+	for _, p := range m.GetPeers() {
+		if p.Connected() && m.IsAcquainted(p) {
 			peers = append(peers, p)
 		}
 	}

@@ -194,7 +194,7 @@ func (bm *BlockManager) handleProcessedBlocks() error {
 	// Relay the block to peers.
 	if b.(*core.Block).GetNumber() > 1 {
 		bm.engine.Gossip().BroadcastBlock(b.(*core.Block),
-			bm.engine.PM().GetConnectedPeers())
+			bm.engine.PM().GetAcquaintedPeers())
 	}
 
 	return nil

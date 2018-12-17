@@ -46,8 +46,6 @@ var _ = Describe("TestAddr", func() {
 		closeNode(rp)
 	})
 
-
-
 	Describe(".RelayAddresses", func() {
 
 		It("should return err='too many items in addr message' when address is more than 10", func() {
@@ -114,9 +112,9 @@ var _ = Describe("TestAddr", func() {
 					{Address: p2.GetAddress(), Timestamp: time.Now().Unix()},
 					{Address: p3.GetAddress(), Timestamp: time.Now().Unix()},
 				}
-				Expect(p.Gossip().GetBroadcasters().Len()).To(Equal(0))
+				Expect(p.Gossip().GetRandBroadcasters().Len()).To(Equal(0))
 				p.Gossip().RelayAddresses(addrs)
-				Expect(p.Gossip().GetBroadcasters().Len()).To(Equal(2))
+				Expect(p.Gossip().GetRandBroadcasters().Len()).To(Equal(2))
 			})
 		})
 	})
@@ -163,7 +161,7 @@ var _ = Describe("TestAddr", func() {
 					defer GinkgoRecover()
 					evt = <-rp.GetEventEmitter().On(gossip.EventAddressesRelayed)
 					Expect(evt.Args).To(BeEmpty())
-					Expect(rp.Gossip().GetBroadcasters().Len()).To(Equal(2))
+					Expect(rp.Gossip().GetRandBroadcasters().Len()).To(Equal(2))
 					close(wait)
 				}()
 

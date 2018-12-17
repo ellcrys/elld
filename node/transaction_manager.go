@@ -109,5 +109,5 @@ func (tm *TxManager) broadcastTx() error {
 	}
 
 	return tm.engine.gossipMgr.BroadcastTx(tx.(types.Transaction),
-		tm.engine.PM().GetActivePeers(0))
+		tm.engine.PM().GetAcquaintedPeers())
 }

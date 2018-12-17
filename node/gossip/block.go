@@ -20,7 +20,7 @@ import (
 func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) error {
 
 	var sent int
-	broadcastPeers := g.PickBroadcastersFromPeers(remotePeers, 2)
+	broadcastPeers := g.PickBroadcastersFromPeers(g.broadcasters, remotePeers, 3)
 	for _, peer := range broadcastPeers.Peers() {
 
 		// We need to remove the broadcast peer
