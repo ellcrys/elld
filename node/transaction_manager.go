@@ -59,7 +59,7 @@ func (tm *TxManager) Manage() {
 	}()
 
 	go func() {
-		for evt := range tm.evt.Once(core.EventTransactionReceived) {
+		for evt := range tm.evt.On(core.EventTransactionReceived) {
 			tm.AddTx(evt.Args[0].(*core.Transaction))
 		}
 	}()
