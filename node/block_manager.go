@@ -191,8 +191,10 @@ func (bm *BlockManager) handleProcessedBlocks() error {
 		bm.miner.RestartWorkers()
 	}
 
-	// Relay the block to peers.
-	if b.(*core.Block).GetNumber() > 1 {
+	// Relay the block to peers only when the
+	// block is not the genesis block and we are
+	// not syncing with a peer.
+	if b.(*core.Block).GetNumber() > 1 && !bm.IsSyncing() {
 		bm.engine.Gossip().BroadcastBlock(b.(*core.Block),
 			bm.engine.PM().GetAcquaintedPeers())
 	}
