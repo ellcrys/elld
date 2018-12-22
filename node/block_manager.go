@@ -369,10 +369,7 @@ func (bm *BlockManager) sync() error {
 		var block core.Block
 		copier.Copy(&block, bb)
 
-		// Set core.ContextBlockSync to inform the block
-		// process to validate the block as synced block
-		// and set the broadcaster
-		block.SetValidationContexts(types.ContextBlockSync)
+		// Set the broadcaster
 		block.SetBroadcaster(peer)
 		bm.bestSyncCandidate.LastBlockSent = block.GetHash()
 
