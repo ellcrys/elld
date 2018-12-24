@@ -218,7 +218,6 @@ func (g *Manager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 	var block core.Block
 	copier.Copy(&block, blockBody)
 	block.SetBroadcaster(rp)
-	block.SetValidationContexts(types.ContextBlockSync)
 	go g.engine.GetEventEmitter().Emit(core.EventProcessBlock, &block)
 
 	g.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
