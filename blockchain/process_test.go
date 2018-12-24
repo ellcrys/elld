@@ -745,30 +745,28 @@ var _ = Describe("ProcessBlock", func() {
 					block = MakeBlockWithNoPoolAddition(bc, genesisChain, sender, receiver)
 				})
 
-				It("should return error", func() {
+				It("should return no error", func() {
 					_, err = bc.ProcessBlock(block)
-					Expect(err).ToNot(BeNil())
-					Expect(err.Error()).To(Equal("tx:0, error:transaction does not " +
-						"exist in the transactions pool"))
+					Expect(err).To(BeNil())
 				})
 			})
 		})
 
 		When("ContextBlockSync is set", func() {
 
-			When("block includes a transaction that does not exist in the pool", func() {
-				var block types.Block
+			// When("block includes a transaction that does not exist in the pool", func() {
+			// 	var block types.Block
 
-				BeforeEach(func() {
-					block = MakeBlockWithNoPoolAddition(bc, genesisChain, sender, receiver)
-					block.SetValidationContexts(types.ContextBlockSync)
-				})
+			// 	BeforeEach(func() {
+			// 		block = MakeBlockWithNoPoolAddition(bc, genesisChain, sender, receiver)
+			// 		block.SetValidationContexts(types.ContextBlockSync)
+			// 	})
 
-				It("should be successful with no error", func() {
-					_, err = bc.ProcessBlock(block)
-					Expect(err).To(BeNil())
-				})
-			})
+			// 	It("should be successful with no error", func() {
+			// 		_, err = bc.ProcessBlock(block)
+			// 		Expect(err).To(BeNil())
+			// 	})
+			// })
 		})
 	})
 

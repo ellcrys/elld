@@ -70,11 +70,6 @@ const (
 	// transaction that needs to be included in
 	// the transaction pool.
 	ContextTxPool
-
-	// ContextBlockSync represents validation context
-	// in which the intent is to validate a block
-	// received during block synchronization
-	ContextBlockSync
 )
 
 // GenerateBlockParams represents parameters

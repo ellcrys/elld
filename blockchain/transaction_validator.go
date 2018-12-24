@@ -329,16 +329,6 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 		return
 	}
 
-	// If the caller intends to validate a block that was
-	// received when the client is not sync with another peer,
-	// the transaction must exist in the transactions pool
-	if v.has(types.ContextBlock) && !v.has(types.ContextBlockSync) {
-		if !v.txpool.Has(tx) {
-			errs = append(errs, fieldErrorWithIndex(v.curIndex,
-				"", "transaction does not exist in the transactions pool"))
-		}
-	}
-
 	// No need performing nonce and balance checks for
 	// transactions inside a block that may be appended
 	// to a branch. This will be performed if the the
