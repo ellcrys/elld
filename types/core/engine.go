@@ -82,6 +82,9 @@ type Engine interface {
 	// Connect connects to rn
 	Connect(rn Engine) error
 
+	// IsNoNet checks whether networking is disabled
+	IsNoNet() bool
+
 	// GetBlockchain returns the blockchain instance
 	GetBlockchain() types.Blockchain
 

@@ -289,6 +289,12 @@ func (n *Node) apiBroadcastPeers(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(result)
 }
 
+func (n *Node) apiNoNetwork(arg interface{}) *jsonrpc.Response {
+	n.NoNetwork()
+	n.host.Close()
+	return jsonrpc.Success(true)
+}
+
 // APIs returns all API handlers
 func (n *Node) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -382,6 +388,11 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceNet,
 			Description: "Get broadcast peers",
 			Func:        n.apiBroadcastPeers,
+		},
+		"noNet": {
+			Namespace:   types.NamespaceNet,
+			Description: "Close the host connection and prevent in/out connections",
+			Func:        n.apiNoNetwork,
 		},
 
 		// namespace: "pool"

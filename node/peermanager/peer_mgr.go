@@ -194,6 +194,7 @@ func (m *Manager) LocalPeer() core.Engine {
 // ConnectToPeer attempts to establish
 // a connection to a peer with the given id
 func (m *Manager) ConnectToPeer(peerID string) error {
+
 	peer := m.GetPeer(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -290,6 +291,11 @@ func (m *Manager) doGetAddrMsg(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			m.localNode.Gossip().SendGetAddr(m.GetActivePeers(0))
 		case <-done:
 			ticker.Stop()
@@ -305,6 +311,11 @@ func (m *Manager) doPingMsgs(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			m.localNode.Gossip().SendPing(m.GetActivePeers(0))
 		case <-done:
 			ticker.Stop()
@@ -321,6 +332,11 @@ func (m *Manager) doSelfAdvert(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			peers := m.GetConnectedPeers()
 			if len(peers) > 0 {
 				m.localNode.Gossip().SelfAdvertise(peers)
@@ -358,6 +374,11 @@ func (m *Manager) doIntro(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			peers := m.GetConnectedPeers()
 			if len(peers) > 0 {
 				m.localNode.Gossip().SendIntro(nil)

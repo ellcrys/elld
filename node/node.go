@@ -65,6 +65,7 @@ type Node struct {
 	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	blockManager        *BlockManager       // Block manager for handling block events
 	txManager           *TxManager          // Transaction manager for handling transaction events
+	noNet               bool                // Indicates whether the host is listening for connections
 	hardcodedPeers      map[string]struct{}
 }
 
@@ -241,6 +242,16 @@ func (n *Node) OpenDB() error {
 // DB returns the database instance
 func (n *Node) DB() elldb.DB {
 	return n.db
+}
+
+// NoNetwork prevents incoming or outbound connections
+func (n *Node) NoNetwork() {
+	n.noNet = true
+}
+
+// IsNoNet checks whether networking is disabled
+func (n *Node) IsNoNet() bool {
+	return n.noNet
 }
 
 // SetCfg sets the node's config
@@ -568,6 +579,10 @@ func (n *Node) Start() {
 
 	// Start the peer manager
 	n.PM().Manage()
+
+	if n.noNet {
+		return
+	}
 
 	// Attempt to connect to peers
 	for _, node := range n.PM().GetActivePeers(0) {

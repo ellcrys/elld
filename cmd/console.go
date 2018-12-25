@@ -83,4 +83,5 @@ func init() {
 	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
 	consoleCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
 	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
+	consoleCmd.Flags().Bool("nonet", false, "Closes the network host and prevents (in/out) connections")
 }
