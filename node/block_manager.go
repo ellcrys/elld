@@ -241,6 +241,15 @@ func (bm *BlockManager) handleUnprocessedBlocks() error {
 // handleOrphan sends a RequestBlock message to
 // the originator of an orphaned block.
 func (bm *BlockManager) handleOrphan(b *core.Block) {
+
+	// When the block has no broadcaster, it is likely 
+	// because it was created by the local node and 
+	// became an orphan due to reorganization that 
+	// saw its parent deleted.
+	if b.Broadcaster == nil {
+		return
+	}
+	
 	parentHash := b.GetHeader().GetParentHash()
 	bm.log.Debug("Requesting orphan parent block from broadcaster",
 		"BlockNo", b.GetNumber(),
