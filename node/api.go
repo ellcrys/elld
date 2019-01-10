@@ -13,6 +13,31 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
+// apiBasicPublicNodeInfo returns basic
+// information about the node that can be
+// shared publicly
+func (n *Node) apiBasicPublicNodeInfo(arg interface{}) *jsonrpc.Response {
+
+	var mode = "development"
+	if n.ProdMode() {
+		mode = "production"
+	} else if n.TestMode() {
+		mode = "test"
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"name":         n.Name,
+		"id":           n.ID().Pretty(),
+		"mode":         mode,
+		"netVersion":   config.Versions.Protocol,
+		"syncing":      n.blockManager.IsSyncing(),
+		"buildVersion": n.cfg.VersionInfo.BuildVersion,
+		"buildCommit":  n.cfg.VersionInfo.BuildCommit,
+		"buildDate":    n.cfg.VersionInfo.BuildDate,
+		"goVersion":    n.cfg.VersionInfo.GoVersion,
+	})
+}
+
 // apiBasicNodeInfo returns basic
 // information about the node.
 func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
@@ -332,6 +357,11 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Description: "Get basic information of the node",
 			Private:     true,
 			Func:        n.apiBasicNodeInfo,
+		},
+		"basic": {
+			Namespace:   types.NamespaceNode,
+			Description: "Get basic public information of the node",
+			Func:        n.apiBasicPublicNodeInfo,
 		},
 		"isSyncing": {
 			Namespace:   types.NamespaceNode,
