@@ -134,9 +134,6 @@ type Engine interface {
 	// to the peerstore
 	AddToPeerStore(node Engine) Engine
 
-	// GetIntros returns the cache containing received intros
-	GetIntros() *cache.Cache
-
 	// SetHardcodedState sets the hardcoded seed state
 	// of the engine.
 	SetHardcodedState(v bool)

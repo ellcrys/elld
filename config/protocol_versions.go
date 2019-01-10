@@ -25,7 +25,6 @@ func SetVersions() {
 		Ping:           netVersion + "/ping/1",
 		GetAddr:        netVersion + "/getaddr/1",
 		Addr:           netVersion + "/addr/1",
-		Intro:          netVersion + "/intro/1",
 		Tx:             netVersion + "/tx/1",
 		BlockBody:      netVersion + "/blockbody/1",
 		GetBlockHashes: netVersion + "/getblockhashes/1",
@@ -55,9 +54,6 @@ type ProtocolVersions struct {
 
 	// Addr is the message version for handling wire.Addr messages
 	Addr string
-
-	// Intro is the message version for handling wire.Intro messages
-	Intro string
 
 	// Tx is the message version for handing wire.Transaction messages
 	Tx string

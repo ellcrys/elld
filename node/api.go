@@ -170,7 +170,6 @@ func (n *Node) apiNetStats(arg interface{}) *jsonrpc.Response {
 		"total":    out + in,
 		"inbound":  in,
 		"outbound": out,
-		"intros":   n.CountIntros(),
 	}
 	return jsonrpc.Success(result)
 }
