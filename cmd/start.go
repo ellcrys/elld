@@ -212,11 +212,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(params.ErrMiningWithEphemeralKey.Error())
 	}
 
-	log.Info("Elld has started",
-		"ClientVersion", cfg.VersionInfo.BuildVersion,
-		"NetVersion", config.Versions.Protocol,
-		"DevMode", devMode)
-
 	// Create event the global event handler
 	event := &emitter.Emitter{}
 
@@ -225,6 +220,12 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if err != nil {
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
+
+	log.Info("Elld has started",
+		"ClientVersion", cfg.VersionInfo.BuildVersion,
+		"NetVersion", config.Versions.Protocol,
+		"DevMode", devMode,
+		"Name", n.Name)
 
 	if noNet {
 		n.GetHost().Close()

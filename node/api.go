@@ -2,6 +2,7 @@ package node
 
 import (
 	"encoding/base64"
+	"runtime"
 
 	"github.com/ellcrys/elld/config"
 
@@ -24,6 +25,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(map[string]interface{}{
+		"name":               n.Name,
 		"id":                 n.ID().Pretty(),
 		"address":            n.GetAddress().ConnectionString(),
 		"mode":               mode,
@@ -36,6 +38,7 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		"buildDate":          n.cfg.VersionInfo.BuildDate,
 		"goVersion":          n.cfg.VersionInfo.GoVersion,
 		"listeningAddresses": n.GetListenAddresses(),
+		"numGoRoutines":      runtime.NumGoroutine(),
 	})
 }
 
@@ -215,9 +218,9 @@ func (n *Node) apiIsSyncing(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(n.blockManager.IsSyncing())
 }
 
-// apiGetSyncState fetches the sync status
-func (n *Node) apiGetSyncState(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.blockManager.GetSyncStateInfo())
+// apiGetSyncStat fetches the sync status
+func (n *Node) apiGetSyncStat(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(n.blockManager.GetSyncStat())
 }
 
 // apiTxPoolSizeInfo fetches the size information
@@ -265,7 +268,7 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 
 // apiFetchPool fetches transactions currently in the pool
 func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
-	var txs []types.Transaction
+	var txs = []types.Transaction{}
 	n.GetTxPool().Container().IFind(func(tx types.Transaction) bool {
 		txs = append(txs, tx)
 		return false
@@ -336,10 +339,10 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Description: "Check whether blockchain synchronization is active",
 			Func:        n.apiIsSyncing,
 		},
-		"getSyncState": {
+		"getSyncStat": {
 			Namespace:   types.NamespaceNode,
-			Description: "Get blockchain synchronization status",
-			Func:        n.apiGetSyncState,
+			Description: "Get blockchain synchronization statistic",
+			Func:        n.apiGetSyncStat,
 		},
 
 		// namespace: "ell"

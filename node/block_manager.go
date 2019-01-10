@@ -416,7 +416,7 @@ func (bm *BlockManager) sync() error {
 		goto resync
 	}
 
-	syncStatus = bm.GetSyncStateInfo()
+	syncStatus = bm.GetSyncStat()
 	if syncStatus != nil {
 		bm.log.Info("Current synchronization status",
 			"TargetTD", syncStatus.TargetTD,
@@ -443,9 +443,9 @@ func (bm *BlockManager) IsSyncing() bool {
 	return bm.syncing
 }
 
-// GetSyncStateInfo returns progress information about
+// GetSyncStat returns progress information about
 // the current blockchain synchronization session.
-func (bm *BlockManager) GetSyncStateInfo() *core.SyncStateInfo {
+func (bm *BlockManager) GetSyncStat() *core.SyncStateInfo {
 
 	if !bm.IsSyncing() || bm.bestSyncCandidate == nil {
 		return nil

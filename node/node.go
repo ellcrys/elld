@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustinkirkland/golang-petname"
+
 	"github.com/ellcrys/elld/node/peermanager"
 
 	"github.com/olebedev/emitter"
@@ -66,6 +68,7 @@ type Node struct {
 	blockManager        *BlockManager       // Block manager for handling block events
 	txManager           *TxManager          // Transaction manager for handling transaction events
 	noNet               bool                // Indicates whether the host is listening for connections
+	Name                string              // Random name for this node
 	hardcodedPeers      map[string]struct{}
 }
 
@@ -117,6 +120,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		intros:         cache.NewActiveCache(50000),
 		createdAt:      time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
+		Name:           petname.Generate(3, "-"),
 	}
 
 	node.localNode = node
