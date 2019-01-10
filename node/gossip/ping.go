@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
@@ -22,7 +23,7 @@ func (g *Manager) SendPingToPeer(remotePeer core.Engine) error {
 		return g.logConnectErr(err, remotePeer, "[SendPingToPeer] Failed to connect")
 	}
 	defer c()
-	defer s.Close()
+	defer s.Reset()
 
 	// Determine the best block and the total difficulty of the block.
 	// Add the info to the ping message.
@@ -43,8 +44,9 @@ func (g *Manager) SendPingToPeer(remotePeer core.Engine) error {
 		return g.logErr(err, remotePeer, "[SendPingToPeer] Failed to write message")
 	}
 
-	g.log.Debug("Sent ping to peer",
-		"PeerID", rpIDShort)
+	g.log.Debug("Sent ping to peer", "PeerID", rpIDShort)
+
+	s.SetReadDeadline(time.Now().Add(StreamReadDelay))
 
 	// receive pong response from the remote peer
 	pongMsg := &core.Pong{}

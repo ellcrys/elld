@@ -16,7 +16,7 @@ func (g *Manager) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
 		return nil, g.logConnectErr(err, rp, "[SendGetAddrToPeer] Failed to connect")
 	}
 	defer c()
-	defer s.Close()
+	defer s.Reset()
 
 	msg := &core.GetAddr{}
 	if err := WriteStream(s, msg); err != nil {
