@@ -53,8 +53,14 @@ func (o *TxBuilder) Balance() *TxBalanceBuilder {
 	}
 }
 
-// Payload returns the builder's payload
-func (o *TxBalanceBuilder) Payload() map[string]interface{} {
+// Payload returns the transaction being built.
+// If finalize is true, the builder attempts
+// to compute the hash, sign and other fields
+// before returning the transaction
+func (o *TxBalanceBuilder) Payload(finalize bool) map[string]interface{} {
+	if finalize {
+		o.Finalize()
+	}
 	return o.data
 }
 
@@ -69,9 +75,10 @@ func (o *TxBalanceBuilder) Send() map[string]interface{} {
 	return resp
 }
 
-// SignedPayload returns the transaction payload
-// with signature included.
-func (o *TxBalanceBuilder) SignedPayload() map[string]interface{} {
+// Finalize returns the transaction payload
+// with nonce, timestamp, hash and signature
+// computed and ready for broadcast.
+func (o *TxBalanceBuilder) Finalize() map[string]interface{} {
 
 	var result map[string]interface{}
 	var err error
@@ -121,17 +128,17 @@ sign:
 	return o.data
 }
 
-// PackedPayload returns a base58check encode
-// of the signed payload.
-func (o *TxBalanceBuilder) PackedPayload() string {
-	data := o.SignedPayload()
+// Packed returns a base58check encode
+// equivalent of the signed payload.
+func (o *TxBalanceBuilder) Packed() string {
+	data := o.Finalize()
 	bs, _ := json.Marshal(data)
 	return base58.CheckEncode(bs, Base58CheckVersionTxPayload)
 }
 
 func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
 
-	data := o.SignedPayload()
+	data := o.Finalize()
 
 	// Call the RPC method
 	resp, err := o.e.callRPCMethod("ell_send", data)
@@ -157,12 +164,6 @@ func (o *TxBalanceBuilder) To(address string) *TxBalanceBuilder {
 // From sets the sender's address
 func (o *TxBalanceBuilder) From(address string) *TxBalanceBuilder {
 	o.data["from"] = address
-	return o
-}
-
-// Type sets the transaction type
-func (o *TxBalanceBuilder) Type(txType int) *TxBalanceBuilder {
-	o.data["type"] = txType
 	return o
 }
 
