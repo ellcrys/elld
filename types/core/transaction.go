@@ -1,8 +1,10 @@
 package core
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 )
@@ -28,6 +30,10 @@ var (
 	// TxTypeAlloc represents a transaction to alloc coins to an account
 	TxTypeAlloc int64 = 0x2
 )
+
+// Base58CheckVersionTxPayload is the base58 encode version adopted
+// for compressed transaction payload
+var Base58CheckVersionTxPayload byte = 95
 
 // InvokeArgs describes a function to be executed by a blockcode
 type InvokeArgs struct {
@@ -109,6 +115,12 @@ func (tx *Transaction) GetSenderPubKey() util.String {
 // SetSenderPubKey sets the sender public key
 func (tx *Transaction) SetSenderPubKey(pk util.String) {
 	tx.SenderPubKey = pk
+}
+
+// ToBase58 returns base58 encoded equivalent of the transaction
+func (tx *Transaction) ToBase58() string {
+	bs, _ := json.Marshal(tx)
+	return base58.CheckEncode(bs, Base58CheckVersionTxPayload)
 }
 
 // GetTimestamp gets the timestamp

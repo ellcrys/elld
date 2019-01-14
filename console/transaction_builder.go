@@ -11,10 +11,6 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
-// Base58CheckVersionTxPayload is the base58 encode version adopted
-// for compressed transaction payload
-var Base58CheckVersionTxPayload byte = 95
-
 // TxBuilder provides methods for building
 // and executing a transaction
 type TxBuilder struct {
@@ -133,7 +129,7 @@ sign:
 func (o *TxBalanceBuilder) Packed() string {
 	data := o.Finalize()
 	bs, _ := json.Marshal(data)
-	return base58.CheckEncode(bs, Base58CheckVersionTxPayload)
+	return base58.CheckEncode(bs, core.Base58CheckVersionTxPayload)
 }
 
 func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {

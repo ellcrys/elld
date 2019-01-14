@@ -2,9 +2,11 @@ package node
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"runtime"
 	"strings"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/rpc"
@@ -257,17 +259,10 @@ func (n *Node) apiTxPoolSizeInfo(arg interface{}) *jsonrpc.Response {
 	})
 }
 
-// apiSend creates a balance transaction and
-// attempts to add it to the transaction pool.
-func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
+// processTx takes a map that represents a transaction
+// and attempts to add it to the pool
+func (n *Node) processTx(txData map[string]interface{}) *jsonrpc.Response {
 
-	txData, ok := arg.(map[string]interface{})
-	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-			rpc.ErrMethodArgType("JSON").Error(), nil)
-	}
-
-	// Copy data in txData to a core.Transaction
 	var tx core.Transaction
 	util.MapDecode(txData, &tx)
 
@@ -313,6 +308,52 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(map[string]interface{}{
 		"id": tx.GetID(),
 	})
+}
+
+// apiSend creates a balance transaction and
+// attempts to add it to the transaction pool.
+func (n *Node) apiSendRaw(arg interface{}) *jsonrpc.Response {
+
+	encTx, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	// Attempt to decode encoded transaction
+	txBytes, v, err := base58.CheckDecode(encTx)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeTxFailed,
+			"base58: transaction not correctly encoded", nil)
+	}
+
+	// Ensure version is expected
+	if v != core.Base58CheckVersionTxPayload {
+		return jsonrpc.Error(types.ErrCodeTxFailed,
+			"encoded transaction has an invalid version", nil)
+	}
+
+	var txData map[string]interface{}
+	if err := json.Unmarshal(txBytes, &txData); err != nil {
+		return jsonrpc.Error(types.ErrCodeTxFailed,
+			"json: tx not correctly encoded", nil)
+	}
+
+	return n.processTx(txData)
+
+}
+
+// apiSend creates a balance transaction and
+// attempts to add it to the transaction pool.
+func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
+
+	txData, ok := arg.(map[string]interface{})
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("JSON").Error(), nil)
+	}
+
+	return n.processTx(txData)
 }
 
 // apiFetchPool fetches transactions currently in the pool
@@ -402,9 +443,15 @@ func (n *Node) APIs() jsonrpc.APISet {
 		// namespace: "ell"
 		"send": {
 			Namespace:   types.NamespaceEll,
-			Description: "Create a balance transaction",
+			Description: "Send a balance transaction",
 			Private:     true,
 			Func:        n.apiSend,
+		},
+		"sendRaw": {
+			Namespace:   types.NamespaceEll,
+			Description: "Send a base58 encoded balance transaction",
+			Private:     true,
+			Func:        n.apiSendRaw,
 		},
 
 		// namespace: "net"
