@@ -108,7 +108,7 @@ sign:
 	util.MapDecode(o.data, &tx)
 
 	// Compute and set hash
-	o.data["hash"] = tx.ComputeHash()
+	o.data["hash"] = tx.ComputeHash().HexStr()
 
 	// Compute and set signature
 	sig, err := core.TxSign(&tx, o.e.coinbase.PrivKey().Base58())
@@ -116,7 +116,7 @@ sign:
 		err = fmt.Errorf("failed to sign tx: %s", err)
 		panic(o.e.vm.MakeCustomError("BuilderError", err.Error()))
 	}
-	o.data["sig"] = sig
+	o.data["sig"] = util.ToHex(sig)
 
 	return o.data
 }

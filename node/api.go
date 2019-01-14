@@ -1,8 +1,9 @@
 package node
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"runtime"
+	"strings"
 
 	"github.com/ellcrys/elld/config"
 
@@ -265,19 +266,43 @@ func (n *Node) apiSend(arg interface{}) *jsonrpc.Response {
 		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
 			rpc.ErrMethodArgType("JSON").Error(), nil)
 	}
-	// set the type to TxTypeBalance.
-	// it will override the type given
-	txData["type"] = core.TxTypeBalance
 
 	// Copy data in txData to a core.Transaction
 	var tx core.Transaction
 	util.MapDecode(txData, &tx)
 
-	// The signature being of type []uint8, will be
-	// encoded to base64 by the json encoder.
-	// We must convert the base64 back to []uint8
-	if sig := txData["sig"]; sig != nil {
-		tx.Sig, _ = base64.StdEncoding.DecodeString(sig.(string))
+	// We expect signature to be an hex string
+	if sig, ok := txData["sig"].(string); ok {
+
+		// If the signature begins with `0x`,
+		// we must strip it away
+		if strings.HasPrefix(sig, "0x") {
+			sig = sig[2:]
+		}
+
+		var err error
+		tx.Sig, err = hex.DecodeString(sig)
+		if err != nil {
+			return jsonrpc.Error(types.ErrCodeTxFailed,
+				"signature is not a valid hex string", nil)
+		}
+	}
+
+	// We expect the hash to be an hex string
+	if hash, ok := txData["hash"].(string); ok {
+
+		// If the signature begins with `0x`,
+		// we must strip it away
+		if strings.HasPrefix(hash, "0x") {
+			hash = hash[2:]
+		}
+
+		hashBytes, err := hex.DecodeString(hash)
+		if err != nil {
+			return jsonrpc.Error(types.ErrCodeTxFailed,
+				"hash is not a valid hex string", nil)
+		}
+		tx.Hash = util.BytesToHash(hashBytes)
 	}
 
 	// Attempt to add the transaction to the pool
