@@ -1,7 +1,6 @@
 package core
 
 import (
-	"crypto/sha256"
 	"fmt"
 
 	"github.com/ellcrys/elld/crypto"
@@ -178,15 +177,15 @@ func (tx *Transaction) GetBytesNoHashAndSig() []byte {
 	}
 
 	data := []interface{}{
-		tx.Type,
-		tx.Nonce,
-		tx.To,
-		tx.SenderPubKey,
-		tx.From,
-		tx.Value,
 		tx.Fee,
-		tx.Timestamp,
+		tx.From,
 		invokeArgsBs,
+		tx.Nonce,
+		tx.SenderPubKey,
+		tx.Timestamp,
+		tx.To,
+		tx.Type,
+		tx.Value,
 	}
 
 	return getBytes(data)
@@ -202,17 +201,17 @@ func (tx *Transaction) Bytes() []byte {
 	}
 
 	data := []interface{}{
-		tx.Type,
-		tx.Nonce,
-		tx.To,
-		tx.SenderPubKey,
-		tx.From,
-		tx.Value,
 		tx.Fee,
-		tx.Timestamp,
-		invokeArgsBs,
+		tx.From,
 		tx.Hash,
+		invokeArgsBs,
+		tx.Nonce,
+		tx.SenderPubKey,
 		tx.Sig,
+		tx.Timestamp,
+		tx.To,
+		tx.Type,
+		tx.Value,
 	}
 
 	return getBytes(data)
@@ -233,16 +232,16 @@ func (tx *Transaction) GetSizeNoFee() int64 {
 	}
 
 	data := []interface{}{
-		tx.Type,
-		tx.Nonce,
-		tx.To,
-		tx.SenderPubKey,
 		tx.From,
-		tx.Value,
-		tx.Timestamp,
-		invokeArgsBs,
 		tx.Hash,
+		invokeArgsBs,
+		tx.Nonce,
+		tx.SenderPubKey,
 		tx.Sig,
+		tx.Timestamp,
+		tx.To,
+		tx.Type,
+		tx.Value,
 	}
 
 	return int64(len(getBytes(data)))
@@ -252,7 +251,7 @@ func (tx *Transaction) GetSizeNoFee() int64 {
 // hash of the transaction.
 func (tx *Transaction) ComputeHash() util.Hash {
 	bs := tx.GetBytesNoHashAndSig()
-	hash := sha256.Sum256(bs)
+	hash := util.Blake2b256(bs)
 	return util.BytesToHash(hash[:])
 }
 
