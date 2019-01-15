@@ -89,42 +89,6 @@ var _ = Describe("Block", func() {
 			})
 		})
 
-		Context("when a block has a transaction that is not in the txs pool of the remote peer", func() {
-
-			var block types.Block
-
-			BeforeEach(func() {
-				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
-				bm := node.NewBlockManager(rp)
-				go bm.Manage()
-			})
-
-			It("should return error about the missing transaction in the pool", func(done Done) {
-				wait := make(chan bool)
-
-				err := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
-				Expect(err).To(BeNil())
-
-				go func() {
-					defer GinkgoRecover()
-
-					evtArgs := <-rp.GetEventEmitter().Once(core.EventProcessBlock)
-					Expect(evtArgs.Args).To(HaveLen(1))
-					relayed := evtArgs.Args[0].(*core.Block)
-					Expect(relayed.GetHash()).To(Equal(block.GetHash()))
-
-					evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
-					Expect(evtArgs.Args).To(HaveLen(2))
-					err := evtArgs.Args[1]
-					Expect(err.(error).Error()).To(Equal("tx:0, error:transaction does not exist in the transactions pool"))
-					close(wait)
-				}()
-
-				<-wait
-				close(done)
-			})
-		})
-
 		Context("when a block is successfully relayed to a remote peer", func() {
 
 			var evtArgs emitter.Event

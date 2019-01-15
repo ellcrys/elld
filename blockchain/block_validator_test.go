@@ -223,66 +223,60 @@ var _ = Describe("BlockValidator", func() {
 	})
 
 	Describe(".CheckTransactions", func() {
-
 		Context("types.ContextBlock is set", func() {
-			Context("when ContextBlockSync is not set", func() {
-				Context("when transaction does not exist in pool", func() {
-					var block types.Block
-					BeforeEach(func() {
-						block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-							Transactions: []types.Transaction{
-								core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.4", 1532730722),
-							},
-							Creator:           sender,
-							Nonce:             util.EncodeNonce(1),
-							Difficulty:        new(big.Int).SetInt64(131136),
-							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
-						})
-					})
-
-					It("should return error", func() {
-						tp := txpool.New(1)
-						validator := NewBlockValidator(block, tp, bc, cfg, log)
-						validator.setContext(types.ContextBlock)
-						errs := validator.CheckTransactions()
-						Expect(errs).To(HaveLen(1))
-						err := fmt.Errorf("tx:0, error:transaction does not" +
-							" exist in the transactions pool")
-						Expect(errs).To(ContainElement(err))
+			Context("when transaction does not exist in pool", func() {
+				var block types.Block
+				BeforeEach(func() {
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions: []types.Transaction{
+							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.4", 1532730722),
+						},
+						Creator:           sender,
+						Nonce:             util.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131136),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 					})
 				})
 
-				Context("when a sender X's current nonce is 1", func() {
+				It("should return no error", func() {
+					tp := txpool.New(1)
+					validator := NewBlockValidator(block, tp, bc, cfg, log)
+					validator.setContext(types.ContextBlock)
+					errs := validator.CheckTransactions()
+					Expect(errs).To(HaveLen(0))
+				})
+			})
 
-					var txs []types.Transaction
-					var block types.Block
+			Context("when a sender X's current nonce is 1", func() {
 
-					BeforeEach(func() {
-						now := time.Now().Unix()
-						txs = []types.Transaction{
-							core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.4", now),
-							core.NewTx(core.TxTypeBalance, 2, receiver.Addr(), sender, "1", "2.4", now),
-						}
-						for _, tx := range txs {
-							bc.txPool.Put(tx)
-						}
+				var txs []types.Transaction
+				var block types.Block
 
-						block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-							Transactions:      txs,
-							Creator:           sender,
-							Nonce:             util.EncodeNonce(1),
-							Difficulty:        new(big.Int).SetInt64(131136),
-							OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
-						})
+				BeforeEach(func() {
+					now := time.Now().Unix()
+					txs = []types.Transaction{
+						core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.4", now),
+						core.NewTx(core.TxTypeBalance, 2, receiver.Addr(), sender, "1", "2.4", now),
+					}
+					for _, tx := range txs {
+						bc.txPool.Put(tx)
+					}
+
+					block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
+						Transactions:      txs,
+						Creator:           sender,
+						Nonce:             util.EncodeNonce(1),
+						Difficulty:        new(big.Int).SetInt64(131136),
+						OverrideTimestamp: time.Now().Add(2 * time.Second).Unix(),
 					})
+				})
 
-					Context("and X has two transactions with nonce 2 and 3", func() {
-						It("should return error no error", func() {
-							validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
-							validator.setContext(types.ContextBlock)
-							errs := validator.CheckTransactions()
-							Expect(errs).To(HaveLen(0))
-						})
+				Context("and X has two transactions with nonce 2 and 3", func() {
+					It("should return error no error", func() {
+						validator := NewBlockValidator(block, bc.txPool, bc, cfg, log)
+						validator.setContext(types.ContextBlock)
+						errs := validator.CheckTransactions()
+						Expect(errs).To(HaveLen(0))
 					})
 				})
 			})
