@@ -495,6 +495,7 @@ func (n *Node) APIs() jsonrpc.APISet {
 		},
 		"noNet": {
 			Namespace:   types.NamespaceNet,
+			Private:     true,
 			Description: "Close the host connection and prevent in/out connections",
 			Func:        n.apiNoNetwork,
 		},
