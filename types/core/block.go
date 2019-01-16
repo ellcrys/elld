@@ -1,7 +1,6 @@
 package core
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"math/big"
 	"sync"
@@ -143,16 +142,16 @@ func (h *Header) EncodeMsgpack(enc *msgpack.Encoder) error {
 // GetBytes return the bytes representation of the header
 func (h *Header) GetBytes() []byte {
 	return getBytes([]interface{}{
-		h.ParentHash,
-		h.Number,
 		h.CreatorPubKey,
-		h.TransactionsRoot,
-		h.StateRoot,
 		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
-		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
-		h.Timestamp,
-		h.Nonce,
 		h.Extra,
+		h.Nonce,
+		h.Number,
+		h.ParentHash,
+		h.StateRoot,
+		h.Timestamp,
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
+		h.TransactionsRoot,
 	})
 }
 
@@ -164,7 +163,7 @@ func (h *Header) SetCreatorPubKey(key util.String) {
 // ComputeHash returns the SHA256 hash of the header
 func (h *Header) ComputeHash() util.Hash {
 	bs := h.GetBytes()
-	hash := sha256.Sum256(bs)
+	hash := util.Blake2b256(bs)
 	return util.BytesToHash(hash[:])
 }
 
@@ -235,17 +234,17 @@ func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
 // without the nonce included in the computation
 func (h *Header) GetHashNoNonce() util.Hash {
 	result := getBytes([]interface{}{
-		h.ParentHash,
-		h.Number,
 		h.CreatorPubKey,
-		h.TransactionsRoot,
-		h.StateRoot,
 		math.SetBigInt(new(big.Int), h.Difficulty).Bytes(),
-		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
-		h.Timestamp,
 		h.Extra,
+		h.Number,
+		h.ParentHash,
+		h.StateRoot,
+		h.Timestamp,
+		math.SetBigInt(new(big.Int), h.TotalDifficulty).Bytes(),
+		h.TransactionsRoot,
 	})
-	return sha256.Sum256(result)
+	return util.BytesToHash(util.Blake2b256(result[:]))
 }
 
 // GetTransactions gets the transactions
@@ -282,7 +281,7 @@ func (b *Block) SetHeader(h types.Header) {
 // prefixed by '0x'
 func (b *Block) ComputeHash() util.Hash {
 	bs := b.GetBytesNoHashSig()
-	hash := sha256.Sum256(bs)
+	hash := util.Blake2b256(bs)
 	return util.BytesToHash(hash[:])
 }
 
@@ -326,10 +325,10 @@ func (b *Block) GetBytes() []byte {
 	}
 
 	data := []interface{}{
-		b.Header.GetBytes(),
-		txsBytes,
 		b.Hash,
+		b.Header.GetBytes(),
 		b.Sig,
+		txsBytes,
 	}
 
 	return getBytes(data)
@@ -341,8 +340,8 @@ func (b *Block) GetBytes() []byte {
 func (b *Block) GetBytesNoTxs() []byte {
 
 	data := []interface{}{
-		b.Header.GetBytes(),
 		b.Hash,
+		b.Header.GetBytes(),
 		b.Sig,
 	}
 

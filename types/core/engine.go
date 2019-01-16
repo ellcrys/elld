@@ -82,6 +82,9 @@ type Engine interface {
 	// Connect connects to rn
 	Connect(rn Engine) error
 
+	// IsNoNet checks whether networking is disabled
+	IsNoNet() bool
+
 	// GetBlockchain returns the blockchain instance
 	GetBlockchain() types.Blockchain
 
@@ -130,9 +133,6 @@ type Engine interface {
 	// AddToPeerStore adds the ID of the engine
 	// to the peerstore
 	AddToPeerStore(node Engine) Engine
-
-	// GetIntros returns the cache containing received intros
-	GetIntros() *cache.Cache
 
 	// SetHardcodedState sets the hardcoded seed state
 	// of the engine.

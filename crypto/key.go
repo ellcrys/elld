@@ -201,9 +201,13 @@ func IsValidAddr(addr string) error {
 		return fmt.Errorf("empty address")
 	}
 
-	_, v, err := base58.CheckDecode(addr)
+	result, v, err := base58.CheckDecode(addr)
 	if err != nil {
 		return err
+	}
+
+	if len(result) != 20 {
+		return fmt.Errorf("invalid address size")
 	}
 
 	if v != AddressVersion {

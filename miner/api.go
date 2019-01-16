@@ -68,7 +68,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceMiner,
 			Description: "Get the number of miner threads",
 			Func: func(params interface{}) *jsonrpc.Response {
-				return jsonrpc.Success(m.blakimoto.Threads())
+				return jsonrpc.Success(m.numThreads)
 			},
 		},
 		"setThreads": {

@@ -44,7 +44,6 @@ type Blakimoto struct {
 
 	// Mining related fields
 	rand     *rand.Rand    // Properly seeded random source for nonces
-	threads  int           // Number of threads to mine on if mining
 	update   chan struct{} // Notification channel to update mining parameters
 	hashrate metrics.Meter // Meter tracking the average hashrate
 
@@ -75,31 +74,6 @@ func ConfiguredBlakimoto(mode Mode, log logger.Logger) *Blakimoto {
 // SetFakeDelay sets the delay duration for ModeFake
 func (blakimoto *Blakimoto) SetFakeDelay(d time.Duration) {
 	blakimoto.fakeDelay = d
-}
-
-// Threads returns the number of mining threads currently enabled. This doesn't
-// necessarily mean that mining is running!
-func (blakimoto *Blakimoto) Threads() int {
-	blakimoto.lock.Lock()
-	defer blakimoto.lock.Unlock()
-	return blakimoto.threads
-}
-
-// SetThreads updates the number of mining threads currently enabled. Calling
-// this method does not start mining, only sets the thread count. If zero is
-// specified, the miner will use all cores of the machine. Setting a thread
-// count below zero is allowed and will cause the miner to idle, without any
-// work being done.
-func (blakimoto *Blakimoto) SetThreads(threads int) {
-	blakimoto.lock.Lock()
-	defer blakimoto.lock.Unlock()
-
-	// Update the threads and ping any running seal to pull in any changes
-	blakimoto.threads = threads
-	select {
-	case blakimoto.update <- struct{}{}:
-	default:
-	}
 }
 
 // Hashrate implements PoW, returning the measured rate of the search invocations

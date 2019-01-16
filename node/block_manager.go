@@ -32,6 +32,16 @@ type unprocessedBlock struct {
 	done chan error
 }
 
+type processedBlock struct {
+
+	// block is the processed block
+	block types.Block
+
+	// atSyncTime indicates that the block
+	// was processed during a sync session
+	atSyncTime bool
+}
+
 // BlockManager is responsible for handling
 // incoming, mined or processed blocks in a
 // concurrency safe way.
@@ -114,7 +124,10 @@ func (bm *BlockManager) Manage() {
 
 	go func() {
 		for evt := range bm.evt.On(core.EventNewBlock) {
-			bm.processedBlocks.Append(evt.Args[0].(*core.Block))
+			bm.processedBlocks.Append(&processedBlock{
+				block:      evt.Args[0].(*core.Block),
+				atSyncTime: bm.IsSyncing(),
+			})
 		}
 	}()
 
@@ -175,10 +188,13 @@ func (bm *BlockManager) Manage() {
 // restarting miners and relaying the processed block.
 func (bm *BlockManager) handleProcessedBlocks() error {
 
-	var b = bm.processedBlocks.Shift()
-	if b == nil {
+	var pb = bm.processedBlocks.Shift()
+	if pb == nil {
 		return nil
 	}
+
+	b := pb.(*processedBlock).block
+	atSyncTime := pb.(*processedBlock).atSyncTime
 
 	// Remove the blocks transactions from the pool.
 	bm.engine.txsPool.Remove(b.(*core.Block).GetTransactions()...)
@@ -192,9 +208,9 @@ func (bm *BlockManager) handleProcessedBlocks() error {
 	}
 
 	// Relay the block to peers only when the
-	// block is not the genesis block and we are
-	// not syncing with a peer.
-	if b.(*core.Block).GetNumber() > 1 && !bm.IsSyncing() {
+	// block is not the genesis block and was not
+	// processed during a sync session
+	if b.(*core.Block).GetNumber() > 1 && !atSyncTime {
 		bm.engine.Gossip().BroadcastBlock(b.(*core.Block),
 			bm.engine.PM().GetAcquaintedPeers())
 	}
@@ -241,6 +257,15 @@ func (bm *BlockManager) handleUnprocessedBlocks() error {
 // handleOrphan sends a RequestBlock message to
 // the originator of an orphaned block.
 func (bm *BlockManager) handleOrphan(b *core.Block) {
+
+	// When the block has no broadcaster, it is likely
+	// because it was created by the local node and
+	// became an orphan due to reorganization that
+	// saw its parent deleted.
+	if b.Broadcaster == nil {
+		return
+	}
+
 	parentHash := b.GetHeader().GetParentHash()
 	bm.log.Debug("Requesting orphan parent block from broadcaster",
 		"BlockNo", b.GetNumber(),
@@ -391,7 +416,7 @@ func (bm *BlockManager) sync() error {
 		goto resync
 	}
 
-	syncStatus = bm.GetSyncStateInfo()
+	syncStatus = bm.GetSyncStat()
 	if syncStatus != nil {
 		bm.log.Info("Current synchronization status",
 			"TargetTD", syncStatus.TargetTD,
@@ -418,9 +443,9 @@ func (bm *BlockManager) IsSyncing() bool {
 	return bm.syncing
 }
 
-// GetSyncStateInfo returns progress information about
+// GetSyncStat returns progress information about
 // the current blockchain synchronization session.
-func (bm *BlockManager) GetSyncStateInfo() *core.SyncStateInfo {
+func (bm *BlockManager) GetSyncStat() *core.SyncStateInfo {
 
 	if !bm.IsSyncing() || bm.bestSyncCandidate == nil {
 		return nil

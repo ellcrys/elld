@@ -112,6 +112,10 @@ func (m *ConnectionManager) makeConnections(done chan bool) {
 		select {
 		case <-ticker.C:
 
+			if m.pm.localNode.IsNoNet() {
+				continue
+			}
+
 			if !m.pm.RequirePeers() {
 				continue
 			}

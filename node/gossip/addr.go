@@ -14,6 +14,8 @@ import (
 // onAddr processes core.Addr message
 func (g *Manager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 
+	s.SetReadDeadline(time.Now().Add(StreamReadDelay))
+
 	resp := &core.Addr{}
 	if err := ReadStream(s, resp); err != nil {
 		return nil, g.logErr(err, rp, "[OnAddr] Failed to read stream")
@@ -155,7 +157,7 @@ func (g *Manager) RelayAddresses(addrs []*core.Address) []error {
 		return errs
 	}
 
-	// Select up to 2 peers to act as broadcasters
+	// Select peers to act as broadcasters
 	broadcasters := g.PickBroadcasters(g.randBroadcasters, relayable, 3)
 
 	g.log.Debug("Relaying addresses",
