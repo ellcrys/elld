@@ -17,7 +17,7 @@ func (g *Manager) SelfAdvertise(connectedPeers []core.Engine) int {
 		},
 	}
 
-	// Select up to 2 peers to act as broadcasters
+	// Select peers to act as broadcasters
 	bp := g.PickBroadcastersFromPeers(g.randBroadcasters, connectedPeers, 3)
 
 	sent := 0

@@ -157,7 +157,7 @@ func (g *Manager) RelayAddresses(addrs []*core.Address) []error {
 		return errs
 	}
 
-	// Select up to 2 peers to act as broadcasters
+	// Select peers to act as broadcasters
 	broadcasters := g.PickBroadcasters(g.randBroadcasters, relayable, 3)
 
 	g.log.Debug("Relaying addresses",
