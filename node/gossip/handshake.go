@@ -6,7 +6,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util/cache"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/go-ethereum/log"
 	net "github.com/libp2p/go-libp2p-net"
@@ -75,9 +74,6 @@ func (g *Manager) SendHandshake(rp core.Engine) error {
 	// it will be allowed to send future messages
 	g.PM().AddAcquainted(rp)
 
-	// Add remote peer into the intro cache with a TTL of 1 hour.
-	g.engine.GetIntros().AddWithExp(rp.StringID(), struct{}{}, cache.Sec(3600))
-
 	g.log.Info("Received handshake response", "PeerID", rpIDShort,
 		"ClientVersion", resp.Version, "Height", resp.BestBlockNumber,
 		"TotalDifficulty", resp.BestBlockTotalDifficulty)
@@ -127,9 +123,6 @@ func (g *Manager) OnHandshake(s net.Stream, rp core.Engine) error {
 
 	// Set the peer as an inbound connection
 	g.PM().GetPeer(rp.StringID()).SetInbound(true)
-
-	// Add remote peer into the intro cache with a TTL of 1 hour.
-	g.engine.GetIntros().AddWithExp(rp.StringID(), struct{}{}, cache.Sec(3600))
 
 	g.log.Info("Responded to handshake with chain state", "PeerID",
 		rp.ShortID(), "ClientVersion",

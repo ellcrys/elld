@@ -167,6 +167,14 @@
   revision = "02af3965c54e8cacf948b97fef38925c4120652c"
 
 [[projects]]
+  branch = "master"
+  digest = "1:e2655cbc97a3a48d0efedf27fe75191b4946aa92ce03acd37e76458b218f9df1"
+  name = "github.com/dustinkirkland/golang-petname"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d3c2ba80e75eeef10c5cf2fc76d2c809637376b3"
+
+[[projects]]
   digest = "1:f34e8dee87ed7ebb9caceae96b7851d99ab5bca0afc345cf964c61dc0ad56eb8"
   name = "github.com/ellcrys/go-ethereum"
   packages = ["log"]
@@ -1320,6 +1328,7 @@
     "github.com/cenkalti/rpc2",
     "github.com/dgrijalva/jwt-go",
     "github.com/dustin/go-humanize",
+    "github.com/dustinkirkland/golang-petname",
     "github.com/ellcrys/go-ethereum/log",
     "github.com/ellcrys/go-libp2p-crypto",
     "github.com/ellcrys/merkletree",

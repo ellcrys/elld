@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustinkirkland/golang-petname"
+
 	"github.com/ellcrys/elld/node/peermanager"
 
 	"github.com/olebedev/emitter"
@@ -62,9 +64,10 @@ type Node struct {
 	bChain              types.Blockchain    // The blockchain manager
 	bestRemoteBlockInfo *core.BestBlockInfo // Holds information about the best known block heard from peers
 	inbound             bool                // Indicates this that this node initiated the connection with the local node
-	intros              *cache.Cache        // Stores peer ids received in wire.Intro messages
 	blockManager        *BlockManager       // Block manager for handling block events
 	txManager           *TxManager          // Transaction manager for handling transaction events
+	noNet               bool                // Indicates whether the host is listening for connections
+	Name                string              // Random name for this node
 	hardcodedPeers      map[string]struct{}
 }
 
@@ -113,9 +116,9 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		db:             db,
 		event:          &emitter.Emitter{},
 		history:        cache.NewActiveCache(5000),
-		intros:         cache.NewActiveCache(50000),
 		createdAt:      time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
+		Name:           petname.Generate(3, "-"),
 	}
 
 	node.localNode = node
@@ -129,7 +132,6 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	node.SetProtocolHandler(config.Versions.Ping, g.Handle(g.OnPing))
 	node.SetProtocolHandler(config.Versions.GetAddr, g.Handle(g.OnGetAddr))
 	node.SetProtocolHandler(config.Versions.Addr, g.Handle(g.OnAddr))
-	node.SetProtocolHandler(config.Versions.Intro, g.Handle(g.OnIntro))
 	node.SetProtocolHandler(config.Versions.Tx, g.Handle(g.OnTx))
 	node.SetProtocolHandler(config.Versions.BlockInfo, g.Handle(g.OnBlockInfo))
 	node.SetProtocolHandler(config.Versions.BlockBody, g.Handle(g.OnBlockBody))
@@ -241,6 +243,16 @@ func (n *Node) OpenDB() error {
 // DB returns the database instance
 func (n *Node) DB() elldb.DB {
 	return n.db
+}
+
+// NoNetwork prevents incoming or outbound connections
+func (n *Node) NoNetwork() {
+	n.noNet = true
+}
+
+// IsNoNet checks whether networking is disabled
+func (n *Node) IsNoNet() bool {
+	return n.noNet
 }
 
 // SetCfg sets the node's config
@@ -387,17 +399,6 @@ func (n *Node) SetTxManager(tm *TxManager) {
 // local node to n which makes n the "remote" node
 func (n *Node) SetLocalNode(node *Node) {
 	n.localNode = node
-}
-
-// CountIntros counts the number of
-// intros received
-func (n *Node) CountIntros() int {
-	return n.intros.Len()
-}
-
-// GetIntros returns the cache containing received intros
-func (n *Node) GetIntros() *cache.Cache {
-	return n.intros
 }
 
 // AddToPeerStore adds the ID of the engine
@@ -568,6 +569,10 @@ func (n *Node) Start() {
 
 	// Start the peer manager
 	n.PM().Manage()
+
+	if n.noNet {
+		return
+	}
 
 	// Attempt to connect to peers
 	for _, node := range n.PM().GetActivePeers(0) {

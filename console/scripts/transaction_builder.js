@@ -1,23 +1,19 @@
 /**
-* TXBuilder provides a class that wrappers the transaction
-* builder implemented in Go allows for regular lower-cased
-* method names inline with Javascript naming practice.
-* @param {Object} builder Native transaction builder implementation
-*/
+ * TXBuilder provides a class that wrappers the transaction
+ * builder implemented in Go allows for regular lower-cased
+ * method names inline with Javascript naming practice.
+ * @param {Object} builder Native transaction builder implementation
+ */
 function TxBalanceBuilder(builder) {
 	this.builder = builder;
 }
 
-TxBalanceBuilder.prototype.payload = function() {
-	return this.builder.Payload();
+TxBalanceBuilder.prototype.payload = function(finalize) {
+	return this.builder.Payload(finalize);
 };
 
-TxBalanceBuilder.prototype.signedPayload = function() {
-	return this.builder.SignedPayload();
-};
-
-TxBalanceBuilder.prototype.packedPayload = function() {
-	return this.builder.PackedPayload();
+TxBalanceBuilder.prototype.packed = function() {
+	return this.builder.Packed();
 };
 
 TxBalanceBuilder.prototype.send = function() {
@@ -39,11 +35,6 @@ TxBalanceBuilder.prototype.senderPubKey = function(pk) {
 	return this;
 };
 
-TxBalanceBuilder.prototype.type = function(txType) {
-	this.builder.Type(txType);
-	return this;
-};
-
 TxBalanceBuilder.prototype.to = function(addr) {
 	this.builder.To(addr);
 	return this;
@@ -60,11 +51,11 @@ TxBalanceBuilder.prototype.fee = function(amount) {
 };
 
 TxBalanceBuilder.prototype.reset = function() {
-	this.builder.Reset()
+	this.builder.Reset();
 	return this;
 };
 
 // Add the builder class to the 'ell' namespace
-ell["balance"] = function(){
-	return new TxBalanceBuilder(_system.balance());  
-} 
+ell["balance"] = function() {
+	return new TxBalanceBuilder(_system.balance());
+};

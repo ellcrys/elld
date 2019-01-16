@@ -1,9 +1,10 @@
 package core
 
 import (
-	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 )
@@ -29,6 +30,10 @@ var (
 	// TxTypeAlloc represents a transaction to alloc coins to an account
 	TxTypeAlloc int64 = 0x2
 )
+
+// Base58CheckVersionTxPayload is the base58 encode version adopted
+// for compressed transaction payload
+var Base58CheckVersionTxPayload byte = 95
 
 // InvokeArgs describes a function to be executed by a blockcode
 type InvokeArgs struct {
@@ -112,6 +117,12 @@ func (tx *Transaction) SetSenderPubKey(pk util.String) {
 	tx.SenderPubKey = pk
 }
 
+// ToBase58 returns base58 encoded equivalent of the transaction
+func (tx *Transaction) ToBase58() string {
+	bs, _ := json.Marshal(tx)
+	return base58.CheckEncode(bs, Base58CheckVersionTxPayload)
+}
+
 // GetTimestamp gets the timestamp
 func (tx *Transaction) GetTimestamp() int64 {
 	return tx.Timestamp
@@ -178,15 +189,15 @@ func (tx *Transaction) GetBytesNoHashAndSig() []byte {
 	}
 
 	data := []interface{}{
-		tx.Type,
-		tx.Nonce,
-		tx.To,
-		tx.SenderPubKey,
-		tx.From,
-		tx.Value,
 		tx.Fee,
-		tx.Timestamp,
+		tx.From,
 		invokeArgsBs,
+		tx.Nonce,
+		tx.SenderPubKey,
+		tx.Timestamp,
+		tx.To,
+		tx.Type,
+		tx.Value,
 	}
 
 	return getBytes(data)
@@ -202,17 +213,17 @@ func (tx *Transaction) Bytes() []byte {
 	}
 
 	data := []interface{}{
-		tx.Type,
-		tx.Nonce,
-		tx.To,
-		tx.SenderPubKey,
-		tx.From,
-		tx.Value,
 		tx.Fee,
-		tx.Timestamp,
-		invokeArgsBs,
+		tx.From,
 		tx.Hash,
+		invokeArgsBs,
+		tx.Nonce,
+		tx.SenderPubKey,
 		tx.Sig,
+		tx.Timestamp,
+		tx.To,
+		tx.Type,
+		tx.Value,
 	}
 
 	return getBytes(data)
@@ -233,16 +244,16 @@ func (tx *Transaction) GetSizeNoFee() int64 {
 	}
 
 	data := []interface{}{
-		tx.Type,
-		tx.Nonce,
-		tx.To,
-		tx.SenderPubKey,
 		tx.From,
-		tx.Value,
-		tx.Timestamp,
-		invokeArgsBs,
 		tx.Hash,
+		invokeArgsBs,
+		tx.Nonce,
+		tx.SenderPubKey,
 		tx.Sig,
+		tx.Timestamp,
+		tx.To,
+		tx.Type,
+		tx.Value,
 	}
 
 	return int64(len(getBytes(data)))
@@ -252,7 +263,7 @@ func (tx *Transaction) GetSizeNoFee() int64 {
 // hash of the transaction.
 func (tx *Transaction) ComputeHash() util.Hash {
 	bs := tx.GetBytesNoHashAndSig()
-	hash := sha256.Sum256(bs)
+	hash := util.Blake2b256(bs)
 	return util.BytesToHash(hash[:])
 }
 
