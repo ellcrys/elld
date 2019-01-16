@@ -153,6 +153,7 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	nsObj["personal"]["loadedAccount"] = e.loadedAccount
 	nsObj["personal"]["createAccount"] = e.createAccount
 	nsObj["personal"]["importAccount"] = e.importAccount
+	nsObj["personal"]["listLocalAccounts"] = e.listLocalAccounts
 
 	// "private" functions used by system scripts
 	nsObj["_system"]["balance"] = func() *TxBalanceBuilder {
@@ -169,13 +170,22 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	}()
 
 	// Add some methods to the suggestions
-	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.start", Description: "Start RPC Server"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login", Description: "Authenticate the console RPC session"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount", Description: "Load and set an account as the default"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount", Description: "Gets the address of the loaded account"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.createAccount", Description: "Create an account"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "personal.importAccount", Description: "Import an account"})
-	suggestions = append(suggestions, prompt.Suggest{Text: "ell.balance", Description: "Create and send a balance transaction"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "rpc.start",
+		Description: "Start RPC Server"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "admin.login",
+		Description: "Authenticate the console RPC session"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadAccount",
+		Description: "Load and set an account as the default"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.loadedAccount",
+		Description: "Gets the address of the loaded account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.createAccount",
+		Description: "Create an account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.importAccount",
+		Description: "Import an account"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "personal.listLocalAccounts",
+		Description: "List accounts on this node"})
+	suggestions = append(suggestions, prompt.Suggest{Text: "ell.balance",
+		Description: "Create and send a balance transaction"})
 
 	// If the console is not in attach mode and
 	// the rpc server is not started, we cannot

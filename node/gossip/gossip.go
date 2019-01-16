@@ -42,6 +42,12 @@ const (
 	EventIntroReceived = "event.receivedIntro"
 )
 
+var (
+	// StreamReadDelay is the amount of time to
+	// wait for data from a stream
+	StreamReadDelay = time.Duration(1) * time.Minute
+)
+
 // Manager represents the peer protocol
 type Manager struct {
 

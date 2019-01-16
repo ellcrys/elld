@@ -225,10 +225,6 @@ type Gossip interface {
 	// Node advertisement
 	SelfAdvertise(connectedPeers []Engine) int
 
-	// Introductory messages
-	SendIntro(intro *Intro)
-	OnIntro(s net.Stream, rp Engine) error
-
 	// Transaction messages
 	BroadcastTx(tx types.Transaction, remotePeers []Engine) error
 	OnTx(s net.Stream, rp Engine) error

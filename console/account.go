@@ -88,6 +88,16 @@ func (e *Executor) loadedAccount() string {
 	return e.coinbase.Addr().String()
 }
 
+// listLocalAccounts returns a list of
+// addresses of accounts that exist on the node
+func (e *Executor) listLocalAccounts() (addresses []string) {
+	accounts, _ := e.acctMgr.ListAccounts()
+	for _, a := range accounts {
+		addresses = append(addresses, a.Address)
+	}
+	return
+}
+
 // importAccount creates an account with the given
 // private key and encrypts with the passphrase.
 func (e *Executor) importAccount(privateKey string, optionalArgs ...string) string {

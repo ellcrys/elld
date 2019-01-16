@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/go-libp2p-crypto"
 	. "github.com/onsi/ginkgo"
@@ -189,6 +190,13 @@ var _ = Describe("Key", func() {
 			err := IsValidAddr("E1juuqo9XEfKhGHSwExMxGry54h4JzoRkr")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("invalid version"))
+		})
+
+		It("should return err.Error(invalid version)", func() {
+			invalidAddress := base58.CheckEncode([]byte{2, 3, 5}, AddressVersion)
+			err := IsValidAddr(invalidAddress)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("invalid address size"))
 		})
 
 		It("should return nil", func() {

@@ -145,6 +145,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	mine, _ := cmd.Flags().GetBool("mine")
 	numMiners, _ := cmd.Flags().GetInt("miners")
 	debug, _ := cmd.Flags().GetBool("debug")
+	noNet, _ := cmd.Flags().GetBool("nonet")
 
 	if len(account) == 0 {
 		account = os.Getenv("ELLD_ACCOUNT")
@@ -211,11 +212,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(params.ErrMiningWithEphemeralKey.Error())
 	}
 
-	log.Info("Elld has started",
-		"ClientVersion", cfg.VersionInfo.BuildVersion,
-		"NetVersion", config.Versions.Protocol,
-		"DevMode", devMode)
-
 	// Create event the global event handler
 	event := &emitter.Emitter{}
 
@@ -223,6 +219,17 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n, err := node.NewNode(cfg, listeningAddr, nodeKey, log)
 	if err != nil {
 		log.Fatal("failed to create local node", "Err", err.Error())
+	}
+
+	log.Info("Elld has started",
+		"ClientVersion", cfg.VersionInfo.BuildVersion,
+		"NetVersion", config.Versions.Protocol,
+		"DevMode", devMode,
+		"Name", n.Name)
+
+	if noNet {
+		n.GetHost().Close()
+		n.NoNetwork()
 	}
 
 	// In debug mode, we set log level to DEBUG.
@@ -234,14 +241,16 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	pool := txpool.New(params.PoolCapacity)
 	n.SetTxsPool(pool)
 
-	// Add hardcoded bootstrap addresses
-	if err := n.AddAddresses(seedAddresses, true); err != nil {
-		log.Fatal("%s", err)
-	}
+	if !noNet {
+		// Add hardcoded bootstrap addresses
+		if err := n.AddAddresses(seedAddresses, true); err != nil {
+			log.Fatal("%s", err)
+		}
 
-	// Add bootstrap addresses supplied in the config file
-	if err := n.AddAddresses(cfg.Node.BootstrapAddresses, false); err != nil {
-		log.Fatal("%s", err)
+		// Add bootstrap addresses supplied in the config file
+		if err := n.AddAddresses(cfg.Node.BootstrapAddresses, false); err != nil {
+			log.Fatal("%s", err)
+		}
 	}
 
 	// open the database on the engine
@@ -394,4 +403,5 @@ func init() {
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
 	startCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
+	startCmd.Flags().Bool("nonet", false, "Closes the network host and prevents (in/out) connections")
 }

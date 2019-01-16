@@ -194,6 +194,7 @@ func (m *Manager) LocalPeer() core.Engine {
 // ConnectToPeer attempts to establish
 // a connection to a peer with the given id
 func (m *Manager) ConnectToPeer(peerID string) error {
+
 	peer := m.GetPeer(peerID)
 	if peer == nil {
 		return fmt.Errorf("peer not found")
@@ -280,7 +281,6 @@ func (m *Manager) Manage() {
 	go m.doCleanUp(m.tickersDone)
 	go m.doPingMsgs(m.tickersDone)
 	go m.doGetAddrMsg(m.tickersDone)
-	go m.doIntro(m.tickersDone)
 }
 
 // doGetAddrMsg periodically sends wire.GetAddr
@@ -290,6 +290,11 @@ func (m *Manager) doGetAddrMsg(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			m.localNode.Gossip().SendGetAddr(m.GetActivePeers(0))
 		case <-done:
 			ticker.Stop()
@@ -305,6 +310,11 @@ func (m *Manager) doPingMsgs(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			m.localNode.Gossip().SendPing(m.GetActivePeers(0))
 		case <-done:
 			ticker.Stop()
@@ -321,6 +331,11 @@ func (m *Manager) doSelfAdvert(done chan bool) {
 	for {
 		select {
 		case <-ticker.C:
+
+			if m.localNode.IsNoNet() {
+				continue
+			}
+
 			peers := m.GetConnectedPeers()
 			if len(peers) > 0 {
 				m.localNode.Gossip().SelfAdvertise(peers)
@@ -345,23 +360,6 @@ func (m *Manager) doCleanUp(done chan bool) {
 			m.log.Debug("Cleaned and saved peers", "NumKnownPeers", len(m.GetPeers()),
 				"NumPeersCleaned", nCleaned)
 
-		case <-done:
-			ticker.Stop()
-			return
-		}
-	}
-}
-
-// doIntro periodically sends out wire.Intro messages
-func (m *Manager) doIntro(done chan bool) {
-	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			peers := m.GetConnectedPeers()
-			if len(peers) > 0 {
-				m.localNode.Gossip().SendIntro(nil)
-			}
 		case <-done:
 			ticker.Stop()
 			return

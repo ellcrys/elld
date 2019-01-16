@@ -80,18 +80,6 @@ type TxPoolConfig struct {
 	Capacity int64 `json:"cap"`
 }
 
-// ConsensusConfig defines configuration for consensus processes
-type ConsensusConfig struct {
-
-	// MaxEndorsementPeriodInBlocks is the amount of blocks after ticket maturity an endorser can
-	// continue to perform endorsement functions.
-	MaxEndorsementPeriodInBlocks uint `json:"maxEndorsementPeriodInBlocks"`
-
-	// NumBlocksForTicketMaturity is the number of blocks before an endorser ticket
-	// is considered mature.
-	NumBlocksForTicketMaturity uint `json:"numBlocksForTicketMaturity"`
-}
-
 // MinerConfig defines configuration for mining
 type MinerConfig struct {
 
@@ -117,12 +105,6 @@ type EngineConfig struct {
 	// TxPool holds transaction pool configurations
 	TxPool *TxPoolConfig `json:"txPool"`
 
-	// Consensus holds consensus related configurations
-	Consensus *ConsensusConfig `json:"consensus"`
-
-	// Chain holds blockchain related configurations
-	Chain *ChainConfig `json:"chain"`
-
 	// Miner holds mining configurations
 	Miner *MinerConfig `json:"mining"`
 
@@ -146,22 +128,6 @@ func (c *EngineConfig) DataDir() string {
 	return c.configDir
 }
 
-// CheckPoint describes a point on the chain. We use it to prevent
-// blocks dated far back in the history of the chain from causing a
-// chain reorganization.
-type CheckPoint struct {
-	Number uint64 `json:"number"`
-	Hash   string `json:"hash"`
-}
-
-// ChainConfig includes parameters for the chain
-type ChainConfig struct {
-
-	// Checkpoints includes a collection of points on the chain of
-	// which blocks are supposed to exists after or before.
-	Checkpoints []*CheckPoint `json:"checkpoints"`
-}
-
 var defaultConfig = EngineConfig{}
 
 func init() {
@@ -179,17 +145,8 @@ func init() {
 		MessageTimeout:         30,
 	}
 
-	defaultConfig.Consensus = &ConsensusConfig{
-		MaxEndorsementPeriodInBlocks: 21,
-		NumBlocksForTicketMaturity:   21,
-	}
-
 	defaultConfig.TxPool = &TxPoolConfig{
 		Capacity: 10000,
-	}
-
-	defaultConfig.Chain = &ChainConfig{
-		Checkpoints: nil,
 	}
 
 	defaultConfig.Miner = &MinerConfig{

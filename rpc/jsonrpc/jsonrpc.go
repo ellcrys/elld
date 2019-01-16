@@ -56,7 +56,7 @@ type Err struct {
 // Response represents a JSON RPC response
 type Response struct {
 	JSONRPCVersion string      `json:"jsonrpc"`
-	Result         interface{} `json:"result,omitempty"`
+	Result         interface{} `json:"result"`
 	Err            *Err        `json:"error,omitempty"`
 	ID             uint64      `json:"id,omitempty"`
 }

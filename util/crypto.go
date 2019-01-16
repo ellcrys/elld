@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -41,7 +42,9 @@ func (h Hash) HexStr() string {
 
 // Hex is like HexStr but returns bytes
 func (h Hash) Hex() []byte {
-	return []byte(h.HexStr())
+	dst := make([]byte, hex.EncodedLen(len(h)))
+	hex.Encode(dst, h[:])
+	return dst
 }
 
 // SS returns a short version of HexStr with the middle
