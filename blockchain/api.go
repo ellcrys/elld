@@ -72,6 +72,28 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(util.ToJSFriendlyMap(block))
 }
 
+// apiGetTipBlock fetches the highest block on the main chain
+func (b *Blockchain) apiGetTipBlock(arg interface{}) *jsonrpc.Response {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	if b.bestChain == nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
+	}
+
+	block, err := b.bestChain.GetBlock(0)
+	if err != nil {
+		if err != core.ErrBlockNotFound {
+			return jsonrpc.Error(types.ErrCodeQueryFailed,
+				err.Error(), nil)
+		}
+		return jsonrpc.Error(types.ErrCodeBlockNotFound,
+			err.Error(), nil)
+	}
+
+	return jsonrpc.Success(util.ToJSFriendlyMap(block))
+}
+
 // apiGetBlockByHash fetches a block by hash
 func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 	b.chainLock.RLock()
@@ -338,6 +360,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceState,
 			Description: "Get a block by number",
 			Func:        b.apiGetBlock,
+		},
+		"getTipBlock": {
+			Namespace:   types.NamespaceState,
+			Description: "Get a highest block on the main chain",
+			Func:        b.apiGetTipBlock,
 		},
 		"getBlockByHash": {
 			Namespace:   types.NamespaceState,

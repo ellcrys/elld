@@ -28,17 +28,27 @@ func (n *Node) apiBasicPublicNodeInfo(arg interface{}) *jsonrpc.Response {
 		mode = "test"
 	}
 
-	return jsonrpc.Success(map[string]interface{}{
-		"name":         n.Name,
-		"id":           n.ID().Pretty(),
-		"mode":         mode,
-		"netVersion":   config.Versions.Protocol,
-		"syncing":      n.blockManager.IsSyncing(),
-		"buildVersion": n.cfg.VersionInfo.BuildVersion,
-		"buildCommit":  n.cfg.VersionInfo.BuildCommit,
-		"buildDate":    n.cfg.VersionInfo.BuildDate,
-		"goVersion":    n.cfg.VersionInfo.GoVersion,
-	})
+	// Get the tip block
+	tip, err := n.bChain.GetBestChain().GetBlock(0)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeBlockQuery, err.Error(), nil)
+	}
+
+	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
+		"name":                    n.Name,
+		"id":                      n.ID().Pretty(),
+		"mode":                    mode,
+		"netVersion":              config.Versions.Protocol,
+		"syncing":                 n.blockManager.IsSyncing(),
+		"buildVersion":            n.cfg.VersionInfo.BuildVersion,
+		"buildCommit":             n.cfg.VersionInfo.BuildCommit,
+		"buildDate":               n.cfg.VersionInfo.BuildDate,
+		"goVersion":               n.cfg.VersionInfo.GoVersion,
+		"tipBlockHeight":          tip.GetNumber(),
+		"tipBlockDifficulty":      tip.GetHeader().GetDifficulty(),
+		"tipBlockTotalDifficulty": tip.GetHeader().GetTotalDifficulty(),
+		"tipBlockHash":            tip.GetHash().HexStr(),
+	}))
 }
 
 // apiBasicNodeInfo returns basic
@@ -52,21 +62,30 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		mode = "test"
 	}
 
+	tip, err := n.bChain.GetBestChain().GetBlock(0)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeBlockQuery, err.Error(), nil)
+	}
+
 	return jsonrpc.Success(map[string]interface{}{
-		"name":               n.Name,
-		"id":                 n.ID().Pretty(),
-		"address":            n.GetAddress().ConnectionString(),
-		"mode":               mode,
-		"netVersion":         config.Versions.Protocol,
-		"syncing":            n.blockManager.IsSyncing(),
-		"coinbasePublicKey":  n.signatory.PubKey().Base58(),
-		"coinbase":           n.signatory.Addr(),
-		"buildVersion":       n.cfg.VersionInfo.BuildVersion,
-		"buildCommit":        n.cfg.VersionInfo.BuildCommit,
-		"buildDate":          n.cfg.VersionInfo.BuildDate,
-		"goVersion":          n.cfg.VersionInfo.GoVersion,
-		"listeningAddresses": n.GetListenAddresses(),
-		"numGoRoutines":      runtime.NumGoroutine(),
+		"name":                    n.Name,
+		"id":                      n.ID().Pretty(),
+		"address":                 n.GetAddress().ConnectionString(),
+		"mode":                    mode,
+		"netVersion":              config.Versions.Protocol,
+		"syncing":                 n.blockManager.IsSyncing(),
+		"coinbasePublicKey":       n.signatory.PubKey().Base58(),
+		"coinbase":                n.signatory.Addr(),
+		"buildVersion":            n.cfg.VersionInfo.BuildVersion,
+		"buildCommit":             n.cfg.VersionInfo.BuildCommit,
+		"buildDate":               n.cfg.VersionInfo.BuildDate,
+		"goVersion":               n.cfg.VersionInfo.GoVersion,
+		"listeningAddresses":      n.GetListenAddresses(),
+		"numGoRoutines":           runtime.NumGoroutine(),
+		"tipBlockHeight":          tip.GetNumber(),
+		"tipBlockDifficulty":      tip.GetHeader().GetDifficulty(),
+		"tipBlockTotalDifficulty": tip.GetHeader().GetTotalDifficulty(),
+		"tipBlockHash":            tip.GetHash().HexStr(),
 	})
 }
 
