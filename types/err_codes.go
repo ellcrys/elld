@@ -24,6 +24,8 @@ const (
 	ErrCodeBlockNotFound = 50001
 	// ErrCodeTransactionNotFound for when a transaction is not found
 	ErrCodeTransactionNotFound = 50001
+	// ErrCodeBlockQuery for non-specific block query errors
+	ErrCodeBlockQuery = 50002
 )
 
 // General error codes
