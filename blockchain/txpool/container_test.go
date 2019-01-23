@@ -360,4 +360,25 @@ var _ = Describe("TxContainer", func() {
 		})
 	})
 
+	Describe(".Get", func() {
+		It("should return Not nil when tx exist in queue", func() {
+			q := newTxContainer(1)
+			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
+			added := q.Add(tx)
+			Expect(added).To(BeTrue())
+			txData := q.Get(tx.Hash)
+			Expect(txData).ToNot(BeNil())
+		})
+
+		It("should return nil when tx does not exist in queue", func() {
+			q := newTxContainer(1)
+			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx.Hash = tx.ComputeHash()
+			txData := q.Get(tx.Hash)
+			Expect(txData).To(BeNil())
+		})
+
+	})
+
 })

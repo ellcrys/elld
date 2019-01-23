@@ -246,3 +246,13 @@ func (q *TxContainer) Remove(txs ...types.Transaction) {
 	defer q.gmx.Unlock()
 	q.remove(txs...)
 }
+
+// Get get a transaction
+func (q *TxContainer) Get(hash util.Hash) types.Transaction {
+	for _, item := range q.container {
+		if hash == item.Tx.GetHash() {
+			return item.Tx
+		}
+	}
+	return nil
+}
