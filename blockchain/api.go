@@ -288,6 +288,8 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 
 }
 
+// apiGetTransactionFromPool gets the transaction
+// matching a given hash from the transaction pool.
 func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Response {
 
 	txHash, ok := arg.(string)
