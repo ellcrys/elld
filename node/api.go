@@ -469,7 +469,6 @@ func (n *Node) APIs() jsonrpc.APISet {
 		"sendRaw": {
 			Namespace:   types.NamespaceEll,
 			Description: "Send a base58 encoded balance transaction",
-			Private:     true,
 			Func:        n.apiSendRaw,
 		},
 
