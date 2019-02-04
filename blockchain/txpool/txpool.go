@@ -121,7 +121,7 @@ func (tp *TxPool) Size() int64 {
 	return tp.container.Size()
 }
 
-// GetTransaction get tx from pool
-func (tp *TxPool) GetTransaction(hash util.Hash) types.Transaction {
-	return tp.container.Get(hash)
+// GetByHash gets a transaction from the pool using its hash
+func (tp *TxPool) GetByHash(hash util.Hash) types.Transaction {
+	return tp.container.GetByHash(hash)
 }

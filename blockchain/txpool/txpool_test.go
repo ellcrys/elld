@@ -227,7 +227,7 @@ var _ = Describe("TxPool", func() {
 		})
 	})
 
-	Describe(".GetTransaction", func() {
+	Describe(".GetByHash", func() {
 
 		var tp *TxPool
 		var tx, tx2 types.Transaction
@@ -248,13 +248,13 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should get transaction from pool", func() {
-			txData := tp.GetTransaction(tx.GetHash())
+			txData := tp.GetByHash(tx.GetHash())
 			Expect(txData).ToNot(BeNil())
 			Expect(txData).To(Equal(tx))
 		})
 
 		It("should return nil from  GetTransaction in pool", func() {
-			txData := tp.GetTransaction(tx2.GetHash())
+			txData := tp.GetByHash(tx2.GetHash())
 			Expect(txData).To(BeNil())
 		})
 

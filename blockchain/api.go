@@ -313,7 +313,7 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 		)
 	}
 
-	tx := b.txPool.GetTransaction(hash)
+	tx := b.txPool.GetByHash(hash)
 
 	return jsonrpc.Success(util.ToJSFriendlyMap(tx))
 
@@ -459,7 +459,7 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
 		},
-		"getPoolTransaction": {
+		"getTransactionFromPool": {
 			Namespace:   types.NamespaceNode,
 			Description: "Get a transaction by hash from pool",
 			Func:        b.apiGetTransactionFromPool,
