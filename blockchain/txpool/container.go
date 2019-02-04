@@ -250,7 +250,7 @@ func (q *TxContainer) Remove(txs ...types.Transaction) {
 // Get get a transaction
 func (q *TxContainer) Get(hash util.Hash) types.Transaction {
 	for _, item := range q.container {
-		if hash == item.Tx.GetHash() {
+		if hash.Equal(item.Tx.GetHash()) {
 			return item.Tx
 		}
 	}
