@@ -243,6 +243,10 @@ var _ = Describe("TxPool", func() {
 			tx2.SetHash(tx2.ComputeHash())
 		})
 
+		It("It should not be equal", func() {
+			Expect(tx).ToNot(Equal(tx2))
+		})
+
 		It("should get transaction from pool", func() {
 			txData := tp.GetTransaction(tx.GetHash())
 			Expect(txData).ToNot(BeNil())
