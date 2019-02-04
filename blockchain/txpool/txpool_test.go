@@ -246,6 +246,7 @@ var _ = Describe("TxPool", func() {
 		It("should get transaction from pool", func() {
 			txData := tp.GetTransaction(tx.GetHash())
 			Expect(txData).ToNot(BeNil())
+			Expect(txData).To(Equal(tx))
 		})
 
 		It("should return nil from  GetTransaction in pool", func() {
