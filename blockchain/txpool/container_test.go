@@ -367,7 +367,7 @@ var _ = Describe("TxContainer", func() {
 			tx.Hash = tx.ComputeHash()
 			added := q.Add(tx)
 			Expect(added).To(BeTrue())
-			txData := q.Get(tx.Hash)
+			txData := q.GetByHash(tx.Hash.HexStr())
 			Expect(txData).ToNot(BeNil())
 		})
 
@@ -375,7 +375,7 @@ var _ = Describe("TxContainer", func() {
 			q := newTxContainer(1)
 			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
-			txData := q.Get(tx.Hash)
+			txData := q.GetByHash(tx.Hash.HexStr())
 			Expect(txData).To(BeNil())
 		})
 
