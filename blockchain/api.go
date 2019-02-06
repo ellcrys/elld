@@ -304,7 +304,7 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 		})
 	}
 
-	hash, err := util.HexToHash(txHash)
+	_, err := util.HexToHash(txHash)
 	if err != nil {
 		return jsonrpc.Error(
 			types.ErrCodeQueryParamError,
@@ -313,7 +313,7 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 		)
 	}
 
-	tx := b.txPool.GetByHash(hash)
+	tx := b.txPool.GetByHash(txHash)
 
 	return jsonrpc.Success(util.ToJSFriendlyMap(tx))
 

@@ -248,9 +248,9 @@ func (q *TxContainer) Remove(txs ...types.Transaction) {
 }
 
 // GetByHash get a transaction by its hash from the pool
-func (q *TxContainer) GetByHash(hash util.Hash) types.Transaction {
+func (q *TxContainer) GetByHash(hash string) types.Transaction {
 	for _, item := range q.container {
-		if hash.Equal(item.Tx.GetHash()) {
+		if hash == item.Tx.GetHash().HexStr() {
 			return item.Tx
 		}
 	}

@@ -377,7 +377,7 @@ type TxPool interface {
 	ByteSize() int64
 	Size() int64
 	Container() TxContainer
-	GetByHash(hash util.Hash) Transaction
+	GetByHash(hash string) Transaction
 }
 
 // ChainInfo represents a chain's metadata
