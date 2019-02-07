@@ -120,3 +120,8 @@ func (tp *TxPool) ByteSize() int64 {
 func (tp *TxPool) Size() int64 {
 	return tp.container.Size()
 }
+
+// GetByHash gets a transaction from the pool using its hash
+func (tp *TxPool) GetByHash(hash string) types.Transaction {
+	return tp.container.GetByHash(hash)
+}
