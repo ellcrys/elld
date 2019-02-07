@@ -298,12 +298,6 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 			rpc.ErrMethodArgType("String").Error(), nil)
 	}
 
-	if !b.txPool.HasByHash(txHash) {
-		return jsonrpc.Success(map[string]interface{}{
-			"status": nil,
-		})
-	}
-
 	_, err := util.HexToHash(txHash)
 	if err != nil {
 		return jsonrpc.Error(
@@ -311,6 +305,11 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 			fmt.Sprintf("invalid transaction id: %s", err.Error()),
 			nil,
 		)
+	}
+
+	if !b.txPool.HasByHash(txHash) {
+		return jsonrpc.Error(types.ErrCodeTransactionNotFound,
+			"transaction not found", nil)
 	}
 
 	tx := b.txPool.GetByHash(txHash)
