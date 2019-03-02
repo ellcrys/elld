@@ -47,11 +47,16 @@ func (tp *TxPool) Put(tx types.Transaction) error {
 	return nil
 }
 
+// isExpired checks whether a transaction has expired
+func (tp *TxPool) isExpired(tx types.Transaction) bool {
+	expTime := time.Unix(tx.GetTimestamp(), 0).UTC().AddDate(0, 0, params.TxTTL)
+	return time.Now().UTC().After(expTime)
+}
+
 // clean removes old transactions
 func (tp *TxPool) clean() {
 	tp.container.IFind(func(tx types.Transaction) bool {
-		expTime := time.Unix(tx.GetTimestamp(), 0).UTC().AddDate(0, 0, params.TxTTL)
-		if time.Now().UTC().After(expTime) {
+		if tp.isExpired(tx) {
 			tp.container.remove(tx)
 		}
 		return false
