@@ -39,7 +39,7 @@ func NewManager(cfg *config.EngineConfig, localPeer core.Engine, log logger.Logg
 
 	if cfg == nil {
 		cfg = &config.EngineConfig{}
-		cfg.Node = &config.PeerConfig{}
+		cfg.Node = &config.NodeConfig{}
 	}
 
 	m := &Manager{

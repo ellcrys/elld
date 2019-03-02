@@ -86,8 +86,8 @@ var accountListCmd = &cobra.Command{
   list is lexicographically ordered, the most recently created account will the last on the list.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		// am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
-		// am.ListCmd()
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am.ListCmd()
 	},
 }
 

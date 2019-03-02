@@ -13,11 +13,14 @@ const (
 	ModeTest
 )
 
-// PeerConfig represents peer configuration
-type PeerConfig struct {
+// NodeConfig represents node's configuration
+type NodeConfig struct {
 
 	// BootstrapAddresses sets addresses to connect to
-	BootstrapAddresses []string `json:"addresses" mapstructure:"addresses"`
+	BootstrapAddresses []string `json:"bootstrapAddrs" mapstructure:"bootstrapAddrs"`
+
+	// ListeningAddr is the address the node binds on to listen to incoming messages
+	ListeningAddr string `json:"address" mapstructure:"address"`
 
 	// Mode determines the current environment type
 	Mode int `json:"mode" mapstructure:"mode"`
@@ -52,6 +55,9 @@ type PeerConfig struct {
 	// MessageTimeout is the number of seconds to attempt to
 	// connect to or read from a peer.
 	MessageTimeout int64 `json:"messageTimeout" mapstructure:"messageTimeout"`
+
+	// Account is the coinbase account
+	Account string `json:"account" mapstructure:"account"`
 }
 
 // RPCConfig defines configuration for the RPC component
@@ -100,7 +106,7 @@ type VersionInfo struct {
 type EngineConfig struct {
 
 	// Node holds the node configurations
-	Node *PeerConfig `json:"node" mapstructure:"node"`
+	Node *NodeConfig `json:"node" mapstructure:"node"`
 
 	// TxPool holds transaction pool configurations
 	TxPool *TxPoolConfig `json:"txPool" mapstructure:"txPool"`

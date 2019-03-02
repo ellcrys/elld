@@ -15,6 +15,15 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
+// SeedAddresses includes addresses to nodes that
+// the client will attempt to synchronize with.
+var SeedAddresses = []string{
+	"ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
+	"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
+	"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
+	"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
+}
+
 // AccountDirName is the name of the directory for storing accounts
 var AccountDirName = "accounts"
 
@@ -39,9 +48,18 @@ func setDefaultConfig() {
 	viper.SetDefault("rpc.sessionSecretKey", util.RandString(32))
 }
 
+func setDevDefaultConfig() {
+	viper.SetDefault("node.getAddrInt", 10)
+	viper.SetDefault("node.pingInt", 60)
+	viper.SetDefault("node.selfAdvInt", 10)
+	viper.SetDefault("node.cleanUpInt", 10)
+	viper.SetDefault("node.conEstInt", 10)
+	viper.SetDefault("txPool.capacity", 100)
+}
+
 // InitConfig reads in config file and ENV variables if set.
 func InitConfig(rootCommand *cobra.Command) *EngineConfig {
-	var c = EngineConfig{Node: &PeerConfig{Mode: ModeProd}}
+	var c = EngineConfig{Node: &NodeConfig{Mode: ModeProd}}
 	var homeDir, _ = homedir.Dir()
 	var dataDir = path.Join(homeDir, ".ellcrys")
 	devMode, _ := rootCommand.Flags().GetBool("dev")
@@ -65,6 +83,10 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 
 	// Set viper configuration
 	setDefaultConfig()
+	if devMode {
+		setDevDefaultConfig()
+	}
+
 	viper.SetConfigName("ellcrys")
 	viper.AddConfigPath(dataDir)
 	viper.AddConfigPath(".")
@@ -114,6 +136,17 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 	c.VersionInfo.BuildDate = ""
 	c.VersionInfo.GoVersion = "go0"
 	c.VersionInfo.BuildVersion = ""
+
+	// Initialize miner config
+	c.Miner = &MinerConfig{}
+
+	// set connections hard limit
+	if c.Node.MaxOutboundConnections > 10 {
+		c.Node.MaxOutboundConnections = 10
+	}
+	if c.Node.MaxInboundConnections > 115 {
+		c.Node.MaxInboundConnections = 115
+	}
 
 	return &c
 }
