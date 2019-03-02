@@ -288,6 +288,36 @@ func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response 
 
 }
 
+// apiGetTransactionFromPool gets the transaction
+// matching a given hash from the transaction pool.
+func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Response {
+
+	txHash, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	_, err := util.HexToHash(txHash)
+	if err != nil {
+		return jsonrpc.Error(
+			types.ErrCodeQueryParamError,
+			fmt.Sprintf("invalid transaction id: %s", err.Error()),
+			nil,
+		)
+	}
+
+	if !b.txPool.HasByHash(txHash) {
+		return jsonrpc.Error(types.ErrCodeTransactionNotFound,
+			"transaction not found", nil)
+	}
+
+	tx := b.txPool.GetByHash(txHash)
+
+	return jsonrpc.Success(util.ToJSFriendlyMap(tx))
+
+}
+
 // apiGetDifficultyInfo gets the difficulty and total
 // difficulty of the main chain
 func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
@@ -428,7 +458,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Description: "Get a transaction's status",
 			Func:        b.apiGetTransactionStatus,
 		},
-
+		"getTransactionFromPool": {
+			Namespace:   types.NamespaceNode,
+			Description: "Get a transaction by hash from pool",
+			Func:        b.apiGetTransactionFromPool,
+		},
 		// namespace: "ell"
 		"getBalance": {
 			Namespace:   types.NamespaceEll,
