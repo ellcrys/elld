@@ -44,7 +44,7 @@ var consoleCmd = &cobra.Command{
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		profilePath := profile.ProfilePath(cfg.DataDir())
+		profilePath := profile.ProfilePath(cfg.NetDataDir())
 		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
 		if cpuProfile || os.Getenv("ELLD_CPU_PROFILING_ON") == "true" {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()

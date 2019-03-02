@@ -46,7 +46,7 @@ func main() {
 	flag.Parse()
 
 	// create temporary database
-	db := elldb.NewDB(cfg.DataDir())
+	db := elldb.NewDB(cfg.NetDataDir())
 	err = db.Open(util.RandString(5))
 	if err != nil {
 		panic(err)
