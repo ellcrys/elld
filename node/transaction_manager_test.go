@@ -20,8 +20,4 @@ var _ = Describe("Node", func() {
 	AfterEach(func() {
 		closeNode(lp)
 	})
-
-	Describe(".AddRaw", func() {
-
-	})
 })

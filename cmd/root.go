@@ -15,16 +15,15 @@
 package cmd
 
 import (
-	golog "log"
 	"os"
 	"os/signal"
 	path "path/filepath"
 	"sync"
 	"syscall"
 
-	"github.com/ellcrys/elld/accountmgr"
+	"github.com/spf13/viper"
 
-	homedir "github.com/mitchellh/go-homedir"
+	"github.com/ellcrys/elld/accountmgr"
 
 	"github.com/ellcrys/elld/util/logger"
 
@@ -100,64 +99,32 @@ func init() {
 		}
 	}()
 
-	rootCmd.PersistentFlags().String("net", "0001", "Set the network version")
+	rootCmd.PersistentFlags().String("net", config.DefaultNetVersion, "Set the network version")
 	rootCmd.PersistentFlags().String("datadir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	rootCmd.PersistentFlags().Bool("debug", false, "Set log level to DEBUG")
 	rootCmd.PersistentFlags().Bool("cpuprofile", false, "Start CPU Profiling")
 	rootCmd.PersistentFlags().Bool("memprofile", false, "Start Memory Profiling")
 	rootCmd.PersistentFlags().Bool("mutexprofile", false, "Start Mutex Profiling")
+	viper.BindPFlag("net.version", rootCmd.PersistentFlags().Lookup("net"))
 	cobra.OnInitialize(initConfig)
 }
 
-// initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	cfg = config.InitConfig(rootCmd)
+	devMode = cfg.Node.Mode == config.ModeDev
+	log = cfg.Log
 
-	var err error
-
-	// Parse flags
-	devMode, _ = rootCmd.Flags().GetBool("dev")
-	dataDirPath, _ := rootCmd.PersistentFlags().GetString("datadir")
-	netVersion, _ := rootCmd.PersistentFlags().GetString("net")
-
-	// Set network version environment variable
-	// if not already set and then reset protocol
-	// handlers version.
-	if os.Getenv("ELLD_NET_VERSION") == "" {
-		os.Setenv("ELLD_NET_VERSION", netVersion)
-		config.SetVersions()
-	}
-
-	// When in dev mode and data directory path is not
-	// provided, set the default dev mode data directory
-	if devMode && dataDirPath == "" {
-		dataDirPath, _ = homedir.Expand(path.Join("~", "ellcrys_dev"))
-		os.MkdirAll(dataDirPath, 0700)
-	}
-
-	// Load configuration
-	cfg, err = config.LoadDataDir(dataDirPath, config.Versions.Protocol)
-	if err != nil {
-		golog.Fatal(err.Error())
-	}
-
-	dataDir := cfg.DataDir()
-
-	// Create logger with file rotation enabled
-	logPath := path.Join(dataDir, "logs")
-	os.MkdirAll(logPath, 0700)
-	logFile := path.Join(logPath, "elld.log")
-	log = logger.NewLogrusWithFileRotation(logFile)
+	// Set account manager
+	accountMgr = accountmgr.New(path.Join(cfg.NetDataDir(), "accounts"))
 
 	// Set version information
+	cfg.VersionInfo = &config.VersionInfo{}
 	cfg.VersionInfo.BuildCommit = BuildCommit
 	cfg.VersionInfo.BuildDate = BuildDate
 	cfg.VersionInfo.GoVersion = GoVersion
 	cfg.VersionInfo.BuildVersion = BuildVersion
 
-	// Create account manager
-	accountMgr = accountmgr.New(path.Join(dataDir, "accounts"))
-
 	// Set the path where console history will be stored
-	consoleHistoryFilePath = path.Join(dataDir, ".console_history")
+	consoleHistoryFilePath = path.Join(cfg.NetDataDir(), ".console_history")
 }

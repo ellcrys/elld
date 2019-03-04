@@ -32,7 +32,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.DataDir())
+		db = elldb.NewDB(cfg.NetDataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 
@@ -656,7 +656,7 @@ var _ = Describe("UnitBlock", func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.DataDir())
+		db = elldb.NewDB(cfg.NetDataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 

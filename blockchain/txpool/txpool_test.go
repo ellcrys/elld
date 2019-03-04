@@ -227,4 +227,37 @@ var _ = Describe("TxPool", func() {
 		})
 	})
 
+	Describe(".GetByHash", func() {
+
+		var tp *TxPool
+		var tx, tx2 types.Transaction
+
+		BeforeEach(func() {
+			tp = New(100)
+
+			tx = core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx.SetHash(tx.ComputeHash())
+			tp.Put(tx)
+
+			tx2 = core.NewTransaction(core.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
+			tx2.SetHash(tx2.ComputeHash())
+		})
+
+		It("It should not be equal", func() {
+			Expect(tx).ToNot(Equal(tx2))
+		})
+
+		It("should get transaction from pool", func() {
+			txData := tp.GetByHash(tx.GetHash().HexStr())
+			Expect(txData).ToNot(BeNil())
+			Expect(txData).To(Equal(tx))
+		})
+
+		It("should return nil from  GetTransaction in pool", func() {
+			txData := tp.GetByHash(tx2.GetHash().HexStr())
+			Expect(txData).To(BeNil())
+		})
+
+	})
+
 })
