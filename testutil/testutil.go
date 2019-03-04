@@ -9,6 +9,10 @@ import (
 	"path"
 	"time"
 
+	"github.com/spf13/viper"
+
+	"github.com/spf13/cobra"
+
 	crypto "github.com/libp2p/go-libp2p-crypto"
 
 	"github.com/ellcrys/elld/config"
@@ -60,7 +64,18 @@ func SetTestCfg() (*config.EngineConfig, error) {
 	dir, _ := homedir.Dir()
 	dataDir := path.Join(dir, util.RandString(5))
 	os.MkdirAll(dataDir, 0700)
-	cfg, err := config.LoadDataDir(dataDir, "test")
+
+	// Create test root command and
+	// set required flags and values
+	rootCmd := &cobra.Command{}
+	rootCmd.PersistentFlags().String("net", config.DefaultNetVersion, "Set the network version")
+	rootCmd.PersistentFlags().String("datadir", "", "Set configuration directory")
+	rootCmd.PersistentFlags().Set("datadir", dataDir)
+	rootCmd.PersistentFlags().Set("net", dataDir)
+	viper.Set("net.version", "test")
+
+	// Initialize the config using the test root command
+	cfg := config.InitConfig(rootCmd)
 	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5
 	return cfg, err

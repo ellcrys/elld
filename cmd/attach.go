@@ -21,6 +21,7 @@ import (
 	"github.com/ellcrys/elld/console"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // attachCmd represents the attach command
@@ -36,9 +37,12 @@ interactive session, set the unlock password using '--pwd' flag. The provided
 account does not exist, the command will fail.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
-		account, _ := cmd.Flags().GetString("account")
-		password, _ := cmd.Flags().GetString("pwd")
+		viper.BindPFlag("node.account", cmd.Flags().Lookup("account"))
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpcaddress"))
+		account := viper.GetString("node.account")
+		password := viper.GetString("node.password")
+		rpcAddress := viper.GetString("rpc.address")
 
 		var err error
 		var coinbase *crypto.Key

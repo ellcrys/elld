@@ -57,7 +57,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 		panic(err)
 	}
 
-	db := elldb.NewDB(cfg.DataDir())
+	db := elldb.NewDB(cfg.NetDataDir())
 	err = db.Open(util.RandString(5))
 	if err != nil {
 		panic(err)

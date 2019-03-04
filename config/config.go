@@ -1,135 +1,152 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
+	golog "log"
 	"os"
 	path "path/filepath"
 	"strings"
 
-	"github.com/imdario/mergo"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/ellcrys/elld/util"
-	"github.com/jinzhu/configor"
+	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/mitchellh/go-homedir"
 )
 
+// SeedAddresses includes addresses to nodes that
+// the client will attempt to synchronize with.
+var SeedAddresses = []string{
+	"ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
+	"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
+	"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
+	"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
+}
+
 // AccountDirName is the name of the directory for storing accounts
 var AccountDirName = "accounts"
 
-// DataDir manages the client's data directory
-type DataDir struct {
-	path string
+// setDefaultConfig sets default config values.
+// They are used when their values is not provided
+// in flag, env or config file.
+func setDefaultConfig() {
+	viper.SetDefault("net.version", DefaultNetVersion)
+	viper.SetDefault("node.getAddrInt", 300)
+	viper.SetDefault("node.pingInt", 60)
+	viper.SetDefault("node.selfAdvInt", 120)
+	viper.SetDefault("node.cleanUpInt", 1200)
+	viper.SetDefault("node.maxAddrsExpected", 1000)
+	viper.SetDefault("node.maxOutConnections", 10)
+	viper.SetDefault("node.maxInConnections", 115)
+	viper.SetDefault("node.conEstInt", 10)
+	viper.SetDefault("node.messageTimeout", 30)
+	viper.SetDefault("txPool.capacity", 10000)
+	viper.SetDefault("miner.mode", 0)
+	viper.SetDefault("rpc.username", "admin")
+	viper.SetDefault("rpc.password", "admin")
+	viper.SetDefault("rpc.sessionSecretKey", util.RandString(32))
 }
 
-// NewDataDir creates a new DataDir object
-func NewDataDir(dirPath, network string) (dd *DataDir, err error) {
-
-	// check if dirPath exists
-	if len(strings.TrimSpace(dirPath)) > 0 && !util.IsPathOk(dirPath) {
-		return nil, fmt.Errorf("config directory is not ok; may not exist or we " +
-			"don't have enough permission")
-	}
-
-	dd = new(DataDir)
-	dd.path = dirPath
-
-	// set default config directory if not provided and attempt to create it
-	if len(dd.path) == 0 {
-		hd, _ := homedir.Dir()
-		dd.path = path.Join(hd, ".ellcrys", network)
-		os.MkdirAll(dd.path, 0700)
-	}
-
-	return
+func setDevDefaultConfig() {
+	viper.SetDefault("node.getAddrInt", 10)
+	viper.SetDefault("node.pingInt", 60)
+	viper.SetDefault("node.selfAdvInt", 10)
+	viper.SetDefault("node.cleanUpInt", 10)
+	viper.SetDefault("node.conEstInt", 10)
+	viper.SetDefault("txPool.capacity", 100)
 }
 
-// Path returns the config path
-func (d *DataDir) Path() string {
-	return d.path
-}
+// InitConfig reads in config file and ENV variables if set.
+func InitConfig(rootCommand *cobra.Command) *EngineConfig {
+	var c = EngineConfig{Node: &NodeConfig{Mode: ModeProd}}
+	var homeDir, _ = homedir.Dir()
+	var dataDir = path.Join(homeDir, ".ellcrys")
+	devMode, _ := rootCommand.Flags().GetBool("dev")
 
-// creates the config (ellcrys.json) file if it does not exist.
-// Returns true and nil if config file already exists, false and nil
-// if config file did not exist and was created. Otherwise, returns false and error
-func (d *DataDir) createConfigFileInNotExist() (bool, error) {
-
-	cfgFile := path.Join(d.path, "ellcrys.json")
-
-	if util.IsPathOk(cfgFile) {
-		return true, nil
+	// If data directory path is set in a flag, update the default data directory
+	dataDirF, _ := rootCommand.PersistentFlags().GetString("datadir")
+	if dataDirF != "" {
+		dataDir = dataDirF
 	}
 
-	cfg, err := os.Create(cfgFile)
-	if err != nil {
-		return false, fmt.Errorf("failed to create config file at config directory")
-	}
-	defer cfg.Close()
-
-	jsonEnc := json.NewEncoder(cfg)
-	jsonEnc.SetIndent("", "\t")
-	if err := jsonEnc.Encode(defaultConfig); err != nil {
-		return false, fmt.Errorf("failed to encode default config -> %s", err)
+	// In development mode, use the development data directory.
+	// Attempt to create the directory
+	if devMode {
+		dataDir, _ = homedir.Expand(path.Join("~", "ellcrys_dev"))
+		c.Node.Mode = ModeDev
 	}
 
-	return false, nil
-}
+	// Create the data directory and other sub directories
+	os.MkdirAll(dataDir, 0700)
+	os.MkdirAll(path.Join(dataDir, AccountDirName), 0700)
 
-// Init creates required files and directories
-func (d *DataDir) Init() error {
-
-	var err error
-	if _, err = d.createConfigFileInNotExist(); err != nil {
-		return err
+	// Set viper configuration
+	setDefaultConfig()
+	if devMode {
+		setDevDefaultConfig()
 	}
 
-	if fullAccountDir := path.Join(d.path, AccountDirName); !util.IsPathOk(fullAccountDir) {
-		os.MkdirAll(fullAccountDir, 0700)
-	}
+	viper.SetConfigName("ellcrys")
+	viper.AddConfigPath(dataDir)
+	viper.AddConfigPath(".")
+	viper.SetEnvPrefix("ELLD")
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.AutomaticEnv()
 
-	return nil
-}
-
-// Load reads the content of the ellcrys.json file into Config struct
-func (d *DataDir) Load() (*EngineConfig, error) {
-	var cfg EngineConfig
-	cfgr := configor.New(&configor.Config{ENVPrefix: "ELLD"})
-	if err := cfgr.Load(&cfg, path.Join(d.path, "ellcrys.json")); err != nil {
-		return nil, fmt.Errorf("failed to parse config file -> %s", err)
-	}
-	return &cfg, nil
-}
-
-// LoadDataDir loads a data directory and returns
-// the engine configuration
-func LoadDataDir(dataDirPath, network string) (*EngineConfig, error) {
-
-	dataDir, err := NewDataDir(dataDirPath, network)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := dataDir.Init(); err != nil {
-		if err != nil {
-			return nil, err
+	// Create the config file if it does not exist
+	if err := viper.ReadInConfig(); err != nil {
+		if strings.Index(err.Error(), "Not Found") != -1 {
+			viper.SetConfigType("yaml")
+			if err = viper.WriteConfigAs(path.Join(dataDir, "ellcrys.yml")); err != nil {
+				golog.Fatalf("Failed to create config file: %s", err)
+			}
+		} else {
+			golog.Fatalf("Failed to read config file: %s", err)
 		}
-
-		return nil, err
 	}
 
-	dd, err := dataDir.Load()
-	if err != nil {
-		return nil, err
+	// Read the loaded config into EngineConfig
+	if err := viper.Unmarshal(&c); err != nil {
+		golog.Fatalf("Failed to unmarshal configuration file: %s", err)
 	}
 
-	dd.VersionInfo = new(VersionInfo)
+	// Set network version environment variable
+	// if not already set and then reset protocol
+	// handlers version.
+	SetVersions(viper.GetString("net.version"))
 
-	if err := mergo.Merge(dd, defaultConfig); err != nil {
-		return nil, err
+	// Set data and network directories
+	c.SetDataDir(dataDir)
+	c.SetNetDataDir(path.Join(dataDir, viper.GetString("net.version")))
+
+	// Create network data directory
+	os.MkdirAll(c.NetDataDir(), 0700)
+
+	// Create logger with file rotation enabled
+	logPath := path.Join(c.NetDataDir(), "logs")
+	os.MkdirAll(logPath, 0700)
+	logFile := path.Join(logPath, "elld.log")
+	c.Log = logger.NewLogrusWithFileRotation(logFile)
+
+	// Set default version information
+	c.VersionInfo = &VersionInfo{}
+	c.VersionInfo.BuildCommit = ""
+	c.VersionInfo.BuildDate = ""
+	c.VersionInfo.GoVersion = "go0"
+	c.VersionInfo.BuildVersion = ""
+
+	// Initialize miner config
+	c.Miner = &MinerConfig{}
+
+	// set connections hard limit
+	if c.Node.MaxOutboundConnections > 10 {
+		c.Node.MaxOutboundConnections = 10
+	}
+	if c.Node.MaxInboundConnections > 115 {
+		c.Node.MaxInboundConnections = 115
 	}
 
-	dd.SetConfigDir(dataDir.Path())
-
-	return dd, nil
+	return &c
 }

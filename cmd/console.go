@@ -15,11 +15,10 @@
 package cmd
 
 import (
-	"os"
-
 	"github.com/ellcrys/elld/config"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // consoleCmd represents the console command
@@ -44,19 +43,23 @@ var consoleCmd = &cobra.Command{
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		profilePath := profile.ProfilePath(cfg.DataDir())
-		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
-		if cpuProfile || os.Getenv("ELLD_CPU_PROFILING_ON") == "true" {
+		profilePath := profile.ProfilePath(cfg.NetDataDir())
+		viper.BindPFlag("debug.cpuprofile", cmd.Flags().Lookup("cpuprofile"))
+		viper.BindPFlag("debug.memprofile", cmd.Flags().Lookup("memprofile"))
+		viper.BindPFlag("debug.mutexprofile", cmd.Flags().Lookup("mutexprofile"))
+		cpuProfile := viper.GetBool("debug.cpuprofile")
+		memProfile := viper.GetBool("debug.memprofile")
+		mtxProfile := viper.GetBool("debug.mutexprofile")
+
+		if cpuProfile {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()
 		}
 
-		memProfile, _ := cmd.Flags().GetBool("memprofile")
-		if memProfile || os.Getenv("ELLD_MEM_PROFILING_ON") == "true" {
+		if memProfile {
 			defer profile.Start(profile.MemProfile, profilePath).Stop()
 		}
 
-		mtxProfile, _ := cmd.Flags().GetBool("mutexprofile")
-		if mtxProfile || os.Getenv("ELLD_MTX_PROFILING_ON") == "true" {
+		if mtxProfile {
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
