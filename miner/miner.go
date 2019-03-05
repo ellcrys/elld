@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/metrics/tick"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/miner/blakimoto"
@@ -15,7 +17,6 @@ import (
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/fatih/color"
 	"github.com/olebedev/emitter"
 )
@@ -70,7 +71,7 @@ type Miner struct {
 	blockMaker types.BlockMaker
 
 	// hashrate for tracking average hashrate
-	hashrate metrics.Meter
+	hashrate *tick.MovingAverage
 
 	// processing indicates that a block is being
 	// processed for inclusion in a branch
@@ -97,10 +98,17 @@ func NewMiner(mineKey *crypto.Key, blockMaker types.BlockMaker,
 		iEvent:     &emitter.Emitter{},
 		minerKey:   mineKey,
 		blakimoto:  blakimoto.ConfiguredBlakimoto(blakimoto.Mode(cfg.Miner.Mode), log),
-		hashrate:   metrics.NewMeter(),
+		hashrate:   tick.NewMovingAverage(5 * time.Second),
 		done:       make(chan bool),
 		processMtx: &sync.Mutex{},
 	}
+}
+
+// getHashrate returns the moving average
+// rate of hashing per second
+func (m *Miner) getHashrate() float64 {
+	rate := m.hashrate.Average(1 * time.Minute)
+	return rate / 60
 }
 
 // Begin starts proof-of-work computation
