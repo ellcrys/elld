@@ -72,9 +72,9 @@ func (w *Worker) mine(block types.Block) error {
 	)
 
 	w.log.Debug("Started search for new nonces", "Seed", seed, "WorkerID", w.id)
-	now := time.Now()
 
 	for !w.isStopped() {
+		now := time.Now()
 
 		// We don't have to update hash rate on every
 		// nonce, so update after after 2^X nonces
@@ -84,18 +84,17 @@ func (w *Worker) mine(block types.Block) error {
 			attempts = 0
 		}
 
-		foundBlock := &FoundBlock{
-			Block:    block,
-			WorkerID: w.id,
-			Started:  now,
-		}
-
 		// Compute the PoW value of this nonce
 		result := blakimoto.BlakeHash(hash, nonce)
 		if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
 
-			foundBlock.Finished = time.Now()
-			foundBlock.Nonce = nonce
+			foundBlock := &FoundBlock{
+				Block:    block,
+				WorkerID: w.id,
+				Started:  now,
+				Finished: time.Now(),
+				Nonce:    nonce,
+			}
 
 			// Check whether there is a request to stop
 			// this current round
@@ -119,6 +118,7 @@ func (w *Worker) mine(block types.Block) error {
 			w.Stop()
 		}
 		nonce++
+		result = nil
 	}
 
 	w.log.Debug("Miner worker has stopped", "ID", w.id)

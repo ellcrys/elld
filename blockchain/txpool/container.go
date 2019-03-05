@@ -246,3 +246,13 @@ func (q *TxContainer) Remove(txs ...types.Transaction) {
 	defer q.gmx.Unlock()
 	q.remove(txs...)
 }
+
+// GetByHash get a transaction by its hash from the pool
+func (q *TxContainer) GetByHash(hash string) types.Transaction {
+	for _, item := range q.container {
+		if hash == item.Tx.GetHash().HexStr() {
+			return item.Tx
+		}
+	}
+	return nil
+}

@@ -69,7 +69,7 @@ var accountCreateCmd = &cobra.Command{
 
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")
-		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.NetDataDir(), config.AccountDirName))
 		key, _ := am.CreateCmd(seed, pwd)
 		fmt.Println("New account created, encrypted and stored")
 		fmt.Println("Address:", color.CyanString(key.Addr().String()))
@@ -105,7 +105,7 @@ var accountUpdateCmd = &cobra.Command{
 			address = args[0]
 		}
 
-		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.NetDataDir(), config.AccountDirName))
 		am.UpdateCmd(address)
 	},
 }
@@ -134,7 +134,7 @@ var accountImportCmd = &cobra.Command{
 		}
 
 		pwd, _ := cmd.Flags().GetString("pwd")
-		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.NetDataDir(), config.AccountDirName))
 		am.ImportCmd(keyfile, pwd)
 	},
 }
@@ -157,7 +157,7 @@ var accountRevealCmd = &cobra.Command{
 		}
 
 		pwd, _ := cmd.Flags().GetString("pwd")
-		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am := accountmgr.New(path.Join(cfg.NetDataDir(), config.AccountDirName))
 		am.RevealCmd(address, pwd)
 	},
 }

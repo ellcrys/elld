@@ -34,7 +34,7 @@ var _ = Describe("Process", func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.DataDir())
+		db = elldb.NewDB(cfg.NetDataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 
@@ -422,7 +422,7 @@ var _ = Describe("ExecBlock", func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.DataDir())
+		db = elldb.NewDB(cfg.NetDataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 
@@ -530,7 +530,7 @@ var _ = Describe("ProcessBlock", func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.DataDir())
+		db = elldb.NewDB(cfg.NetDataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 
@@ -784,7 +784,7 @@ var _ = Describe("ProcessBlock", func() {
 		// that some blocks are considered orphans.
 		BeforeEach(func() {
 
-			db = elldb.NewDB(cfg.DataDir())
+			db = elldb.NewDB(cfg.NetDataDir())
 			err = db.Open(util.RandString(5))
 
 			bc2 = New(bc.txPool, cfg, log)

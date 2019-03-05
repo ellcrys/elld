@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/viper"
+
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/params"
 	"github.com/pkg/profile"
@@ -29,24 +31,6 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/spf13/cobra"
 )
-
-var (
-	seedAddresses = []string{
-		"ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
-		"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
-		"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
-		"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
-	}
-)
-
-func devDefaultConfig(cfg *config.EngineConfig) {
-	cfg.Node.GetAddrInterval = util.NonZeroOrDefIn64(cfg.Node.GetAddrInterval, 10)
-	cfg.Node.PingInterval = util.NonZeroOrDefIn64(cfg.Node.PingInterval, 60)
-	cfg.Node.SelfAdvInterval = util.NonZeroOrDefIn64(cfg.Node.SelfAdvInterval, 10)
-	cfg.Node.CleanUpInterval = util.NonZeroOrDefIn64(cfg.Node.CleanUpInterval, 10)
-	cfg.Node.ConnEstInterval = util.NonZeroOrDefIn64(cfg.Node.ConnEstInterval, 10)
-	cfg.TxPool.Capacity = util.NonZeroOrDefIn64(cfg.TxPool.Capacity, 100)
-}
 
 // loadOrCreateAccount unlocks an account and returns the underlying address.
 // - If account is provided, it is fetched and unlocked using the password provided.
@@ -117,7 +101,6 @@ func loadOrCreateAccount(accountID, password string, seed int64) (*crypto.Key, e
 
 // starts the node.
 // - Parse flags
-// - Set default configurations
 // - Validate node bind address
 // - Load an account
 // - create local node
@@ -135,64 +118,25 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	var err error
 
 	// Process flags
-	bootstrapAddresses, _ := cmd.Flags().GetStringSlice("addnode")
-	listeningAddr, _ := cmd.Flags().GetString("address")
-	startRPC, _ := cmd.Flags().GetBool("rpc")
-	rpcAddress, _ := cmd.Flags().GetString("rpcaddress")
-	account, _ := cmd.Flags().GetString("account")
-	password, _ := cmd.Flags().GetString("pwd")
-	seed, _ := cmd.Flags().GetInt64("seed")
-	mine, _ := cmd.Flags().GetBool("mine")
-	numMiners, _ := cmd.Flags().GetInt("miners")
-	debug, _ := cmd.Flags().GetBool("debug")
-	noNet, _ := cmd.Flags().GetBool("nonet")
-
-	if len(account) == 0 {
-		account = os.Getenv("ELLD_ACCOUNT")
-	}
-
-	if len(password) == 0 {
-		password = os.Getenv("ELLD_ACCOUNT_PASSWORD")
-	}
-
-	if os.Getenv("ELLD_RPC_ON") == "true" {
-		startRPC = true
-	}
-
-	if addr := os.Getenv("ELLD_RPC_ADDRESS"); len(addr) > 0 {
-		rpcAddress = addr
-	}
-
-	if addr := os.Getenv("ELLD_LADDRESS"); len(addr) > 0 {
-		listeningAddr = addr
-	}
-
-	if envAddNode := os.Getenv("ELLD_ADDNODE"); len(envAddNode) > 0 {
-		addrs := strings.Split(envAddNode, ",")
-		cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, addrs...)
-	}
-
-	// Set configurations
-	cfg.Node.MessageTimeout = util.NonZeroOrDefIn64(cfg.Node.MessageTimeout, 30)
-	cfg.Node.BootstrapAddresses = append(cfg.Node.BootstrapAddresses, bootstrapAddresses...)
-	cfg.Node.MaxAddrsExpected = 1000
-	cfg.Node.MaxOutboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 10)
-	cfg.Node.MaxInboundConnections = util.NonZeroOrDefIn64(cfg.Node.MaxOutboundConnections, 115)
-
-	// set connections hard limit
-	if cfg.Node.MaxOutboundConnections > 10 {
-		cfg.Node.MaxOutboundConnections = 10
-	}
-	if cfg.Node.MaxInboundConnections > 115 {
-		cfg.Node.MaxInboundConnections = 115
-	}
-
-	// set to dev mode if -dev is set
-	// and apply dev config values
-	if devMode || debug {
-		cfg.Node.Mode = config.ModeDev
-		devDefaultConfig(cfg)
-	}
+	viper.BindPFlag("node.account", cmd.Flags().Lookup("account"))
+	viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+	viper.BindPFlag("node.bootstrapAddrs", cmd.Flags().Lookup("addnode"))
+	viper.BindPFlag("node.address", cmd.Flags().Lookup("address"))
+	viper.BindPFlag("rpc.enabled", cmd.Flags().Lookup("rpc"))
+	viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpcaddress"))
+	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
+	viper.BindPFlag("miner.enabled", cmd.Flags().Lookup("mine"))
+	viper.BindPFlag("miner.numMiners", cmd.Flags().Lookup("miners"))
+	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("nonet"))
+	account := viper.GetString("node.account")
+	password := viper.GetString("node.password")
+	listeningAddr := viper.GetString("node.address")
+	startRPC := viper.GetBool("rpc.enabled")
+	rpcAddress := viper.GetString("rpc.address")
+	seed := viper.GetInt64("node.seed")
+	mine := viper.GetBool("miner.enabled")
+	numMiners := viper.GetInt("miner.numMiners")
+	noNet := viper.GetBool("node.noNet")
 
 	// check that the host address to bind
 	// the engine to is valid,
@@ -243,7 +187,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	if !noNet {
 		// Add hardcoded bootstrap addresses
-		if err := n.AddAddresses(seedAddresses, true); err != nil {
+		if err := n.AddAddresses(config.SeedAddresses, true); err != nil {
 			log.Fatal("%s", err)
 		}
 
@@ -358,19 +302,23 @@ var startCmd = &cobra.Command{
   can also accept a path to a file containing the password.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		profilePath := profile.ProfilePath(cfg.DataDir())
-		cpuProfile, _ := cmd.Flags().GetBool("cpuprofile")
-		if cpuProfile || os.Getenv("ELLD_CPU_PROFILING_ON") == "true" {
+		profilePath := profile.ProfilePath(cfg.NetDataDir())
+		viper.BindPFlag("debug.cpuprofile", cmd.Flags().Lookup("cpuprofile"))
+		viper.BindPFlag("debug.memprofile", cmd.Flags().Lookup("memprofile"))
+		viper.BindPFlag("debug.mutexprofile", cmd.Flags().Lookup("mutexprofile"))
+		cpuProfile := viper.GetBool("debug.cpuprofile")
+		memProfile := viper.GetBool("debug.memprofile")
+		mtxProfile := viper.GetBool("debug.mutexprofile")
+
+		if cpuProfile {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()
 		}
 
-		memProfile, _ := cmd.Flags().GetBool("memprofile")
-		if memProfile || os.Getenv("ELLD_MEM_PROFILING_ON") == "true" {
+		if memProfile {
 			defer profile.Start(profile.MemProfile, profilePath).Stop()
 		}
 
-		mtxProfile, _ := cmd.Flags().GetBool("mutexprofile")
-		if mtxProfile || os.Getenv("ELLD_MTX_PROFILING_ON") == "true" {
+		if mtxProfile {
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 

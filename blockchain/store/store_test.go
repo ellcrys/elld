@@ -35,7 +35,7 @@ var _ = Describe("Store", func() {
 	})
 
 	BeforeEach(func() {
-		db = elldb.NewDB(cfg.DataDir())
+		db = elldb.NewDB(cfg.NetDataDir())
 		err = db.Open(util.RandString(5))
 		Expect(err).To(BeNil())
 	})
