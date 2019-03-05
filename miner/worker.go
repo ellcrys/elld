@@ -8,10 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/metrics/tick"
+
 	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/olebedev/emitter"
 )
 
@@ -33,7 +34,7 @@ type Worker struct {
 	blakimoto  *blakimoto.Blakimoto
 	blockMaker types.BlockMaker
 	stop       bool
-	hashrate   metrics.Meter
+	hashrate   *tick.MovingAverage
 }
 
 // Stop the worker
@@ -65,6 +66,7 @@ func (w *Worker) mine(block types.Block) error {
 	// Extract some data from the header.
 	// Compute difficulty target
 	var (
+		started  = time.Now()
 		header   = block.GetHeader()
 		hash     = header.GetHashNoNonce().Bytes()
 		target   = new(big.Int).Div(maxUint256, header.GetDifficulty())
@@ -74,15 +76,10 @@ func (w *Worker) mine(block types.Block) error {
 	w.log.Debug("Started search for new nonces", "Seed", seed, "WorkerID", w.id)
 
 	for !w.isStopped() {
-		now := time.Now()
 
-		// We don't have to update hash rate on every
-		// nonce, so update after after 2^X nonces
+		// Update hashrate ticker
+		w.hashrate.Tick()
 		attempts++
-		if (attempts % (1 << 5)) == 0 {
-			w.hashrate.Mark(attempts)
-			attempts = 0
-		}
 
 		// Compute the PoW value of this nonce
 		result := blakimoto.BlakeHash(hash, nonce)
@@ -91,7 +88,7 @@ func (w *Worker) mine(block types.Block) error {
 			foundBlock := &FoundBlock{
 				Block:    block,
 				WorkerID: w.id,
-				Started:  now,
+				Started:  started,
 				Finished: time.Now(),
 				Nonce:    nonce,
 			}

@@ -61,7 +61,7 @@ func (m *Miner) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceMiner,
 			Description: "Get current hashrate",
 			Func: func(params interface{}) *jsonrpc.Response {
-				return jsonrpc.Success(m.blakimoto.Hashrate())
+				return jsonrpc.Success(m.getHashrate())
 			},
 		},
 		"numThreads": {

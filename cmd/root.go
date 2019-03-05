@@ -116,7 +116,7 @@ func initConfig() {
 	log = cfg.Log
 
 	// Set account manager
-	accountMgr = accountmgr.New(path.Join(cfg.NetDataDir(), "accounts"))
+	accountMgr = accountmgr.New(path.Join(cfg.DataDir(), "accounts"))
 
 	// Set version information
 	cfg.VersionInfo = &config.VersionInfo{}

@@ -12,7 +12,6 @@ import (
 
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ethereum/go-ethereum/metrics"
 )
 
 var (
@@ -43,9 +42,8 @@ type Blakimoto struct {
 	log logger.Logger
 
 	// Mining related fields
-	rand     *rand.Rand    // Properly seeded random source for nonces
-	update   chan struct{} // Notification channel to update mining parameters
-	hashrate metrics.Meter // Meter tracking the average hashrate
+	rand   *rand.Rand    // Properly seeded random source for nonces
+	update chan struct{} // Notification channel to update mining parameters
 
 	// The fields below are hooks for testing
 	fakeDelay time.Duration // Time delay to sleep for before returning from verify
@@ -56,10 +54,9 @@ type Blakimoto struct {
 // New creates a full sized blakimoto PoW scheme.
 func New(config Config, log logger.Logger) *Blakimoto {
 	return &Blakimoto{
-		config:   config,
-		update:   make(chan struct{}),
-		hashrate: metrics.NewMeter(),
-		log:      log,
+		config: config,
+		update: make(chan struct{}),
+		log:    log,
 	}
 }
 
@@ -74,12 +71,6 @@ func ConfiguredBlakimoto(mode Mode, log logger.Logger) *Blakimoto {
 // SetFakeDelay sets the delay duration for ModeFake
 func (blakimoto *Blakimoto) SetFakeDelay(d time.Duration) {
 	blakimoto.fakeDelay = d
-}
-
-// Hashrate implements PoW, returning the measured rate of the search invocations
-// per second over the last minute.
-func (blakimoto *Blakimoto) Hashrate() float64 {
-	return blakimoto.hashrate.Rate1()
 }
 
 // BlakeHash combines the header's hash and nonce
