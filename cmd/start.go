@@ -32,40 +32,53 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// loadOrCreateAccount unlocks an account and returns the underlying address.
-// - If account is provided, it is fetched and unlocked using the password provided.
-//	 If password is not provided, the is requested through an interactive prompt.
-// - If account is not provided, an ephemeral key is created and returned.
-func loadOrCreateAccount(accountID, password string, seed int64) (*crypto.Key, error) {
+// getKey unlocks an account and returns the corresponding key.
+func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 
-	var address *crypto.Key
+	var key *crypto.Key
 	var err error
 	var storedAccount *accountmgr.StoredAccount
 
+	// Check whether the account id is actually a
+	// private key, if it is, we return a key.
+	if err := crypto.IsValidPrivKey(accountID); err == nil {
+		key, _ := crypto.PrivKeyFromBase58(accountID)
+		return crypto.NewKeyFromPrivKey(key), nil
+	}
+
+	// If an account id is provided...
 	if accountID != "" {
+		// and it is numeric we assume the caller is referring
+		// to the index position their account is occupying on disk.
 		if govalidator.IsNumeric(accountID) {
-			aInt, err := strconv.Atoi(accountID)
+			i, err := strconv.Atoi(accountID)
 			if err != nil {
 				return nil, err
 			}
-			storedAccount, err = accountMgr.GetByIndex(aInt)
+			// Get the account by index
+			storedAccount, err = accountMgr.GetByIndex(i)
 			if err != nil {
 				return nil, err
 			}
 		} else {
+			// Here we assume the user provided an address, so
+			// we fetch the account by the address
 			storedAccount, err = accountMgr.GetByAddress(accountID)
 			if err != nil {
 				return nil, err
 			}
 		}
 	} else {
-		// create ephemeral account
-		address, _ = accountMgr.CreateCmd(0, util.RandString(32))
-		address.Meta["ephemeral"] = true
-		return address, nil
+		// At this point, the user did not specify an identifier
+		// for an account they want, so we will create a random
+		// address and tag it as an ephemeral address
+		key, _ = accountMgr.CreateCmd(0, util.RandString(32))
+		key.Meta["ephemeral"] = true
+		return key, nil
 	}
 
-	// If the password is unset, request password from user
+	// If the password is unset, start an interactive session to
+	// request password from user.
 	if password == "" {
 		fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.", storedAccount.Address))
 		password, err = accountMgr.AskForPasswordOnce()
@@ -75,7 +88,7 @@ func loadOrCreateAccount(accountID, password string, seed int64) (*crypto.Key, e
 		}
 	}
 
-	// If password is set and its a path to a file,
+	// If password is set and it's a path to a file,
 	// read the file and use its content as the password
 	if len(password) > 1 && (os.IsPathSeparator(password[0]) || (len(password) >= 2 && password[:2] == "./")) {
 		content, err := ioutil.ReadFile(password)
@@ -92,6 +105,7 @@ func loadOrCreateAccount(accountID, password string, seed int64) (*crypto.Key, e
 		password = strings.TrimSpace(strings.Trim(password, "/n"))
 	}
 
+	// Use the password to decrypt the account
 	if err = storedAccount.Decrypt(password); err != nil {
 		return nil, fmt.Errorf("account unlock failed. %s", err)
 	}
@@ -144,15 +158,16 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("invalid bind address provided")
 	}
 
-	// load the node account.
-	// Required for signing blocks and transactions
-	nodeKey, err := loadOrCreateAccount(account, password, seed)
+	// Load the coinbase account.
+	// Required for signing blocks, transactions and
+	// for receiving mining rewards.
+	coinbase, err := getKey(account, password, seed)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
 	// Prevent mining when the node's key is ephemeral
-	if mine && nodeKey.Meta["ephemeral"] != nil {
+	if mine && coinbase.Meta["ephemeral"] != nil {
 		log.Fatal(params.ErrMiningWithEphemeralKey.Error())
 	}
 
@@ -160,7 +175,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	event := &emitter.Emitter{}
 
 	// Create the local node.
-	n, err := node.NewNode(cfg, listeningAddr, nodeKey, log)
+	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
 	if err != nil {
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
@@ -211,7 +226,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	bChain.SetEventEmitter(event)
 
 	// Initialize the miner, rpc server
-	miner := miner.NewMiner(nodeKey, bChain, event, cfg, log)
+	miner := miner.NewMiner(coinbase, bChain, event, cfg, log)
 	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
 
 	// Set the node's references
@@ -263,7 +278,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 		// Create the console.
 		// Configure the RPC client if the server has started
-		cs = console.New(nodeKey, consoleHistoryFilePath, cfg, log)
+		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
 		cs.SetVersions(config.Versions.Protocol, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 
@@ -346,7 +361,7 @@ func init() {
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on.")
 	startCmd.Flags().Bool("rpc", false, "Enables the RPC server")
 	startCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on.")
-	startCmd.Flags().String("account", "", "The node's network account. The default account will be used if not set.")
+	startCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
 	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")

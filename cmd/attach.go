@@ -49,7 +49,7 @@ account does not exist, the command will fail.`,
 
 		// load the coinbase coinbase account.
 		if account != "" {
-			coinbase, err = loadOrCreateAccount(account, password, 0)
+			coinbase, err = getKey(account, password, 0)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
