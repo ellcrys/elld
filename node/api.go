@@ -237,6 +237,7 @@ func (n *Node) apiGetActivePeers(arg interface{}) *jsonrpc.Response {
 			"isHardcoded":  p.IsHardcodedSeed(),
 			"isAcquainted": n.PM().IsAcquainted(p),
 			"isInbound":    p.IsInbound(),
+			"name":         p.GetName(),
 		})
 	}
 	return jsonrpc.Success(peers)
@@ -254,6 +255,7 @@ func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
 			"isInbound":    p.IsInbound(),
 			"isBanned":     n.peerManager.IsBanned(p),
 			"banEndTime":   n.peerManager.GetBanTime(p),
+			"name":         p.GetName(),
 		})
 	}
 	return jsonrpc.Success(peers)

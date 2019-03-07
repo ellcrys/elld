@@ -19,20 +19,22 @@ type Handshake struct {
 	BestBlockHash            util.Hash `json:"bestBlockHash" msgpack:"bestBlockHash"`
 	BestBlockTotalDifficulty *big.Int  `json:"bestBlockTD" msgpack:"bestBlockTD"`
 	BestBlockNumber          uint64    `json:"bestBlockNumber" msgpack:"bestBlockNumber"`
+	Name                     string    `json:"name" msgpack:"name"`
 }
 
 // EncodeMsgpack implements
 // msgpack.CustomEncoder
 func (h *Handshake) EncodeMsgpack(enc *msgpack.Encoder) error {
 	tdStr := h.BestBlockTotalDifficulty.String()
-	return enc.Encode(h.Version, h.BestBlockHash, h.BestBlockNumber, tdStr)
+	return enc.Encode(h.Version, h.Name, h.BestBlockHash, h.BestBlockNumber, tdStr)
 }
 
 // DecodeMsgpack implements
 // msgpack.CustomDecoder
 func (h *Handshake) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var tdStr string
-	if err := dec.Decode(&h.Version, &h.BestBlockHash, &h.BestBlockNumber, &tdStr); err != nil {
+	if err := dec.Decode(&h.Version, &h.Name, &h.BestBlockHash,
+		&h.BestBlockNumber, &tdStr); err != nil {
 		return err
 	}
 	h.BestBlockTotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
