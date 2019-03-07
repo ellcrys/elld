@@ -255,6 +255,16 @@ func (n *Node) IsNoNet() bool {
 	return n.noNet
 }
 
+// GetName returns the pet name of the node
+func (n *Node) GetName() string {
+	return n.Name
+}
+
+// SetName sets the name of the node
+func (n *Node) SetName(name string) {
+	n.Name = name
+}
+
 // SetCfg sets the node's config
 func (n *Node) SetCfg(cfg *config.EngineConfig) {
 	*n.cfg = *cfg

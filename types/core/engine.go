@@ -140,6 +140,12 @@ type Engine interface {
 
 	// SetGossipManager sets the gossip manager
 	SetGossipManager(m Gossip)
+
+	// GetName returns the pet name of the node
+	GetName() string
+
+	// SetName sets the name of the node
+	SetName(name string)
 }
 
 // BestBlockInfo represent best block
