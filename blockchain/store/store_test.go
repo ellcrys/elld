@@ -2,6 +2,9 @@ package store
 
 import (
 	"os"
+	"time"
+
+	"github.com/ellcrys/elld/crypto"
 
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
@@ -402,7 +405,7 @@ var _ = Describe("Store", func() {
 				Expect(&storedBlock).To(Equal(block))
 			})
 
-			Specify("a block number pointer should be added", func() {
+			Specify("that a block hash key that points to the block number must be added", func() {
 				pointerKey := common.MakeKeyBlockHash(store.chainID.Bytes(), block.GetHash().Hex())
 				result = store.db.GetByPrefix(pointerKey)
 				Expect(result).To(HaveLen(1))
@@ -434,6 +437,46 @@ var _ = Describe("Store", func() {
 			err = result[0].Scan(&storedBlock)
 			Expect(err).To(BeNil())
 			Expect(&storedBlock).ToNot(Equal(block2))
+		})
+	})
+
+	Describe(".PutMinedBlock", func() {
+		var block *core.Block
+
+		BeforeEach(func() {
+			key, _ := crypto.NewKey(nil)
+			block = &core.Block{
+				Header: &core.Header{
+					Number:        1,
+					CreatorPubKey: "xabc",
+				},
+				Hash: util.StrToHash("hash"),
+				Sig:  []byte("stuff"),
+				Transactions: []*core.Transaction{
+					core.NewTx(core.TxTypeBalance, 1, "to_addr", key, "23", "2", time.Now().Unix()),
+				},
+			}
+		})
+
+		Context("on successful save", func() {
+			var result []*elldb.KVObject
+
+			BeforeEach(func() {
+				err := store.PutMinedBlock(block)
+				Expect(err).To(BeNil())
+				result = store.db.GetByPrefix(common.MakeQueryKeyMinedBlocks(chainID.Bytes()))
+				Expect(result).To(HaveLen(1))
+			})
+
+			Specify("the return block is same as the added saved block", func() {
+				var minedBlock core.MinedBlock
+				err = result[0].Scan(&minedBlock)
+				Expect(err).To(BeNil())
+				Expect(minedBlock.CreatorPubKey).To(Equal(block.Header.CreatorPubKey))
+				Expect(minedBlock.Hash).To(Equal(block.Hash))
+				Expect(minedBlock.Number).To(Equal(block.Header.Number))
+				Expect(minedBlock.TxCount).To(Equal(uint(1)))
+			})
 		})
 	})
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/crypto"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/gobuffalo/packr"
@@ -36,6 +37,10 @@ const (
 // functionalities for interacting with the underlying database
 // and primitives.
 type Blockchain struct {
+
+	// coinbase is the key that identifies this blockchain
+	// instance.
+	coinbase *crypto.Key
 
 	// genesisBlock is the initial, hardcoded block
 	// shared by all clients. It is the root of all chains.
@@ -94,6 +99,12 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.rejectedBlocks = cache.NewCache(MaxRejectedBlocksCacheSize)
 	bc.eventEmitter = &emitter.Emitter{}
 	return bc
+}
+
+// SetCoinbase sets the coinbase key that is used to
+// identify the current blockchain instance
+func (b *Blockchain) SetCoinbase(coinbase *crypto.Key) {
+	b.coinbase = coinbase
 }
 
 // SetGenesisBlock sets the genesis block

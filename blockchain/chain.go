@@ -422,47 +422,61 @@ func (c *Chain) String() string {
 	return fmt.Sprintf("<chain id=%s parent=%s>", c.id, parent)
 }
 
+// PutMinedBlock records a block mined by the block creator
+func (c *Chain) PutMinedBlock(block types.Block, opts ...types.CallOp) error {
+	return c.store.PutMinedBlock(block, opts...)
+}
+
 // removeBlock deletes a block and all objects
-// associated to it such as transactions, accounts etc.
-func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
+// associated with it such as transactions, accounts etc.
+// It returns the deleted block.
+func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 
 	var err error
 	txOp := common.GetTxOp(c.store.DB(), opts...)
 	if txOp.Closed() {
-		return leveldb.ErrClosed
+		return nil, leveldb.ErrClosed
 	}
 	txOp.CanFinish = false
 
-	// get the block.
+	// Get the block.
 	// Returns ErrBlockNotFound if block does not exist
 	block, err := c.store.GetBlock(number, txOp)
 	if err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return err
+		return nil, err
 	}
 
-	// delete the block
+	// Delete the block
 	blockKey := common.MakeKeyBlock(c.id.Bytes(), number)
 	if err = c.store.Delete(blockKey, txOp); err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete block: %s", err)
+		return nil, fmt.Errorf("failed to delete block: %s", err)
 	}
 
-	// delete the block's hash pointer
+	// Delete the block's hash pointer
 	pointerKey := common.MakeKeyBlockHash(c.id.Bytes(), block.GetHash().Hex())
 	if err = c.store.Delete(pointerKey, txOp); err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete block's hash pointer: %s", err)
+		return nil, fmt.Errorf("failed to delete block's hash pointer: %s", err)
 	}
 
-	// find account objects associated to this block
-	// in the chain and and delete them
+	// Delete the mined block object
+	minedBlockKey := common.MakeKeyMinedBlock(c.id.Bytes(), number)
+	if err = c.store.Delete(minedBlockKey, txOp); err != nil {
+		if len(opts) == 0 {
+			txOp.Finishable().Rollback()
+		}
+		return nil, fmt.Errorf("failed to delete mined block record: %s", err)
+	}
+
+	// Find accounts associated to with the block and delete them
 	err = nil
 	accountsKey := common.MakeQueryKeyAccounts(c.id.Bytes())
 	txOp.Tx.Iterate(accountsKey, false, func(kv *elldb.KVObject) bool {
@@ -478,11 +492,10 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete accounts: %s", err)
+		return nil, fmt.Errorf("failed to delete accounts: %s", err)
 	}
 
-	// find transactions objects associated to this block
-	// in the chain and delete them
+	// Find indexed transactions associated with this block and delete them
 	err = nil
 	txsKey := common.MakeQueryKeyTransactions(c.id.Bytes())
 	txOp.Tx.Iterate(txsKey, false, func(kv *elldb.KVObject) bool {
@@ -498,14 +511,14 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete transactions: %s", err)
+		return nil, fmt.Errorf("failed to delete transactions: %s", err)
 	}
 
 	if len(opts) == 0 {
-		return txOp.Finishable().Commit()
+		return block, txOp.Finishable().Commit()
 	}
 
-	return nil
+	return block, nil
 }
 
 // ChainRead provides read-only access to

@@ -464,6 +464,17 @@ process:
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("put transaction failed: %s", err)
 	}
+
+	// To allow the client operator check for blocks they
+	// have mined, add a mined block index for this block
+	// only when the block was signed by the coinbase key
+	if block.GetHeader().GetCreatorPubKey().
+		Equal(util.String(b.coinbase.PubKey().Base58())) {
+		if err := chain.PutMinedBlock(block, txOp); err != nil {
+			return nil, err
+		}
+	}
+
 commit:
 	// At this point, the block is good to go.
 	// We add it to the chain
@@ -472,7 +483,7 @@ commit:
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}
 
-	// Commit the transaction
+	// Commit the db transaction
 	if err := txOp.SetFinishable(!hasInjectTx).Commit(); err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("commit error: %s", err)
@@ -498,9 +509,9 @@ commit:
 		}
 	}
 
-	// if the chain is the best chain, emit a new block
+	// When the chain is the best chain, emit a new block
 	// event for other processes to act on the new block
-	if b.bestChain.GetID() == chain.GetID() {
+	if b.bestChain.GetID().Equal(chain.GetID()) {
 		go b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 

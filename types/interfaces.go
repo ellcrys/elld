@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 
+	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 
 	"github.com/olebedev/emitter"
@@ -97,6 +98,10 @@ type ChainStorer interface {
 	// PutTransactions stores a collection of transactions
 	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
+	// PutMinedBlock stores a brief information about a
+	// block that was created by the blockchain's coinbase key
+	PutMinedBlock(block Block, opts ...CallOp) error
+
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)
 
@@ -115,6 +120,10 @@ type Blockchain interface {
 
 	// Up initializes and loads the blockchain manager
 	Up() error
+
+	// SetCoinbase sets the coinbase key that is used to
+	// identify the current blockchain instance
+	SetCoinbase(coinbase *crypto.Key)
 
 	// GetBestChain gets the chain that is currently considered the main chain
 	GetBestChain() Chainer

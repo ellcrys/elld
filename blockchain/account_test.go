@@ -3,6 +3,8 @@ package blockchain
 import (
 	"os"
 
+	"github.com/ellcrys/elld/crypto"
+
 	. "github.com/onsi/ginkgo"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -35,6 +37,7 @@ var _ = Describe("Account", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	BeforeEach(func() {

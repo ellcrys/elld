@@ -37,6 +37,9 @@ var (
 
 	// TagReOrg represents a meta object
 	TagReOrg = []byte("r")
+
+	// TagMinedBlock represents a mined block data
+	TagMinedBlockHeader = []byte("m")
 )
 
 // MakeKeyAccount constructs a key for storing an account.
@@ -161,6 +164,28 @@ func MakeQueryKeyTransactions(chainID []byte) []byte {
 		TagChain,
 		chainID,
 		TagTransaction,
+	)
+}
+
+// MakeKeyMinedBlock constructs a key for recording
+// information about blocks mined
+func MakeKeyMinedBlock(chainID []byte, blockNumber uint64) []byte {
+	return elldb.MakeKey(
+		util.EncodeNumber(blockNumber),
+		TagChain,
+		chainID,
+		TagMinedBlockHeader,
+	)
+}
+
+// MakeQueryKeyMinedBlocks constructs a key for querying
+// all mined blocks in given chain.
+// Prefixes: tag_chain + chain ID + tag_mined_block
+func MakeQueryKeyMinedBlocks(chainID []byte) []byte {
+	return elldb.MakePrefix(
+		TagChain,
+		chainID,
+		TagMinedBlockHeader,
 	)
 }
 

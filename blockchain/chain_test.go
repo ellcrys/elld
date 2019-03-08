@@ -27,7 +27,7 @@ var _ = Describe("Chain", func() {
 	var db elldb.DB
 	var genesisBlock types.Block
 	var genesisChain *Chain
-	var sender, receiver *crypto.Key
+	var coinbase, sender, receiver *crypto.Key
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -40,8 +40,10 @@ var _ = Describe("Chain", func() {
 		sender = crypto.NewKeyFromIntSeed(1)
 		receiver = crypto.NewKeyFromIntSeed(2)
 
+		coinbase = sender
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+		bc.SetCoinbase(coinbase)
 	})
 
 	BeforeEach(func() {
@@ -132,8 +134,8 @@ var _ = Describe("Chain", func() {
 		})
 
 		It("should return nil if chains has no parent", func() {
-			// root := genesisChain.GetRoot()
-			// Expect(root).To(BeNil())
+			root := genesisChain.GetRoot()
+			Expect(root).To(BeNil())
 		})
 
 		It("successfully get the root of chain C as block 2 of genesis", func() {
@@ -352,23 +354,50 @@ var _ = Describe("Chain", func() {
 
 		var block2 types.Block
 
-		BeforeEach(func() {
-			block2 = MakeBlock(bc, genesisChain, sender, receiver)
-			_, err := bc.ProcessBlock(block2)
-			Expect(err).To(BeNil())
-		})
-
 		It("should return ErrBlockNotFound if block does not exist", func() {
-			err := genesisChain.removeBlock(100)
+			_, err := genesisChain.removeBlock(100)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(core.ErrBlockNotFound))
+		})
+
+		Context("mined block must be deleted", func() {
+			When("block creator and coinbase are the same", func() {
+				BeforeEach(func() {
+					block2 = MakeBlock(bc, genesisChain, coinbase, receiver)
+					_, err := bc.ProcessBlock(block2)
+					Expect(err).To(BeNil())
+
+					minedBlockKey := common.MakeKeyMinedBlock(genesisChain.id.Bytes(), block2.GetNumber())
+					result := db.GetByPrefix(minedBlockKey)
+					Expect(result).To(HaveLen(1))
+				})
+
+				BeforeEach(func() {
+					deleted, err := genesisChain.removeBlock(block2.GetNumber())
+					Expect(err).To(BeNil())
+					Expect(deleted.GetHash()).To(Equal(block2.GetHash()))
+				})
+
+				Specify("that no the mined block object must no longer exist", func() {
+					blockKey := common.MakeKeyMinedBlock(genesisChain.id.Bytes(), block2.GetNumber())
+					result := db.GetByPrefix(blockKey)
+					Expect(result).To(HaveLen(0))
+				})
+			})
 		})
 
 		Context("when block is successfully deleted", func() {
 
 			BeforeEach(func() {
-				err := genesisChain.removeBlock(block2.GetNumber())
+				block2 = MakeBlock(bc, genesisChain, sender, receiver)
+				_, err := bc.ProcessBlock(block2)
 				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				deleted, err := genesisChain.removeBlock(block2.GetNumber())
+				Expect(err).To(BeNil())
+				Expect(deleted.GetHash()).To(Equal(block2.GetHash()))
 			})
 
 			Specify("no block with the deleted block number must exist", func() {
