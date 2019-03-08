@@ -434,7 +434,7 @@ func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error)
 }
 
 // IsMainChain checks whether cr is the main chain
-func (b *Blockchain) IsMainChain(cr types.ChainReader) bool {
+func (b *Blockchain) IsMainChain(cr types.ChainReaderFactory) bool {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	return b.bestChain.GetID() == cr.GetID()
@@ -564,13 +564,13 @@ func (b *Blockchain) GetTransaction(hash util.Hash,
 }
 
 // ChainReader creates a chain reader for best/main chain
-func (b *Blockchain) ChainReader() types.ChainReader {
+func (b *Blockchain) ChainReader() types.ChainReaderFactory {
 	return NewChainReader(b.bestChain)
 }
 
 // GetChainReaderByHash returns a chain reader to a chain
 // where a block with the given hash exists
-func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReader {
+func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReaderFactory {
 	b.chainLock.RLock()
 	defer b.chainLock.RUnlock()
 	_, chain, _, _ := b.findChainByBlockHash(hash)
@@ -581,7 +581,7 @@ func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReader {
 }
 
 // GetChainsReader gets chain reader for all known chains
-func (b *Blockchain) GetChainsReader() (readers []types.ChainReader) {
+func (b *Blockchain) GetChainsReader() (readers []types.ChainReaderFactory) {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	for _, c := range b.chains {

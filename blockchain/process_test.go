@@ -654,7 +654,7 @@ var _ = Describe("ProcessBlock", func() {
 
 			When("a block has same number as the chainTip", func() {
 				var block2, block2_2 types.Block
-				var ch types.ChainReader
+				var ch types.ChainReaderFactory
 				var err error
 
 				BeforeEach(func() {

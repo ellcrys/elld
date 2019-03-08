@@ -50,7 +50,7 @@ type Chainer interface {
 	GetTransaction(hash util.Hash, opts ...CallOp) (Transaction, error)
 
 	// ChainReader gets a chain reader for this chain
-	ChainReader() ChainReader
+	ChainReader() ChainReaderFactory
 
 	// GetRoot fetches the root block of this chain. If the chain
 	// has more than one parents/ancestors, it will traverse
@@ -138,17 +138,17 @@ type Blockchain interface {
 	GetTransaction(util.Hash, ...CallOp) (Transaction, error)
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(Block, ...CallOp) (ChainReader, error)
+	ProcessBlock(Block, ...CallOp) (ChainReaderFactory, error)
 
 	// Generate creates a new block for a target chain.
 	// The Chain is specified by passing to OpChain.
 	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
 
 	// ChainReader gets a Reader for reading the main chain
-	ChainReader() ChainReader
+	ChainReader() ChainReaderFactory
 
 	// GetChainsReader gets chain reader for all known chains
-	GetChainsReader() (readers []ChainReader)
+	GetChainsReader() (readers []ChainReaderFactory)
 
 	// SetDB sets the database
 	SetDB(elldb.DB)
@@ -168,7 +168,7 @@ type Blockchain interface {
 
 	// GetChainReaderByHash returns a chain reader to a chain
 	// where a block with the given hash exists
-	GetChainReaderByHash(hash util.Hash) ChainReader
+	GetChainReaderByHash(hash util.Hash) ChainReaderFactory
 
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
@@ -205,17 +205,17 @@ type BlockMaker interface {
 	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
 
 	// ChainReader gets a Reader for reading the main chain
-	ChainReader() ChainReader
+	ChainReader() ChainReaderFactory
 
 	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(Block, ...CallOp) (ChainReader, error)
+	ProcessBlock(Block, ...CallOp) (ChainReaderFactory, error)
 
 	// IsMainChain checks whether a chain is the main chain
-	IsMainChain(ChainReader) bool
+	IsMainChain(ChainReaderFactory) bool
 }
 
-// ChainReader defines an interface for reading a chain
-type ChainReader interface {
+// ChainReaderFactory defines an interface for reading a chain
+type ChainReaderFactory interface {
 
 	// GetID gets the chain ID
 	GetID() util.String
@@ -239,7 +239,7 @@ type ChainReader interface {
 
 	// GetParent returns a chain reader to the parent chain.
 	// Returns nil if chain has no parent.
-	GetParent() ChainReader
+	GetParent() ChainReaderFactory
 
 	// GetParentBlock returns the parent block
 	GetParentBlock() Block

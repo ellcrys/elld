@@ -177,7 +177,7 @@ func (b *Blakimoto) VerifySeal(header types.Header) error {
 // Prepare initializes the difficulty and
 // total difficulty fields of a header to
 // conform to the protocol
-func (b *Blakimoto) Prepare(chain types.ChainReader, header types.Header) error {
+func (b *Blakimoto) Prepare(chain types.ChainReaderFactory, header types.Header) error {
 
 	// Get the header of the block's parent.
 	parent, err := chain.GetHeaderByHash(header.GetParentHash())

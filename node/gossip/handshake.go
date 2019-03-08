@@ -12,8 +12,7 @@ import (
 )
 
 // createHandshakeMsg creates an Handshake message
-func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReader,
-	slog logger.Logger) (*core.Handshake, error) {
+func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReaderFactory, slog logger.Logger) (*core.Handshake, error) {
 
 	// determine the best block and the total
 	// difficulty of the block. Add these data to

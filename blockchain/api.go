@@ -3,6 +3,8 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
@@ -70,6 +72,39 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(util.ToJSFriendlyMap(block))
+}
+
+// apiGetMinedBlocks fetches blocks mined by this node
+func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	var opt core.ArgGetMinedBlock
+	if arg != nil {
+		decoded, ok := arg.(map[string]interface{})
+		if !ok {
+			return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+				rpc.ErrMethodArgType("Map").Error(), nil)
+		} else {
+			mapstructure.Decode(decoded, &opt)
+		}
+	}
+
+	result, hasMore, err := b.bestChain.GetMinedBlocks(&opt)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			err.Error(), nil)
+	}
+
+	var friendlyResult = []interface{}{}
+	for _, r := range result {
+		friendlyResult = append(friendlyResult, util.ToJSFriendlyMap(r))
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"blocks":  friendlyResult,
+		"hasMore": hasMore,
+	})
 }
 
 // apiGetTipBlock fetches the highest block on the main chain
@@ -400,6 +435,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceState,
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
+		},
+		"getMinedBlock": {
+			Namespace:   types.NamespaceState,
+			Description: "Get blocks mined on this node",
+			Func:        b.apiGetMinedBlocks,
 		},
 		"getOrphans": {
 			Namespace:   types.NamespaceState,

@@ -31,3 +31,10 @@ func (c *ChainInfo) GetParentBlockNumber() uint64 {
 func (c *ChainInfo) GetTimestamp() int64 {
 	return c.Timestamp
 }
+
+// ArgGetMinedBlock represents arguments for fetching mined blocks
+type ArgGetMinedBlock struct {
+	Limit         int    `mapstructure:"limit"`
+	LastHash      string `mapstructure:"lastHash"`
+	CreatorPubKey string `mapstructure:"creatorPubKey"`
+}

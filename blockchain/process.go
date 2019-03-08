@@ -523,7 +523,7 @@ commit:
 // chains (main chain or forked chain). It returns a chain reader
 // pointing to the chain in which the block was added to.
 func (b *Blockchain) ProcessBlock(block types.Block,
-	opts ...types.CallOp) (types.ChainReader, error) {
+	opts ...types.CallOp) (types.ChainReaderFactory, error) {
 
 	b.processLock.Lock()
 	defer b.processLock.Unlock()
