@@ -464,13 +464,11 @@ func (c *Chain) GetMinedBlocks(args *core.ArgGetMinedBlock, opts ...types.CallOp
 	key := common.MakeQueryKeyMinedBlocks(c.id.Bytes())
 	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
 
-		// If we exceed the limit, we are certain that
-		// that there is at least one object left to
-		// be read so we set hasMore to true, and return
-		// with the result. We also reduced the result
-		// up to the limit specified
-		if len(result) > args.Limit {
-			result = result[:args.Limit]
+		// If we already reached our limit, we are
+		// certain that that there is at least one
+		// object left to be read so we set hasMore
+		// to true, and return with the result.
+		if len(result) == args.Limit {
 			hasMore = true
 			return true
 		}
