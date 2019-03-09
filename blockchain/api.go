@@ -98,7 +98,7 @@ func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
 
 	var friendlyResult = []interface{}{}
 	for _, r := range result {
-		friendlyResult = append(friendlyResult, util.ToJSFriendlyMap(r))
+		friendlyResult = append(friendlyResult, util.ToJSFriendlyMap(r, "timestamp"))
 	}
 
 	return jsonrpc.Success(map[string]interface{}{
