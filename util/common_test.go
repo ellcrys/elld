@@ -394,6 +394,20 @@ var _ = Describe("Common", func() {
 			result = ToJSFriendlyMap(t6)
 			Expect(result).To(Equal(map[string]interface{}{"Num": "0x000000000000000a"}))
 		})
+
+		Context("With ignoreField specified", func() {
+			t1 := test2{Age: 30, Others: test1{Desc: []byte("i love games")}}
+
+			BeforeEach(func() {
+				result := ToJSFriendlyMap(t1)
+				Expect(result.(map[string]interface{})["Age"]).To(Equal("0x1e"))
+			})
+
+			It("should not modify field", func() {
+				result := ToJSFriendlyMap(t1, "Age")
+				Expect(result.(map[string]interface{})["Age"]).To(Equal(30))
+			})
+		})
 	})
 
 })

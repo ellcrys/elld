@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/fatih/color"
 
 	"github.com/mitchellh/mapstructure"
@@ -312,7 +314,8 @@ func (n BlockNonce) MarshalText() string {
 // selected types to values that are compatible in the
 // JS environment. It returns a map and will panic
 // if obj is not a map/struct.
-func ToJSFriendlyMap(obj interface{}) interface{} {
+// Set fieldToIgnore to ignore matching fields
+func ToJSFriendlyMap(obj interface{}, fieldToIgnore ...string) interface{} {
 
 	if obj == nil {
 		return obj
@@ -330,6 +333,9 @@ func ToJSFriendlyMap(obj interface{}) interface{} {
 	}
 
 	for k, v := range m {
+		if funk.InStrings(fieldToIgnore, k) {
+			continue
+		}
 		switch _v := v.(type) {
 		case BlockNonce:
 			m[k] = ToHex(_v[:])
