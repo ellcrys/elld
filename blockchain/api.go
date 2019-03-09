@@ -436,7 +436,7 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
 		},
-		"getMinedBlock": {
+		"getMinedBlocks": {
 			Namespace:   types.NamespaceState,
 			Description: "Get blocks mined on this node",
 			Func:        b.apiGetMinedBlocks,
