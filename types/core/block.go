@@ -179,7 +179,7 @@ func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return nil
 }
 
-// MinedBlock briefly describes a mined block. 
+// MinedBlock briefly describes a mined block.
 // It is used as the data structure for indexing
 // blocks mined on a node.
 type MinedBlock struct {

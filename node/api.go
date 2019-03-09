@@ -389,8 +389,8 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 
 func (n *Node) apiBroadcastPeers(arg interface{}) *jsonrpc.Response {
 	var result = map[string][]string{
-		"broadcasters":       []string{},
-		"randomBroadcasters": []string{},
+		"broadcasters":       {},
+		"randomBroadcasters": {},
 	}
 	for _, p := range n.Gossip().GetBroadcasters().Peers() {
 		result["broadcasters"] = append(result["broadcasters"],
