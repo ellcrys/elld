@@ -34,7 +34,7 @@ func (n *Node) apiBasicPublicNodeInfo(arg interface{}) *jsonrpc.Response {
 		return jsonrpc.Error(types.ErrCodeBlockQuery, err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
+	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
 		"name":                    n.Name,
 		"id":                      n.ID().Pretty(),
 		"mode":                    mode,

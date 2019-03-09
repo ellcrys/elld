@@ -310,12 +310,12 @@ func (n BlockNonce) MarshalText() string {
 	return ToHex(n[:])
 }
 
-// ToJSFriendlyMap takes a struct and converts
+// EncodeForJS takes a struct and converts
 // selected types to values that are compatible in the
 // JS environment. It returns a map and will panic
 // if obj is not a map/struct.
 // Set fieldToIgnore to ignore matching fields
-func ToJSFriendlyMap(obj interface{}, fieldToIgnore ...string) interface{} {
+func EncodeForJS(obj interface{}, fieldToIgnore ...string) interface{} {
 
 	if obj == nil {
 		return obj
@@ -344,10 +344,10 @@ func ToJSFriendlyMap(obj interface{}, fieldToIgnore ...string) interface{} {
 		case *big.Int, int8, int, int64, uint64, []byte:
 			m[k] = fmt.Sprintf("0x%x", _v)
 		case map[string]interface{}:
-			m[k] = ToJSFriendlyMap(_v)
+			m[k] = EncodeForJS(_v)
 		case []interface{}:
 			for i, item := range _v {
-				_v[i] = ToJSFriendlyMap(item)
+				_v[i] = EncodeForJS(item)
 			}
 		}
 	}
