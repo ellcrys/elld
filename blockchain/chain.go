@@ -88,7 +88,7 @@ func (c *Chain) GetID() util.String {
 }
 
 // ChainReader gets a chain reader for this chain
-func (c *Chain) ChainReader() types.ChainReader {
+func (c *Chain) ChainReader() types.ChainReaderFactory {
 	return NewChainReader(c)
 }
 
@@ -422,47 +422,143 @@ func (c *Chain) String() string {
 	return fmt.Sprintf("<chain id=%s parent=%s>", c.id, parent)
 }
 
+// PutMinedBlock records a block mined by the block creator
+func (c *Chain) PutMinedBlock(block types.Block, opts ...types.CallOp) error {
+	return c.store.PutMinedBlock(block, opts...)
+}
+
+// GetMinedBlocks fetches mined blocks. It allows the
+// query to be adjusted using values in args.
+// - args.Limit forces only a limited number of
+//   results to be returned.
+// - args.CreatorPubKey filters out results that do
+//   not match a given public key.
+// - args.LastHash allows only records after the given
+//   hash to be returned. Useful for pagination.
+// It returns a slice of mined blocks and also a boolean
+// that indicates whether there are more records.
+func (c *Chain) GetMinedBlocks(args *core.ArgGetMinedBlock, opts ...types.CallOp) ([]*core.MinedBlock, bool, error) {
+
+	txOp := common.GetTxOp(c.store.DB(), opts...)
+	if txOp.Closed() {
+		return nil, false, leveldb.ErrClosed
+	}
+
+	if args.Limit == 0 {
+		args.Limit = 25
+	}
+
+	var result []*core.MinedBlock
+
+	var err error
+	var hasMore bool
+	var skip = false
+
+	// When last hash is set, we need to indicate
+	// that we want to skip all records until we
+	// find a record matching the `last hash`
+	if args.LastHash != "" {
+		skip = true
+	}
+
+	key := common.MakeQueryKeyMinedBlocks(c.id.Bytes())
+	txOp.Tx.Iterate(key, false, func(kv *elldb.KVObject) bool {
+
+		// If we already reached our limit, we are
+		// certain that that there is at least one
+		// object left to be read so we set hasMore
+		// to true, and return with the result.
+		if len(result) == args.Limit {
+			hasMore = true
+			return true
+		}
+
+		// Convert the object to core.MinedBlock
+		var res core.MinedBlock
+		if err = kv.Scan(&res); err != nil {
+			return true
+		}
+
+		// When LastHash is set and the current result
+		// hash matches, we need to stop skipping and start
+		// collecting results, starting from the next object
+		if args.LastHash != "" && res.Hash.HexStr() == args.LastHash {
+			skip = false
+			return false
+		}
+
+		// If skip is enabled, we immediately move to
+		// the next object
+		if skip {
+			return false
+		}
+
+		// When CreatorPubKey is specified in the arguments,
+		// we have to ignore this object if its creator public
+		// key does not match.
+		if args.CreatorPubKey != "" &&
+			res.CreatorPubKey.String() != args.CreatorPubKey {
+			return false
+		}
+
+		result = append(result, &res)
+
+		return false
+	})
+
+	return result, hasMore, txOp.Finishable().Discard()
+}
+
 // removeBlock deletes a block and all objects
-// associated to it such as transactions, accounts etc.
-func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
+// associated with it such as transactions, accounts etc.
+// It returns the deleted block.
+func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 
 	var err error
 	txOp := common.GetTxOp(c.store.DB(), opts...)
 	if txOp.Closed() {
-		return leveldb.ErrClosed
+		return nil, leveldb.ErrClosed
 	}
 	txOp.CanFinish = false
 
-	// get the block.
+	// Get the block.
 	// Returns ErrBlockNotFound if block does not exist
 	block, err := c.store.GetBlock(number, txOp)
 	if err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return err
+		return nil, err
 	}
 
-	// delete the block
+	// Delete the block
 	blockKey := common.MakeKeyBlock(c.id.Bytes(), number)
 	if err = c.store.Delete(blockKey, txOp); err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete block: %s", err)
+		return nil, fmt.Errorf("failed to delete block: %s", err)
 	}
 
-	// delete the block's hash pointer
+	// Delete the block's hash pointer
 	pointerKey := common.MakeKeyBlockHash(c.id.Bytes(), block.GetHash().Hex())
 	if err = c.store.Delete(pointerKey, txOp); err != nil {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete block's hash pointer: %s", err)
+		return nil, fmt.Errorf("failed to delete block's hash pointer: %s", err)
 	}
 
-	// find account objects associated to this block
-	// in the chain and and delete them
+	// Delete the mined block object
+	minedBlockKey := common.MakeKeyMinedBlock(c.id.Bytes(), number)
+	if err = c.store.Delete(minedBlockKey, txOp); err != nil {
+		if len(opts) == 0 {
+			txOp.Finishable().Rollback()
+		}
+		return nil, fmt.Errorf("failed to delete mined block record: %s", err)
+	}
+
+	// Find accounts associated to with the block and delete them
 	err = nil
 	accountsKey := common.MakeQueryKeyAccounts(c.id.Bytes())
 	txOp.Tx.Iterate(accountsKey, false, func(kv *elldb.KVObject) bool {
@@ -478,11 +574,10 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete accounts: %s", err)
+		return nil, fmt.Errorf("failed to delete accounts: %s", err)
 	}
 
-	// find transactions objects associated to this block
-	// in the chain and delete them
+	// Find indexed transactions associated with this block and delete them
 	err = nil
 	txsKey := common.MakeQueryKeyTransactions(c.id.Bytes())
 	txOp.Tx.Iterate(txsKey, false, func(kv *elldb.KVObject) bool {
@@ -498,37 +593,37 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) error {
 		if len(opts) == 0 {
 			txOp.Finishable().Rollback()
 		}
-		return fmt.Errorf("failed to delete transactions: %s", err)
+		return nil, fmt.Errorf("failed to delete transactions: %s", err)
 	}
 
 	if len(opts) == 0 {
-		return txOp.Finishable().Commit()
+		return block, txOp.Finishable().Commit()
 	}
 
-	return nil
+	return block, nil
 }
 
-// ChainRead provides read-only access to
+// ChainReader provides read-only access to
 // objects belonging to a single chain.
-type ChainRead struct {
+type ChainReader struct {
 	ch *Chain
 }
 
 // NewChainReader creates a ChainReader object
-func NewChainReader(ch *Chain) *ChainRead {
-	return &ChainRead{
+func NewChainReader(ch *Chain) *ChainReader {
+	return &ChainReader{
 		ch: ch,
 	}
 }
 
 // GetID gets the chain ID
-func (r *ChainRead) GetID() util.String {
+func (r *ChainReader) GetID() util.String {
 	return r.ch.GetID()
 }
 
 // GetParent returns a chain reader to the parent chain.
 // Returns nil if chain has no parent.
-func (r *ChainRead) GetParent() types.ChainReader {
+func (r *ChainReader) GetParent() types.ChainReaderFactory {
 	if ch := r.ch.GetParent(); ch != nil {
 		return ch.ChainReader()
 	}
@@ -536,40 +631,40 @@ func (r *ChainRead) GetParent() types.ChainReader {
 }
 
 // GetParentBlock returns the parent block
-func (r *ChainRead) GetParentBlock() types.Block {
+func (r *ChainReader) GetParentBlock() types.Block {
 	return r.ch.GetParentBlock()
 }
 
 // GetRoot fetches the root block of this chain. If the chain
 // has more than one parents/ancestors, it will traverse
 // the parents to return the root parent block.
-func (r *ChainRead) GetRoot() types.Block {
+func (r *ChainReader) GetRoot() types.Block {
 	return r.ch.GetRoot()
 }
 
 // GetBlock finds and returns a block associated with chainID.
 // When 0 is passed, it should return the block with the highest number
-func (r *ChainRead) GetBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
+func (r *ChainReader) GetBlock(number uint64, opts ...types.CallOp) (types.Block, error) {
 	return r.ch.GetBlock(number, opts...)
 }
 
 // GetBlockByHash finds and returns a block associated with chainID.
-func (r *ChainRead) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
+func (r *ChainReader) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
 	return r.ch.GetStore().GetBlockByHash(hash, opts...)
 }
 
 // GetHeader gets the header of a block.
 // When 0 is passed, it should return the header of the block with the highest number
-func (r *ChainRead) GetHeader(number uint64, opts ...types.CallOp) (types.Header, error) {
+func (r *ChainReader) GetHeader(number uint64, opts ...types.CallOp) (types.Header, error) {
 	return r.ch.GetStore().GetHeader(number, opts...)
 }
 
 // GetHeaderByHash finds and returns the header of a block matching hash
-func (r *ChainRead) GetHeaderByHash(hash util.Hash, opts ...types.CallOp) (types.Header, error) {
+func (r *ChainReader) GetHeaderByHash(hash util.Hash, opts ...types.CallOp) (types.Header, error) {
 	return r.ch.GetStore().GetHeaderByHash(hash, opts...)
 }
 
 // Current gets the current block at the tip of the chain
-func (r *ChainRead) Current(opts ...types.CallOp) (types.Block, error) {
+func (r *ChainReader) Current(opts ...types.CallOp) (types.Block, error) {
 	return r.ch.GetStore().Current(opts...)
 }

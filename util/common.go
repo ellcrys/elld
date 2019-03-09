@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/fatih/color"
 
 	"github.com/mitchellh/mapstructure"
@@ -308,11 +310,12 @@ func (n BlockNonce) MarshalText() string {
 	return ToHex(n[:])
 }
 
-// ToJSFriendlyMap takes a struct and converts
+// EncodeForJS takes a struct and converts
 // selected types to values that are compatible in the
 // JS environment. It returns a map and will panic
 // if obj is not a map/struct.
-func ToJSFriendlyMap(obj interface{}) interface{} {
+// Set fieldToIgnore to ignore matching fields
+func EncodeForJS(obj interface{}, fieldToIgnore ...string) interface{} {
 
 	if obj == nil {
 		return obj
@@ -330,6 +333,9 @@ func ToJSFriendlyMap(obj interface{}) interface{} {
 	}
 
 	for k, v := range m {
+		if funk.InStrings(fieldToIgnore, k) {
+			continue
+		}
 		switch _v := v.(type) {
 		case BlockNonce:
 			m[k] = ToHex(_v[:])
@@ -338,10 +344,10 @@ func ToJSFriendlyMap(obj interface{}) interface{} {
 		case *big.Int, int8, int, int64, uint64, []byte:
 			m[k] = fmt.Sprintf("0x%x", _v)
 		case map[string]interface{}:
-			m[k] = ToJSFriendlyMap(_v)
+			m[k] = EncodeForJS(_v)
 		case []interface{}:
 			for i, item := range _v {
-				_v[i] = ToJSFriendlyMap(item)
+				_v[i] = EncodeForJS(item)
 			}
 		}
 	}

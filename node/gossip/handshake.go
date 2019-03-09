@@ -12,8 +12,7 @@ import (
 )
 
 // createHandshakeMsg creates an Handshake message
-func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReader,
-	slog logger.Logger) (*core.Handshake, error) {
+func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReaderFactory, slog logger.Logger) (*core.Handshake, error) {
 
 	// determine the best block and the total
 	// difficulty of the block. Add these data to
@@ -37,7 +36,6 @@ func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReader,
 func (g *Manager) SendHandshake(rp core.Engine) error {
 
 	rpIDShort := rp.ShortID()
-
 	s, c, err := g.NewStream(rp, config.Versions.Handshake)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[SendHandshake] Failed to connect to peer")
@@ -49,6 +47,7 @@ func (g *Manager) SendHandshake(rp core.Engine) error {
 
 	nodeMsg, err := createHandshakeMsg(&core.Handshake{
 		Version: g.engine.GetCfg().VersionInfo.BuildVersion,
+		Name:    g.engine.GetName(),
 	}, g.GetBlockchain().ChainReader(), g.log)
 	if err != nil {
 		return err
@@ -66,6 +65,8 @@ func (g *Manager) SendHandshake(rp core.Engine) error {
 	if err := ReadStream(s, resp); err != nil {
 		return g.logErr(err, rp, "[SendHandshake] Failed to read from stream")
 	}
+
+	rp.SetName(resp.Name)
 
 	// Add or update peer 'last seen' timestamp
 	g.PM().AddOrUpdateNode(rp)
@@ -100,10 +101,12 @@ func (g *Manager) OnHandshake(s net.Stream, rp core.Engine) error {
 	g.log.Info("Received handshake", "PeerID", rp.ShortID(),
 		"ClientVersion", msg.Version,
 		"Height", msg.BestBlockNumber,
-		"TotalDifficulty", msg.BestBlockTotalDifficulty)
+		"TotalDifficulty", msg.BestBlockTotalDifficulty,
+		"PeerName", msg.Name)
 
 	nodeMsg, err := createHandshakeMsg(&core.Handshake{
 		Version: g.engine.GetCfg().VersionInfo.BuildVersion,
+		Name:    g.engine.GetName(),
 	}, g.GetBlockchain().ChainReader(), g.log)
 	if err != nil {
 		return err
@@ -113,6 +116,8 @@ func (g *Manager) OnHandshake(s net.Stream, rp core.Engine) error {
 	if err := WriteStream(s, nodeMsg); err != nil {
 		return g.logErr(err, rp, "[OnHandshake] Failed to send response")
 	}
+
+	rp.SetName(msg.Name)
 
 	// Set new peer as acquainted so that it will
 	// be allowed to send future messages
@@ -124,10 +129,10 @@ func (g *Manager) OnHandshake(s net.Stream, rp core.Engine) error {
 	// Set the peer as an inbound connection
 	g.PM().GetPeer(rp.StringID()).SetInbound(true)
 
-	g.log.Info("Responded to handshake with chain state", "PeerID",
-		rp.ShortID(), "ClientVersion",
-		nodeMsg.Version, "TotalDifficulty",
-		nodeMsg.BestBlockTotalDifficulty)
+	g.log.Info("Responded to handshake with chain state",
+		"PeerID", rp.ShortID(),
+		"ClientVersion", nodeMsg.Version,
+		"TotalDifficulty", nodeMsg.BestBlockTotalDifficulty)
 
 	// Broadcast the remote peer's chain information.
 	go g.engine.GetEventEmitter().Emit(core.EventPeerChainInfo, &types.SyncPeerChainInfo{

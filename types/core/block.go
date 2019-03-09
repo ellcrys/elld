@@ -179,6 +179,18 @@ func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return nil
 }
 
+// MinedBlock briefly describes a mined block.
+// It is used as the data structure for indexing
+// blocks mined on a node.
+type MinedBlock struct {
+	Number        uint64      `json:"number" msgpack:"number"`
+	Timestamp     int64       `json:"timestamp" msgpack:"timestamp"`
+	CreatorPubKey util.String `json:"creatorPubKey" msgpack:"creatorPubKey"`
+	TxCount       uint        `json:"txCount" msgpack:"txCount"`
+	TotalFees     string      `json:"totalFees" msgpack:"totalFees"`
+	Hash          util.Hash   `json:"hash" msgpack:"hash"`
+}
+
 // Block represents a block
 type Block struct {
 	Header       *Header        `json:"header" msgpack:"header"`

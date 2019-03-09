@@ -6,6 +6,7 @@ import (
 
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types"
@@ -31,6 +32,7 @@ var _ = Describe("ChainTraverser", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	BeforeEach(func() {

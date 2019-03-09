@@ -221,12 +221,14 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 
 		nsObj[ns][mName] = func(args ...interface{}) interface{} {
 
-			// parse arguments.
-			// App RPC functions can have zero or one argument
+			// Parse arguments.
+			// When a single argument is provided, it is passed
+			// as the sole/only argument. If there are more than one
+			// the entire argument slide is passed as one argument.
 			var arg interface{}
 			if len(args) == 1 {
 				arg = args[0]
-			} else {
+			} else if len(args) > 1 {
 				arg = args
 			}
 

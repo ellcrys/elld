@@ -349,7 +349,7 @@ var _ = Describe("Common", func() {
 				Name: "fred",
 				Desc: []byte("i love games"),
 			}
-			result := ToJSFriendlyMap(t1)
+			result := EncodeForJS(t1)
 			Expect(result).To(Equal(map[string]interface{}{"Name": "fred",
 				"Desc": "0x69206c6f76652067616d6573",
 			}))
@@ -358,7 +358,7 @@ var _ = Describe("Common", func() {
 				Age:    20,
 				Others: t1,
 			}
-			result = ToJSFriendlyMap(t2)
+			result = EncodeForJS(t2)
 			Expect(result.(map[string]interface{})["Others"]).To(Equal(map[string]interface{}{
 				"Name": "fred",
 				"Desc": "0x69206c6f76652067616d6573",
@@ -369,7 +369,7 @@ var _ = Describe("Common", func() {
 				Others: t1,
 				More:   []interface{}{t1},
 			}
-			result = ToJSFriendlyMap(t3)
+			result = EncodeForJS(t3)
 			Expect(result.(map[string]interface{})["More"]).To(Equal([]interface{}{
 				map[string]interface{}{"Name": "fred",
 					"Desc": "0x69206c6f76652067616d6573",
@@ -379,20 +379,34 @@ var _ = Describe("Common", func() {
 			t4 := test3{
 				Sig: StrToHash("fred"),
 			}
-			result = ToJSFriendlyMap(t4)
+			result = EncodeForJS(t4)
 			Expect(result).To(Equal(map[string]interface{}{"Sig": "0x6672656400000000000000000000000000000000000000000000000000000000"}))
 
 			t5 := test4{
 				Num: new(big.Int).SetInt64(10),
 			}
-			result = ToJSFriendlyMap(t5)
+			result = EncodeForJS(t5)
 			Expect(result).To(Equal(map[string]interface{}{"Num": "0xa"}))
 
 			t6 := test5{
 				Num: EncodeNonce(10),
 			}
-			result = ToJSFriendlyMap(t6)
+			result = EncodeForJS(t6)
 			Expect(result).To(Equal(map[string]interface{}{"Num": "0x000000000000000a"}))
+		})
+
+		Context("With ignoreField specified", func() {
+			t1 := test2{Age: 30, Others: test1{Desc: []byte("i love games")}}
+
+			BeforeEach(func() {
+				result := EncodeForJS(t1)
+				Expect(result.(map[string]interface{})["Age"]).To(Equal("0x1e"))
+			})
+
+			It("should not modify field", func() {
+				result := EncodeForJS(t1, "Age")
+				Expect(result.(map[string]interface{})["Age"]).To(Equal(30))
+			})
 		})
 	})
 

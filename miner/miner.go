@@ -24,6 +24,11 @@ import (
 const (
 	// EventWorkerFoundBlock indicates that a worker found a block
 	EventWorkerFoundBlock = "event.workerFoundBlock"
+
+	// HashrateMAWindow is the moving average window
+	// within which ticks are collected to calculate
+	// the average hashrate
+	HashrateMAWindow = 5 * time.Second
 )
 
 var (
@@ -98,7 +103,7 @@ func NewMiner(mineKey *crypto.Key, blockMaker types.BlockMaker,
 		iEvent:     &emitter.Emitter{},
 		minerKey:   mineKey,
 		blakimoto:  blakimoto.ConfiguredBlakimoto(blakimoto.Mode(cfg.Miner.Mode), log),
-		hashrate:   tick.NewMovingAverage(5 * time.Second),
+		hashrate:   tick.NewMovingAverage(HashrateMAWindow),
 		done:       make(chan bool),
 		processMtx: &sync.Mutex{},
 	}
@@ -329,6 +334,7 @@ func (m *Miner) Stop() {
 	close(m.done)
 	m.mining = false
 	m.stopped = true
+	m.hashrate = tick.NewMovingAverage(HashrateMAWindow)
 	m.Unlock()
 
 	m.stopWorkers()

@@ -23,5 +23,5 @@ func init() {
 
 func TestBlockchainSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Books Suite")
+	RunSpecs(t, "Blockchain Suite")
 }

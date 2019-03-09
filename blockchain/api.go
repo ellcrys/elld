@@ -3,6 +3,8 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/mitchellh/mapstructure"
+
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
@@ -38,7 +40,7 @@ func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
 			ch["length"] = tip.GetNumber() - parent.GetNumber()
 		}
 
-		result = append(result, util.ToJSFriendlyMap(ch))
+		result = append(result, util.EncodeForJS(ch))
 	}
 
 	return jsonrpc.Success(result)
@@ -69,7 +71,40 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(block))
+	return jsonrpc.Success(util.EncodeForJS(block))
+}
+
+// apiGetMinedBlocks fetches blocks mined by this node
+func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
+	b.chainLock.RLock()
+	defer b.chainLock.RUnlock()
+
+	var opt core.ArgGetMinedBlock
+	if arg != nil {
+		decoded, ok := arg.(map[string]interface{})
+		if !ok {
+			return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+				rpc.ErrMethodArgType("Map").Error(), nil)
+		} else {
+			mapstructure.Decode(decoded, &opt)
+		}
+	}
+
+	result, hasMore, err := b.bestChain.GetMinedBlocks(&opt)
+	if err != nil {
+		return jsonrpc.Error(types.ErrCodeQueryFailed,
+			err.Error(), nil)
+	}
+
+	var friendlyResult = []interface{}{}
+	for _, r := range result {
+		friendlyResult = append(friendlyResult, util.EncodeForJS(r, "timestamp"))
+	}
+
+	return jsonrpc.Success(map[string]interface{}{
+		"blocks":  friendlyResult,
+		"hasMore": hasMore,
+	})
 }
 
 // apiGetTipBlock fetches the highest block on the main chain
@@ -91,7 +126,7 @@ func (b *Blockchain) apiGetTipBlock(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(block))
+	return jsonrpc.Success(util.EncodeForJS(block))
 }
 
 // apiGetBlockByHash fetches a block by hash
@@ -124,7 +159,7 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(block))
+	return jsonrpc.Success(util.EncodeForJS(block))
 }
 
 // apiGetOrphans fetches all orphan blocks
@@ -134,7 +169,7 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 	var orphans = []interface{}{}
 	for _, k := range b.orphanBlocks.Keys() {
 		orphans = append(orphans,
-			util.ToJSFriendlyMap(b.orphanBlocks.Peek(k)))
+			util.EncodeForJS(b.orphanBlocks.Peek(k)))
 	}
 	return jsonrpc.Success(orphans)
 }
@@ -151,7 +186,7 @@ func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
+	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
 		"id":              b.bestChain.id,
 		"timestamp":       b.bestChain.info.GetTimestamp(),
 		"height":          tip.GetNumber(),
@@ -241,7 +276,7 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 			err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(tx))
+	return jsonrpc.Success(util.EncodeForJS(tx))
 }
 
 // apiGetTransactionStatus gets the status of
@@ -314,7 +349,7 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 
 	tx := b.txPool.GetByHash(txHash)
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(tx))
+	return jsonrpc.Success(util.EncodeForJS(tx))
 
 }
 
@@ -334,7 +369,7 @@ func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
+	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
 		"difficulty":      tip.GetDifficulty(),
 		"totalDifficulty": tip.GetTotalDifficulty(),
 	}))
@@ -400,6 +435,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceState,
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
+		},
+		"getMinedBlocks": {
+			Namespace:   types.NamespaceState,
+			Description: "Get blocks mined on this node",
+			Func:        b.apiGetMinedBlocks,
 		},
 		"getOrphans": {
 			Namespace:   types.NamespaceState,

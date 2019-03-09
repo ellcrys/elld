@@ -47,6 +47,7 @@ var _ = Describe("BlockValidator", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
 
 		bkm = blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log)
 	})
