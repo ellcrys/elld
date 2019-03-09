@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 
+	"github.com/shopspring/decimal"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -136,6 +137,43 @@ func (s *ChainStore) PutTransactions(txs []types.Transaction, blockNumber uint64
 	if err := txOp.Tx.Put(kvObjs); err != nil {
 		txOp.Rollback()
 		return err
+	}
+
+	return txOp.Commit()
+}
+
+// PutMinedBlock stores a brief information about a
+// block that was created by the blockchain's coinbase key
+func (s *ChainStore) PutMinedBlock(block types.Block, opts ...types.CallOp) error {
+	var txOp = common.GetTxOp(s.db, opts...)
+	if txOp.Closed() {
+		return leveldb.ErrClosed
+	}
+
+	mb := &core.MinedBlock{
+		Number:        block.GetNumber(),
+		CreatorPubKey: block.GetHeader().GetCreatorPubKey(),
+		Timestamp:     block.GetHeader().GetTimestamp(),
+		TxCount:       uint(len(block.GetTransactions())),
+		Hash:          block.GetHash(),
+	}
+
+	// Calculate total fees
+	totalFee := decimal.New(0, 0)
+	for _, tx := range block.GetTransactions() {
+		if tx.GetType() == core.TxTypeAlloc {
+			continue
+		}
+		totalFee.Add(tx.GetFee().Decimal())
+	}
+	mb.TotalFees = totalFee.String()
+	value := util.ObjectToBytes(mb)
+
+	key := common.MakeKeyMinedBlock(s.chainID.Bytes(), block.GetNumber())
+	obj := elldb.NewKVObject(key, value)
+	if err := txOp.Tx.Put([]*elldb.KVObject{obj}); err != nil {
+		txOp.Rollback()
+		return fmt.Errorf("failed to put mined block index: %s", err)
 	}
 
 	return txOp.Commit()

@@ -273,7 +273,7 @@ func (b *Blockchain) getReOrgs(opts ...types.CallOp) []*ReOrgInfo {
 // Returns the re-organized chain or error.
 //
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) reOrg(branch *Chain, opts ...types.CallOp) (*Chain, error) {
+func (b *Blockchain) reOrg(proposedBranch *Chain, opts ...types.CallOp) (*Chain, error) {
 
 	now := time.Now()
 	txOp := common.GetTxOp(b.db, opts...)
@@ -287,65 +287,70 @@ func (b *Blockchain) reOrg(branch *Chain, opts ...types.CallOp) (*Chain, error) 
 		txOp.CanFinish = false
 	}
 
-	// get the tip of the current best chain
+	// Get the tip of the current best branch
 	tip, err := b.bestChain.Current(txOp)
 	if err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to get best chain tip: %s", err)
 	}
 
-	// get the branch chain tip
-	sideTip, err := branch.Current(txOp)
+	// Get the tip block of the proposed branch
+	sideTip, err := proposedBranch.Current(txOp)
 	if err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to get branch chain tip: %s", err)
 	}
 
-	// get the parent block of the branch chain
-	parentBlock := branch.GetParentBlock()
+	// Get the parent block of the proposed branch
+	parentBlock := proposedBranch.GetParentBlock()
 	if parentBlock == nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("parent block not set on branch")
 	}
 
-	// delete blocks from the current best chain,
-	// starting from branch chain's parent block + 1
+	// Delete blocks of the current best chain,
+	// starting from proposed branch parent block + 1.
+	// Emit EventReOrgBlockRemoved when deletion succeeded
 	nextBlockNumber := parentBlock.GetNumber() + 1
 	for nextBlockNumber <= tip.GetNumber() {
-		b.bestChain.removeBlock(nextBlockNumber, txOp)
+		_, err := b.bestChain.removeBlock(nextBlockNumber, txOp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete block from current chain: %s", err)
+		}
 		nextBlockNumber++
 	}
 
-	// At this point the blocks that are not in the
-	// branch chain have been removed from the main chain.
-	// Now, we will re-process the blocks in the branch
-	// targeted for addition in the current best chain
+	// At this point, the blocks that are not in the
+	// proposed branch have been removed from the main chain.
+	// Now, we will re-process the blocks in the proposed branch
+	// in attempt to add them to the main chain.
 	nextBlockNumber = parentBlock.GetNumber() + 1
 	for nextBlockNumber <= sideTip.GetNumber() {
 
-		// get the branch chain block
-		proposedBlock, err := branch.GetBlock(nextBlockNumber, txOp)
+		// Get a block from the proposed branch at height parent_block + 1
+		proposedBlock, err := proposedBranch.GetBlock(nextBlockNumber, txOp)
 		if err != nil {
 			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("failed to get proposed block: %s", err)
 		}
 
-		// attempt to process and append to
-		// the current main chain
+		// Attempt to process and append to the current main chain
 		if _, err := b.maybeAcceptBlock(proposedBlock, b.bestChain, txOp); err != nil {
 			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("proposed block was not accepted: %s", err)
 		}
 
+		// Move to the next block in the chain (if any)
 		nextBlockNumber++
 	}
 
-	// store a record of this re-org
-	if err := b.recordReOrg(now.Unix(), branch, txOp); err != nil {
+	// Store a record of this re-org
+	if err := b.recordReOrg(now.Unix(), proposedBranch, txOp); err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to store re-org record")
 	}
 
+	// Commit the re-org changes
 	if err := txOp.SetFinishable(!hasInjectTx).Commit(); err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.reOrgActive = false

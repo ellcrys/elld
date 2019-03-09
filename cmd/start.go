@@ -224,6 +224,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	bChain := blockchain.New(n.GetTxPool(), cfg, log)
 	bChain.SetDB(n.DB())
 	bChain.SetEventEmitter(event)
+	bChain.SetCoinbase(coinbase)
 
 	// Initialize the miner, rpc server
 	miner := miner.NewMiner(coinbase, bChain, event, cfg, log)

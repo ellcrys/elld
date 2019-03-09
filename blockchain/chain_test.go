@@ -27,7 +27,7 @@ var _ = Describe("Chain", func() {
 	var db elldb.DB
 	var genesisBlock types.Block
 	var genesisChain *Chain
-	var sender, receiver *crypto.Key
+	var coinbase, sender, receiver *crypto.Key
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -40,8 +40,10 @@ var _ = Describe("Chain", func() {
 		sender = crypto.NewKeyFromIntSeed(1)
 		receiver = crypto.NewKeyFromIntSeed(2)
 
+		coinbase = sender
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
+		bc.SetCoinbase(coinbase)
 	})
 
 	BeforeEach(func() {
@@ -132,8 +134,8 @@ var _ = Describe("Chain", func() {
 		})
 
 		It("should return nil if chains has no parent", func() {
-			// root := genesisChain.GetRoot()
-			// Expect(root).To(BeNil())
+			root := genesisChain.GetRoot()
+			Expect(root).To(BeNil())
 		})
 
 		It("successfully get the root of chain C as block 2 of genesis", func() {
@@ -352,23 +354,50 @@ var _ = Describe("Chain", func() {
 
 		var block2 types.Block
 
-		BeforeEach(func() {
-			block2 = MakeBlock(bc, genesisChain, sender, receiver)
-			_, err := bc.ProcessBlock(block2)
-			Expect(err).To(BeNil())
-		})
-
 		It("should return ErrBlockNotFound if block does not exist", func() {
-			err := genesisChain.removeBlock(100)
+			_, err := genesisChain.removeBlock(100)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(core.ErrBlockNotFound))
+		})
+
+		Context("mined block must be deleted", func() {
+			When("block creator and coinbase are the same", func() {
+				BeforeEach(func() {
+					block2 = MakeBlock(bc, genesisChain, coinbase, receiver)
+					_, err := bc.ProcessBlock(block2)
+					Expect(err).To(BeNil())
+
+					minedBlockKey := common.MakeKeyMinedBlock(genesisChain.id.Bytes(), block2.GetNumber())
+					result := db.GetByPrefix(minedBlockKey)
+					Expect(result).To(HaveLen(1))
+				})
+
+				BeforeEach(func() {
+					deleted, err := genesisChain.removeBlock(block2.GetNumber())
+					Expect(err).To(BeNil())
+					Expect(deleted.GetHash()).To(Equal(block2.GetHash()))
+				})
+
+				Specify("that no the mined block object must no longer exist", func() {
+					blockKey := common.MakeKeyMinedBlock(genesisChain.id.Bytes(), block2.GetNumber())
+					result := db.GetByPrefix(blockKey)
+					Expect(result).To(HaveLen(0))
+				})
+			})
 		})
 
 		Context("when block is successfully deleted", func() {
 
 			BeforeEach(func() {
-				err := genesisChain.removeBlock(block2.GetNumber())
+				block2 = MakeBlock(bc, genesisChain, sender, receiver)
+				_, err := bc.ProcessBlock(block2)
 				Expect(err).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				deleted, err := genesisChain.removeBlock(block2.GetNumber())
+				Expect(err).To(BeNil())
+				Expect(deleted.GetHash()).To(Equal(block2.GetHash()))
 			})
 
 			Specify("no block with the deleted block number must exist", func() {
@@ -399,6 +428,157 @@ var _ = Describe("Chain", func() {
 				blockHashPointer := common.MakeKeyBlockHash(genesisChain.id.Bytes(), block2.GetHash().Hex())
 				result := db.GetByPrefix(blockHashPointer)
 				Expect(result).To(BeEmpty())
+			})
+		})
+	})
+
+	Describe(".GetMinedBlocks", func() {
+		When("there is only 1 mined blocks", func() {
+			var chain *Chain
+
+			BeforeEach(func() {
+				chain = NewChain("c1", db, cfg, log)
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "1000",
+				})).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				block1 := MakeBlock(bc, chain, sender, receiver)
+				Expect(chain.store.PutMinedBlock(block1)).To(BeNil())
+			})
+
+			It("should fetch 1 blocks", func() {
+				result, _, err := chain.GetMinedBlocks(&core.ArgGetMinedBlock{})
+				Expect(err).To(BeNil())
+				Expect(result).To(HaveLen(1))
+			})
+		})
+
+		When("there are only 3 mined blocks", func() {
+			var chain *Chain
+			var block1, block2, block3 types.Block
+
+			BeforeEach(func() {
+				chain = NewChain("c1", db, cfg, log)
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "1000",
+				})).To(BeNil())
+
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(receiver.Addr()),
+					Balance: "100",
+				})).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				block1 = MakeBlock(bc, chain, sender, receiver)
+				Expect(chain.append(block1)).To(BeNil())
+				Expect(chain.store.PutMinedBlock(block1)).To(BeNil())
+
+				block2 = MakeBlock(bc, chain, receiver, receiver) // different creator pub key
+				Expect(chain.append(block2)).To(BeNil())
+				Expect(chain.store.PutMinedBlock(block2)).To(BeNil())
+
+				block3 = MakeBlock(bc, chain, sender, receiver)
+				Expect(chain.append(block3)).To(BeNil())
+				Expect(chain.store.PutMinedBlock(block3)).To(BeNil())
+			})
+
+			Context("argument: `limit`", func() {
+				When("limit is set to 1", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{Limit: 1})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 1 block that has the highest block number", func() {
+						Expect(result).To(HaveLen(1))
+						Expect(result[0].Number).To(Equal(block3.GetNumber()))
+					})
+
+					Specify("that hasMore is true", func() {
+						Expect(hasMore).To(BeTrue())
+					})
+				})
+
+				When("limit is set to 3", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{Limit: 3})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 3 blocks with the last one having the lowest block number", func() {
+						Expect(result).To(HaveLen(3))
+						Expect(result[0].Number).To(Equal(block3.GetNumber()))
+						Expect(result[2].Number).To(Equal(block1.GetNumber()))
+					})
+
+					Specify("that hasMore is false", func() {
+						Expect(hasMore).To(BeFalse())
+					})
+				})
+			})
+
+			Context("argument: `lastHash`", func() {
+				When("lastHash is set to block3.Hash", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{
+							LastHash: block3.GetHash().HexStr()})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 2 blocks (block 2 and 3)", func() {
+						Expect(result).To(HaveLen(2))
+						Expect(result[0].Number).To(Equal(block2.GetNumber()))
+						Expect(result[1].Number).To(Equal(block1.GetNumber()))
+					})
+
+					Specify("that hasMore is true", func() {
+						Expect(hasMore).To(BeFalse())
+					})
+				})
+			})
+
+			Context("argument: `creatorPubKey`", func() {
+				When("creatorPubKey is set to block1.Header.CreatorPubKey", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{
+							CreatorPubKey: block3.GetHeader().GetCreatorPubKey().String()})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 2 blocks (block 1 and 3)", func() {
+						Expect(result).To(HaveLen(2))
+						Expect(result[0].Number).To(Equal(block3.GetNumber()))
+						Expect(result[1].Number).To(Equal(block1.GetNumber()))
+					})
+
+					Specify("that hasMore is true", func() {
+						Expect(hasMore).To(BeFalse())
+					})
+				})
 			})
 		})
 	})

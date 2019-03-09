@@ -364,7 +364,7 @@ func (g *Manager) OnGetBlockHashes(s net.Stream, rp core.Engine) error {
 	var blockHashes = core.BlockHashes{}
 	var startBlock types.Block
 	var blockCursor uint64
-	var locatorChain types.ChainReader
+	var locatorChain types.ChainReaderFactory
 	var locatorHash util.Hash
 	var mainChain = g.GetBlockchain().GetBestChain()
 

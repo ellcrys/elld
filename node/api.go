@@ -34,7 +34,7 @@ func (n *Node) apiBasicPublicNodeInfo(arg interface{}) *jsonrpc.Response {
 		return jsonrpc.Error(types.ErrCodeBlockQuery, err.Error(), nil)
 	}
 
-	return jsonrpc.Success(util.ToJSFriendlyMap(map[string]interface{}{
+	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
 		"name":                    n.Name,
 		"id":                      n.ID().Pretty(),
 		"mode":                    mode,
@@ -389,8 +389,8 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 
 func (n *Node) apiBroadcastPeers(arg interface{}) *jsonrpc.Response {
 	var result = map[string][]string{
-		"broadcasters":       []string{},
-		"randomBroadcasters": []string{},
+		"broadcasters":       {},
+		"randomBroadcasters": {},
 	}
 	for _, p := range n.Gossip().GetBroadcasters().Peers() {
 		result["broadcasters"] = append(result["broadcasters"],
