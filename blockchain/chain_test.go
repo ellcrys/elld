@@ -432,6 +432,157 @@ var _ = Describe("Chain", func() {
 		})
 	})
 
+	Describe(".GetMinedBlocks", func() {
+		When("there is only 1 mined blocks", func() {
+			var chain *Chain
+
+			BeforeEach(func() {
+				chain = NewChain("c1", db, cfg, log)
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "1000",
+				})).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				block1 := MakeBlock(bc, chain, sender, receiver)
+				Expect(chain.store.PutMinedBlock(block1)).To(BeNil())
+			})
+
+			It("should fetch 1 blocks", func() {
+				result, _, err := chain.GetMinedBlocks(&core.ArgGetMinedBlock{})
+				Expect(err).To(BeNil())
+				Expect(result).To(HaveLen(1))
+			})
+		})
+
+		When("there are only 3 mined blocks", func() {
+			var chain *Chain
+			var block1, block2, block3 types.Block
+
+			BeforeEach(func() {
+				chain = NewChain("c1", db, cfg, log)
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "1000",
+				})).To(BeNil())
+
+				Expect(bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(receiver.Addr()),
+					Balance: "100",
+				})).To(BeNil())
+			})
+
+			BeforeEach(func() {
+				block1 = MakeBlock(bc, chain, sender, receiver)
+				Expect(chain.append(block1)).To(BeNil())
+				Expect(chain.store.PutMinedBlock(block1)).To(BeNil())
+
+				block2 = MakeBlock(bc, chain, receiver, receiver) // different creator pub key
+				Expect(chain.append(block2)).To(BeNil())
+				Expect(chain.store.PutMinedBlock(block2)).To(BeNil())
+
+				block3 = MakeBlock(bc, chain, sender, receiver)
+				Expect(chain.append(block3)).To(BeNil())
+				Expect(chain.store.PutMinedBlock(block3)).To(BeNil())
+			})
+
+			Context("argument: `limit`", func() {
+				When("limit is set to 1", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{Limit: 1})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 1 block that has the highest block number", func() {
+						Expect(result).To(HaveLen(1))
+						Expect(result[0].Number).To(Equal(block3.GetNumber()))
+					})
+
+					Specify("that hasMore is true", func() {
+						Expect(hasMore).To(BeTrue())
+					})
+				})
+
+				When("limit is set to 3", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{Limit: 3})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 3 blocks with the last one having the lowest block number", func() {
+						Expect(result).To(HaveLen(3))
+						Expect(result[0].Number).To(Equal(block3.GetNumber()))
+						Expect(result[2].Number).To(Equal(block1.GetNumber()))
+					})
+
+					Specify("that hasMore is false", func() {
+						Expect(hasMore).To(BeFalse())
+					})
+				})
+			})
+
+			Context("argument: `lastHash`", func() {
+				When("lastHash is set to block3.Hash", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{
+							LastHash: block3.GetHash().HexStr()})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 2 blocks (block 2 and 3)", func() {
+						Expect(result).To(HaveLen(2))
+						Expect(result[0].Number).To(Equal(block2.GetNumber()))
+						Expect(result[1].Number).To(Equal(block1.GetNumber()))
+					})
+
+					Specify("that hasMore is true", func() {
+						Expect(hasMore).To(BeFalse())
+					})
+				})
+			})
+
+			Context("argument: `creatorPubKey`", func() {
+				When("creatorPubKey is set to block1.Header.CreatorPubKey", func() {
+					var result []*core.MinedBlock
+					var hasMore bool
+
+					BeforeEach(func() {
+						var err error
+						result, hasMore, err = chain.GetMinedBlocks(&core.ArgGetMinedBlock{
+							CreatorPubKey: block3.GetHeader().GetCreatorPubKey().String()})
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 2 blocks (block 1 and 3)", func() {
+						Expect(result).To(HaveLen(2))
+						Expect(result[0].Number).To(Equal(block3.GetNumber()))
+						Expect(result[1].Number).To(Equal(block1.GetNumber()))
+					})
+
+					Specify("that hasMore is true", func() {
+						Expect(hasMore).To(BeFalse())
+					})
+				})
+			})
+		})
+	})
+
 	Describe(".save", func() {
 
 		Context("on successful save", func() {
