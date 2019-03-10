@@ -17,9 +17,10 @@ import (
 
 // BroadcastBlock sends a given block to remote peers.
 // The block is encapsulated in a BlockBody message.
-func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) error {
+func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) []error {
 
 	var sent int
+	var errs []error
 	broadcastPeers := g.PickBroadcastersFromPeers(g.broadcasters, remotePeers, 3)
 	for _, peer := range broadcastPeers.Peers() {
 
@@ -46,6 +47,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 
 		s, c, err := g.NewStream(peer, config.Versions.BlockInfo)
 		if err != nil {
+			errs = append(errs, err)
 			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect")
 			continue
 		}
@@ -55,6 +57,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		// If the peer accepts the block, we can send the full block.
 		blockInfo := core.BlockInfo{Hash: block.GetHash()}
 		if err := WriteStream(s, blockInfo); err != nil {
+			errs = append(errs, err)
 			s.Reset()
 			g.logErr(err, peer, "[BroadcastBlock] Failed to write to stream")
 			continue
@@ -63,6 +66,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		// Read BlockOk message to know whether to send the block
 		blockOk := &core.BlockOk{}
 		if err := ReadStream(s, blockOk); err != nil {
+			errs = append(errs, err)
 			s.Reset()
 			g.logErr(err, peer, "[BroadcastBlock] Failed to read BlockOk message")
 			continue
@@ -70,6 +74,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 
 		if !blockOk.Ok {
 			s.Close()
+			errs = append(errs, fmt.Errorf("block rejected by remote peer"))
 			g.log.Debug("Peer rejected our intent to broadcast a block",
 				"PeerID", peer.ShortID(),
 				"BlockNo", block.GetNumber(),
@@ -84,6 +89,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		// BlockBody handler
 		s2, c2, err := g.NewStream(peer, config.Versions.BlockBody)
 		if err != nil {
+			errs = append(errs, err)
 			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect to peer")
 			continue
 		}
@@ -92,6 +98,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		var blockBody core.BlockBody
 		copier.Copy(&blockBody, block)
 		if err := WriteStream(s2, blockBody); err != nil {
+			errs = append(errs, err)
 			s2.Reset()
 			g.logErr(err, peer, "[BroadcastBlock] Failed to write BlockBody")
 			continue
@@ -107,7 +114,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) e
 		"BlockHash", block.GetHash().SS(),
 		"NumPeersSentTo", sent)
 
-	return nil
+	return errs
 }
 
 // OnBlockInfo handles incoming BlockInfo messages.
@@ -120,6 +127,11 @@ func (g *Manager) OnBlockInfo(s net.Stream, rp core.Engine) error {
 	if err := ReadStream(s, msg); err != nil {
 		s.Reset()
 		return g.logErr(err, rp, "[OnBlockInfo] Failed to read BlockInfo message")
+	}
+
+	// If synchronization is disabled, do not accept the block
+	if g.engine.GetSyncMode().IsDisabled() {
+		goto blk_not_ok
 	}
 
 	// We can't accept a block we already know

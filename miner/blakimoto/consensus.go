@@ -34,7 +34,6 @@ import (
 var (
 	errZeroBlockTime     = errors.New("timestamp equals parent's")
 	errInvalidDifficulty = errors.New("non-positive difficulty")
-	errInvalidMixDigest  = errors.New("invalid mix digest")
 	errInvalidPoW        = errors.New("invalid proof-of-work")
 )
 

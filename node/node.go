@@ -58,7 +58,7 @@ type Node struct {
 	txsPool             *txpool.TxPool
 	rSeed               []byte              // random 256 bit seed to be used for seed random operations
 	db                  elldb.DB            // used to access and modify local database
-	signatory           *d_crypto.Key       // signatory address used to get node ID and for signing
+	coinbase            *d_crypto.Key       // signatory address used to get node ID and for signing
 	history             *cache.Cache        // Used to track things we want to remember
 	event               *emitter.Emitter    // Provides access event emitting service
 	bChain              types.Blockchain    // The blockchain manager
@@ -68,7 +68,8 @@ type Node struct {
 	txManager           *TxManager          // Transaction manager for handling transaction events
 	noNet               bool                // Indicates whether the host is listening for connections
 	Name                string              // Random name for this node
-	hardcodedPeers      map[string]struct{}
+	hardcodedPeers      map[string]struct{} // A collection of seed peers that were manually provided
+	syncMode            core.SyncMode
 }
 
 // NewNode creates a node instance at the specified port
@@ -112,13 +113,14 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		wg:             sync.WaitGroup{},
 		log:            log,
 		rSeed:          util.RandBytes(64),
-		signatory:      coinbase,
+		coinbase:       coinbase,
 		db:             db,
 		event:          &emitter.Emitter{},
 		history:        cache.NewActiveCache(5000),
 		createdAt:      time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
 		Name:           petname.Generate(3, "-"),
+		syncMode:       NewDefaultSyncMode(false),
 	}
 
 	node.localNode = node
@@ -179,6 +181,7 @@ func (n *Node) NewRemoteNode(address util.NodeAddr) core.Engine {
 		createdAt:      time.Now(),
 		lastSeen:       time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
+		syncMode:       NewDefaultSyncMode(false),
 	}
 	node.IP = node.ip()
 	return node
@@ -195,6 +198,7 @@ func NewRemoteNodeFromMultiAddr(address ma.Multiaddr, localNode *Node) *Node {
 		createdAt:      time.Now(),
 		lastSeen:       time.Now(),
 		hardcodedPeers: make(map[string]struct{}),
+		syncMode:       NewDefaultSyncMode(false),
 	}
 	node.IP = node.ip()
 	return node
@@ -207,6 +211,7 @@ func NewAlmostEmptyNode() *Node {
 		createdAt:      time.Now(),
 		mtx:            sync.RWMutex{},
 		hardcodedPeers: make(map[string]struct{}),
+		syncMode:       NewDefaultSyncMode(false),
 	}
 }
 
@@ -218,6 +223,7 @@ func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 		mtx:            sync.RWMutex{},
 		address:        util.NodeAddr(address.String()),
 		hardcodedPeers: make(map[string]struct{}),
+		syncMode:       NewDefaultSyncMode(false),
 	}
 }
 
@@ -245,14 +251,24 @@ func (n *Node) DB() elldb.DB {
 	return n.db
 }
 
-// NoNetwork prevents incoming or outbound connections
-func (n *Node) NoNetwork() {
+// DisableNetwork prevents incoming or outbound connections
+func (n *Node) DisableNetwork() {
 	n.noNet = true
 }
 
-// IsNoNet checks whether networking is disabled
-func (n *Node) IsNoNet() bool {
+// IsNetworkDisabled checks whether networking is disabled
+func (n *Node) IsNetworkDisabled() bool {
 	return n.noNet
+}
+
+// SetSyncMode sets the node's sync mode
+func (n *Node) SetSyncMode(mode core.SyncMode) {
+	n.syncMode = mode
+}
+
+// GetSyncMode returns the sync mode
+func (n *Node) GetSyncMode() core.SyncMode {
+	return n.syncMode
 }
 
 // GetName returns the pet name of the node
@@ -535,7 +551,7 @@ func (n *Node) AddAddresses(connStrings []string, hardcoded bool) error {
 		// Convert the connection string to a valid
 		// IPFS Multiaddr format
 		rp := n.NewRemoteNode(addr)
-		rp.SetHardcodedState(hardcoded)
+		rp.SetHardcoded(hardcoded)
 		rp.SetGossipManager(n.gossipMgr)
 		n.peerManager.AddPeer(rp)
 	}
@@ -559,9 +575,9 @@ func (n *Node) removeHardcodedPeer(peer core.Engine) {
 	n.mtx.Unlock()
 }
 
-// SetHardcodedState sets the hardcoded seed state
+// SetHardcoded sets the hardcoded seed state
 // of the engine.
-func (n *Node) SetHardcodedState(v bool) {
+func (n *Node) SetHardcoded(v bool) {
 	if v {
 		n.localNode.addHardcodedPeer(n)
 		return

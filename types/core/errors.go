@@ -58,4 +58,8 @@ var (
 
 	// ErrChainParentBlockNotFound means a chain's parent block was not found
 	ErrChainParentBlockNotFound = fmt.Errorf("chain parent block not found")
+
+	// ErrAbortedDueToSyncDisablement means an operation
+	// was aborted due to block synchronization being disabled
+	ErrAbortedDueToSyncDisablement = fmt.Errorf("aborted. Synchronization has been disabled")
 )

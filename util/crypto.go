@@ -126,6 +126,8 @@ func Decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 // Blake2b256 returns blake2b 256bit hash of v
 func Blake2b256(v []byte) []byte {
 	hash, _ := blake2b.New256(nil)
-	hash.Write(v)
+	if _, err := hash.Write(v); err != nil {
+		panic(err)
+	}
 	return hash.Sum(nil)
 }

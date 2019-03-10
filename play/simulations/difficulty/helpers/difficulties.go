@@ -9,7 +9,6 @@ import (
 
 var (
 	big1          = big.NewInt(1)
-	big0          = big.NewInt(0)
 	expDiffPeriod = big.NewInt(3)
 	big2          = big.NewInt(2)
 	big100F       = big.NewFloat(100)

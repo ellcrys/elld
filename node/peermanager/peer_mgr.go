@@ -291,7 +291,7 @@ func (m *Manager) doGetAddrMsg(done chan bool) {
 		select {
 		case <-ticker.C:
 
-			if m.localNode.IsNoNet() {
+			if m.localNode.IsNetworkDisabled() {
 				continue
 			}
 
@@ -311,7 +311,7 @@ func (m *Manager) doPingMsgs(done chan bool) {
 		select {
 		case <-ticker.C:
 
-			if m.localNode.IsNoNet() {
+			if m.localNode.IsNetworkDisabled() {
 				continue
 			}
 
@@ -332,7 +332,7 @@ func (m *Manager) doSelfAdvert(done chan bool) {
 		select {
 		case <-ticker.C:
 
-			if m.localNode.IsNoNet() {
+			if m.localNode.IsNetworkDisabled() {
 				continue
 			}
 

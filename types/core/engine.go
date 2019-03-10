@@ -82,8 +82,8 @@ type Engine interface {
 	// Connect connects to rn
 	Connect(rn Engine) error
 
-	// IsNoNet checks whether networking is disabled
-	IsNoNet() bool
+	// IsNetworkDisabled checks whether networking is disabled
+	IsNetworkDisabled() bool
 
 	// GetBlockchain returns the blockchain instance
 	GetBlockchain() types.Blockchain
@@ -134,9 +134,9 @@ type Engine interface {
 	// to the peerstore
 	AddToPeerStore(node Engine) Engine
 
-	// SetHardcodedState sets the hardcoded seed state
+	// SetHardcoded sets the hardcoded seed state
 	// of the engine.
-	SetHardcodedState(v bool)
+	SetHardcoded(v bool)
 
 	// SetGossipManager sets the gossip manager
 	SetGossipManager(m Gossip)
@@ -146,6 +146,22 @@ type Engine interface {
 
 	// SetName sets the name of the node
 	SetName(name string)
+
+	// GetSyncMode returns the sync mode
+	GetSyncMode() SyncMode
+}
+
+// SyncMode describes how the state  of the node
+// should be synchronized with external nodes.
+type SyncMode interface {
+	// IsDisabled checks whether synchronization has been disabled
+	IsDisabled() bool
+
+	// Enable enables the sync mode
+	Enable()
+
+	// Disable disables the sync mode
+	Disable()
 }
 
 // BestBlockInfo represent best block

@@ -197,7 +197,7 @@ var _ = Describe("NodeUnitTest", func() {
 			})
 
 			It("should set hardcoded status to true", func() {
-				n.SetHardcodedState(true)
+				n.SetHardcoded(true)
 				Expect(n.IsHardcodedSeed()).To(BeTrue())
 			})
 		})

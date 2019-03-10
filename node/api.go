@@ -74,8 +74,8 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		"mode":                    mode,
 		"netVersion":              config.Versions.Protocol,
 		"syncing":                 n.blockManager.IsSyncing(),
-		"coinbasePublicKey":       n.signatory.PubKey().Base58(),
-		"coinbase":                n.signatory.Addr(),
+		"coinbasePublicKey":       n.coinbase.PubKey().Base58(),
+		"coinbase":                n.coinbase.Addr(),
 		"buildVersion":            n.cfg.VersionInfo.BuildVersion,
 		"buildCommit":             n.cfg.VersionInfo.BuildCommit,
 		"buildDate":               n.cfg.VersionInfo.BuildDate,
@@ -221,9 +221,33 @@ func (n *Node) apiNetStats(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(result)
 }
 
+// Clear all caches, disk and memory store of peers
 func (n *Node) apiForgetPeers(arg interface{}) *jsonrpc.Response {
 	n.PM().ForgetPeers()
 	return jsonrpc.Success(true)
+}
+
+// apiSyncEnable enables block synchronization
+func (n *Node) apiSyncEnable(arg interface{}) *jsonrpc.Response {
+	if n.GetSyncMode().IsDisabled() {
+		n.log.Debug("Synchronization has been re-enabled")
+		n.GetSyncMode().Enable()
+	}
+	return jsonrpc.Success(true)
+}
+
+// apiSyncDisabled disables block synchronization
+func (n *Node) apiSyncDisabled(arg interface{}) *jsonrpc.Response {
+	if !n.GetSyncMode().IsDisabled() {
+		n.log.Debug("Synchronization has been disabled")
+		n.GetSyncMode().Disable()
+	}
+	return jsonrpc.Success(true)
+}
+
+// apiIsSyncEnabled disables block synchronization
+func (n *Node) apiIsSyncEnabled(arg interface{}) *jsonrpc.Response {
+	return jsonrpc.Success(!n.GetSyncMode().IsDisabled())
 }
 
 // apiGetActivePeers fetches active peers
@@ -404,7 +428,7 @@ func (n *Node) apiBroadcastPeers(arg interface{}) *jsonrpc.Response {
 }
 
 func (n *Node) apiNoNetwork(arg interface{}) *jsonrpc.Response {
-	n.NoNetwork()
+	n.DisableNetwork()
 	n.host.Close()
 	return jsonrpc.Success(true)
 }
@@ -459,6 +483,23 @@ func (n *Node) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceNode,
 			Description: "Get blockchain synchronization statistic",
 			Func:        n.apiGetSyncStat,
+		},
+		"enableSync": {
+			Namespace:   types.NamespaceNode,
+			Private:     true,
+			Description: "Enable block synchronization",
+			Func:        n.apiSyncEnable,
+		},
+		"disableSync": {
+			Namespace:   types.NamespaceNode,
+			Private:     true,
+			Description: "Disable block synchronization",
+			Func:        n.apiSyncDisabled,
+		},
+		"isSyncEnabled": {
+			Namespace:   types.NamespaceNode,
+			Description: "Returns whether synchronization is enabled",
+			Func:        n.apiIsSyncEnabled,
 		},
 
 		// namespace: "ell"
