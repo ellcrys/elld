@@ -46,6 +46,7 @@ func setDefaultConfig() {
 	viper.SetDefault("rpc.username", "admin")
 	viper.SetDefault("rpc.password", "admin")
 	viper.SetDefault("rpc.sessionSecretKey", util.RandString(32))
+	viper.SetDefault("rpc.disableAuth", false)
 }
 
 func setDevDefaultConfig() {

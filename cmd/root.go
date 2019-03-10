@@ -70,8 +70,8 @@ func setTerminateFunc(f func()) {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "elld",
-	Short: "elld is a decentralized git hosting and collaboration protocol",
-	Long:  `elld is a decentralized git hosting and collaboration protocol`,
+	Short: "ELLD is the Ellcrys protocol command line interface.",
+	Long:  `ELLD is the Ellcrys protocol command line interface.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
@@ -100,12 +100,12 @@ func init() {
 	}()
 
 	rootCmd.PersistentFlags().String("net", config.DefaultNetVersion, "Set the network version")
-	rootCmd.PersistentFlags().String("datadir", "", "Set configuration directory")
+	rootCmd.PersistentFlags().String("data-dir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
 	rootCmd.PersistentFlags().Bool("debug", false, "Set log level to DEBUG")
-	rootCmd.PersistentFlags().Bool("cpuprofile", false, "Start CPU Profiling")
-	rootCmd.PersistentFlags().Bool("memprofile", false, "Start Memory Profiling")
-	rootCmd.PersistentFlags().Bool("mutexprofile", false, "Start Mutex Profiling")
+	rootCmd.PersistentFlags().Bool("cpu-profile", false, "Start CPU Profiling")
+	rootCmd.PersistentFlags().Bool("mem-profile", false, "Start Memory Profiling")
+	rootCmd.PersistentFlags().Bool("mutex-profile", false, "Start Mutex Profiling")
 	viper.BindPFlag("net.version", rootCmd.PersistentFlags().Lookup("net"))
 	cobra.OnInitialize(initConfig)
 }

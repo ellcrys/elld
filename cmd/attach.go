@@ -77,7 +77,7 @@ account does not exist, the command will fail.`,
 
 func init() {
 	rootCmd.AddCommand(attachCmd)
-	attachCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
+	attachCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on")
 	attachCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
 	attachCmd.Flags().String("pwd", "", "Used as password during initial account creation or to unlock an account")
 }
