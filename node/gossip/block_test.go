@@ -55,6 +55,23 @@ var _ = Describe("Block", func() {
 			Expect(lp.Connect(rp)).To(BeNil())
 		})
 
+		Context("when the remote peer has sync disabled", func() {
+			var block types.Block
+
+			BeforeEach(func() {
+				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				rp.GetSyncMode().Disable()
+				bm := node.NewBlockManager(rp)
+				go bm.Manage()
+			})
+
+			Specify("that the remote peer rejected the block", func() {
+				errs := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
+				Expect(errs).To(HaveLen(1))
+				Expect(errs[0].Error()).To(Equal("block rejected by remote peer"))
+			})
+		})
+
 		Context("when block is successfully relayed to a remote peer", func() {
 
 			var block types.Block
@@ -68,8 +85,8 @@ var _ = Describe("Block", func() {
 			It("remote peer must emit core.EventProcessBlock and core.EventBlockProcessed", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
-				Expect(err).To(BeNil())
+				errs := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
+				Expect(errs).To(BeEmpty())
 
 				go func() {
 					defer GinkgoRecover()
@@ -110,8 +127,8 @@ var _ = Describe("Block", func() {
 			Specify("relayed block must be processed by the remote peer", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
-				Expect(err).To(BeNil())
+				errs := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
+				Expect(errs).To(BeEmpty())
 
 				go func() {
 					evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
@@ -154,8 +171,8 @@ var _ = Describe("Block", func() {
 			It("should emit core.EventOrphanBlock", func(done Done) {
 				wait := make(chan bool)
 
-				err := lp.Gossip().BroadcastBlock(block3, []core.Engine{rp})
-				Expect(err).To(BeNil())
+				errs := lp.Gossip().BroadcastBlock(block3, []core.Engine{rp})
+				Expect(errs).To(BeEmpty())
 
 				go func() {
 					evt := <-rp.GetBlockchain().GetEventEmitter().Once(core.EventOrphanBlock)

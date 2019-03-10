@@ -200,7 +200,7 @@ type Gossip interface {
 	RelayAddresses(addrs []*Address) []error
 
 	// Block messages
-	BroadcastBlock(block types.Block, remotePeers []Engine) error
+	BroadcastBlock(block types.Block, remotePeers []Engine) []error
 	OnBlockInfo(s net.Stream, rp Engine) error
 	OnBlockBody(s net.Stream, rp Engine) error
 	RequestBlock(rp Engine, blockHash util.Hash) error

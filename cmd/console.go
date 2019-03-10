@@ -89,4 +89,5 @@ func init() {
 	consoleCmd.Flags().Bool("mine", false, "Start Blake2 CPU mining")
 	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 	consoleCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
+	consoleCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
 }

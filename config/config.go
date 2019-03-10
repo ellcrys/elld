@@ -18,10 +18,10 @@ import (
 // SeedAddresses includes addresses to nodes that
 // the client will attempt to synchronize with.
 var SeedAddresses = []string{
-	"ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
-	"ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
-	"ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
-	"ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
+	// "ellcrys://12D3KooWKAEhd4DXGPeN71FeSC1ih86Ym2izpoPueaCrME8xu8UM@n1.ellnode.com:9000",
+	// "ellcrys://12D3KooWD276x1ieiV9cmtBdZeVLN5LtFrnUS6AT2uAkHHFNADRx@n2.ellnode.com:9000",
+	// "ellcrys://12D3KooWDdUZny1FagkUregeNQUb8PB6Vg1LMWcwWquqovm7QADb@n3.ellnode.com:9000",
+	// "ellcrys://12D3KooWDWA4g8EXWWBSbWbefSu2RGttNh1QDpQYA7nCDnbVADP1@n4.ellnode.com:9000",
 }
 
 // AccountDirName is the name of the directory for storing accounts

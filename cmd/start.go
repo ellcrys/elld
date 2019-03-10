@@ -143,6 +143,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	viper.BindPFlag("miner.enabled", cmd.Flags().Lookup("mine"))
 	viper.BindPFlag("miner.numMiners", cmd.Flags().Lookup("miners"))
 	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("no-net"))
+	viper.BindPFlag("node.syncDisabled", cmd.Flags().Lookup("sync-disabled"))
 	account := viper.GetString("node.account")
 	password := viper.GetString("node.password")
 	listeningAddr := viper.GetString("node.address")
@@ -152,6 +153,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	mine := viper.GetBool("miner.enabled")
 	numMiners := viper.GetInt("miner.numMiners")
 	noNet := viper.GetBool("node.noNet")
+	syncDisabled := viper.GetBool("node.syncDisabled")
 
 	// Unmarshal configurations known to viper into our
 	// config object.
@@ -187,20 +189,26 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
 
+	// In debug mode, we set log level to DEBUG.
+	if n.DevMode() {
+		log.SetToDebug()
+	}
+
+	// Set sync mode
+	n.SetSyncMode(node.NewDefaultSyncMode(syncDisabled))
+
 	log.Info("Elld has started",
 		"ClientVersion", cfg.VersionInfo.BuildVersion,
 		"NetVersion", config.Versions.Protocol,
 		"DevMode", devMode,
+		"SyncEnabled", !n.GetSyncMode().IsDisabled(),
+		"NetworkEnabled", !noNet,
 		"Name", n.Name)
 
+	// Disable network if required
 	if noNet {
 		n.GetHost().Close()
-		n.NoNetwork()
-	}
-
-	// In debug mode, we set log level to DEBUG.
-	if n.DevMode() {
-		log.SetToDebug()
+		n.DisableNetwork()
 	}
 
 	// Configure transactions pool and assign to node
@@ -376,4 +384,5 @@ func init() {
 	startCmd.Flags().Bool("mine", false, "Start Blake2 CPU mining")
 	startCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 	startCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
+	startCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
 }

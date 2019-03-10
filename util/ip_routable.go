@@ -85,9 +85,6 @@ var (
 	// zero4Net defines the IPv4 address block for address staring with 0
 	// (0.0.0.0/8).
 	zero4Net = ipNet("0.0.0.0", 8, 32)
-
-	// heNet defines the Hurricane Electric IPv6 address block.
-	heNet = ipNet("2001:470::", 32, 128)
 )
 
 // ipNet returns a net.IPNet struct given the passed IP address string, number
@@ -95,11 +92,6 @@ var (
 // for the mask.
 func ipNet(ip string, ones, bits int) net.IPNet {
 	return net.IPNet{IP: net.ParseIP(ip), Mask: net.CIDRMask(ones, bits)}
-}
-
-// isIPv4 returns whether or not the given ip is IPv4.
-func isIPv4(ip net.IP) bool {
-	return ip.To4() != nil
 }
 
 // isLocal returns whether or not the given address is a local address.

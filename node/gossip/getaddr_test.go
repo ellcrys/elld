@@ -95,7 +95,7 @@ var _ = Describe("GetAddr", func() {
 
 			BeforeEach(func() {
 				remoteAddr = makeTestNode(getPort())
-				remoteAddr.SetHardcodedState(true)
+				remoteAddr.SetHardcoded(true)
 				remoteAddr.SetLastSeen(time.Now())
 				rp.PM().AddOrUpdateNode(remoteAddr)
 			})

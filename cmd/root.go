@@ -55,7 +55,6 @@ var (
 	log                    logger.Logger
 	devMode                bool
 	sigs                   chan os.Signal
-	done                   chan bool
 	accountMgr             *accountmgr.AccountManager
 	onTerminate            func()
 	mtx                    = &sync.Mutex{}
