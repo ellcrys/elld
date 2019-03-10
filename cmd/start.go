@@ -134,14 +134,16 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Process flags
 	viper.BindPFlag("node.account", cmd.Flags().Lookup("account"))
 	viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
-	viper.BindPFlag("node.bootstrapAddrs", cmd.Flags().Lookup("addnode"))
+	viper.BindPFlag("node.bootstrapAddrs", cmd.Flags().Lookup("add-node"))
 	viper.BindPFlag("node.address", cmd.Flags().Lookup("address"))
 	viper.BindPFlag("rpc.enabled", cmd.Flags().Lookup("rpc"))
-	viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpcaddress"))
+	viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpc-address"))
+	viper.BindPFlag("rpc.disableAuth", cmd.Flags().Lookup("rpc-disable-auth"))
 	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
 	viper.BindPFlag("miner.enabled", cmd.Flags().Lookup("mine"))
 	viper.BindPFlag("miner.numMiners", cmd.Flags().Lookup("miners"))
-	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("nonet"))
+	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("no-net"))
+	viper.BindPFlag("node.syncDisabled", cmd.Flags().Lookup("sync-disabled"))
 	account := viper.GetString("node.account")
 	password := viper.GetString("node.password")
 	listeningAddr := viper.GetString("node.address")
@@ -151,6 +153,13 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	mine := viper.GetBool("miner.enabled")
 	numMiners := viper.GetInt("miner.numMiners")
 	noNet := viper.GetBool("node.noNet")
+	syncDisabled := viper.GetBool("node.syncDisabled")
+
+	// Unmarshal configurations known to viper into our
+	// config object.
+	if err := viper.Unmarshal(&(*cfg)); err != nil {
+		log.Fatal("Failed to unmarshal configuration file: %s", err)
+	}
 
 	// check that the host address to bind
 	// the engine to is valid,
@@ -180,20 +189,26 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
 
+	// In debug mode, we set log level to DEBUG.
+	if n.DevMode() {
+		log.SetToDebug()
+	}
+
+	// Set sync mode
+	n.SetSyncMode(node.NewDefaultSyncMode(syncDisabled))
+
 	log.Info("Elld has started",
 		"ClientVersion", cfg.VersionInfo.BuildVersion,
 		"NetVersion", config.Versions.Protocol,
 		"DevMode", devMode,
+		"SyncEnabled", !n.GetSyncMode().IsDisabled(),
+		"NetworkEnabled", !noNet,
 		"Name", n.Name)
 
+	// Disable network if required
 	if noNet {
 		n.GetHost().Close()
-		n.NoNetwork()
-	}
-
-	// In debug mode, we set log level to DEBUG.
-	if n.DevMode() {
-		log.SetToDebug()
+		n.DisableNetwork()
 	}
 
 	// Configure transactions pool and assign to node
@@ -319,12 +334,12 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		profilePath := profile.ProfilePath(cfg.NetDataDir())
-		viper.BindPFlag("debug.cpuprofile", cmd.Flags().Lookup("cpuprofile"))
-		viper.BindPFlag("debug.memprofile", cmd.Flags().Lookup("memprofile"))
-		viper.BindPFlag("debug.mutexprofile", cmd.Flags().Lookup("mutexprofile"))
-		cpuProfile := viper.GetBool("debug.cpuprofile")
-		memProfile := viper.GetBool("debug.memprofile")
-		mtxProfile := viper.GetBool("debug.mutexprofile")
+		viper.BindPFlag("debug.cpuProfile", cmd.Flags().Lookup("cpu-profile"))
+		viper.BindPFlag("debug.memProfile", cmd.Flags().Lookup("mem-profile"))
+		viper.BindPFlag("debug.mutexProfile", cmd.Flags().Lookup("mutex-profile"))
+		cpuProfile := viper.GetBool("debug.cpuProfile")
+		memProfile := viper.GetBool("debug.memProfile")
+		mtxProfile := viper.GetBool("debug.mutexProfile")
 
 		if cpuProfile {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()
@@ -358,14 +373,16 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().StringSliceP("addnode", "j", nil, "Add the address of a node to connect to.")
+	startCmd.Flags().StringSliceP("add-node", "j", nil, "Add the address of a node to connect to.")
 	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on.")
 	startCmd.Flags().Bool("rpc", false, "Enables the RPC server")
-	startCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on.")
+	startCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on.")
+	startCmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
 	startCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
 	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
-	startCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
+	startCmd.Flags().Bool("mine", false, "Start Blake2 CPU mining")
 	startCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
-	startCmd.Flags().Bool("nonet", false, "Closes the network host and prevents (in/out) connections")
+	startCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
+	startCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
 }

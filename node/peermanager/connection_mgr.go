@@ -112,7 +112,7 @@ func (m *ConnectionManager) makeConnections(done chan bool) {
 		select {
 		case <-ticker.C:
 
-			if m.pm.localNode.IsNoNet() {
+			if m.pm.localNode.IsNetworkDisabled() {
 				continue
 			}
 

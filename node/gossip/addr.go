@@ -6,7 +6,6 @@ import (
 
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/cache"
 	net "github.com/libp2p/go-libp2p-net"
 )
@@ -80,10 +79,6 @@ func (g *Manager) OnAddr(s net.Stream, rp core.Engine) error {
 
 	go g.engine.GetEventEmitter().Emit(EventAddrProcessed)
 	return nil
-}
-
-func makeAddrRelayHistoryKey(addr *core.Addr, peer core.Engine) []interface{} {
-	return []interface{}{util.SerializeMsg(addr), peer.StringID()}
 }
 
 // RelayAddresses relays core.Address under

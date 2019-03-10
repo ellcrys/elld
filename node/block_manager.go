@@ -76,8 +76,8 @@ type BlockManager struct {
 	// candidate to perform block synchronization with.
 	bestSyncCandidate *types.SyncPeerChainInfo
 
-	// unprocessedBlocks hold blocks that are yet to be processed
-	unprocessedBlocks *lane.Deque
+	// unprocessed hold blocks that are yet to be processed
+	unprocessed *lane.Deque
 
 	// processedBlocks hold blocks that have been processed
 	processedBlocks *lane.Deque
@@ -89,15 +89,15 @@ type BlockManager struct {
 // NewBlockManager creates a new BlockManager
 func NewBlockManager(node *Node) *BlockManager {
 	bm := &BlockManager{
-		syncMtx:           &sync.RWMutex{},
-		log:               node.log,
-		evt:               node.event,
-		bChain:            node.bChain,
-		engine:            node,
-		unprocessedBlocks: lane.NewDeque(),
-		processedBlocks:   lane.NewDeque(),
-		mined:             cache.NewCache(100),
-		syncCandidate:     make(map[string]*types.SyncPeerChainInfo),
+		syncMtx:         &sync.RWMutex{},
+		log:             node.log,
+		evt:             node.event,
+		bChain:          node.bChain,
+		engine:          node,
+		unprocessed:     lane.NewDeque(),
+		processedBlocks: lane.NewDeque(),
+		mined:           cache.NewCache(100),
+		syncCandidate:   make(map[string]*types.SyncPeerChainInfo),
 	}
 	return bm
 }
@@ -115,7 +115,7 @@ func (bm *BlockManager) Manage() {
 			b := evt.Args[0].(*miner.FoundBlock)
 			bm.mined.Add(b.Block.GetHash().HexStr(), struct{}{})
 			errCh := evt.Args[1].(chan error)
-			bm.unprocessedBlocks.Append(&unprocessedBlock{
+			bm.unprocessed.Append(&unprocessedBlock{
 				block: b.Block,
 				done:  errCh,
 			})
@@ -139,7 +139,7 @@ func (bm *BlockManager) Manage() {
 
 	go func() {
 		for evt := range bm.evt.On(core.EventProcessBlock) {
-			bm.unprocessedBlocks.Append(&unprocessedBlock{
+			bm.unprocessed.Append(&unprocessedBlock{
 				block: evt.Args[0].(*core.Block),
 			})
 		}
@@ -174,7 +174,7 @@ func (bm *BlockManager) Manage() {
 		for {
 			select {
 			case <-ticker.C:
-				for !bm.unprocessedBlocks.Empty() {
+				for !bm.unprocessed.Empty() {
 					bm.handleUnprocessedBlocks()
 				}
 			}
@@ -199,7 +199,7 @@ func (bm *BlockManager) handleProcessedBlocks() error {
 	// Remove the blocks transactions from the pool.
 	bm.engine.txsPool.Remove(b.(*core.Block).GetTransactions()...)
 
-	// Restart miner workers if some block was created
+	// Restart miner workers if the block was created
 	// by another peer. The miner typically manages its
 	// restart when it finds a block. But when a remote
 	// peer finds a block, we need to force the miner to restart.
@@ -207,12 +207,11 @@ func (bm *BlockManager) handleProcessedBlocks() error {
 		bm.miner.RestartWorkers()
 	}
 
-	// Relay the block to peers only when the
-	// block is not the genesis block and was not
-	// processed during a sync session
-	if b.(*core.Block).GetNumber() > 1 && !atSyncTime {
-		bm.engine.Gossip().BroadcastBlock(b.(*core.Block),
-			bm.engine.PM().GetAcquaintedPeers())
+	// Relay the block to peers only when the block is not
+	// the genesis block, was not processed during a sync session
+	// and sync mode has not been disabled.
+	if b.(*core.Block).GetNumber() > 1 && !atSyncTime && !bm.engine.syncMode.IsDisabled() {
+		_ = bm.engine.Gossip().BroadcastBlock(b.(*core.Block), bm.engine.PM().GetAcquaintedPeers())
 	}
 
 	return nil
@@ -223,7 +222,7 @@ func (bm *BlockManager) handleProcessedBlocks() error {
 // append them to the blockchain.
 func (bm *BlockManager) handleUnprocessedBlocks() error {
 
-	var upb = bm.unprocessedBlocks.Shift()
+	var upb = bm.unprocessed.Shift()
 	if upb == nil {
 		return nil
 	}
@@ -278,10 +277,11 @@ func (bm *BlockManager) handleOrphan(b *core.Block) {
 // information.
 //
 // A peer is a valid candidate if the total difficulty
-// of its best block is greater that of the local best
+// of its best block is greater than that of the local best
 // block and the height difference between its highest
 // block and the local best block is equal or greater
-// params.SyncMinHeightDiff
+// params.SyncMinHeightDiff (the minimum difference between
+// two peers to trigger synchronization)
 func (bm *BlockManager) isSyncCandidate(info *types.SyncPeerChainInfo) bool {
 
 	syncThresholdReached := true
@@ -343,8 +343,15 @@ func (bm *BlockManager) sync() error {
 	var syncStatus *core.SyncStateInfo
 	var err error
 
+	// Abort synchronization if disabled on the engine
+	if bm.engine.syncMode.IsDisabled() {
+		return core.ErrAbortedDueToSyncDisablement
+	}
+
+	// Abort synchronization if an existing sync
+	// session is on-going.
 	if bm.IsSyncing() {
-		return fmt.Errorf("syncing")
+		return fmt.Errorf("aborted. Synchronization is ongoing")
 	}
 
 	bm.syncMtx.Lock()
@@ -402,7 +409,7 @@ func (bm *BlockManager) sync() error {
 		bm.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
 
 		// Process the block
-		bm.unprocessedBlocks.Append(&unprocessedBlock{
+		bm.unprocessed.Append(&unprocessedBlock{
 			block: &block,
 		})
 	}

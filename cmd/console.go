@@ -44,12 +44,12 @@ var consoleCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		profilePath := profile.ProfilePath(cfg.NetDataDir())
-		viper.BindPFlag("debug.cpuprofile", cmd.Flags().Lookup("cpuprofile"))
-		viper.BindPFlag("debug.memprofile", cmd.Flags().Lookup("memprofile"))
-		viper.BindPFlag("debug.mutexprofile", cmd.Flags().Lookup("mutexprofile"))
-		cpuProfile := viper.GetBool("debug.cpuprofile")
-		memProfile := viper.GetBool("debug.memprofile")
-		mtxProfile := viper.GetBool("debug.mutexprofile")
+		viper.BindPFlag("debug.cpuProfile", cmd.Flags().Lookup("cpu-profile"))
+		viper.BindPFlag("debug.memProfile", cmd.Flags().Lookup("mem-profile"))
+		viper.BindPFlag("debug.mutexProfile", cmd.Flags().Lookup("mutex-profile"))
+		cpuProfile := viper.GetBool("debug.cpuProfile")
+		memProfile := viper.GetBool("debug.memProfile")
+		mtxProfile := viper.GetBool("debug.mutexProfile")
 
 		if cpuProfile {
 			defer profile.Start(profile.CPUProfile, profilePath).Stop()
@@ -78,14 +78,16 @@ var consoleCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(consoleCmd)
-	consoleCmd.Flags().StringSliceP("addnode", "j", nil, "IP of a node to connect to")
+	consoleCmd.Flags().StringSliceP("add-node", "j", nil, "IP of a node to connect to")
 	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
 	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
-	consoleCmd.Flags().String("rpcaddress", "127.0.0.1:8999", "Address RPC server will listen on")
+	consoleCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on")
+	consoleCmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
 	consoleCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
 	consoleCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
-	consoleCmd.Flags().Bool("mine", false, "Start proof-of-work mining")
+	consoleCmd.Flags().Bool("mine", false, "Start Blake2 CPU mining")
 	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
-	consoleCmd.Flags().Bool("nonet", false, "Closes the network host and prevents (in/out) connections")
+	consoleCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
+	consoleCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
 }

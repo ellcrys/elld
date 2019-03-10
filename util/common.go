@@ -74,7 +74,7 @@ func (s String) Decimal() decimal.Decimal {
 // can be converted to decimal
 func (s String) IsDecimal() bool {
 	defer func() {
-		recover()
+		_ = recover()
 	}()
 	s.Decimal()
 	return true
