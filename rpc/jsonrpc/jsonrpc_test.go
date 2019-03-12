@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -335,7 +338,7 @@ var _ = Describe("Node", func() {
 				})
 
 				req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
-				req.Header.Set("Authorization", "Bearer "+MakeSessionToken("user1", rpc.sessionKey))
+				req.Header.Set("Authorization", "Bearer "+MakeSessionToken("user1", rpc.sessionKey, 600))
 
 				rr := httptest.NewRecorder()
 				rr.Header().Set("Content-Type", "application/json")
@@ -482,4 +485,29 @@ var _ = Describe("Node", func() {
 		})
 	})
 
+	Describe(".MakeSessionToken", func() {
+		When("ttl is set to a non-zero value", func() {
+			It("should create a token that can expire", func() {
+				tokenStr := MakeSessionToken("username", "secret", 10)
+				time.Sleep(1 * time.Second)
+				token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+					return []byte("secret"), nil
+				})
+				Expect(token.Claims).To(HaveKey("exp"))
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("Token is expired"))
+			})
+		})
+
+		When("ttl is set to zero value", func() {
+			It("should create a token that cannot expire", func() {
+				tokenStr := MakeSessionToken("username", "secret", 0)
+				token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+					return []byte("secret"), nil
+				})
+				Expect(err).To(BeNil())
+				Expect(token.Claims).ToNot(HaveKey("exp"))
+			})
+		})
+	})
 })

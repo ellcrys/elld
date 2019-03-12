@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/k0kubun/pp"
 	"github.com/spf13/viper"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -139,6 +140,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	viper.BindPFlag("rpc.enabled", cmd.Flags().Lookup("rpc"))
 	viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpc-address"))
 	viper.BindPFlag("rpc.disableAuth", cmd.Flags().Lookup("rpc-disable-auth"))
+	viper.BindPFlag("rpc.sessionTTL", cmd.Flags().Lookup("rpc-session-ttl"))
 	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
 	viper.BindPFlag("miner.enabled", cmd.Flags().Lookup("mine"))
 	viper.BindPFlag("miner.numMiners", cmd.Flags().Lookup("miners"))
@@ -160,6 +162,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if err := viper.Unmarshal(&(*cfg)); err != nil {
 		log.Fatal("Failed to unmarshal configuration file: %s", err)
 	}
+
+	pp.Println(cfg.RPC)
+	return nil, nil,
+		nil, nil
 
 	// check that the host address to bind
 	// the engine to is valid,
@@ -378,6 +384,7 @@ func init() {
 	startCmd.Flags().Bool("rpc", false, "Enables the RPC server")
 	startCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on.")
 	startCmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
+	startCmd.Flags().Int64("rpc-session-ttl", 3600, "The time-to-live (in milliseconds) of RPC session tokens")
 	startCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
 	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")

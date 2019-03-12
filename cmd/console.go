@@ -83,6 +83,7 @@ func init() {
 	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
 	consoleCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on")
 	consoleCmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
+	consoleCmd.Flags().Int64("rpc-session-ttl", 3600, "The time-to-live (in milliseconds) of RPC session tokens")
 	consoleCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
 	consoleCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
