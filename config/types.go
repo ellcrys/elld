@@ -77,6 +77,10 @@ type RPCConfig struct {
 	// SessionSecretKey is the key used to sign the
 	// session tokens. Must be kept secret.
 	SessionSecretKey string `json:"sessionSecretKey" mapstructure:"sessionSecretKey"`
+
+	// SessionTTL is the duration a session can
+	// remain active before it is considered expired.
+	SessionTTL int64 `json:"sessionTTL" mapstructure:"sessionTTL"`
 }
 
 // TxPoolConfig defines configuration for the transaction pool

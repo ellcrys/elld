@@ -101,13 +101,17 @@ type JSONRPC struct {
 	done chan bool
 }
 
-// MakeSessionToken creates a session token for
-// RPC requests
-func MakeSessionToken(username, secretKey string) string {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+// MakeSessionToken creates a session token for RPC requests.
+// If ttl is zero, the session will never expire.
+func MakeSessionToken(username, secretKey string, ttl int64) string {
+	dur := time.Duration(ttl) * time.Millisecond
+	claim := jwt.MapClaims{
 		"username": username,
-		"exp":      time.Now().Add(1 * time.Hour),
-	})
+	}
+	if ttl > 0 {
+		claim["exp"] = time.Now().Add(dur).Unix()
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	tokenStr, _ := token.SignedString([]byte(secretKey))
 	return tokenStr
 }
