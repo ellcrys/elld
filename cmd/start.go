@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/k0kubun/pp"
 	"github.com/spf13/viper"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -161,6 +162,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if err := viper.Unmarshal(&(*cfg)); err != nil {
 		log.Fatal("Failed to unmarshal configuration file: %s", err)
 	}
+
+	pp.Println(cfg.RPC)
+	return nil, nil,
+		nil, nil
 
 	// check that the host address to bind
 	// the engine to is valid,
