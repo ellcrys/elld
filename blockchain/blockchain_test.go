@@ -455,7 +455,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 			})
 		})
 
-		Describe(".Select", func() {
+		Describe(".SelectTransactions", func() {
 
 			var tp types.TxPool
 			var tx, tx2, tx3 *core.Transaction
@@ -597,6 +597,39 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 					Specify("container should contain 1 transaction since selected txs go back in the pool", func() {
 						Expect(tp.Container().Size()).To(Equal(int64(1)))
+					})
+				})
+			})
+
+			Context("pool has 2 transactions and account nonce = 0", func() {
+				Context("tx(1) nonce = 1 and tx(2) nonce = 1", func() {
+					var tp types.TxPool
+
+					BeforeEach(func() {
+						tp = bc.txPool
+						tx = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.1", "0.001", time.Now().Unix())
+						tx.Hash = tx.ComputeHash()
+						err := tp.Put(tx)
+						Expect(err).To(BeNil())
+
+						tx2 = core.NewTx(core.TxTypeBalance, 1, util.String(sender.Addr()), sender, "0.2", "0.001", time.Now().Unix())
+						tx2.Hash = tx2.ComputeHash()
+						err = tp.Put(tx2)
+						Expect(tp.Container().Size()).To(Equal(int64(2)))
+						Expect(err).To(BeNil())
+
+						Expect(tp.Size()).To(Equal(int64(2)))
+						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
+						txs, err = bc.SelectTransactions(maxSize)
+						Expect(err).To(BeNil())
+					})
+
+					It("should return 1 transactions", func() {
+						Expect(txs).To(HaveLen(1))
+					})
+
+					Specify("container should contain 2 transactions since selected txs go back in the pool", func() {
+						Expect(tp.Size()).To(Equal(int64(2)))
 					})
 				})
 			})

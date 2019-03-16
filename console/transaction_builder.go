@@ -86,7 +86,7 @@ func (o *TxBalanceBuilder) Finalize() map[string]interface{} {
 		goto sign
 	}
 
-	result, err = o.e.callRPCMethod("state_getAccountNonce", o.data["from"])
+	result, err = o.e.callRPCMethod("state_suggestNonce", o.data["from"])
 	if err != nil {
 		panic(o.e.vm.MakeCustomError("BuilderError", err.Error()))
 	}
@@ -100,7 +100,7 @@ func (o *TxBalanceBuilder) Finalize() map[string]interface{} {
 		panic(o.e.vm.MakeCustomError("BuilderError", errMsg.Error()))
 	}
 
-	o.data["nonce"] = int64(result["result"].(float64)) + 1
+	o.data["nonce"] = int64(result["result"].(float64))
 
 sign:
 	// Set the timestamp
@@ -108,7 +108,7 @@ sign:
 
 	// marshal into core.Transaction
 	var tx core.Transaction
-	util.MapDecode(o.data, &tx)
+	_ = util.MapDecode(o.data, &tx)
 
 	// Compute and set hash
 	o.data["hash"] = tx.ComputeHash().HexStr()

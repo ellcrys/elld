@@ -3,6 +3,8 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/ellcrys/elld/rpc"
@@ -411,6 +413,58 @@ func (b *Blockchain) apiListTopNAccounts(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(accounts)
 }
 
+// apiSuggestNonce attempts to determine the next nonce of an account.
+func (b *Blockchain) apiSuggestNonce(arg interface{}) *jsonrpc.Response {
+
+	address, ok := arg.(string)
+	if !ok {
+		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
+			rpc.ErrMethodArgType("String").Error(), nil)
+	}
+
+	// Get the current account nonce
+	accountNonce, err := b.GetAccountNonce(util.String(address))
+	if err != nil {
+		if err == core.ErrAccountNotFound {
+			return jsonrpc.Error(types.ErrCodeAccountNotFound,
+				fmt.Sprintf("invalid transaction id: %s", err.Error()), nil)
+		}
+		return jsonrpc.Error(types.ErrCodeUnexpected, "unexpected error", err.Error())
+	}
+
+	suggested := accountNonce + 1
+
+	// Get the nonce of any transactions in the pool
+	// that originated from the account
+	var txPoolNonces = []uint64{}
+	for _, tx := range b.txPool.GetByFrom(util.String(address)) {
+		nonce := tx.GetNonce()
+		if !funk.Contains(txPoolNonces, nonce) {
+			txPoolNonces = append(txPoolNonces, nonce)
+		}
+	}
+
+	// We will now attempt to update the suggested
+	// nonce based on other nonces of transactions
+	// from the same account. When there is a nonce
+	// greater than the suggested nonce, we keep
+	// the suggested nonce. When there is a nonce
+	// equal to the suggested nonce, we increment
+	// the suggested nonce by 1 and start the loop
+	// again
+	for i := 0; i < len(txPoolNonces); i++ {
+		var nonce = txPoolNonces[i]
+		if suggested == nonce {
+			suggested++
+			i = 0
+			continue
+		}
+	}
+
+	// pp.Println(txPoolNonces, suggested)
+	return jsonrpc.Success(suggested)
+}
+
 // APIs returns all API handlers
 func (b *Blockchain) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -490,6 +544,11 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceState,
 			Description: "Get raw database objects (for debugging)",
 			Func:        b.apiGetDBObjects,
+		},
+		"suggestNonce": {
+			Namespace:   types.NamespaceState,
+			Description: "Suggest an account nonce to use in a new transaction",
+			Func:        b.apiSuggestNonce,
 		},
 
 		// namespace: "node"

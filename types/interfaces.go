@@ -382,11 +382,11 @@ type TxPool interface {
 	Has(tx Transaction) bool
 	HasByHash(hash string) bool
 	Remove(txs ...Transaction)
-	SenderHasTxWithSameNonce(address util.String, nonce uint64) bool
 	ByteSize() int64
 	Size() int64
 	Container() TxContainer
 	GetByHash(hash string) Transaction
+	GetByFrom(address util.String) []Transaction
 }
 
 // ChainInfo represents a chain's metadata

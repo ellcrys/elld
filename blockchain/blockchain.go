@@ -653,7 +653,6 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []types.Tran
 	cache := []types.Transaction{}
 	nonces := make(map[util.String]uint64)
 	for b.txPool.Size() > 0 {
-
 		// Get a transaction from the top of
 		// the pool
 		tx := b.txPool.Container().First()
@@ -711,7 +710,7 @@ func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []types.Tran
 
 	// put the cached transactions back to the pool
 	for _, tx := range cache {
-		b.txPool.Put(tx)
+		_ = b.txPool.Put(tx)
 	}
 
 	return

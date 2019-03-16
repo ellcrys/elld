@@ -81,14 +81,9 @@ type Miner struct {
 	// processing indicates that a block is being
 	// processed for inclusion in a branch
 	processing bool
-
-	// lastFoundBlockHash is the hash of the last
-	// block found by this miner
-	lastFoundBlockHash util.Hash
-
-	stopped bool
-	done    chan bool
-	mining  bool
+	stopped    bool
+	done       chan bool
+	mining     bool
 }
 
 // NewMiner creates a Miner instance
