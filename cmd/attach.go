@@ -39,7 +39,7 @@ account does not exist, the command will fail.`,
 
 		viper.BindPFlag("node.account", cmd.Flags().Lookup("account"))
 		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
-		viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpcaddress"))
+		viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpc-address"))
 		account := viper.GetString("node.account")
 		password := viper.GetString("node.password")
 		rpcAddress := viper.GetString("rpc.address")

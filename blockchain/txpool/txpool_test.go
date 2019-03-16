@@ -60,29 +60,6 @@ var _ = Describe("TxPool", func() {
 		})
 	})
 
-	Describe(".HasTxWithSameNonce", func() {
-
-		var tp *TxPool
-
-		BeforeEach(func() {
-			tp = New(1)
-		})
-
-		It("should return true when a transaction with the given address and nonce exist in the pool", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
-			tp.Put(tx)
-			result := tp.SenderHasTxWithSameNonce(tx.GetFrom(), 100)
-			Expect(result).To(BeTrue())
-		})
-
-		It("should return false when a transaction with the given address and nonce does not exist in the pool", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
-			tp.Put(tx)
-			result := tp.SenderHasTxWithSameNonce(tx.GetFrom(), 10)
-			Expect(result).To(BeFalse())
-		})
-	})
-
 	Describe(".Has", func() {
 
 		var tp *TxPool
@@ -100,6 +77,32 @@ var _ = Describe("TxPool", func() {
 		It("should return false when tx does not exist", func() {
 			tx := core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			Expect(tp.Has(tx)).To(BeFalse())
+		})
+	})
+
+	Describe(".GetByFrom", func() {
+
+		var tp *TxPool
+		var key1 = crypto.NewKeyFromIntSeed(1)
+		var key2 = crypto.NewKeyFromIntSeed(2)
+		var tx, tx2, tx3 types.Transaction
+
+		BeforeEach(func() {
+			tp = New(3)
+			tx = core.NewTx(core.TxTypeBalance, 1, "a", key1, "12.2", "0.2", time.Now().Unix())
+			tx2 = core.NewTx(core.TxTypeBalance, 2, "a", key1, "12.3", "0.2", time.Now().Unix())
+			tx3 = core.NewTx(core.TxTypeBalance, 2, "a", key2, "12.3", "0.2", time.Now().Unix())
+			_ = tp.addTx(tx)
+			_ = tp.addTx(tx2)
+			_ = tp.addTx(tx3)
+			Expect(tp.Size()).To(Equal(int64(3)))
+		})
+
+		It("should return two transactions matching key1", func() {
+			txs := tp.GetByFrom(key1.Addr())
+			Expect(txs).To(HaveLen(2))
+			Expect(txs[0]).To(Equal(tx))
+			Expect(txs[1]).To(Equal(tx2))
 		})
 	})
 

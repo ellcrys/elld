@@ -4,10 +4,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/util"
+
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
 )
 
 // TxPool stores transactions.
@@ -99,15 +100,6 @@ func (tp *TxPool) HasByHash(hash string) bool {
 	return tp.container.HasByHash(hash)
 }
 
-// SenderHasTxWithSameNonce checks whether a transaction
-// with a matching sender address and nonce exist in
-// the pool
-func (tp *TxPool) SenderHasTxWithSameNonce(address util.String, nonce uint64) bool {
-	return tp.container.IFind(func(tx types.Transaction) bool {
-		return tx.GetFrom().Equal(address) && tx.GetNonce() == nonce
-	}) != nil
-}
-
 // Container gets the underlying
 // transaction container
 func (tp *TxPool) Container() types.TxContainer {
@@ -129,4 +121,17 @@ func (tp *TxPool) Size() int64 {
 // GetByHash gets a transaction from the pool using its hash
 func (tp *TxPool) GetByHash(hash string) types.Transaction {
 	return tp.container.GetByHash(hash)
+}
+
+// GetByFrom fetches transactions where the sender
+// or `from` field match the given address
+func (tp *TxPool) GetByFrom(address util.String) []types.Transaction {
+	var txs []types.Transaction
+	tp.container.IFind(func(tx types.Transaction) bool {
+		if tx.GetFrom().Equal(address) {
+			txs = append(txs, tx)
+		}
+		return false
+	})
+	return txs
 }
