@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Node", func() {
+var _ = Describe("RPC", func() {
 
 	var rpc *JSONRPC
 
@@ -43,7 +43,7 @@ var _ = Describe("Node", func() {
 			handler.ServeHTTP(rr, req)
 		})
 
-		It("should return 'Invalid Request' when json rpc version is invalid", func() {
+		It("should return '`jsonrpc` value is required' when json rpc version is invalid", func() {
 
 			data, _ := json.Marshal(Request{})
 			req, _ := http.NewRequest("POST", "/rpc", bytes.NewReader(data))
@@ -55,7 +55,7 @@ var _ = Describe("Node", func() {
 				resp := rpc.handle(w, r)
 				Expect(resp.Err).ToNot(BeNil())
 				Expect(resp.Err.Code).To(Equal(-32600))
-				Expect(resp.Err.Message).To(Equal("Invalid Request"))
+				Expect(resp.Err.Message).To(Equal("`jsonrpc` value is required"))
 				Expect(resp.Result).To(BeNil())
 				Expect(rr.Code).To(Equal(400))
 			})
@@ -171,7 +171,7 @@ var _ = Describe("Node", func() {
 						resp := rpc.handle(w, r)
 						Expect(resp.Err).To(BeNil())
 						Expect(resp.Result).To(Equal(float64(4)))
-						Expect(resp.ID).To(Equal(uint64(1)))
+						Expect(resp.ID).To(Equal(float64(1)))
 						Expect(rr.Code).To(Equal(200))
 					})
 
