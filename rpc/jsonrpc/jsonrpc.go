@@ -41,8 +41,13 @@ type Request struct {
 }
 
 // IsNotification checks whether the request is a notification
-// according to JSON RPC specification
+// according to JSON RPC specification.
+// When ID is nil, we assume it's a notification request.
 func (r Request) IsNotification() bool {
+	if r.ID == nil {
+		return true
+	}
+
 	switch v := r.ID.(type) {
 	case string:
 		return v == "0"
@@ -269,7 +274,7 @@ func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) *Response {
 	// JSON RPC version must be 2.0
 	if newReq.JSONRPCVersion != "2.0" {
 		w.WriteHeader(http.StatusBadRequest)
-		return Error(-32600, "Invalid Request", nil)
+		return Error(-32600, "`jsonrpc` value is required", nil)
 	}
 
 	// Method must be known
