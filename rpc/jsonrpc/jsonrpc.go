@@ -37,13 +37,20 @@ type Request struct {
 	JSONRPCVersion string      `json:"jsonrpc"`
 	Method         string      `json:"method"`
 	Params         interface{} `json:"params"`
-	ID             uint64      `json:"id,omitempty"`
+	ID             interface{} `json:"id,omitempty"`
 }
 
 // IsNotification checks whether the request is a notification
 // according to JSON RPC specification
 func (r Request) IsNotification() bool {
-	return r.ID == 0
+	switch v := r.ID.(type) {
+	case string:
+		return v == "0"
+	case float64:
+		return v == 0
+	default:
+		panic(fmt.Errorf("id has unexpected type"))
+	}
 }
 
 // Err represents JSON RPC error object
@@ -58,7 +65,7 @@ type Response struct {
 	JSONRPCVersion string      `json:"jsonrpc"`
 	Result         interface{} `json:"result"`
 	Err            *Err        `json:"error,omitempty"`
-	ID             uint64      `json:"id,omitempty"`
+	ID             interface{} `json:"id,omitempty"` // string or float64
 }
 
 // IsError checks whether r is an error response
@@ -252,7 +259,6 @@ func (s *JSONRPC) AddAPI(name string, api APIInfo) {
 // the request according to JSON RPC specification,
 // find the method and passes it off.
 func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) *Response {
-
 	// attempt to decode the body
 	var newReq Request
 	if err := json.NewDecoder(r.Body).Decode(&newReq); err != nil {
