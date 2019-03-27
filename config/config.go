@@ -91,10 +91,6 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 	viper.SetConfigName("ellcrys")
 	viper.AddConfigPath(dataDir)
 	viper.AddConfigPath(".")
-	viper.SetEnvPrefix("ELLD")
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.AutomaticEnv()
 
 	// Create the config file if it does not exist
 	if err := viper.ReadInConfig(); err != nil {
@@ -107,6 +103,11 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 			golog.Fatalf("Failed to read config file: %s", err)
 		}
 	}
+
+	viper.SetEnvPrefix("ELLD")
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.AutomaticEnv()
 
 	// Read the loaded config into EngineConfig
 	if err := viper.Unmarshal(&c); err != nil {
