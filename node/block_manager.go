@@ -275,36 +275,20 @@ func (bm *BlockManager) handleOrphan(b *core.Block) {
 // isSyncCandidate checks whether a peer is a
 // valid sync candidate based on its chain state
 // information.
-//
 // A peer is a valid candidate if the total difficulty
 // of its best block is greater than that of the local best
-// block and the height difference between its highest
-// block and the local best block is equal or greater
-// params.SyncMinHeightDiff (the minimum difference between
-// two peers to trigger synchronization)
+// block
 func (bm *BlockManager) isSyncCandidate(info *types.SyncPeerChainInfo) bool {
-
-	syncThresholdReached := true
 	localBestBlock, _ := bm.engine.GetBlockchain().ChainReader().Current()
-
 	if localBestBlock.GetHeader().GetTotalDifficulty().Cmp(info.PeerChainTD) == -1 {
-
-		heightDiff := info.PeerChainHeight - localBestBlock.GetNumber()
-		if heightDiff < params.SyncMinHeightDiff {
-			syncThresholdReached = false
-		}
-
 		bm.log.Info("Local blockchain is behind peer",
 			"ChainHeight", localBestBlock.GetNumber(),
 			"LocalTD", localBestBlock.GetHeader().GetTotalDifficulty(),
 			"PeerID", info.PeerIDShort,
 			"PeerChainHeight", info.PeerChainHeight,
-			"SyncThresholdReached", syncThresholdReached,
 			"PeerTD", info.PeerChainTD)
-
-		return syncThresholdReached
+		return true
 	}
-
 	return false
 }
 
