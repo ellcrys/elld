@@ -33,13 +33,13 @@ var AccountDirName = "accounts"
 func setDefaultConfig() {
 	viper.SetDefault("net.version", DefaultNetVersion)
 	viper.SetDefault("node.getAddrInt", 300)
-	viper.SetDefault("node.pingInt", 60)
-	viper.SetDefault("node.selfAdvInt", 120)
-	viper.SetDefault("node.cleanUpInt", 1200)
+	viper.SetDefault("node.pingInt", 500)
+	viper.SetDefault("node.selfAdvInt", 1800)
+	viper.SetDefault("node.cleanUpInt", 3600)
 	viper.SetDefault("node.maxAddrsExpected", 1000)
 	viper.SetDefault("node.maxOutConnections", 10)
 	viper.SetDefault("node.maxInConnections", 115)
-	viper.SetDefault("node.conEstInt", 10)
+	viper.SetDefault("node.conEstInt", 120)
 	viper.SetDefault("node.messageTimeout", 30)
 	viper.SetDefault("txPool.capacity", 10000)
 	viper.SetDefault("miner.mode", 0)
@@ -91,10 +91,6 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 	viper.SetConfigName("ellcrys")
 	viper.AddConfigPath(dataDir)
 	viper.AddConfigPath(".")
-	viper.SetEnvPrefix("ELLD")
-	replacer := strings.NewReplacer(".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.AutomaticEnv()
 
 	// Create the config file if it does not exist
 	if err := viper.ReadInConfig(); err != nil {
@@ -107,6 +103,11 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 			golog.Fatalf("Failed to read config file: %s", err)
 		}
 	}
+
+	viper.SetEnvPrefix("ELLD")
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.AutomaticEnv()
 
 	// Read the loaded config into EngineConfig
 	if err := viper.Unmarshal(&c); err != nil {
