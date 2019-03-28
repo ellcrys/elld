@@ -33,7 +33,7 @@ var AccountDirName = "accounts"
 func setDefaultConfig() {
 	viper.SetDefault("net.version", DefaultNetVersion)
 	viper.SetDefault("node.getAddrInt", 300)
-	viper.SetDefault("node.pingInt", 120)
+	viper.SetDefault("node.pingInt", 500)
 	viper.SetDefault("node.selfAdvInt", 1800)
 	viper.SetDefault("node.cleanUpInt", 3600)
 	viper.SetDefault("node.maxAddrsExpected", 1000)
