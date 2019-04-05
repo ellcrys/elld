@@ -13,7 +13,7 @@ import (
 // onAddr processes core.Addr message
 func (g *Manager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) {
 
-	s.SetReadDeadline(time.Now().Add(StreamReadDelay))
+	_ = s.SetReadDeadline(time.Now().Add(StreamReadDelay))
 
 	resp := &core.Addr{}
 	if err := ReadStream(s, resp); err != nil {
@@ -31,27 +31,41 @@ func (g *Manager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) 
 
 	invalidAddrs := 0
 
-	// Validate each address before we addthem to the peer list
+	// Validate each address before we add them to the peer list
 	for _, addr := range resp.Addresses {
 
 		p := g.engine.NewRemoteNode(addr.Address)
 
+		// We need to check to see whether the address
+		// format or syntax is valid and verify that it
+		// is a routable address.
 		if !addr.Address.IsValid() || (!g.engine.TestMode() &&
 			!addr.Address.IsRoutable()) {
 			invalidAddrs++
 			continue
 		}
 
-		// Check whether we know this node as a banned peer
+		// Check whether we know this node as a peer that
+		// we had banned recently.
 		if g.PM().IsBanned(p) {
 			invalidAddrs++
 			continue
 		}
 
+		// Check whether the address share the same peer id
+		// as the engine. If so, we cannot add our self as
+		// a remote peer.
+		if addr.Address.ID() == g.engine.ID() {
+			continue
+		}
+
+		// At this point the address is considered valid
+		// so we add it to our list of known peers.
 		g.PM().AddOrUpdateNode(rp)
 	}
 
-	g.log.Debug("Received addresses", "PeerID", rp.ShortID(),
+	g.log.Debug("Received addresses",
+		"PeerID", rp.ShortID(),
 		"NumAddrs", len(resp.Addresses),
 		"InvalidAddrs", invalidAddrs)
 
@@ -61,7 +75,6 @@ func (g *Manager) onAddr(s net.Stream, rp core.Engine) ([]*core.Address, error) 
 // OnAddr handles incoming core.Addr message.
 // Received addresses are relayed.
 func (g *Manager) OnAddr(s net.Stream, rp core.Engine) error {
-
 	defer s.Close()
 
 	// process the stream and return the addresses set
@@ -78,6 +91,7 @@ func (g *Manager) OnAddr(s net.Stream, rp core.Engine) error {
 	}
 
 	go g.engine.GetEventEmitter().Emit(EventAddrProcessed)
+
 	return nil
 }
 
@@ -110,7 +124,7 @@ func (g *Manager) RelayAddresses(addrs []*core.Address) []error {
 			continue
 		}
 
-		// Ignore an address that matches the local node's address
+		// Ignore an address that matches the engines address.
 		if g.engine.IsSameID(addr.Address.ID().Pretty()) {
 			errs = append(errs, fmt.Errorf("address {%s} is the same as local peer's",
 				addr.Address))
