@@ -61,6 +61,7 @@ build-local-linux: release-linux
 start:
 	docker run -d \
 	 	--name elld \
+		-e ELLD_NET_VERSION="$(ELLD_NET_VERSION)" \
 		-e ELLD_NODE_ADDRESS=$(ELLD_NODE_ADDRESS) \
 		-e ELLD_NODE_BOOTSTRAPADDRS=$(ELLD_NODE_BOOTSTRAPADDRS) \
 		-e ELLD_NODE_ACCOUNT=$(ELLD_NODE_ACCOUNT) \
