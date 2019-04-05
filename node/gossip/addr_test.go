@@ -201,6 +201,41 @@ var _ = Describe("TestAddr", func() {
 				close(done)
 			})
 		})
+
+		Context("when an address has same peer ID as the local peer", func() {
+
+			BeforeEach(func() {
+				addrMsg = &core.Addr{
+					Addresses: []*core.Address{
+						{Address: rp.GetAddress(), Timestamp: time.Now().Unix()},
+					},
+				}
+			})
+
+			It("should not add the address as a peer", func(done Done) {
+				wait := make(chan bool)
+				stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
+
+				Expect(err).To(BeNil())
+				defer c()
+				defer stream.Close()
+
+				err = gossip.WriteStream(stream, addrMsg)
+				Expect(err).To(BeNil())
+
+				go func() {
+					defer GinkgoRecover()
+					evt = <-rp.GetEventEmitter().On(gossip.EventAddrProcessed)
+					Expect(evt.Args).To(BeEmpty())
+					close(wait)
+				}()
+
+				<-wait
+				added := rp.PM().PeerExist(addrMsg.Addresses[0].Address.StringID())
+				Expect(added).To(BeFalse())
+				close(done)
+			})
+		})
 	})
 
 })

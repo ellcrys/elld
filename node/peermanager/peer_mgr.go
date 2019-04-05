@@ -200,6 +200,9 @@ func (m *Manager) ConnectToPeer(peerID string) error {
 		return fmt.Errorf("peer not found")
 	}
 
+	m.log.Debug("Attempting to connect to peer",
+		"PeerID", peer.ShortID())
+
 	gsp := m.localNode.Gossip()
 	err := gsp.SendHandshake(peer)
 	if err != nil {
