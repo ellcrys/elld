@@ -246,8 +246,8 @@ func (b *Blockchain) recordReOrg(timestamp int64, branch *Chain, opts ...types.C
 
 // getReOrgs fetches information about all reorganizations
 func (b *Blockchain) getReOrgs(opts ...types.CallOp) []*ReOrgInfo {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	var reOrgs = []*ReOrgInfo{}
 	key := common.MakeQueryKeyReOrg()

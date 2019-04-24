@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/segmentio/go-prompt"
+	"github.com/ellcrys/go-prompt"
 
 	"github.com/dustin/go-humanize"
 

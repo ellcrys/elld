@@ -19,9 +19,9 @@ import (
 // HaveBlock checks whether we have a block matching
 // the hash in any of the known chains
 func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
-	b.chainLock.RLock()
+	b.lock.RLock()
 	chains := b.chains
-	b.chainLock.RUnlock()
+	b.lock.RUnlock()
 	for _, chain := range chains {
 		has, err := chain.hasBlock(hash)
 		if err != nil {
@@ -37,8 +37,8 @@ func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 // IsKnownBlock checks whether a block with the has exists
 // in at least one of all block chains and caches (e.g orphan)
 func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	var have bool
 	var reason string
 
@@ -243,9 +243,9 @@ func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.C
 // GetBlock finds a block in any chain with a matching
 // block number and hash.
 func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error) {
-	b.chainLock.RLock()
+	b.lock.RLock()
 	chains := b.chains
-	b.chainLock.RUnlock()
+	b.lock.RUnlock()
 	for _, chain := range chains {
 		block, err := chain.getBlockByNumberAndHash(number, hash)
 		if err != nil {
@@ -261,8 +261,8 @@ func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error
 
 // getBlockByHash finds a block in any chain with a matching hash.
 func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	for _, chain := range b.chains {
 		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {

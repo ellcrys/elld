@@ -299,8 +299,8 @@ func (n *Node) apiGetSyncStat(arg interface{}) *jsonrpc.Response {
 // of the transaction pool
 func (n *Node) apiTxPoolSizeInfo(arg interface{}) *jsonrpc.Response {
 	return jsonrpc.Success(map[string]int64{
-		"byteSize": n.GetBlockchain().GetTxPool().ByteSize(),
-		"numTxs":   n.GetTxPool().Size(),
+		"byteSize": n.txsPool.ByteSize(),
+		"numTxs":   n.txsPool.Size(),
 	})
 }
 

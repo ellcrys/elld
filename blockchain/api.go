@@ -16,8 +16,8 @@ import (
 
 // apiGetChains fetches a list of chains
 func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	var result []interface{}
 	for id, chain := range b.chains {
@@ -50,8 +50,8 @@ func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
 
 // apiGetBlock fetches a block by number
 func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	if b.bestChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
@@ -78,8 +78,8 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 
 // apiGetMinedBlocks fetches blocks mined by this node
 func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	var opt core.ArgGetMinedBlock
 	if arg != nil {
@@ -111,8 +111,8 @@ func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
 
 // apiGetTipBlock fetches the highest block on the main chain
 func (b *Blockchain) apiGetTipBlock(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	if b.bestChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
@@ -133,8 +133,8 @@ func (b *Blockchain) apiGetTipBlock(arg interface{}) *jsonrpc.Response {
 
 // apiGetBlockByHash fetches a block by hash
 func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	if b.bestChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
@@ -166,8 +166,8 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 
 // apiGetOrphans fetches all orphan blocks
 func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	var orphans = []interface{}{}
 	for _, k := range b.orphanBlocks.Keys() {
 		orphans = append(orphans,

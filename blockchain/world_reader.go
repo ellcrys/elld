@@ -26,8 +26,8 @@ type WorldReader struct {
 // address in the chain provided.
 func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
 	opts ...types.CallOp) (types.Account, error) {
-	r.bchain.chainLock.RLock()
-	defer r.bchain.chainLock.RUnlock()
+	r.bchain.lock.RLock()
+	defer r.bchain.lock.RUnlock()
 
 	var result types.Account
 	var err error

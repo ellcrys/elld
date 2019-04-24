@@ -37,8 +37,8 @@ func (t *ChainTraverser) Start(chain types.Chainer) *ChainTraverser {
 // ends. If error is returned, the query ends with the error from
 // qf returned.
 func (t *ChainTraverser) Query(qf ChainTraverseFunc) error {
-	t.bchain.chainLock.RLock()
-	defer t.bchain.chainLock.RUnlock()
+	t.bchain.lock.RLock()
+	defer t.bchain.lock.RUnlock()
 
 	for {
 		found, err := qf(t.chain)

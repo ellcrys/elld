@@ -135,7 +135,7 @@ func (h *Header) Copy() types.Header {
 func (h *Header) EncodeMsgpack(enc *msgpack.Encoder) error {
 	difficultyStr := h.Difficulty.String()
 	tdStr := h.TotalDifficulty.String()
-	return enc.Encode(h.Number, h.Nonce, h.Timestamp, h.CreatorPubKey,
+	return enc.EncodeMulti(h.Number, h.Nonce, h.Timestamp, h.CreatorPubKey,
 		h.ParentHash, h.StateRoot, h.TransactionsRoot, h.Extra, difficultyStr, tdStr)
 }
 
@@ -170,7 +170,7 @@ func (h *Header) ComputeHash() util.Hash {
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (h *Header) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var difficultyStr, tdStr string
-	if err := dec.Decode(&h.Number, &h.Nonce, &h.Timestamp, &h.CreatorPubKey,
+	if err := dec.DecodeMulti(&h.Number, &h.Nonce, &h.Timestamp, &h.CreatorPubKey,
 		&h.ParentHash, &h.StateRoot, &h.TransactionsRoot, &h.Extra, &difficultyStr, &tdStr); err != nil {
 		return err
 	}
@@ -234,12 +234,12 @@ func (b *Block) GetHashAsHex() string {
 
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (b *Block) EncodeMsgpack(enc *msgpack.Encoder) error {
-	return enc.Encode(b.Hash, b.Sig, b.Header, b.Transactions)
+	return enc.EncodeMulti(b.Hash, b.Sig, b.Header, b.Transactions)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (b *Block) DecodeMsgpack(dec *msgpack.Decoder) error {
-	return dec.Decode(&b.Hash, &b.Sig, &b.Header, &b.Transactions)
+	return dec.DecodeMulti(&b.Hash, &b.Sig, &b.Header, &b.Transactions)
 }
 
 // GetHashNoNonce gets the hash of the header

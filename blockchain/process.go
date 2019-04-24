@@ -236,8 +236,8 @@ func (b *Blockchain) opsToStateObjects(block types.Block, chain types.Chainer,
 // and world state
 func (b *Blockchain) ProcessTransactions(txs []types.Transaction, chain types.Chainer,
 	opts ...types.CallOp) ([]common.Transition, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 
 	var ops = common.GetTransitions(opts...)
 	for i, tx := range txs {

@@ -14,16 +14,16 @@ import (
 // and chain.
 func (b *Blockchain) CreateAccount(blockNo uint64, chain types.Chainer,
 	account types.Account) error {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+	b.lock.Lock()
+	defer b.lock.Unlock()
 	return chain.CreateAccount(blockNo, account)
 }
 
 // GetAccountNonce gets the nonce of an account
 func (b *Blockchain) GetAccountNonce(address util.String,
 	opts ...types.CallOp) (uint64, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	account, err := b.GetAccount(address, opts...)
 	if err != nil {
 		return 0, err
@@ -34,8 +34,8 @@ func (b *Blockchain) GetAccountNonce(address util.String,
 // GetAccount gets an account by its address
 func (b *Blockchain) GetAccount(address util.String,
 	opts ...types.CallOp) (types.Account, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	opt := common.GetChainerOp(opts...)
 	account, err := b.NewWorldReader().GetAccount(opt.Chain, address, opts...)
 	if err != nil {
@@ -51,8 +51,8 @@ func (b *Blockchain) ListAccounts(opts ...types.CallOp) ([]types.Account, error)
 		return nil, core.ErrBestChainUnknown
 	}
 
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	return b.bestChain.GetAccounts(opts...)
 }
 

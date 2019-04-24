@@ -6,8 +6,6 @@ import (
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 
-	"github.com/olebedev/emitter"
-
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/merkletree"
 )
@@ -144,6 +142,9 @@ type Blockchain interface {
 	// The Chain is specified by passing to OpChain.
 	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
 
+	// GetTxPool gets the transaction pool
+	GetTxPool() TxPool
+
 	// ChainReader gets a Reader for reading the main chain
 	ChainReader() ChainReaderFactory
 
@@ -152,12 +153,6 @@ type Blockchain interface {
 
 	// SetDB sets the database
 	SetDB(elldb.DB)
-
-	// OrphanBlocks gets a reader for the orphan cache
-	OrphanBlocks() CacheReader
-
-	// GetEventEmitter gets the event emitter
-	GetEventEmitter() *emitter.Emitter
 
 	// GetBlock finds a block in any chain with a matching
 	// block number and hash.
@@ -172,9 +167,6 @@ type Blockchain interface {
 
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
-
-	// GetTxPool gets the transaction pool
-	GetTxPool() TxPool
 
 	// CreateAccount creates an account that is associated with
 	// the given block number and chain.
