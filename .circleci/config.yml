@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-      - image: golang:1.10.4-stretch
+      - image: golang:1.12.4-stretch
     working_directory: "/go/src/github.com/ellcrys/elld"
     steps:
       - checkout
