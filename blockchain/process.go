@@ -394,7 +394,7 @@ process:
 			"ParentBlockNo", parentBlock.GetNumber())
 	}
 
-	if chain.HasParent() {
+	if chain.HasParent(txOp) {
 		// Update the validator context to ContextBranch
 		// since we intend to add the block to a branch.
 		bValidator.setContext(types.ContextBranch)

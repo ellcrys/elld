@@ -247,6 +247,15 @@ var _ = Describe("IntegrationBlockchain", func() {
 			})
 		})
 
+		Describe(".getRootChain", func() {
+			It("should get the chain with no branch", func() {
+				bc.addChain(NewChain("abc", db, cfg, log))
+				Expect(bc.chains).To(HaveLen(2))
+				root := bc.getRootChain()
+				Expect(root.GetID().Equal(genesisChain.GetID())).To(BeTrue())
+			})
+		})
+
 		Describe(".findChainInfo", func() {
 
 			var chain *Chain

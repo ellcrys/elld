@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ellcrys/elld/params"
+
 	"github.com/ellcrys/elld/blockchain/common"
 
 	. "github.com/ellcrys/elld/blockchain/testutil"
@@ -290,22 +292,61 @@ var _ = Describe("ReOrg", func() {
 
 		It("should return error if branch chain is empty", func() {
 			branch := NewChain("empty_chain", db, cfg, log)
-			_, err := bc.reOrg(branch)
+			_, err := bc.reOrg(genesisChain, branch)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to get branch chain tip: block not found"))
 		})
 
 		It("should return error if best chain is empty", func() {
 			branch := NewChain("empty_chain", db, cfg, log)
-			bc.bestChain = branch
-			_, err := bc.reOrg(branch)
+			_, err := bc.reOrg(branch, branch)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to get best chain tip: block not found"))
 		})
 
 		It("should return error if branch chain does not have a parent block set", func() {
 			forkedChain.parentBlock = nil
-			_, err := bc.reOrg(bc.chains[forkedChain.GetID()])
+			_, err := bc.reOrg(genesisChain, bc.chains[forkedChain.GetID()])
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("parent block not set on branch"))
+		})
+
+		When("branch chain parent block does not exist on the main chain", func() {
+			var chain *Chain
+			var parentBlock types.Block
+
+			BeforeEach(func() {
+				// make parent block and set the hash to something else
+				// so that a query for it in the main chain fails.
+				parentBlock = MakeBlock(bc, genesisChain, sender, receiver)
+				parentBlock.SetHash(util.StrToHash("abc"))
+
+				// create a new chain, set the required account to
+				// allow block creation possible. Add the block to the chain.
+				chain = NewChain("ch1", db, cfg, log)
+				err := bc.CreateAccount(1, chain, &core.Account{
+					Type:    core.AccountTypeBalance,
+					Address: util.String(sender.Addr()),
+					Balance: "100",
+				})
+				Expect(err).To(BeNil())
+				block := MakeBlock(bc, chain, sender, receiver)
+				err = chain.append(block)
+				Expect(err).To(BeNil())
+
+				// set the parent block the chain the parent block  (with unknown hash)
+				chain.parentBlock = parentBlock
+			})
+
+			It("should return `parent block does not exist on the main chain`", func() {
+				_, err := bc.reOrg(genesisChain, chain)
+				Expect(err).To(Equal(params.ErrBranchParentNotInMainChain))
+			})
+		})
+
+		It("should return error when branch chain's parent does not exist on the main chain", func() {
+			forkedChain.parentBlock = nil
+			_, err := bc.reOrg(genesisChain, bc.chains[forkedChain.GetID()])
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("parent block not set on branch"))
 		})
@@ -316,7 +357,7 @@ var _ = Describe("ReOrg", func() {
 			var err error
 
 			BeforeEach(func() {
-				reOrgedChain, err = bc.reOrg(forkedChain)
+				reOrgedChain, err = bc.reOrg(genesisChain, forkedChain)
 				Expect(err).To(BeNil())
 			})
 
@@ -417,7 +458,7 @@ var _ = Describe("ReOrg", func() {
 		})
 
 		It("should be successful; return nil", func() {
-			reOrgedChain, err := bc.reOrg(forkedChain)
+			reOrgedChain, err := bc.reOrg(genesisChain, forkedChain)
 			Expect(err).To(BeNil())
 
 			Describe("reorged chain should have same length as side/fork chain", func() {

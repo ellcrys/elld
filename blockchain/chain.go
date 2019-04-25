@@ -251,8 +251,8 @@ func (c *Chain) height(opts ...types.CallOp) (uint64, error) {
 }
 
 // hasBlock checks if a block with the provided hash exists on this chain
-func (c *Chain) hasBlock(hash util.Hash) (bool, error) {
-	h, err := c.store.GetHeaderByHash(hash)
+func (c *Chain) hasBlock(hash util.Hash, opts ...types.CallOp) (bool, error) {
+	h, err := c.store.GetHeaderByHash(hash, opts...)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			return false, err
