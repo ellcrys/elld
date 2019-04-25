@@ -469,7 +469,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 						tx.Hash = tx.ComputeHash()
 						tp.Put(tx)
 						maxSize := tx.GetSizeNoFee() + 100
-						txs, err = bc.SelectTransactions(maxSize)
+						txs, err = bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
@@ -502,7 +502,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 						Expect(tp.Size()).To(Equal(int64(2)))
 						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
-						txs, err = bc.SelectTransactions(maxSize)
+						txs, err = bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
@@ -532,7 +532,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 						Expect(err).To(BeNil())
 
 						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
-						txs, err = bc.SelectTransactions(maxSize)
+						txs, err = bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
@@ -564,7 +564,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 						Expect(err).To(BeNil())
 
 						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
-						txs, err = bc.SelectTransactions(maxSize)
+						txs, err = bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
@@ -587,7 +587,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 						tx.Hash = tx.ComputeHash()
 						tp.Put(tx)
 						maxSize := tx.GetSizeNoFee() + 100
-						txs, err = bc.SelectTransactions(maxSize)
+						txs, err = bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
@@ -620,7 +620,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 						Expect(tp.Size()).To(Equal(int64(2)))
 						maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
-						txs, err = bc.SelectTransactions(maxSize)
+						txs, err = bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 					})
 
@@ -652,14 +652,14 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 				It("should only include transactions up to the given max size", func() {
 					maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee()
-					txs, err := bc.SelectTransactions(maxSize)
+					txs, err := bc.selectTransactions(maxSize)
 					Expect(err).To(BeNil())
 					Expect(txs).To(HaveLen(2))
 				})
 
 				It("should only include all transactions when max size exceeds pool size", func() {
 					maxSize := tx.GetSizeNoFee() + tx2.GetSizeNoFee() + tx3.GetSizeNoFee() + 100
-					txs, err := bc.SelectTransactions(maxSize)
+					txs, err := bc.selectTransactions(maxSize)
 					Expect(err).To(BeNil())
 					Expect(txs).To(HaveLen(3))
 				})
@@ -667,7 +667,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 				When("max size is too small", func() {
 					It("should select nothing and put back all transactions back in the pool", func() {
 						maxSize := int64(1)
-						txs, err := bc.SelectTransactions(maxSize)
+						txs, err := bc.selectTransactions(maxSize)
 						Expect(err).To(BeNil())
 						Expect(txs).To(HaveLen(0))
 						Expect(tp.Size()).To(Equal(int64(3)))

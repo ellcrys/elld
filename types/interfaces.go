@@ -5,6 +5,7 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
+	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/merkletree"
@@ -126,8 +127,11 @@ type Blockchain interface {
 	// GetBestChain gets the chain that is currently considered the main chain
 	GetBestChain() Chainer
 
-	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
-	IsKnownBlock(hash util.Hash) (bool, string, error)
+	// OrphanBlocks gets a reader for the orphan cache
+	OrphanBlocks() CacheReader
+
+	// GetEventEmitter gets the event emitter
+	GetEventEmitter() *emitter.Emitter
 
 	// HaveBlock checks whether we have a block matching the hash in any of the known chains
 	HaveBlock(hash util.Hash) (bool, error)
@@ -181,11 +185,6 @@ type Blockchain interface {
 	// GetLocators fetches a list of blockhashes used to
 	// compare and sync the local chain with a remote chain.
 	GetLocators() ([]util.Hash, error)
-
-	// SelectTransactions sets transactions from
-	// the transaction pool. These transactions must
-	// be suitable for inclusion in blocks.
-	SelectTransactions(maxSize int64) ([]Transaction, error)
 }
 
 // BlockMaker defines an interface providing the

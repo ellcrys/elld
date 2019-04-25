@@ -16,12 +16,28 @@ import (
 	"github.com/ellcrys/elld/util"
 )
 
+func (b *Blockchain) getBlockByHash(args ...interface{}) interface{} {
+	hash := args[0].(util.Hash)
+	opts := args[1].([]types.CallOp)
+	for _, chain := range b.chains {
+		block, err := chain.getBlockByHash(hash, opts...)
+		if err != nil {
+			if err != core.ErrBlockNotFound {
+				return err
+			}
+			continue
+		}
+		return block
+	}
+	return core.ErrBlockNotFound
+}
+
 // HaveBlock checks whether we have a block matching
 // the hash in any of the known chains
 func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
-	b.lock.RLock()
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	chains := b.chains
-	b.lock.RUnlock()
 	for _, chain := range chains {
 		has, err := chain.hasBlock(hash)
 		if err != nil {
@@ -32,30 +48,6 @@ func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-// IsKnownBlock checks whether a block with the has exists
-// in at least one of all block chains and caches (e.g orphan)
-func (b *Blockchain) IsKnownBlock(hash util.Hash) (bool, string, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
-	var have bool
-	var reason string
-
-	have, err := b.HaveBlock(hash)
-	if err != nil {
-		return false, "", err
-	} else if have {
-		reason = "chain"
-	}
-
-	if !have {
-		if have = b.isOrphanBlock(hash); have {
-			reason = "orphan cache"
-		}
-	}
-
-	return have, reason, nil
 }
 
 // getFeeAllocTx creates an allocation transaction
@@ -94,8 +86,8 @@ func (b *Blockchain) getFeeAllocTx(block *core.Block, beneficiary *crypto.Key) *
 // Generate produces a valid block for a target chain. By default
 // the main chain is used but a different chain can be passed in
 // as a CallOp.
-func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.CallOp) (types.Block, error) {
-
+func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.CallOp) (types.Block,
+	error) {
 	var chain types.Chainer
 	var block *core.Block
 
@@ -115,6 +107,8 @@ func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.C
 	// If an explicit chain has not been set, we use
 	// the main chain
 	if chain == nil && b.bestChain != nil {
+		b.chl.RLock()
+		defer b.chl.RUnlock()
 		chain = b.bestChain
 	}
 
@@ -197,7 +191,7 @@ func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.C
 
 	// select transactions and compute transaction root
 	if len(params.Transactions) == 0 {
-		selectedTxs, err := b.SelectTransactions(p.MaxBlockTxsSize)
+		selectedTxs, err := b.selectTransactions(p.MaxBlockTxsSize)
 		if err != nil {
 			return nil, err
 		}
@@ -243,9 +237,9 @@ func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.C
 // GetBlock finds a block in any chain with a matching
 // block number and hash.
 func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error) {
-	b.lock.RLock()
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	chains := b.chains
-	b.lock.RUnlock()
 	for _, chain := range chains {
 		block, err := chain.getBlockByNumberAndHash(number, hash)
 		if err != nil {
@@ -259,10 +253,10 @@ func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error
 	return nil, core.ErrBlockNotFound
 }
 
-// getBlockByHash finds a block in any chain with a matching hash.
-func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
-	b.lock.RLock()
-	defer b.lock.RUnlock()
+// GetBlockByHash finds a block in any chain with a matching hash.
+func (b *Blockchain) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	for _, chain := range b.chains {
 		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {
@@ -274,9 +268,4 @@ func (b *Blockchain) getBlockByHash(hash util.Hash, opts ...types.CallOp) (types
 		return block, nil
 	}
 	return nil, core.ErrBlockNotFound
-}
-
-// GetBlockByHash finds a block in any chain with a matching hash.
-func (b *Blockchain) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
-	return b.getBlockByHash(hash, opts...)
 }

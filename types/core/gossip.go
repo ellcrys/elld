@@ -26,14 +26,14 @@ type Handshake struct {
 // msgpack.CustomEncoder
 func (h *Handshake) EncodeMsgpack(enc *msgpack.Encoder) error {
 	tdStr := h.BestBlockTotalDifficulty.String()
-	return enc.EncodeMulti(h.Version, h.Name, h.BestBlockHash, h.BestBlockNumber, tdStr)
+	return enc.Encode(h.Version, h.Name, h.BestBlockHash, h.BestBlockNumber, tdStr)
 }
 
 // DecodeMsgpack implements
 // msgpack.CustomDecoder
 func (h *Handshake) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var tdStr string
-	if err := dec.DecodeMulti(&h.Version, &h.Name, &h.BestBlockHash,
+	if err := dec.Decode(&h.Version, &h.Name, &h.BestBlockHash,
 		&h.BestBlockNumber, &tdStr); err != nil {
 		return err
 	}
@@ -68,13 +68,13 @@ type Ping struct {
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (p *Ping) EncodeMsgpack(enc *msgpack.Encoder) error {
 	tdStr := p.BestBlockTotalDifficulty.String()
-	return enc.EncodeMulti(p.BestBlockHash, p.BestBlockNumber, tdStr)
+	return enc.Encode(p.BestBlockHash, p.BestBlockNumber, tdStr)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (p *Ping) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var tdStr string
-	if err := dec.DecodeMulti(&p.BestBlockHash, &p.BestBlockNumber, &tdStr); err != nil {
+	if err := dec.Decode(&p.BestBlockHash, &p.BestBlockNumber, &tdStr); err != nil {
 		return err
 	}
 	p.BestBlockTotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
@@ -91,13 +91,13 @@ type Pong struct {
 // EncodeMsgpack implements msgpack.CustomEncoder
 func (p *Pong) EncodeMsgpack(enc *msgpack.Encoder) error {
 	tdStr := p.BestBlockTotalDifficulty.String()
-	return enc.EncodeMulti(p.BestBlockHash, p.BestBlockNumber, tdStr)
+	return enc.Encode(p.BestBlockHash, p.BestBlockNumber, tdStr)
 }
 
 // DecodeMsgpack implements msgpack.CustomDecoder
 func (p *Pong) DecodeMsgpack(dec *msgpack.Decoder) error {
 	var tdStr string
-	if err := dec.DecodeMulti(&p.BestBlockHash, &p.BestBlockNumber, &tdStr); err != nil {
+	if err := dec.Decode(&p.BestBlockHash, &p.BestBlockNumber, &tdStr); err != nil {
 		return err
 	}
 	p.BestBlockTotalDifficulty, _ = new(big.Int).SetString(tdStr, 10)
