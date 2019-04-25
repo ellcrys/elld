@@ -1,9 +1,11 @@
 package crypto
 
 import (
+	"fmt"
+
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -40,6 +42,26 @@ var _ = Describe("Key", func() {
 				Expect(a1).NotTo(Equal(a2))
 			})
 		})
+	})
+
+	Describe(".idFromPublicKey", func() {
+
+		var cases = [][]interface{}{
+			{int64(1), "12D3KooWHHzSeKaY8xuZVzkLbKFfvNgPPeKhFBGrMbNzbm5akpqu"},
+			{int64(2), "12D3KooWKRyzVWW6ChFjQjK4miCty85Niy49tpPV95XdKu1BcvMA"},
+			{int64(3), "12D3KooWB1b3qZxWJanuhtseF3DmPggHCtG36KZ9ixkqHtdKH9fh"},
+		}
+
+		for _, i := range cases {
+			var c = i
+			It(fmt.Sprintf("should return id for seed=%d as id=%s", c[0], c[1]), func() {
+				seed1 := c[0].(int64)
+				k1, _ := NewKey(&seed1)
+				id, err := idFromPublicKey(k1.PubKey().pubKey)
+				Expect(err).To(BeNil())
+				Expect(id).To(Equal(c[1]))
+			})
+		}
 	})
 
 	Describe(".PeerID", func() {
@@ -97,12 +119,18 @@ var _ = Describe("Key", func() {
 			Expect(err.Error()).To(Equal("private key is nil"))
 		})
 
-		It("should return []byte{82, 253, 252, 7, 33, 130, 101, 79, 22, 63, 95, 15, 154, 98, 29, 114, 149, 102, 199, 77, 16, 3, 124, 77, 123, 187, 4, 7, 209, 226, 198, 73, 111, 21, 129, 112, 155, 183, 177, 239, 3, 13, 33, 13, 177, 142, 59, 11, 161, 199, 118, 251, 166, 93, 140, 218, 173, 5, 65, 81, 66, 209, 137, 248}", func() {
+		It(`should return []byte{82, 253, 252, 7, 33, 130, 101, 79, 22, 63, 95, 15, 154, 98, 29, 
+			114, 149, 102, 199, 77, 16, 3, 124, 77, 123, 187, 4, 7, 209, 226, 198, 73, 111, 21, 
+			129, 112, 155, 183, 177, 239, 3, 13, 33, 13, 177, 142, 59, 11, 161, 199, 118, 
+			251, 166, 93, 140, 218, 173, 5, 65, 81, 66, 209, 137, 248}`, func() {
 			seed := int64(1)
 			a, err := NewKey(&seed)
 			bs, err := a.PrivKey().Bytes()
 			Expect(err).To(BeNil())
-			expected := []byte{82, 253, 252, 7, 33, 130, 101, 79, 22, 63, 95, 15, 154, 98, 29, 114, 149, 102, 199, 77, 16, 3, 124, 77, 123, 187, 4, 7, 209, 226, 198, 73, 111, 21, 129, 112, 155, 183, 177, 239, 3, 13, 33, 13, 177, 142, 59, 11, 161, 199, 118, 251, 166, 93, 140, 218, 173, 5, 65, 81, 66, 209, 137, 248}
+			expected := []byte{82, 253, 252, 7, 33, 130, 101, 79, 22, 63, 95, 15, 154, 98, 29,
+				114, 149, 102, 199, 77, 16, 3, 124, 77, 123, 187, 4, 7, 209, 226, 198, 73, 111,
+				21, 129, 112, 155, 183, 177, 239, 3, 13, 33, 13, 177, 142, 59, 11, 161, 199,
+				118, 251, 166, 93, 140, 218, 173, 5, 65, 81, 66, 209, 137, 248}
 			Expect(bs).To(Equal(expected))
 		})
 	})
@@ -125,7 +153,10 @@ var _ = Describe("Key", func() {
 			sig, err := a.PrivKey().Sign([]byte("hello"))
 			Expect(err).To(BeNil())
 			Expect(sig).ToNot(BeEmpty())
-			Expect(sig).To(Equal([]byte{158, 13, 68, 26, 41, 83, 26, 181, 43, 77, 192, 150, 115, 117, 175, 47, 207, 26, 118, 217, 101, 179, 49, 206, 126, 203, 37, 152, 3, 68, 75, 1, 141, 65, 141, 7, 87, 247, 160, 35, 94, 34, 137, 101, 185, 75, 228, 85, 240, 182, 166, 71, 94, 88, 208, 108, 189, 55, 174, 220, 119, 184, 128, 15}))
+			Expect(sig).To(Equal([]byte{158, 13, 68, 26, 41, 83, 26, 181, 43, 77, 192, 150, 115,
+				117, 175, 47, 207, 26, 118, 217, 101, 179, 49, 206, 126, 203, 37, 152, 3, 68, 75,
+				1, 141, 65, 141, 7, 87, 247, 160, 35, 94, 34, 137, 101, 185, 75, 228, 85, 240,
+				182, 166, 71, 94, 88, 208, 108, 189, 55, 174, 220, 119, 184, 128, 15}))
 		})
 	})
 
@@ -165,7 +196,10 @@ var _ = Describe("Key", func() {
 			sig, err := a.PrivKey().Sign([]byte("hello"))
 			Expect(err).To(BeNil())
 			Expect(sig).ToNot(BeEmpty())
-			Expect(sig).To(Equal([]byte{158, 13, 68, 26, 41, 83, 26, 181, 43, 77, 192, 150, 115, 117, 175, 47, 207, 26, 118, 217, 101, 179, 49, 206, 126, 203, 37, 152, 3, 68, 75, 1, 141, 65, 141, 7, 87, 247, 160, 35, 94, 34, 137, 101, 185, 75, 228, 85, 240, 182, 166, 71, 94, 88, 208, 108, 189, 55, 174, 220, 119, 184, 128, 15}))
+			Expect(sig).To(Equal([]byte{158, 13, 68, 26, 41, 83, 26, 181, 43, 77, 192, 150, 115,
+				117, 175, 47, 207, 26, 118, 217, 101, 179, 49, 206, 126, 203, 37, 152, 3, 68, 75,
+				1, 141, 65, 141, 7, 87, 247, 160, 35, 94, 34, 137, 101, 185, 75, 228, 85, 240,
+				182, 166, 71, 94, 88, 208, 108, 189, 55, 174, 220, 119, 184, 128, 15}))
 
 			valid, err := a.PubKey().Verify([]byte("hello"), sig)
 			Expect(err).To(BeNil())
@@ -270,7 +304,8 @@ var _ = Describe("Key", func() {
 		})
 
 		It("should return nil", func() {
-			err := IsValidPrivKey("waS1jBBgdyYgpNtTjKbt6MZbDTYweLtzkNxueyyEc6ss33kPG58VcJNmpDK82BwuX8LAoqZuBCdaoXbxHPM99k8HFvqueW")
+			err := IsValidPrivKey("waS1jBBgdyYgpNtTjKbt6MZbDTYweLtzkNxueyyEc6ss33kPG58VcJNmp" +
+				"DK82BwuX8LAoqZuBCdaoXbxHPM99k8HFvqueW")
 			Expect(err).To(BeNil())
 		})
 	})
@@ -289,10 +324,10 @@ var _ = Describe("Key", func() {
 		})
 
 		It("should return err = nil", func() {
-			pk, err := PrivKeyFromBase58("waS1jBBgdyYgpNtTjKbt6MZbDTYweLtzkNxueyyEc6ss33kPG58VcJNmpDK82BwuX8LAoqZuBCdaoXbxHPM99k8HFvqueW")
+			pk, err := PrivKeyFromBase58("waS1jBBgdyYgpNtTjKbt6MZbDTYweLtzkNxueyyEc6ss33" +
+				"kPG58VcJNmpDK82BwuX8LAoqZuBCdaoXbxHPM99k8HFvqueW")
 			Expect(err).To(BeNil())
 			Expect(pk).ToNot(BeNil())
 		})
 	})
-
 })

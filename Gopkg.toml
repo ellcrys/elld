@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -27,93 +27,196 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/cenkalti/rpc2"
+  name = "github.com/btcsuite/btcutil"
 
 [[constraint]]
-  branch = "master"
+  name = "github.com/c-bata/go-prompt"
+  version = "0.2.3"
+
+[[constraint]]
+  name = "github.com/dgrijalva/jwt-go"
+  version = "3.2.0"
+
+[[constraint]]
   name = "github.com/dustin/go-humanize"
+  version = "1.0.0"
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ellcrys/go-libp2p-crypto"
+  name = "github.com/dustinkirkland/golang-petname"
+
+[[constraint]]
+  name = "github.com/ellcrys/go-ethereum"
+  version = "1.8.7"
+  
+[[constraint]]
+  branch = "master"
+  name = "github.com/ellcrys/merkletree"
 
 [[constraint]]
   name = "github.com/fatih/color"
-  version = "1.6.0"
+  version = "1.7.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/franela/goreq"
+  name = "github.com/fatih/structs"
+  version = "1.1.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/fsouza/go-dockerclient"
+  name = "github.com/go-ozzo/ozzo-validation"
+  version = "3.5.0"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/graarh/golang-socketio"
+  name = "github.com/gobuffalo/packr"
+  version = "2.2.0"
 
 [[constraint]]
-  branch = "master"
+  name = "github.com/gogo/protobuf"
+  version = "1.2.1"
+
+[[constraint]]
+  name = "github.com/gorilla/mux"
+  version = "1.7.1"
+
+[[constraint]]
+  name = "github.com/gorilla/rpc"
+  version = "1.2.0"
+
+[[constraint]]
   name = "github.com/hashicorp/golang-lru"
+  version = "0.5.1"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/jinzhu/configor"
+  name = "github.com/imdario/mergo"
+  version = "0.3.7"
 
 [[constraint]]
   branch = "master"
   name = "github.com/jinzhu/copier"
 
 [[constraint]]
-  branch = "master"
+  name = "github.com/lestrrat-go/file-rotatelogs"
+  version = "2.2.0"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p"
+  version = "0.0.16"
+
+[[constraint]]
   name = "github.com/libp2p/go-libp2p-crypto"
+  version = "0.0.1"
 
 [[constraint]]
-  branch = "master"
+  name = "github.com/libp2p/go-libp2p-host"
+  version = "0.0.2"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-net"
+  version = "0.0.2"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-peer"
+  version = "0.1.0"
+
+[[constraint]]
+  name = "github.com/libp2p/go-libp2p-peerstore"
+  version = "0.0.3"
+
+[[constraint]]
   name = "github.com/libp2p/go-libp2p-protocol"
+  version = "0.0.1"
 
+[[constraint]]
+  name = "github.com/mitchellh/go-homedir"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/mitchellh/mapstructure"
+  version = "1.1.2"
+
+[[constraint]]
+  name = "github.com/multiformats/go-multiaddr"
+  version = "0.0.2"
 
 [[constraint]]
   branch = "master"
-  name = "github.com/multiformats/go-multiaddr"
+  name = "github.com/ncodes/authtoken"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ncodes/go-prettyjson"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/ncodes/whereami"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/olebedev/emitter"
+
+[[constraint]]
+  name = "github.com/onsi/ginkgo"
+  version = "1.8.0"
 
 [[constraint]]
   name = "github.com/onsi/gomega"
-  version = "1.4.0"
+  version = "1.5.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/phayes/freeport"
+  version = "1.0.2"
 
 [[constraint]]
-  branch = "master"
-  name = "github.com/segmentio/go-prompt"
+  name = "github.com/pkg/profile"
+  version = "1.3.0"
 
 [[constraint]]
+  name = "github.com/rifflock/lfshook"
+  version = "2.4.0"
+  
+[[constraint]]
   branch = "master"
+  name = "github.com/robertkrimen/otto"
+  
+[[constraint]]
   name = "github.com/shopspring/decimal"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/sirupsen/logrus"
+  version = "1.4.1"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
-  version = "0.0.1-35-ga1f051b"
+  version = "0.0.3"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.3.2"
+
+[[constraint]]
+  name = "github.com/syndtr/goleveldb"
+  version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/thoas/go-funk"
+  version = "0.4.0"
+
+[[constraint]]
+  name = "github.com/vmihailenco/msgpack"
+  version = "3.3.3"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/crypto"
 
 [[constraint]]
   name = "gopkg.in/asaskevich/govalidator.v4"
   version = "4.0.0"
 
+[[constraint]]
+  name = "gopkg.in/oleiade/lane.v1"
+  version = "1.0.0"
+
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/ellcrys/merkletree"
-
-[[constraint]]
-  name = "github.com/btcsuite/btcutil"
-  revision = "ff82dacded1c76d101bce55c394c03c0bbff69e8"
-
-[[constraint]]
-  name = "github.com/c-bata/go-prompt"
-  revision = "15992ed45e46edd6168d7c8bfda14b700f6b756a"

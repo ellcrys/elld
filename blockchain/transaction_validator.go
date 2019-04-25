@@ -35,9 +35,9 @@ type TxsValidator struct {
 	// txpool refers to the transaction pool
 	txpool types.TxPool
 
-	// bchain is the blockchain manager. We use it
+	// bChain is the blockchain manager. We use it
 	// to query transactions
-	bchain types.Blockchain
+	bChain types.Blockchain
 
 	// curIndex is the current index of the the current
 	// transaction being validated.
@@ -56,11 +56,11 @@ func appendErr(dest []error, err error) []error {
 
 // NewTxsValidator creates an instance of TxsValidator
 func NewTxsValidator(txs []types.Transaction, txPool types.TxPool,
-	bchain types.Blockchain) *TxsValidator {
+	bChain types.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    txs,
 		txpool: txPool,
-		bchain: bchain,
+		bChain: bChain,
 		nonces: make(map[string]uint64),
 	}
 }
@@ -68,11 +68,11 @@ func NewTxsValidator(txs []types.Transaction, txPool types.TxPool,
 // NewTxValidator is like NewTxsValidator
 // except it accepts a single transaction
 func NewTxValidator(tx types.Transaction, txPool types.TxPool,
-	bchain types.Blockchain) *TxsValidator {
+	bChain types.Blockchain) *TxsValidator {
 	return &TxsValidator{
 		txs:    []types.Transaction{tx},
 		txpool: txPool,
-		bchain: bchain,
+		bChain: bChain,
 		nonces: make(map[string]uint64),
 	}
 }
@@ -340,7 +340,7 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 	// If the callers intent is not to append a block
 	// to the main chain, we must ensure the transaction
 	// does not exist on the main chain.
-	_, err := v.bchain.GetTransaction(tx.GetHash(), opts...)
+	_, err := v.bChain.GetTransaction(tx.GetHash(), opts...)
 	if err != nil {
 		if err != core.ErrTxNotFound {
 			errs = append(errs, fmt.Errorf("failed to get transaction: %s", err))
@@ -353,7 +353,7 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 	}
 
 	// Get the sender account
-	account, err := v.bchain.GetAccount(tx.GetFrom(), opts...)
+	account, err := v.bChain.GetAccount(tx.GetFrom(), opts...)
 	if err != nil {
 		if err == core.ErrAccountNotFound {
 			errs = append(errs, fieldErrorWithIndex(v.curIndex,

@@ -7,7 +7,7 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/robertkrimen/otto"
-	goprompt "github.com/segmentio/go-prompt"
+	goprompt "github.com/ellcrys/go-prompt"
 )
 
 func (e *Executor) accountError(msg string) otto.Value {

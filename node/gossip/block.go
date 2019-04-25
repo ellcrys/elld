@@ -135,8 +135,7 @@ func (g *Manager) OnBlockInfo(s net.Stream, rp core.Engine) error {
 	}
 
 	// We can't accept a block we already know
-	if existingBlock, _ := g.engine.GetBlockchain().
-		HaveBlock(msg.Hash); existingBlock {
+	if existingBlock, _ := g.engine.GetBlockchain().HaveBlock(msg.Hash); existingBlock {
 		goto blk_not_ok
 	}
 

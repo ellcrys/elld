@@ -138,7 +138,7 @@ var _ = Describe("TransactionValidator", func() {
 				&core.Transaction{
 					Type: core.TxTypeBalance,
 					Fee:  "0.000001",
-				}: fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.440000000000000009159339953157541458494961261749267578125 (for 44 bytes)"),
+				}: fmt.Errorf("index:0, field:fee, error:fee is too low. Minimum fee expected: 0.44 (for 44 bytes)"),
 
 				&core.Transaction{}: fmt.Errorf("index:0, field:hash, error:hash is required"),
 

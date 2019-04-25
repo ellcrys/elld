@@ -5,7 +5,6 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
-
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/util"
@@ -128,8 +127,11 @@ type Blockchain interface {
 	// GetBestChain gets the chain that is currently considered the main chain
 	GetBestChain() Chainer
 
-	// IsKnownBlock checks if a block is stored in the main or side chain or orphan
-	IsKnownBlock(hash util.Hash) (bool, string, error)
+	// OrphanBlocks gets a reader for the orphan cache
+	OrphanBlocks() CacheReader
+
+	// GetEventEmitter gets the event emitter
+	GetEventEmitter() *emitter.Emitter
 
 	// HaveBlock checks whether we have a block matching the hash in any of the known chains
 	HaveBlock(hash util.Hash) (bool, error)
@@ -144,6 +146,9 @@ type Blockchain interface {
 	// The Chain is specified by passing to OpChain.
 	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
 
+	// GetTxPool gets the transaction pool
+	GetTxPool() TxPool
+
 	// ChainReader gets a Reader for reading the main chain
 	ChainReader() ChainReaderFactory
 
@@ -152,12 +157,6 @@ type Blockchain interface {
 
 	// SetDB sets the database
 	SetDB(elldb.DB)
-
-	// OrphanBlocks gets a reader for the orphan cache
-	OrphanBlocks() CacheReader
-
-	// GetEventEmitter gets the event emitter
-	GetEventEmitter() *emitter.Emitter
 
 	// GetBlock finds a block in any chain with a matching
 	// block number and hash.
@@ -173,9 +172,6 @@ type Blockchain interface {
 	// SetGenesisBlock sets the genesis block
 	SetGenesisBlock(block Block)
 
-	// GetTxPool gets the transaction pool
-	GetTxPool() TxPool
-
 	// CreateAccount creates an account that is associated with
 	// the given block number and chain.
 	CreateAccount(blockNo uint64, chain Chainer, account Account) error
@@ -189,11 +185,6 @@ type Blockchain interface {
 	// GetLocators fetches a list of blockhashes used to
 	// compare and sync the local chain with a remote chain.
 	GetLocators() ([]util.Hash, error)
-
-	// SelectTransactions sets transactions from
-	// the transaction pool. These transactions must
-	// be suitable for inclusion in blocks.
-	SelectTransactions(maxSize int64) ([]Transaction, error)
 }
 
 // BlockMaker defines an interface providing the

@@ -20,7 +20,7 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
-	"github.com/segmentio/go-prompt"
+	"github.com/ellcrys/go-prompt"
 )
 
 var (

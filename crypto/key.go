@@ -7,19 +7,17 @@ import (
 	"fmt"
 	mrand "math/rand"
 
-	"github.com/gogo/protobuf/proto"
 	pb "github.com/libp2p/go-libp2p-crypto/pb"
 
-	"golang.org/x/crypto/ripemd160"
-
 	"github.com/btcsuite/btcutil/base58"
-	mh "github.com/multiformats/go-multihash"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/go-ethereum/crypto/sha3"
+	"github.com/gogo/protobuf/proto"
+	"golang.org/x/crypto/ripemd160"
 
 	peer "github.com/libp2p/go-libp2p-peer"
 
-	"github.com/ellcrys/elld/util"
-	crypto "github.com/ellcrys/go-libp2p-crypto"
-	"golang.org/x/crypto/sha3"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 )
 
 // AddressVersion is the base58 encode version adopted
@@ -61,14 +59,10 @@ func NewKey(seed *int64) (*Key, error) {
 		return nil, err
 	}
 
-	key := &Key{
-		privKey: &PrivKey{
-			privKey: priv,
-		},
-		Meta: make(map[string]interface{}),
-	}
-
-	return key, nil
+	return &Key{
+		privKey: &PrivKey{privKey: priv},
+		Meta:    make(map[string]interface{}),
+	}, nil
 }
 
 // NewKeyFromIntSeed is like NewKey but accepts seed of type Int and casts to Int64
@@ -82,22 +76,15 @@ func NewKeyFromIntSeed(seed int) *Key {
 
 // NewKeyFromPrivKey creates a new address from a private key
 func NewKeyFromPrivKey(sk *PrivKey) *Key {
-	return &Key{
-		privKey: sk,
-	}
+	return &Key{privKey: sk}
 }
 
 func idFromPublicKey(pk crypto.PubKey) (string, error) {
-	b, err := pk.Bytes()
+	id, err := peer.IDFromPublicKey(pk)
 	if err != nil {
 		return "", err
 	}
-	var alg uint64 = mh.SHA2_256
-	if len(b) <= peer.MaxInlineKeyLength {
-		alg = mh.ID
-	}
-	hash, _ := mh.Sum(b, alg, -1)
-	return hash.B58String(), nil
+	return id.String(), nil
 }
 
 // PeerID returns the IPFS compatible peer ID for the corresponding public key
@@ -128,20 +115,19 @@ func (p *PubKey) Bytes() ([]byte, error) {
 	if p.pubKey == nil {
 		return nil, fmt.Errorf("public key is nil")
 	}
-	bs := p.pubKey.(*crypto.Ed25519PublicKey).BytesU()
-	return bs[:], nil
+	return p.pubKey.(*crypto.Ed25519PublicKey).Raw()
 }
 
 // Hex returns the public key in hex encoding
 func (p *PubKey) Hex() string {
 	bs, _ := p.Bytes()
-	return hex.EncodeToString(bs[:])
+	return hex.EncodeToString(bs)
 }
 
 // Base58 returns the public key in base58 encoding
 func (p *PubKey) Base58() string {
 	bs, _ := p.Bytes()
-	return base58.CheckEncode(bs[:], PublicKeyVersion)
+	return base58.CheckEncode(bs, PublicKeyVersion)
 }
 
 // Verify verifies a signature
@@ -164,23 +150,20 @@ func (p *PrivKey) Bytes() ([]byte, error) {
 	if p.privKey == nil {
 		return nil, fmt.Errorf("private key is nil")
 	}
-	bs := p.privKey.(*crypto.Ed25519PrivateKey).BytesU()
-	return bs[:], nil
+	return p.privKey.(*crypto.Ed25519PrivateKey).Raw()
 }
 
 // Marshal encodes the private key using protocol buffer
 func (p *PrivKey) Marshal() ([]byte, error) {
 	pbmes := new(pb.PrivateKey)
-	typ := pb.KeyType_Ed25519
-	pbmes.Type = &typ
+	typ := p.privKey.Type()
+	pbmes.Type = typ
+	data, err := p.privKey.Raw()
+	if err != nil {
+		return nil, err
+	}
 
-	sk, _ := p.Bytes()
-	pk := p.privKey.GetPublic().(*crypto.Ed25519PublicKey).BytesU()
-
-	buf := make([]byte, 96)
-	copy(buf, sk[:])
-	copy(buf[64:], pk[:])
-	pbmes.Data = buf
+	pbmes.Data = data
 	return proto.Marshal(pbmes)
 }
 
@@ -280,10 +263,11 @@ func PrivKeyFromBase58(pk string) (*PrivKey, error) {
 		return nil, err
 	}
 
-	decPrivKey, _, _ := base58.CheckDecode(pk)
-	var sk [64]byte
-	copy(sk[:], decPrivKey)
-	privKey := crypto.Ed25519PrivateKeyFromPrivKey(sk)
+	sk, _, _ := base58.CheckDecode(pk)
+	privKey, err := crypto.UnmarshalEd25519PrivateKey(sk)
+	if err != nil {
+		return nil, err
+	}
 
 	return &PrivKey{
 		privKey: privKey,

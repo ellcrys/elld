@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	goprompt "github.com/segmentio/go-prompt"
+	goprompt "github.com/ellcrys/go-prompt"
 
 	"github.com/ellcrys/elld/rpc"
 	"github.com/gobuffalo/packr"

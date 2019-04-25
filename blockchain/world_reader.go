@@ -10,7 +10,7 @@ import (
 // NewWorldReader creates a new WorldReader
 func (b *Blockchain) NewWorldReader() *WorldReader {
 	return &WorldReader{
-		bchain: b,
+		bChain: b,
 	}
 }
 
@@ -19,28 +19,32 @@ func (b *Blockchain) NewWorldReader() *WorldReader {
 // a ChainTraverser, it can search for and object
 // from a chain and the chain's grand-parents.
 type WorldReader struct {
-	bchain *Blockchain
+	bChain *Blockchain
 }
 
-// GetAccount gets an account by the given
-// address in the chain provided.
+// GetAccount gets an account by the given address.
+// If chain is nil, it will check in the main chain.
+// If chain is provided, it will check within the chain
+// or traverse the chain's parent and ancestors to find
+// the account.
 func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
 	opts ...types.CallOp) (types.Account, error) {
-	r.bchain.chainLock.RLock()
-	defer r.bchain.chainLock.RUnlock()
 
 	var result types.Account
 	var err error
 
-	// If a start chain is not given,
-	// We will use whatever the main chain
+	// If a start chain is not given, we will use the main chain
 	if chain == nil {
+		r.bChain.chl.RLock()
+		mainChain := r.bChain.bestChain
+		r.bChain.chl.RUnlock()
+
 		// If no best chain yet, we return an error
-		if r.bchain.bestChain == nil {
+		if mainChain == nil {
 			return nil, core.ErrBestChainUnknown
 		}
 
-		result, err = r.bchain.bestChain.GetAccount(address, opts...)
+		result, err = mainChain.GetAccount(address, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -52,8 +56,8 @@ func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
 		return result, nil
 	}
 
-	// maxChainHeight is the height in the maximum
-	// block number in the current chain that we are
+	// maxChainHeight is the maximum block number
+	// in the current chain that we are
 	// allowed to access/consider. Any object associated
 	// with block number greater than maxChainHeight is
 	// not a valid history from the point of miner who created
@@ -61,16 +65,18 @@ func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
 	maxChainHeight := uint64(0)
 
 	// Transverse the chain and its ancestors.
-	err = r.bchain.NewChainTraverser().Start(chain).Query(func(ch types.Chainer) (bool, error) {
+	err = r.bChain.NewChainTraverser().Start(chain).Query(func(ch types.Chainer) (bool, error) {
 		// make a copy of the call options
 		optsCopy := append([]types.CallOp{}, opts...)
 
-		// Add a QueryBlockRange containing the max chain height
-		// to the call options slice.
+		// If a max chain height is set, add a QueryBlockRange.Max value
+		// which will prevent searching beyond the max height on the chain.
 		if maxChainHeight > 0 {
 			optsCopy = append(optsCopy, &common.OpBlockQueryRange{Max: maxChainHeight})
 		}
 
+		// Attempt to find the account on this chain.
+		// If not found, return false and error if an error occurs
 		result, err = ch.GetAccount(address, optsCopy...)
 		if err != nil {
 			if err != core.ErrAccountNotFound {
@@ -80,10 +86,10 @@ func (r *WorldReader) GetAccount(chain types.Chainer, address util.String,
 
 		// At this point, the current chain does not have
 		// the address, if this chain has a parent chain,
-		// the next iteration will pass the parent to
-		// this block. We need to determine the maxChainHeight
-		// so we know what blocks were know to the miner at
-		// the time there created their block.
+		// it will be the next to be searched;
+		// We need to determine the maxChainHeight
+		// so we know what blocks were known to the
+		// miner at the time they created the block.
 		if result == nil {
 			chInfo := ch.GetInfo()
 			if chInfo.GetParentBlockNumber() > 0 {

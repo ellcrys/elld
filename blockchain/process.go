@@ -236,8 +236,6 @@ func (b *Blockchain) opsToStateObjects(block types.Block, chain types.Chainer,
 // and world state
 func (b *Blockchain) ProcessTransactions(txs []types.Transaction, chain types.Chainer,
 	opts ...types.CallOp) ([]common.Transition, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 
 	var ops = common.GetTransitions(opts...)
 	for i, tx := range txs {
@@ -282,13 +280,12 @@ func (b *Blockchain) maybeAcceptBlock(block types.Block, chain *Chain,
 	var createNewChain bool
 	var bValidator = b.getBlockValidator(block)
 
-	// add any assigned validation contexts
+	// Add any assigned validation contexts
 	for _, ctx := range block.GetValidationContexts() {
 		bValidator.setContext(ctx)
 	}
 
-	// Sanity check. This should have been done
-	// in ProcessBlock
+	// Sanity check. This should have been done by the caller
 	if errs := bValidator.CheckFields(); len(errs) > 0 {
 		return nil, errs[0]
 	}
@@ -357,7 +354,6 @@ func (b *Blockchain) maybeAcceptBlock(block types.Block, chain *Chain,
 		b.log.Info("Block with same height exists. New branch required.",
 			"BlockNo", block.GetNumber(),
 			"ChainHeight", chainTip.GetNumber())
-		goto process
 	}
 
 process:
@@ -365,8 +361,7 @@ process:
 	// Only do this in production or development mode
 	if (b.cfg.Node.Mode != config.ModeTest) && block.GetNumber() > 1 {
 		if errs := bValidator.CheckPoW(opts...); len(errs) > 0 {
-			b.log.Debug("Block PoW is invalid", "BlockNo",
-				block.GetNumber(), "Err", errs[0])
+			b.log.Debug("Block PoW is invalid", "BlockNo", block.GetNumber(), "Err", errs[0])
 			return nil, errs[0]
 		}
 	}
@@ -428,8 +423,8 @@ process:
 	}
 
 	// Execute block to derive the state objects and
-	// the resulting state root should the state
-	// object be applied to the blockchain state tree.
+	// the expected state root when the state
+	// objects are applied to the current blockchain state.
 	newStateRoot, stateObjs, err = b.execBlock(chain, block, txOp)
 	if err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
@@ -448,8 +443,8 @@ process:
 		return nil, core.ErrBlockStateRootInvalid
 	}
 
-	// We need to update the world state using
-	// the latest state objects derived from executing the block
+	// We need to update the world state using the latest
+	// state objects derived from executing the block
 	for _, so := range stateObjs {
 		batchObjs = append(batchObjs, elldb.NewKVObject(so.Key, so.Value))
 	}
@@ -511,7 +506,7 @@ commit:
 
 	// When the chain is the best chain, emit a new block
 	// event for other processes to act on the new block
-	if b.bestChain.GetID().Equal(chain.GetID()) {
+	if b.GetBestChain().GetID().Equal(chain.GetID()) {
 		go b.eventEmitter.Emit(core.EventNewBlock, block, chain.ChainReader())
 	}
 
@@ -577,7 +572,7 @@ func (b *Blockchain) ProcessBlock(block types.Block,
 		return nil, core.ErrBlockExists
 	}
 
-	// attempt to add the block to a chain
+	// Attempt to add the block to a chain
 	chain, err := b.maybeAcceptBlock(block, nil, opts...)
 	if err != nil {
 		return nil, err
@@ -651,7 +646,7 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 	// parent hash and try to find an orphan block that
 	// references the parent hash.
 	for len(parentHashes) > 0 {
-		// pick the next parent hash and remove it from the slice
+		// Pick the next parent hash and remove it from the slice
 		curParentHash := parentHashes[0]
 		parentHashes[0] = ""
 		parentHashes = parentHashes[1:]
@@ -664,17 +659,17 @@ func (b *Blockchain) processOrphanBlocks(latestBlockHash string) error {
 
 			oBKey := orphansKey[i]
 
-			// find an orphan block with a parent hash that
+			// Find an orphan block with a parent hash that
 			// is same has the latestBlockHash
 			orphanBlock := b.orphanBlocks.Peek(oBKey).(types.Block)
 			if orphanBlock.GetHeader().GetParentHash().HexStr() != curParentHash {
 				continue
 			}
 
-			// remove from the orphan from the cache
+			// Remove from the orphan from the cache
 			b.orphanBlocks.Remove(orphanBlock.GetHashAsHex())
 
-			// re-attempt to process the block
+			// Re-attempt to process the block
 			if _, err := b.maybeAcceptBlock(orphanBlock, nil); err != nil {
 				return err
 			}
