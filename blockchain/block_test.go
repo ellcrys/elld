@@ -211,51 +211,6 @@ var _ = Describe("Block", func() {
 		})
 	})
 
-	Describe(".IsKnownBlock", func() {
-		var block types.Block
-
-		BeforeEach(func() {
-			block = MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 1, receiver.Addr(), sender, "1", "2.36", 1532730724),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
-		})
-
-		It("should return false when block does not exist in any known chain or caches", func() {
-			exist, reason, err := bc.IsKnownBlock(block.GetHash())
-			Expect(err).To(BeNil())
-			Expect(exist).To(BeFalse())
-			Expect(reason).To(BeEmpty())
-		})
-
-		It("should return true when block exists in a chain", func() {
-			chain2 := NewChain("chain2", db, cfg, log)
-			Expect(err).To(BeNil())
-			err = chain2.append(block)
-			Expect(err).To(BeNil())
-
-			bc.addChain(chain2)
-			err = chain2.store.PutBlock(block)
-			Expect(err).To(BeNil())
-
-			has, err := bc.HaveBlock(block.GetHash())
-			Expect(err).To(BeNil())
-			Expect(has).To(BeTrue())
-		})
-
-		It("should return true when block exist as an orphan", func() {
-			bc.addOrphanBlock(block)
-			known, reason, err := bc.IsKnownBlock(block.GetHash())
-			Expect(err).To(BeNil())
-			Expect(known).To(BeTrue())
-			Expect(reason).To(Equal("orphan cache"))
-		})
-	})
-
 	Describe(".Generate", func() {
 
 		var txs []types.Transaction

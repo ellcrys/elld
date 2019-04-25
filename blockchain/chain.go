@@ -39,9 +39,9 @@ type Chain struct {
 	// cfg includes configuration parameters of the client
 	cfg *config.EngineConfig
 
-	// chainLock is used to synchronize access to fields that are
+	// lck is used to synchronize access to fields that are
 	// accessed concurrently
-	chainLock *sync.RWMutex
+	lck *sync.RWMutex
 
 	// store provides functionalities for storing objects
 	store types.ChainStorer
@@ -58,7 +58,7 @@ func NewChain(id util.String, db elldb.DB,
 	chain.id = id
 	chain.cfg = cfg
 	chain.store = store.New(db, chain.id)
-	chain.chainLock = &sync.RWMutex{}
+	chain.lck = &sync.RWMutex{}
 	chain.log = log
 	chain.parentChain = nil
 	chain.info = &core.ChainInfo{
@@ -94,22 +94,28 @@ func (c *Chain) ChainReader() types.ChainReaderFactory {
 
 // GetParentBlock gets the chain's parent block if it has one
 func (c *Chain) GetParentBlock() types.Block {
+	c.lck.RLock()
+	defer c.lck.RUnlock()
 	return c.parentBlock
 }
 
 // GetInfo gets the chain information
 func (c *Chain) GetInfo() types.ChainInfo {
+	c.lck.RLock()
+	defer c.lck.RUnlock()
 	return c.info
 }
 
 // GetParent gets an instance of this chain's parent
 func (c *Chain) GetParent(opts ...types.CallOp) *Chain {
+	c.lck.RLock()
 	if c.info == nil || c.info.ParentChainID == "" {
+		c.lck.RUnlock()
 		return nil
 	}
-	c.chainLock.Lock()
+	c.lck.RUnlock()
+
 	c.loadParent(opts...)
-	c.chainLock.Unlock()
 	return c.parentChain
 }
 
@@ -154,6 +160,8 @@ func (c *Chain) save(opts ...types.CallOp) error {
 //
 // NOTE: should be called with chainLock held
 func (c *Chain) loadParent(opts ...types.CallOp) (*Chain, error) {
+	c.lck.Lock()
+	defer c.lck.Unlock()
 
 	// Get the cached version if
 	// we already saved it
@@ -196,7 +204,7 @@ func (c *Chain) loadParent(opts ...types.CallOp) (*Chain, error) {
 		parentChain: nil,
 		parentBlock: nil,
 		store:       store.New(c.store.DB(), parentInfo.ID),
-		chainLock:   &sync.RWMutex{},
+		lck:         &sync.RWMutex{},
 	}
 
 	// Get parent block from the parent chain
@@ -218,7 +226,7 @@ func (c *Chain) loadParent(opts ...types.CallOp) (*Chain, error) {
 	return pChain, txOp.Commit()
 }
 
-// Current returns the header of the highest block on this c
+// Current returns the header of the highest block on the chain
 func (c *Chain) Current(opts ...types.CallOp) (types.Header, error) {
 	h, err := c.store.GetHeader(0, opts...)
 	if err != nil {
@@ -324,7 +332,7 @@ func (c *Chain) GetAccounts(opts ...types.CallOp) ([]types.Account, error) {
 // and the candidate block number is not 1. If there is no block on
 // the chain yet, then we assume this to be the first block of a fork.
 //
-// The caller is expected to validate the block before call.
+// The caller is expected to have validated the block prior to calling this method.
 func (c *Chain) append(candidate types.Block, opts ...types.CallOp) error {
 
 	var err error
@@ -558,7 +566,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) (types.Block, e
 		return nil, fmt.Errorf("failed to delete mined block record: %s", err)
 	}
 
-	// Find accounts associated to with the block and delete them
+	// Find accounts associated with the block and delete them
 	err = nil
 	accountsKey := common.MakeQueryKeyAccounts(c.id.Bytes())
 	txOp.Tx.Iterate(accountsKey, false, func(kv *elldb.KVObject) bool {

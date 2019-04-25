@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/util/activeobject"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/syndtr/goleveldb/leveldb"
 
@@ -37,6 +39,8 @@ const (
 // functionalities for interacting with the underlying database
 // and primitives.
 type Blockchain struct {
+	// lock is a general purpose lock for store etc
+	lock *sync.RWMutex
 
 	// coinbase is the key that identifies this blockchain
 	// instance.
@@ -45,9 +49,6 @@ type Blockchain struct {
 	// genesisBlock is the initial, hardcoded block
 	// shared by all clients. It is the root of all chains.
 	genesisBlock types.Block
-
-	// chainLock is a general purpose chainLock for store, bestChain, chains etc
-	chainLock *sync.RWMutex
 
 	// processLock is used to lock the main block processing method
 	processLock *sync.Mutex
@@ -60,13 +61,6 @@ type Blockchain struct {
 
 	// db is the the database
 	db elldb.DB
-
-	// bestChain is the chain considered to be the true chain.
-	// It is protected by lock
-	bestChain *Chain
-
-	// chains holds all known chains
-	chains map[util.String]*Chain
 
 	// orphanBlocks stores blocks whose parents are unknown
 	orphanBlocks *cache.Cache
@@ -82,6 +76,23 @@ type Blockchain struct {
 	// events or broadcast events about its state
 	eventEmitter *emitter.Emitter
 
+	// activeObj provides active object pattern for handling
+	// function calls
+	activeObj *activeobject.ActiveObject
+
+	// chl is a lock for chain events
+	chl *sync.RWMutex
+
+	// bestChain is the chain considered to be the true chain.
+	// It is protected by lock
+	bestChain *Chain
+
+	// chains holds all known chains
+	chains map[util.String]*Chain
+
+	// rol is a lock used for re-org events
+	rol *sync.RWMutex
+
 	// reOrgActive indicates an ongoing reorganization
 	reOrgActive bool
 }
@@ -92,12 +103,15 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.txPool = txPool
 	bc.log = log
 	bc.cfg = cfg
-	bc.chainLock = &sync.RWMutex{}
+	bc.lock = &sync.RWMutex{}
+	bc.chl = &sync.RWMutex{}
+	bc.rol = &sync.RWMutex{}
 	bc.processLock = &sync.Mutex{}
 	bc.chains = make(map[util.String]*Chain)
 	bc.orphanBlocks = cache.NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = cache.NewCache(MaxRejectedBlocksCacheSize)
 	bc.eventEmitter = &emitter.Emitter{}
+	bc.activeObj = activeobject.NewActiveObject()
 	return bc
 }
 
@@ -218,6 +232,7 @@ func (b *Blockchain) Up() error {
 	return nil
 }
 
+// getBlockByHash finds and returns a block by hash only
 // SetEventEmitter sets the event emitter
 func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 	b.eventEmitter = ee
@@ -234,27 +249,16 @@ func (b *Blockchain) GetTxPool() types.TxPool {
 	return b.txPool
 }
 
-// OrphanBlocks returns a cache reader for orphan blocks
-func (b *Blockchain) OrphanBlocks() types.CacheReader {
-	return b.orphanBlocks
-}
-
-// GetEventEmitter gets the event emitter
-func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
-	return b.eventEmitter
-}
-
 func (b *Blockchain) reOrgIsActive() bool {
-	b.chainLock.RLock()
-	r := b.reOrgActive
-	b.chainLock.RUnlock()
-	return r
+	b.rol.RLock()
+	defer b.rol.RUnlock()
+	return b.reOrgActive
 }
 
 func (b *Blockchain) setReOrgStatus(active bool) {
-	b.chainLock.Lock()
+	b.rol.Lock()
+	defer b.rol.Unlock()
 	b.reOrgActive = active
-	b.chainLock.Unlock()
 }
 
 // loadChain finds and load a chain into the chain cache. It
@@ -284,13 +288,10 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 	chain := NewChainFromChainInfo(ci, b.db, b.cfg, b.log)
 
 	// Load the chain's parent chain and block
-	b.chainLock.Lock()
 	_, err := chain.loadParent()
 	if err != nil {
-		b.chainLock.Unlock()
 		return fmt.Errorf("chain load failed: %s", err)
 	}
-	b.chainLock.Unlock()
 
 	// add chain to cache
 	b.addChain(chain)
@@ -300,22 +301,35 @@ func (b *Blockchain) loadChain(ci *core.ChainInfo) error {
 
 // GetBestChain gets the chain that is currently considered the main chain
 func (b *Blockchain) GetBestChain() types.Chainer {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	return b.bestChain
+}
+
+// SetBestChain sets the current main chain
+func (b *Blockchain) SetBestChain(c *Chain) {
+	b.chl.Lock()
+	defer b.chl.Unlock()
+	b.bestChain = c
 }
 
 // SetDB sets the database to use
 func (b *Blockchain) SetDB(db elldb.DB) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
 	b.db = db
 }
 
 // GetDB gets the database
 func (b *Blockchain) GetDB() elldb.DB {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
 	return b.db
 }
 
 func (b *Blockchain) removeChain(chain *Chain) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+	b.chl.Lock()
+	defer b.chl.Unlock()
 	if _, ok := b.chains[chain.GetID()]; ok {
 		delete(b.chains, chain.GetID())
 	}
@@ -325,15 +339,13 @@ func (b *Blockchain) removeChain(chain *Chain) {
 // findChainByBlockHash finds the chain where the given block
 // hash exists. It returns the block, the chain, the header of
 // highest block in the chain.
-//
-// NOTE: This method must be called with chain lock held by the caller.
 func (b *Blockchain) findChainByBlockHash(hash util.Hash,
 	opts ...types.CallOp) (block types.Block, chain *Chain,
 	chainTipHeader types.Header, err error) {
 
-	b.chainLock.RLock()
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	chains := b.chains
-	b.chainLock.RUnlock()
 
 	for _, chain := range chains {
 
@@ -365,27 +377,22 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash,
 
 // addRejectedBlock adds the block to the rejection cache.
 func (b *Blockchain) addRejectedBlock(block types.Block) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
 	b.rejectedBlocks.Add(block.GetHash().HexStr(), struct{}{})
 }
 
 // isRejected checks whether a block exists in the
 // rejection cache
 func (b *Blockchain) isRejected(block types.Block) bool {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	return b.rejectedBlocks.Has(block.GetHash().HexStr())
 }
 
 // addOrphanBlock adds a block to the collection of
 // orphaned blocks.
 func (b *Blockchain) addOrphanBlock(block types.Block) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
 	// Insert the block to the cache with a 1 hour expiration
-	b.orphanBlocks.AddWithExp(block.GetHash().HexStr(),
-		block, time.Now().Add(time.Hour))
+	b.orphanBlocks.AddWithExp(block.GetHash().HexStr(), block,
+		time.Now().Add(time.Hour))
+
 	b.log.Debug("Added block to orphan cache",
 		"BlockNo", block.GetNumber(),
 		"CacheSize", b.orphanBlocks.Len())
@@ -394,8 +401,6 @@ func (b *Blockchain) addOrphanBlock(block types.Block) {
 // isOrphanBlock checks whether a block is present in the
 // collection of orphaned blocks.
 func (b *Blockchain) isOrphanBlock(blockHash util.Hash) bool {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	return b.orphanBlocks.Get(blockHash.HexStr()) != nil
 }
 
@@ -408,11 +413,14 @@ func (b *Blockchain) NewChainFromChainInfo(ci types.ChainInfo) *Chain {
 }
 
 // findChainInfo finds information about chain
-// TODO: search cache first before database
 func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error) {
 
+	b.chl.RLock()
+	chains := b.chains
+	b.chl.RUnlock()
+
 	// check whether the chain exists in the cache
-	if chain, ok := b.chains[chainID]; ok {
+	if chain, ok := chains[chainID]; ok {
 		return chain.info, nil
 	}
 
@@ -435,13 +443,14 @@ func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error)
 
 // IsMainChain checks whether cr is the main chain
 func (b *Blockchain) IsMainChain(cr types.ChainReaderFactory) bool {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
-	return b.bestChain.GetID() == cr.GetID()
+	b.chl.RLock()
+	isMain := b.bestChain.GetID() == cr.GetID()
+	b.chl.RUnlock()
+	return isMain
 }
 
 // saveChain persist a given chain to the database.
-// It will also cache the chain to support faster query.
+// It will also cache the chain to support faster querying.
 func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String,
 	parentBlockNumber uint64, opts ...types.CallOp) error {
 
@@ -462,10 +471,11 @@ func (b *Blockchain) saveChain(chain *Chain, parentChainID util.String,
 	}
 
 	b.addChain(chain)
+
 	return nil
 }
 
-// getChains gets all known chains
+// getChains gets all known chains from storage
 func (b *Blockchain) getChains() (chainsInfo []*core.ChainInfo, err error) {
 	chainsKey := common.MakeQueryKeyChains()
 	result := b.db.GetByPrefix(chainsKey)
@@ -481,16 +491,16 @@ func (b *Blockchain) getChains() (chainsInfo []*core.ChainInfo, err error) {
 
 // hasChain checks whether a chain exists.
 func (b *Blockchain) hasChain(chain *Chain) bool {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	_, ok := b.chains[chain.GetID()]
 	return ok
 }
 
 // addChain adds a new chain to the list of chains.
 func (b *Blockchain) addChain(chain *Chain) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
+	b.chl.Lock()
+	defer b.chl.Unlock()
 	_, ok := b.chains[chain.GetID()]
 	if !ok {
 		b.chains[chain.GetID()] = chain
@@ -537,9 +547,8 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock types.Block,
 	chain.parentBlock = parentBlock
 	chain.parentChain = parentChain
 
-	// store a record of this chain in the store
-	b.saveChain(chain, parentChain.GetID(),
-		parentBlock.GetNumber(),
+	// keep a record of this chain in the store
+	b.saveChain(chain, parentChain.GetID(), parentBlock.GetNumber(),
 		&common.OpTx{Tx: tx, CanFinish: false})
 
 	return chain, nil
@@ -548,14 +557,16 @@ func (b *Blockchain) newChain(tx elldb.Tx, initialBlock types.Block,
 // GetTransaction finds a transaction in the main chain and returns it
 func (b *Blockchain) GetTransaction(hash util.Hash,
 	opts ...types.CallOp) (types.Transaction, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 
-	if b.bestChain == nil {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
+	var mainChain = b.bestChain
+
+	if mainChain == nil {
 		return nil, core.ErrBestChainUnknown
 	}
 
-	tx, err := b.bestChain.GetTransaction(hash, opts...)
+	tx, err := mainChain.GetTransaction(hash, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -563,16 +574,16 @@ func (b *Blockchain) GetTransaction(hash util.Hash,
 	return tx, nil
 }
 
-// ChainReader creates a chain reader for best/main chain
+// ChainReader creates a chain reader to read the main chain
 func (b *Blockchain) ChainReader() types.ChainReaderFactory {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 	return NewChainReader(b.bestChain)
 }
 
 // GetChainReaderByHash returns a chain reader to a chain
 // where a block with the given hash exists
 func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReaderFactory {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	_, chain, _, _ := b.findChainByBlockHash(hash)
 	if chain == nil {
 		return nil
@@ -582,9 +593,10 @@ func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReaderFacto
 
 // GetChainsReader gets chain reader for all known chains
 func (b *Blockchain) GetChainsReader() (readers []types.ChainReaderFactory) {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
-	for _, c := range b.chains {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
+	chains := b.chains
+	for _, c := range chains {
 		readers = append(readers, NewChainReader(c))
 	}
 	return
@@ -598,14 +610,16 @@ func (b *Blockchain) GetChainsReader() (readers []types.ChainReaderFactory) {
 // The genesis block must be added as the last hash
 // if not already included.
 func (b *Blockchain) GetLocators() ([]util.Hash, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 
-	if b.bestChain == nil {
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
+
+	if mainChain == nil {
 		return nil, core.ErrBestChainUnknown
 	}
 
-	curBlockHeader, err := b.bestChain.Current()
+	curBlockHeader, err := mainChain.Current()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current block header: %s", err)
 	}
@@ -618,7 +632,7 @@ func (b *Blockchain) GetLocators() ([]util.Hash, error) {
 	// are fetched, the step
 	step := uint64(1)
 	for i := topHeight; i > 0; i -= step {
-		block, err := b.bestChain.GetBlock(i)
+		block, err := mainChain.GetBlock(i)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, err
@@ -642,17 +656,26 @@ func (b *Blockchain) GetLocators() ([]util.Hash, error) {
 	return locators, nil
 }
 
-// SelectTransactions collects transactions from the head
+// OrphanBlocks returns a cache reader for orphan blocks
+func (b *Blockchain) OrphanBlocks() types.CacheReader {
+	return b.orphanBlocks
+}
+
+// GetEventEmitter gets the event emitter
+func (b *Blockchain) GetEventEmitter() *emitter.Emitter {
+	return b.eventEmitter
+}
+
+// selectTransactions collects transactions from the head
 // of the pool up to the specified maxSize.
-func (b *Blockchain) SelectTransactions(maxSize int64) (selectedTxs []types.Transaction,
+func (b *Blockchain) selectTransactions(maxSize int64) (selectedTxs []types.Transaction,
 	err error) {
-	b.chainLock.RLock()
-	b.chainLock.RUnlock()
 
 	totalSelectedTxsSize := int64(0)
 	cache := []types.Transaction{}
 	nonces := make(map[util.String]uint64)
 	for b.txPool.Size() > 0 {
+
 		// Get a transaction from the top of
 		// the pool
 		tx := b.txPool.Container().First()

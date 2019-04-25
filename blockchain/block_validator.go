@@ -74,9 +74,9 @@ type BlockValidator struct {
 	// txpool refers to the transaction pool
 	txpool types.TxPool
 
-	// bchain is the blockchain manager. We use it
+	// bChain is the blockchain manager. We use it
 	// to query transactions and blocks
-	bchain types.Blockchain
+	bChain types.Blockchain
 
 	// blakimoto is an instance of PoW implementation
 	blakimoto *blakimoto.Blakimoto
@@ -84,12 +84,12 @@ type BlockValidator struct {
 
 // NewBlockValidator creates and returns a BlockValidator object
 func NewBlockValidator(block types.Block, txPool types.TxPool,
-	bchain types.Blockchain, cfg *config.EngineConfig,
+	bChain types.Blockchain, cfg *config.EngineConfig,
 	log logger.Logger) *BlockValidator {
 	return &BlockValidator{
 		block:     block,
 		txpool:    txPool,
-		bchain:    bchain,
+		bChain:    bChain,
 		blakimoto: blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
 	}
 }
@@ -169,7 +169,7 @@ func (v *BlockValidator) validateHeader(h types.Header) (errs []error) {
 func (v *BlockValidator) CheckPoW(opts ...types.CallOp) (errs []error) {
 
 	// find the parent header
-	parentHeader, err := v.bchain.GetBlockByHash(v.block.GetHeader().
+	parentHeader, err := v.bChain.GetBlockByHash(v.block.GetHeader().
 		GetParentHash(), opts...)
 	if err != nil {
 		errs = append(errs, fieldError("parentHash", err.Error()))
@@ -223,6 +223,7 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 		errs = append(errs, fieldError("hash", "hash is required"))
 	} else if v.block.GetHeader() != nil && !v.block.GetHash().
 		Equal(v.block.ComputeHash()) {
+		// pp.Println(v.block.GetHash().HexStr(), "Computed:", v.block.ComputeHash().HexStr())
 		errs = append(errs, fieldError("hash", "hash is not correct"))
 	}
 
@@ -323,7 +324,7 @@ func (v *BlockValidator) checkSignature() (errs []error) {
 // CheckTransactions validates all transactions in the
 // block in relation to the block's destined chain.
 func (v *BlockValidator) CheckTransactions(opts ...types.CallOp) (errs []error) {
-	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bchain)
+	txValidator := NewTxsValidator(v.block.GetTransactions(), v.txpool, v.bChain)
 	txValidator.addContext(v.contexts...)
 	for _, err := range txValidator.Validate(opts...) {
 		errs = append(errs, fmt.Errorf(strings.Replace(err.Error(), "index:", "tx:", -1)))

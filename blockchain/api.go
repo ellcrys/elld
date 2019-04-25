@@ -16,11 +16,12 @@ import (
 
 // apiGetChains fetches a list of chains
 func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chl.RLock()
+	chains := b.chains
+	b.chl.RUnlock()
 
 	var result []interface{}
-	for id, chain := range b.chains {
+	for id, chain := range chains {
 		ch := map[string]interface{}{
 			"id":        id,
 			"timestamp": chain.info.GetTimestamp(),
@@ -50,10 +51,11 @@ func (b *Blockchain) apiGetChains(interface{}) *jsonrpc.Response {
 
 // apiGetBlock fetches a block by number
 func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
 
-	if b.bestChain == nil {
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
@@ -63,14 +65,12 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("Integer").Error(), nil)
 	}
 
-	block, err := b.bestChain.GetBlock(uint64(num))
+	block, err := mainChain.GetBlock(uint64(num))
 	if err != nil {
 		if err != core.ErrBlockNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed,
-				err.Error(), nil)
+			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
 		}
-		return jsonrpc.Error(types.ErrCodeBlockNotFound,
-			err.Error(), nil)
+		return jsonrpc.Error(types.ErrCodeBlockNotFound, err.Error(), nil)
 	}
 
 	return jsonrpc.Success(util.EncodeForJS(block))
@@ -78,8 +78,9 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 
 // apiGetMinedBlocks fetches blocks mined by this node
 func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
 
 	var opt core.ArgGetMinedBlock
 	if arg != nil {
@@ -92,7 +93,7 @@ func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
 		}
 	}
 
-	result, hasMore, err := b.bestChain.GetMinedBlocks(&opt)
+	result, hasMore, err := mainChain.GetMinedBlocks(&opt)
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed,
 			err.Error(), nil)
@@ -111,14 +112,15 @@ func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
 
 // apiGetTipBlock fetches the highest block on the main chain
 func (b *Blockchain) apiGetTipBlock(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
 
-	if b.bestChain == nil {
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
-	block, err := b.bestChain.GetBlock(0)
+	block, err := mainChain.GetBlock(0)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			return jsonrpc.Error(types.ErrCodeQueryFailed,
@@ -133,10 +135,11 @@ func (b *Blockchain) apiGetTipBlock(arg interface{}) *jsonrpc.Response {
 
 // apiGetBlockByHash fetches a block by hash
 func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
 
-	if b.bestChain == nil {
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
@@ -151,7 +154,7 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 			"invalid block hash", nil)
 	}
 
-	block, err := b.bestChain.getBlockByHash(blockHash)
+	block, err := mainChain.getBlockByHash(blockHash)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			return jsonrpc.Error(types.ErrCodeQueryFailed,
@@ -166,8 +169,6 @@ func (b *Blockchain) apiGetBlockByHash(arg interface{}) *jsonrpc.Response {
 
 // apiGetOrphans fetches all orphan blocks
 func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	var orphans = []interface{}{}
 	for _, k := range b.orphanBlocks.Keys() {
 		orphans = append(orphans,
@@ -178,19 +179,23 @@ func (b *Blockchain) apiGetOrphans(arg interface{}) *jsonrpc.Response {
 
 // apiGetBestchain fetches the best chain
 func (b *Blockchain) apiGetBestchain(arg interface{}) *jsonrpc.Response {
-	if b.bestChain == nil {
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
+
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
-	tip, err := b.bestChain.Current()
+	tip, err := mainChain.Current()
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed,
 			err.Error(), nil)
 	}
 
 	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
-		"id":              b.bestChain.id,
-		"timestamp":       b.bestChain.info.GetTimestamp(),
+		"id":              mainChain.id,
+		"timestamp":       mainChain.info.GetTimestamp(),
 		"height":          tip.GetNumber(),
 		"totalDifficulty": tip.GetTotalDifficulty(),
 	}))
@@ -359,11 +364,15 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 // difficulty of the main chain
 func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 
-	if b.bestChain == nil {
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
+
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
-	tip, err := b.bestChain.Current()
+	tip, err := mainChain.Current()
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
@@ -380,11 +389,15 @@ func (b *Blockchain) apiGetDifficultyInfo(arg interface{}) *jsonrpc.Response {
 // apiListAccounts gets all accounts
 func (b *Blockchain) apiListAccounts(arg interface{}) *jsonrpc.Response {
 
-	if b.bestChain == nil {
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
+
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 
-	accounts, err := b.bestChain.GetAccounts()
+	accounts, err := mainChain.GetAccounts()
 	if err != nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
 	}
@@ -401,7 +414,11 @@ func (b *Blockchain) apiListTopNAccounts(arg interface{}) *jsonrpc.Response {
 			rpc.ErrMethodArgType("Integer").Error(), nil)
 	}
 
-	if b.bestChain == nil {
+	b.chl.RLock()
+	mainChain := b.bestChain
+	b.chl.RUnlock()
+
+	if mainChain == nil {
 		return jsonrpc.Error(types.ErrCodeQueryFailed, "best chain not set", nil)
 	}
 

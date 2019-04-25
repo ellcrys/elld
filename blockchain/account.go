@@ -14,16 +14,12 @@ import (
 // and chain.
 func (b *Blockchain) CreateAccount(blockNo uint64, chain types.Chainer,
 	account types.Account) error {
-	b.chainLock.Lock()
-	defer b.chainLock.Unlock()
 	return chain.CreateAccount(blockNo, account)
 }
 
 // GetAccountNonce gets the nonce of an account
 func (b *Blockchain) GetAccountNonce(address util.String,
 	opts ...types.CallOp) (uint64, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	account, err := b.GetAccount(address, opts...)
 	if err != nil {
 		return 0, err
@@ -34,8 +30,6 @@ func (b *Blockchain) GetAccountNonce(address util.String,
 // GetAccount gets an account by its address
 func (b *Blockchain) GetAccount(address util.String,
 	opts ...types.CallOp) (types.Account, error) {
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	opt := common.GetChainerOp(opts...)
 	account, err := b.NewWorldReader().GetAccount(opt.Chain, address, opts...)
 	if err != nil {
@@ -46,13 +40,13 @@ func (b *Blockchain) GetAccount(address util.String,
 
 // ListAccounts list all accounts
 func (b *Blockchain) ListAccounts(opts ...types.CallOp) ([]types.Account, error) {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
 
 	if b.bestChain == nil {
 		return nil, core.ErrBestChainUnknown
 	}
 
-	b.chainLock.RLock()
-	defer b.chainLock.RUnlock()
 	return b.bestChain.GetAccounts(opts...)
 }
 
