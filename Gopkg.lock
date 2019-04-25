@@ -412,14 +412,6 @@
   version = "v1.3.0"
 
 [[projects]]
-  digest = "1:86c75d55fde56a814f69515d092963634d6f5f6bc1c3e9091b01fbe373a9546e"
-  name = "github.com/k0kubun/pp"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "3d73dea227e0711e38b911ffa6fbafc8ff6b2991"
-  version = "v3.0.1"
-
-[[projects]]
   digest = "1:31e761d97c76151dde79e9d28964a812c46efc5baee4085b86f68f0c654450de"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -876,14 +868,6 @@
   pruneopts = "UT"
   revision = "d63641945dc1749baa23686ad0564ad63fef0493"
   version = "v0.0.1"
-
-[[projects]]
-  digest = "1:f22991b1c70f4f93dbd16bf16f59f9b7f4b7fefbc1d6b6818d4aae1cb60f05af"
-  name = "github.com/multiformats/go-multihash"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "922cbd7915f407488e3f4413ada76400a1b29b49"
-  version = "v0.0.3"
 
 [[projects]]
   digest = "1:894daf10008cdef37454571b584832b2a281a5709f6b80d7bd440ff3a627c962"
@@ -1401,7 +1385,6 @@
     "github.com/hashicorp/golang-lru",
     "github.com/imdario/mergo",
     "github.com/jinzhu/copier",
-    "github.com/k0kubun/pp",
     "github.com/lestrrat-go/file-rotatelogs",
     "github.com/libp2p/go-libp2p",
     "github.com/libp2p/go-libp2p-crypto",

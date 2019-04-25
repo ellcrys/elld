@@ -48,11 +48,7 @@
 [[constraint]]
   name = "github.com/ellcrys/go-ethereum"
   version = "1.8.7"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/ellcrys/go-libp2p-crypto"
-
+  
 [[constraint]]
   branch = "master"
   name = "github.com/ellcrys/merkletree"
@@ -140,10 +136,6 @@
 [[constraint]]
   name = "github.com/multiformats/go-multiaddr"
   version = "0.0.2"
-
-[[constraint]]
-  name = "github.com/multiformats/go-multihash"
-  version = "0.0.3"
 
 [[constraint]]
   branch = "master"
