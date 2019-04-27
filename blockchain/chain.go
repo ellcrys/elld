@@ -251,8 +251,8 @@ func (c *Chain) height(opts ...types.CallOp) (uint64, error) {
 }
 
 // hasBlock checks if a block with the provided hash exists on this chain
-func (c *Chain) hasBlock(hash util.Hash) (bool, error) {
-	h, err := c.store.GetHeaderByHash(hash)
+func (c *Chain) hasBlock(hash util.Hash, opts ...types.CallOp) (bool, error) {
+	h, err := c.store.GetHeaderByHash(hash, opts...)
 	if err != nil {
 		if err != core.ErrBlockNotFound {
 			return false, err
@@ -613,6 +613,7 @@ func (c *Chain) removeBlock(number uint64, opts ...types.CallOp) (types.Block, e
 
 // ChainReader provides read-only access to
 // objects belonging to a single chain.
+// It implements ChainReaderFactory interface
 type ChainReader struct {
 	ch *Chain
 }
@@ -636,6 +637,11 @@ func (r *ChainReader) GetParent() types.ChainReaderFactory {
 		return ch.ChainReader()
 	}
 	return nil
+}
+
+// GetAccount gets an account
+func (r *ChainReader) GetAccount(address util.String, opts ...types.CallOp) (types.Account, error) {
+	return r.ch.GetAccount(address, opts...)
 }
 
 // GetParentBlock returns the parent block

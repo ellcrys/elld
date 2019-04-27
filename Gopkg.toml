@@ -147,10 +147,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/ncodes/whereami"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/olebedev/emitter"
 
 [[constraint]]

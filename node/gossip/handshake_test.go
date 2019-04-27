@@ -82,7 +82,8 @@ var _ = Describe("Handshake", func() {
 			var block2 types.Block
 
 			BeforeEach(func() {
-				block2 = MakeBlockWithTotalDifficulty(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, sender, new(big.Int).SetInt64(20000000000))
+				block2 = MakeBlockWithTotalDifficulty(rp.GetBlockchain(), rp.GetBlockchain().
+					GetBestChain(), sender, new(big.Int).SetInt64(20000000000))
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 			})
