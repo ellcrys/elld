@@ -900,14 +900,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e7d61f626291833d1a5ba054c86b0339c13a9a494360cf8ab8cf91c669eab631"
-  name = "github.com/ncodes/whereami"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "aebf70d4a772ea20216cfe6c428f439cb47cfaf2"
-
-[[projects]]
-  branch = "master"
   digest = "1:06dbb3dd9104b854479546944f509a15abbfa0664bd4acbb428a10f53f3acb9b"
   name = "github.com/olebedev/emitter"
   packages = ["."]
@@ -1413,7 +1405,6 @@
     "github.com/multiformats/go-multiaddr",
     "github.com/ncodes/authtoken",
     "github.com/ncodes/go-prettyjson",
-    "github.com/ncodes/whereami",
     "github.com/olebedev/emitter",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
