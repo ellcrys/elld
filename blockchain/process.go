@@ -418,7 +418,7 @@ process:
 	// will occur.
 	// Note: OpAllowExec is used in tests for
 	// mocking branch blocks with valid state.
-	if chain.HasParent() && !common.ExecAllowed(opts...) {
+	if chain.HasParent(txOp) && !common.ExecAllowed(opts...) {
 		goto commit
 	}
 

@@ -228,6 +228,9 @@ type ChainReaderFactory interface {
 	// Current gets the current block at the tip of the chain
 	Current(opts ...CallOp) (Block, error)
 
+	// GetAccount gets an account
+	GetAccount(address util.String, opts ...CallOp) (Account, error)
+
 	// GetParent returns a chain reader to the parent chain.
 	// Returns nil if chain has no parent.
 	GetParent() ChainReaderFactory

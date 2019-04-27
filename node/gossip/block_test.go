@@ -16,7 +16,6 @@ var _ = Describe("Block", func() {
 
 	var lp, rp *node.Node
 	var sender, _ = crypto.NewKey(nil)
-	var receiver, _ = crypto.NewKey(nil)
 	var lpPort, rpPort int
 
 	BeforeEach(func() {
@@ -59,7 +58,8 @@ var _ = Describe("Block", func() {
 			var block types.Block
 
 			BeforeEach(func() {
-				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				block = MakeBlockWithTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(),
+					sender, 1)
 				rp.GetSyncMode().Disable()
 				bm := node.NewBlockManager(rp)
 				go bm.Manage()
@@ -77,33 +77,35 @@ var _ = Describe("Block", func() {
 			var block types.Block
 
 			BeforeEach(func() {
-				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				block = MakeBlockWithTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(),
+					sender, 1)
 				bm := node.NewBlockManager(rp)
 				go bm.Manage()
 			})
 
-			It("remote peer must emit core.EventProcessBlock and core.EventBlockProcessed", func(done Done) {
-				wait := make(chan bool)
+			It("remote peer must emit core.EventProcessBlock and core.EventBlockProcessed",
+				func(done Done) {
+					wait := make(chan bool)
 
-				errs := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
-				Expect(errs).To(BeEmpty())
+					errs := lp.Gossip().BroadcastBlock(block, []core.Engine{rp})
+					Expect(errs).To(BeEmpty())
 
-				go func() {
-					defer GinkgoRecover()
+					go func() {
+						defer GinkgoRecover()
 
-					evtArgs := <-rp.GetEventEmitter().Once(core.EventProcessBlock)
-					Expect(evtArgs.Args).To(HaveLen(1))
-					relayed := evtArgs.Args[0].(*core.Block)
-					Expect(relayed.GetHash()).To(Equal(block.GetHash()))
+						evtArgs := <-rp.GetEventEmitter().Once(core.EventProcessBlock)
+						Expect(evtArgs.Args).To(HaveLen(1))
+						relayed := evtArgs.Args[0].(*core.Block)
+						Expect(relayed.GetHash()).To(Equal(block.GetHash()))
 
-					evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
-					Expect(evtArgs.Args).To(HaveLen(2))
-					close(wait)
-				}()
+						evtArgs = <-rp.GetEventEmitter().Once(core.EventBlockProcessed)
+						Expect(evtArgs.Args).To(HaveLen(2))
+						close(wait)
+					}()
 
-				<-wait
-				close(done)
-			})
+					<-wait
+					close(done)
+				})
 		})
 
 		Context("when a block is successfully relayed to a remote peer", func() {
@@ -112,7 +114,8 @@ var _ = Describe("Block", func() {
 			var block types.Block
 
 			BeforeEach(func() {
-				block = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				block = MakeBlockWithTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(),
+					sender, 1)
 
 				// Add the transaction to the remote node's
 				// transaction pool to prevent block rejection
@@ -159,11 +162,13 @@ var _ = Describe("Block", func() {
 				bm := node.NewBlockManager(rp)
 				go bm.Manage()
 
-				block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+				block2 = MakeBlockWithTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(),
+					sender, 1)
 				_, err := lp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
-				block3 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 2)
+				block3 = MakeBlockWithTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(),
+					sender, 2)
 				_, err = lp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 			})
@@ -207,7 +212,8 @@ var _ = Describe("Block", func() {
 			bm := node.NewBlockManager(rp)
 			go bm.Manage()
 
-			block2 = MakeBlockWithSingleTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(), sender, sender, 1)
+			block2 = MakeBlockWithTx(lp.GetBlockchain(), lp.GetBlockchain().GetBestChain(),
+				sender, 1)
 			_, err := lp.GetBlockchain().ProcessBlock(block2)
 			Expect(err).To(BeNil())
 		})
@@ -240,11 +246,13 @@ var _ = Describe("Block", func() {
 			var result *core.BlockHashes
 
 			BeforeEach(func() {
-				block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+				block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(),
+					sender, 1)
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
-				block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+				block3 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(),
+					sender, 2)
 				_, err = rp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 
@@ -278,11 +286,13 @@ var _ = Describe("Block", func() {
 				var result *core.BlockHashes
 
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 1)
 					_, err := rp.GetBlockchain().ProcessBlock(block2)
 					Expect(err).To(BeNil())
 
-					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+					block3 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 2)
 					_, err = rp.GetBlockchain().ProcessBlock(block3)
 					Expect(err).To(BeNil())
 
@@ -315,11 +325,13 @@ var _ = Describe("Block", func() {
 				var result *core.BlockHashes
 
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 1)
 					_, err := rp.GetBlockchain().ProcessBlock(block2)
 					Expect(err).To(BeNil())
 
-					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+					block3 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 2)
 					_, err = rp.GetBlockchain().ProcessBlock(block3)
 					Expect(err).To(BeNil())
 
@@ -354,8 +366,10 @@ var _ = Describe("Block", func() {
 				var result *core.BlockHashes
 
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
-					chain2block2 := MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+					block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 1)
+					chain2block2 := MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 1)
 					_, err := rp.GetBlockchain().ProcessBlock(block2)
 					Expect(err).To(BeNil())
 
@@ -363,7 +377,8 @@ var _ = Describe("Block", func() {
 					Expect(err).To(BeNil())
 					Expect(rp.GetBlockchain().GetChainsReader()).To(HaveLen(2))
 
-					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+					block3 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 2)
 					_, err = rp.GetBlockchain().ProcessBlock(block3)
 					Expect(err).To(BeNil())
 
@@ -397,7 +412,8 @@ var _ = Describe("Block", func() {
 			var result *core.BlockHashes
 
 			BeforeEach(func() {
-				block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+				block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+					GetBestChain(), sender, 1)
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
 
@@ -422,7 +438,8 @@ var _ = Describe("Block", func() {
 		//
 		// Local Peer
 		// [1]
-		Context("when remote peer's blockchain shape is [1] and local peer's blockchain shape is [1]", func() {
+		Context("when remote peer's blockchain shape is [1] and local peer's"+
+			" blockchain shape is [1]", func() {
 
 			var result *core.BlockHashes
 			var err error
@@ -441,13 +458,16 @@ var _ = Describe("Block", func() {
 		// Remote Peer
 		// [1]-[2]-[3] 	ChainA
 		//  |__[2]		ChainB
-		Context("when remote peer's blockchain shape is: [1]-[2]-[3] and local peer's blockchain shape is: [2]", func() {
+		Context("when remote peer's blockchain shape is: [1]-[2]-[3] and local"+
+			" peer's blockchain shape is: [2]", func() {
 
 			var block2, block3, chainBBlock2 types.Block
 
 			BeforeEach(func() {
-				block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
-				chainBBlock2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 1)
+				block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+					GetBestChain(), sender, 1)
+				chainBBlock2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+					GetBestChain(), sender, 1)
 
 				_, err := rp.GetBlockchain().ProcessBlock(block2)
 				Expect(err).To(BeNil())
@@ -457,7 +477,8 @@ var _ = Describe("Block", func() {
 				Expect(err).To(BeNil())
 				Expect(rp.GetBlockchain().GetChainsReader()).To(HaveLen(2))
 
-				block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, receiver, 2)
+				block3 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+					GetBestChain(), sender, 2)
 				_, err = rp.GetBlockchain().ProcessBlock(block3)
 				Expect(err).To(BeNil())
 			})
@@ -468,7 +489,8 @@ var _ = Describe("Block", func() {
 				var result *core.BlockHashes
 
 				BeforeEach(func() {
-					result, err = lp.Gossip().SendGetBlockHashes(rp, []util.Hash{chainBBlock2.GetHash()}, util.Hash{})
+					result, err = lp.Gossip().SendGetBlockHashes(rp,
+						[]util.Hash{chainBBlock2.GetHash()}, util.Hash{})
 					Expect(err).To(BeNil())
 				})
 
@@ -511,14 +533,17 @@ var _ = Describe("Block", func() {
 		//
 		// Local Peer
 		// [1]
-		Context("when remote peer's blockchain shape is [1]-[2]-[3] and local peer's blockchain shape is: [1]", func() {
+		Context("when remote peer's blockchain shape is [1]-[2]-[3] and local peer's "+
+			"blockchain shape is: [1]", func() {
 			Context("at least one hash is requested", func() {
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, sender, 1)
+					block2 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 1)
 					_, err := rp.GetBlockchain().ProcessBlock(block2)
 					Expect(err).To(BeNil())
 
-					block3 = MakeBlockWithSingleTx(rp.GetBlockchain(), rp.GetBlockchain().GetBestChain(), sender, sender, 2)
+					block3 = MakeBlockWithTx(rp.GetBlockchain(), rp.GetBlockchain().
+						GetBestChain(), sender, 2)
 					_, err = rp.GetBlockchain().ProcessBlock(block3)
 					Expect(err).To(BeNil())
 				})

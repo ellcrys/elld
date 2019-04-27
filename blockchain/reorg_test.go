@@ -69,15 +69,8 @@ var _ = Describe("ReOrg", func() {
 		var chainA, chainB *Chain
 
 		BeforeEach(func() {
-			genesisChainBlock2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-				},
-				Creator:                 sender,
-				Nonce:                   util.EncodeNonce(1),
-				Difficulty:              new(big.Int).SetInt64(1),
-				OverrideTotalDifficulty: new(big.Int).SetInt64(10),
-			})
+			genesisChainBlock2 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
+				new(big.Int).SetInt64(10))
 			err := genesisChain.append(genesisChainBlock2)
 			Expect(err).To(BeNil())
 		})
@@ -91,15 +84,8 @@ var _ = Describe("ReOrg", func() {
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
 
-					chainABlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", time.Now().Unix()),
-						},
-						Creator:                 sender,
-						Nonce:                   util.EncodeNonce(1),
-						Difficulty:              new(big.Int).SetInt64(1),
-						OverrideTotalDifficulty: new(big.Int).SetInt64(100),
-					})
+					chainABlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
+						new(big.Int).SetInt64(100))
 
 					err = chainA.append(chainABlock1)
 					Expect(err).To(BeNil())
@@ -120,15 +106,8 @@ var _ = Describe("ReOrg", func() {
 					err := bc.saveChain(chainB, "", 0)
 					Expect(err).To(BeNil())
 
-					chainBBlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", time.Now().Unix()),
-						},
-						Creator:                 sender,
-						Nonce:                   util.EncodeNonce(1),
-						Difficulty:              new(big.Int).SetInt64(1),
-						OverrideTotalDifficulty: new(big.Int).SetInt64(5),
-					})
+					chainBBlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
+						new(big.Int).SetInt64(5))
 
 					err = chainB.append(chainBBlock1)
 					Expect(err).To(BeNil())
@@ -153,15 +132,8 @@ var _ = Describe("ReOrg", func() {
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
 
-					chainABlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", time.Now().Unix()),
-						},
-						Creator:                 sender,
-						Nonce:                   util.EncodeNonce(1),
-						Difficulty:              new(big.Int).SetInt64(1),
-						OverrideTotalDifficulty: new(big.Int).SetInt64(10),
-					})
+					chainABlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
+						new(big.Int).SetInt64(10))
 
 					err = chainA.append(chainABlock1)
 					Expect(err).To(BeNil())
@@ -187,15 +159,8 @@ var _ = Describe("ReOrg", func() {
 					err := bc.saveChain(chainA, "", 0)
 					Expect(err).To(BeNil())
 
-					chainABlock1 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-						Transactions: []types.Transaction{
-							core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "1", "2.5", time.Now().Unix()),
-						},
-						Creator:                 sender,
-						Nonce:                   util.EncodeNonce(1),
-						Difficulty:              new(big.Int).SetInt64(1),
-						OverrideTotalDifficulty: new(big.Int).SetInt64(10),
-					})
+					chainABlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
+						new(big.Int).SetInt64(10))
 
 					err = chainA.append(chainABlock1)
 					Expect(err).To(BeNil())
@@ -224,25 +189,10 @@ var _ = Describe("ReOrg", func() {
 		//  |__[2] 			- forked chain 1
 		BeforeEach(func() {
 			// genesis block 2
-			genesisB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			genesisB2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
 
-			forkChainB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()+1),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			forkChainB2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
+
 			_, err = bc.ProcessBlock(genesisB2)
 			Expect(err).To(BeNil())
 
@@ -253,28 +203,12 @@ var _ = Describe("ReOrg", func() {
 			forkedChain = bc.chains[forkedChainReader.GetID()]
 
 			// genesis block 3
-			genesisB3 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 2, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			genesisB3 := MakeBlockWithTx(bc, genesisChain, sender, 2)
 			_, err = bc.ProcessBlock(genesisB3)
 			Expect(err).To(BeNil())
 
 			// genesis block 4
-			genesisB4 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			genesisB4 := MakeBlockWithTx(bc, genesisChain, sender, 3)
 			_, err = bc.ProcessBlock(genesisB4)
 			Expect(err).To(BeNil())
 		})
@@ -297,7 +231,7 @@ var _ = Describe("ReOrg", func() {
 			Expect(err.Error()).To(Equal("failed to get branch chain tip: block not found"))
 		})
 
-		It("should return error if best chain is empty", func() {
+		It("should return error if main/best chain is empty", func() {
 			branch := NewChain("empty_chain", db, cfg, log)
 			_, err := bc.reOrg(branch, branch)
 			Expect(err).ToNot(BeNil())
@@ -389,26 +323,10 @@ var _ = Describe("ReOrg", func() {
 		BeforeEach(func() {
 
 			// genesis block 2
-			genesisB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()-1),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			genesisB2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
 
 			// forked chain block 2
-			forkChainB2 := MakeTestBlock(bc, genesisChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 1, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 1, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()-2),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			forkChainB2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
 
 			_, err = bc.ProcessBlock(genesisB2)
 			Expect(err).To(BeNil())
@@ -420,28 +338,12 @@ var _ = Describe("ReOrg", func() {
 			forkedChain = bc.chains[forkedChainReader.GetID()]
 
 			// forked chain block 3
-			forkChainB3 := MakeTestBlock(bc, forkedChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 2, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 0, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()-1),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			forkChainB3 := MakeBlockWithTx(bc, forkedChain, sender, 2)
 			_, err = bc.ProcessBlock(forkChainB3, common.OpAllowExec(true))
 			Expect(err).To(BeNil())
 
 			// forked chain block 4
-			forkedChainB4 := MakeTestBlock(bc, forkedChain, &types.GenerateBlockParams{
-				Transactions: []types.Transaction{
-					core.NewTx(core.TxTypeBalance, 3, util.String(receiver.Addr()), sender, "1", "2.5", time.Now().Unix()),
-					core.NewTx(core.TxTypeAlloc, 3, util.String(sender.Addr()), sender, "2.5", "0", time.Now().Unix()),
-				},
-				Creator:    sender,
-				Nonce:      util.EncodeNonce(1),
-				Difficulty: new(big.Int).SetInt64(131072),
-			})
+			forkedChainB4 := MakeBlockWithTx(bc, forkedChain, sender, 3)
 			_, err = bc.ProcessBlock(forkedChainB4, common.OpAllowExec(true))
 			Expect(err).To(BeNil())
 		})
@@ -454,7 +356,8 @@ var _ = Describe("ReOrg", func() {
 
 			forkTip, _ := forkedChain.Current()
 			Expect(forkTip.GetNumber()).To(Equal(uint64(4)))
-			Expect(genesisChain.GetParent()).To(BeNil())
+			Expect(forkedChain.GetParent()).To(Equal(genesisChain))
+			Expect(forkedChain.GetParentBlock().GetNumber()).To(Equal(uint64(1)))
 		})
 
 		It("should be successful; return nil", func() {
@@ -475,6 +378,162 @@ var _ = Describe("ReOrg", func() {
 				forkedChainTip, err := reOrgedChain.Current()
 				Expect(err).To(BeNil())
 				Expect(reOrgedTip).To(Equal(forkedChainTip))
+			})
+		})
+	})
+
+	Describe(".decideBestChain", func() {
+
+		Describe("when no chain exist", func() {
+			BeforeEach(func() {
+				bc.chains = map[util.String]*Chain{}
+			})
+
+			It("should ruturn err='unable to choose best chain: no chain was proposed'", func() {
+				err := bc.decideBestChain()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("unable to choose best chain: no chain was proposed"))
+			})
+		})
+
+		Describe("when main/best chain and proposed chain are the same", func() {
+			It("should return nil and best chain remains unchanged", func() {
+				mainChain := bc.bestChain
+				err := bc.decideBestChain()
+				Expect(err).To(BeNil())
+				Expect(mainChain).To(Equal(bc.bestChain))
+			})
+		})
+
+		When(".reOrg: main chain and proposed chain are not directly related", func() {
+
+			var forkedChain, forkedChain2, forkedChain3 *Chain
+
+			// Build two chains having the following shapes:
+			// [1]-[2] 						- Genesis chain,  TotalDifficulty = 10 (main chain)
+			//  |__[2]-[3]-[4] 				- forked chain 1, TotalDifficulty = 20
+			//          |__[4]-[5]			- forked chain 2, TotalDifficulty = 30
+			//              |__[5]-[6] 		- forked chain 3, TotalDifficulty = 40 (proposed chain)
+			BeforeEach(func() {
+				bc.setSkipDecideBestChain(true)
+
+				// genesis block 2
+				genesisB2 := MakeBlockWithTDAndNonce(bc, genesisChain, sender, 1,
+					new(big.Int).SetInt64(10))
+
+				// forked chain block 2
+				forkChainB2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
+
+				_, err = bc.ProcessBlock(genesisB2)
+				Expect(err).To(BeNil())
+
+				// process the forkChainB2 block to create new chain
+				forkedChainReader, err := bc.ProcessBlock(forkChainB2, common.OpAllowExec(true))
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(2))
+				forkedChain = bc.chains[forkedChainReader.GetID()]
+
+				// forked chain block 3
+				forkChainB3 := MakeBlockWithTx(bc, forkedChain, sender, 2)
+				_, err = bc.ProcessBlock(forkChainB3, common.OpAllowExec(true))
+				Expect(err).To(BeNil())
+
+				// forked chain block 4
+				forkChainB4 := MakeBlockWithTDAndNonce(bc, forkedChain, sender, 3,
+					new(big.Int).SetInt64(20))
+
+				// forked chain 2, block 4
+				forkChain2B4 := MakeBlockWithTx(bc, forkedChain, sender, 3)
+
+				_, err = bc.ProcessBlock(forkChainB4)
+				Expect(err).To(BeNil())
+
+				// process the forkChain2B4 block to create new chain
+				forkedChain2Reader, err := bc.ProcessBlock(forkChain2B4, common.OpAllowExec(true))
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(3))
+				forkedChain2 = bc.chains[forkedChain2Reader.GetID()]
+
+				// forked chain 2, block 5
+				forkChain2B5 := MakeBlockWithTDAndNonce(bc, forkedChain2, sender, 4,
+					new(big.Int).SetInt64(30))
+
+				// forked chain 3, block 5
+				forkChain3B5 := MakeBlockWithTx(bc, forkedChain2, sender, 4)
+
+				_, err = bc.ProcessBlock(forkChain2B5)
+				Expect(err).To(BeNil())
+
+				// process the forkChain3B5 block to create new chain
+				forkedChain3Reader, err := bc.ProcessBlock(forkChain3B5, common.OpAllowExec(true))
+				Expect(err).To(BeNil())
+				Expect(len(bc.chains)).To(Equal(4))
+				forkedChain3 = bc.chains[forkedChain3Reader.GetID()]
+
+				// forked chain 3, block 6
+				forkChain3B6 := MakeBlockWithTDAndNonce(bc, forkedChain3, sender, 5,
+					new(big.Int).SetInt64(40))
+				_, err = bc.ProcessBlock(forkChain3B6)
+				Expect(err).To(BeNil())
+			})
+
+			// verify chains shape
+			BeforeEach(func() {
+				tip, _ := genesisChain.Current()
+				Expect(tip.GetNumber()).To(Equal(uint64(2)))
+				Expect(tip.GetTotalDifficulty().Int64()).To(Equal(int64(10)))
+				Expect(genesisChain.GetParent()).To(BeNil())
+
+				forkTip, _ := forkedChain.Current()
+				Expect(forkTip.GetNumber()).To(Equal(uint64(4)))
+				Expect(forkTip.GetTotalDifficulty().Int64()).To(Equal(int64(20)))
+				Expect(forkedChain.GetParent()).To(Equal(genesisChain))
+				Expect(forkedChain.GetParentBlock().GetNumber()).To(Equal(uint64(1)))
+
+				fork2Tip, _ := forkedChain2.Current()
+				Expect(fork2Tip.GetNumber()).To(Equal(uint64(5)))
+				Expect(fork2Tip.GetTotalDifficulty().Int64()).To(Equal(int64(30)))
+				Expect(forkedChain2.GetParent()).To(Equal(forkedChain))
+				Expect(forkedChain2.GetParentBlock().GetNumber()).To(Equal(uint64(3)))
+
+				fork3Tip, _ := forkedChain3.Current()
+				Expect(fork3Tip.GetNumber()).To(Equal(uint64(6)))
+				Expect(fork3Tip.GetTotalDifficulty().Int64()).To(Equal(int64(40)))
+				Expect(forkedChain3.GetParent()).To(Equal(forkedChain2))
+				Expect(forkedChain3.GetParentBlock().GetNumber()).To(Equal(uint64(4)))
+
+				bestChain, err := bc.chooseBestChain()
+				Expect(err).To(BeNil())
+				Expect(bestChain).To(Equal(forkedChain3))
+			})
+
+			BeforeEach(func() {
+				bc.setSkipDecideBestChain(false)
+				err := bc.decideBestChain()
+				Expect(err).To(BeNil())
+			})
+
+			Specify("that forked chain 2 is re-orged with fork chain 3", func() {
+				tip, err := forkedChain2.Current()
+				Expect(err).To(BeNil())
+				Expect(tip.GetNumber()).To(Equal(uint64(6)))
+			})
+
+			Specify("that forked chain 1 is re-orged with fork chain 2", func() {
+				tip, err := forkedChain.Current()
+				Expect(err).To(BeNil())
+				tip2, err := forkedChain2.Current()
+				Expect(err).To(BeNil())
+				Expect(tip.GetNumber()).To(Equal(tip2.GetNumber()))
+			})
+
+			Specify("that main chain is re-orged with fork chain 1", func() {
+				Expect(bc.bestChain).To(Equal(genesisChain))
+				tip, err := genesisChain.Current()
+				Expect(err).To(BeNil())
+				tip2, err := forkedChain.Current()
+				Expect(err).To(BeNil())
+				Expect(tip.GetNumber()).To(Equal(tip2.GetNumber()))
 			})
 		})
 	})

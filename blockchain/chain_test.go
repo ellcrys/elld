@@ -78,20 +78,20 @@ var _ = Describe("Chain", func() {
 		BeforeEach(func() {
 
 			// main chain blocks
-			block2Main = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+			block2Main = MakeBlockWithTx(bc, genesisChain, sender, 1)
 			_, err = bc.ProcessBlock(block2Main)
 			Expect(err).To(BeNil())
 
-			block3Main := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 2)
-			block3ChainB := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 2)
+			block3Main := MakeBlockWithTx(bc, genesisChain, sender, 2)
+			block3ChainB := MakeBlockWithTx(bc, genesisChain, sender, 2)
 
 			_, err = bc.ProcessBlock(block3Main)
 			Expect(err).To(BeNil())
 
-			_, err = bc.ProcessBlock(MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 3))
+			_, err = bc.ProcessBlock(MakeBlockWithTx(bc, genesisChain, sender, 3))
 			Expect(err).To(BeNil())
 
-			_, err = bc.ProcessBlock(MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 4))
+			_, err = bc.ProcessBlock(MakeBlockWithTx(bc, genesisChain, sender, 4))
 			Expect(err).To(BeNil())
 
 			// start a fork (Chain B)
@@ -100,8 +100,8 @@ var _ = Describe("Chain", func() {
 			Expect(len(bc.chains)).To(Equal(2))
 			chainB = bc.chains[chainBReader.GetID()]
 
-			block4ChainB := MakeBlockWithSingleTx(bc, chainB, sender, receiver, 2)
-			block4ChainC := MakeBlockWithSingleTx(bc, chainB, sender, receiver, 2)
+			block4ChainB := MakeBlockWithTx(bc, chainB, sender, 2)
+			block4ChainC := MakeBlockWithTx(bc, chainB, sender, 2)
 
 			_, err = bc.ProcessBlock(block4ChainB)
 			Expect(err).To(BeNil())

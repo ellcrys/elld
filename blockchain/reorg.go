@@ -142,6 +142,12 @@ func (b *Blockchain) chooseBestChain(opts ...types.CallOp) (*Chain, error) {
 // and the main chain to be different.
 func (b *Blockchain) decideBestChain(opts ...types.CallOp) error {
 
+	// Do nothing if we are not ready to decide what
+	// chain is the best at this time. (For Integration Test)
+	if !b.canDecideBestChain() {
+		return nil
+	}
+
 	txOp := common.GetTxOp(b.db, opts...)
 	if txOp.Closed() {
 		return leveldb.ErrClosed
@@ -167,8 +173,8 @@ start:
 	// This will be unlikely and only possible in mocked tests scenerio
 	if proposedChain == nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
-		b.log.Debug("Unable to choose best chain")
-		return fmt.Errorf("unable to choose best chain")
+		b.log.Debug("Unable to choose best chain: no chain was proposed")
+		return fmt.Errorf("unable to choose best chain: no chain was proposed")
 	}
 
 	mainChain := b.GetBestChain().(*Chain)
@@ -192,7 +198,6 @@ start:
 	// -------------------------------------------------------
 	proposedChainParent := proposedChain.GetParent()
 	if mainChain != nil && !proposedChainParent.GetID().Equal(mainChain.GetID()) {
-
 		b.log.Info("Superior grand child detected. Re-organizing child's parent",
 			"GrandChildChainID", proposedChain.GetID().SS(),
 			"ParentChainID", proposedChainParent.GetID().SS())

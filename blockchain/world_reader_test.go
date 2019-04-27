@@ -26,7 +26,7 @@ var _ = Describe("WorldReader", func() {
 	var db elldb.DB
 	var genesisBlock types.Block
 	var genesisChain *Chain
-	var sender, receiver *crypto.Key
+	var sender *crypto.Key
 	var wr *WorldReader
 
 	BeforeEach(func() {
@@ -38,7 +38,6 @@ var _ = Describe("WorldReader", func() {
 		Expect(err).To(BeNil())
 
 		sender = crypto.NewKeyFromIntSeed(1)
-		receiver = crypto.NewKeyFromIntSeed(2)
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
@@ -111,15 +110,15 @@ var _ = Describe("WorldReader", func() {
 					Expect(bc.chains).To(HaveLen(1))
 
 					// genesis block 2
-					genesisB2 := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+					genesisB2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
 					_, err = bc.ProcessBlock(genesisB2)
 					Expect(err).To(BeNil())
 
 					// sidechain1 block 3
-					sidechain1B3 := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 2)
+					sidechain1B3 := MakeBlockWithTx(bc, genesisChain, sender, 2)
 
 					// genesis block 3
-					genesisB3 := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 2)
+					genesisB3 := MakeBlockWithTx(bc, genesisChain, sender, 2)
 					_, err = bc.ProcessBlock(genesisB3)
 					Expect(err).To(BeNil())
 
@@ -130,15 +129,15 @@ var _ = Describe("WorldReader", func() {
 					sidechain1 = bc.chains[reader.GetID()]
 
 					// block 4
-					genesisB4 := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 3)
+					genesisB4 := MakeBlockWithTx(bc, genesisChain, sender, 3)
 					_, err = bc.ProcessBlock(genesisB4)
 					Expect(err).To(BeNil())
 
 					// sidechain2 block 4
-					sidechain2B4 := MakeBlockWithSingleTx(bc, sidechain1, sender, receiver, 3)
+					sidechain2B4 := MakeBlockWithTx(bc, sidechain1, sender, 3)
 
 					// sidechain1 block 4
-					sidechain1B4 := MakeBlockWithSingleTx(bc, sidechain1, sender, receiver, 3)
+					sidechain1B4 := MakeBlockWithTx(bc, sidechain1, sender, 3)
 					_, err = bc.ProcessBlock(sidechain1B4)
 					Expect(err).To(BeNil())
 

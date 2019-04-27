@@ -3,7 +3,7 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/go-ozzo/ozzo-validation"
+	validation "github.com/go-ozzo/ozzo-validation"
 
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
@@ -391,11 +391,10 @@ func (v *TxsValidator) consistencyCheck(tx types.Transaction, opts ...types.Call
 		return
 	}
 
-	// If the caller intends to append a block of which
+	// If the caller intends to append a block in which
 	// this transaction is part of, then the nonce must
 	// be greater than the account's current nonce by 1
-	if v.has(types.ContextBlock) && tx.GetNonce() > accountNonce &&
-		tx.GetNonce()-accountNonce != 1 {
+	if v.has(types.ContextBlock) && tx.GetNonce()-accountNonce != 1 {
 		errs = append(errs, fieldErrorWithIndex(v.curIndex, "",
 			fmt.Sprintf("invalid nonce: has %d, wants %d",
 				tx.GetNonce(), accountNonce+1)))

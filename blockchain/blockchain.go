@@ -74,6 +74,12 @@ type Blockchain struct {
 	// events or broadcast events about its state
 	eventEmitter *emitter.Emitter
 
+	// skipDecideBestChain skips the operation to decide which chain is the best
+	// when a block is processed.
+	// Note: Used to prevent re-organisation when creating
+	// and assembling blocks into desired chains in integration test.
+	skipDecideBestChain bool
+
 	// chl is a lock for chain events
 	chl *sync.RWMutex
 

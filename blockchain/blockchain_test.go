@@ -286,8 +286,8 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 			BeforeEach(func() {
 				parentBlock = MakeBlock(bc, genesisChain, sender, receiver)
-				block = MakeBlockWithParentHash(bc, genesisChain, sender, receiver, parentBlock.GetHash())
-				unknownParent = MakeBlockWithParentHash(bc, genesisChain, sender, receiver, util.StrToHash("unknown"))
+				block = MakeBlockWithParentHash(bc, genesisChain, sender, parentBlock.GetHash())
+				unknownParent = MakeBlockWithParentHash(bc, genesisChain, sender, util.StrToHash("unknown"))
 			})
 
 			It("should return error if block is nil", func() {
@@ -391,7 +391,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 				BeforeEach(func() {
 					for i := uint64(1); i <= 9; i++ {
-						block := MakeBlockWithSingleTx(bc, genesisChain, sender, sender, i)
+						block := MakeBlockWithTx(bc, genesisChain, sender, i)
 						_, err := bc.ProcessBlock(block)
 						Expect(err).To(BeNil())
 						blocks = append(blocks, block)
@@ -432,7 +432,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 				BeforeEach(func() {
 					for i := uint64(1); i <= 19; i++ {
-						block := MakeBlockWithSingleTx(bc, genesisChain, sender, sender, i)
+						block := MakeBlockWithTx(bc, genesisChain, sender, i)
 						_, err := bc.ProcessBlock(block)
 						Expect(err).To(BeNil())
 						blocks = append(blocks, block)
