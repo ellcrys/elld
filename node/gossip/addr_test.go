@@ -199,7 +199,7 @@ var _ = Describe("TestAddr", func() {
 
 				<-wait
 				close(done)
-			})
+			}, 5)
 		})
 
 		Context("when an address has same peer ID as the local peer", func() {
@@ -234,7 +234,7 @@ var _ = Describe("TestAddr", func() {
 				added := rp.PM().PeerExist(addrMsg.Addresses[0].Address.StringID())
 				Expect(added).To(BeFalse())
 				close(done)
-			})
+			}, 5)
 		})
 	})
 
