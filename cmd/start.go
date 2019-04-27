@@ -200,7 +200,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	log.Info("Elld has started",
 		"ClientVersion", cfg.VersionInfo.BuildVersion,
-		"NetVersion", config.Versions.Protocol,
+		"NetVersion", config.GetVersions().Protocol,
 		"DevMode", devMode,
 		"SyncEnabled", !n.GetSyncMode().IsDisabled(),
 		"NetworkEnabled", !noNet,
@@ -296,7 +296,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		// Create the console.
 		// Configure the RPC client if the server has started
 		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
-		cs.SetVersions(config.Versions.Protocol, BuildVersion, GoVersion, BuildCommit)
+		cs.SetVersions(config.GetVersions().Protocol, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 
 		// Prepare the console

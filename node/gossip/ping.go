@@ -18,7 +18,7 @@ import (
 func (g *Manager) SendPingToPeer(remotePeer core.Engine) error {
 
 	rpIDShort := remotePeer.ShortID()
-	s, c, err := g.NewStream(remotePeer, config.Versions.Ping)
+	s, c, err := g.NewStream(remotePeer, config.GetVersions().Ping)
 	if err != nil {
 		return g.logConnectErr(err, remotePeer, "[SendPingToPeer] Failed to connect")
 	}

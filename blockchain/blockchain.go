@@ -33,6 +33,11 @@ const (
 	MaxRejectedBlocksCacheSize = 100
 )
 
+var (
+	// GenesisBlockFileName is the name of the file that contains the genesis block
+	GenesisBlockFileName = "genesis.json"
+)
+
 // Blockchain represents the Ellcrys blockchain. It provides
 // functionalities for interacting with the underlying database
 // and primitives.
@@ -175,7 +180,7 @@ func (b *Blockchain) Up() error {
 	// been set, we attempt to load it from the
 	// genesis.json file.
 	if b.genesisBlock == nil {
-		b.genesisBlock, err = LoadBlockFromFile("genesis.json")
+		b.genesisBlock, err = LoadBlockFromFile(GenesisBlockFileName)
 		if err != nil {
 			return err
 		}

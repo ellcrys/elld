@@ -197,7 +197,8 @@ start:
 	//      '--[3]-[4]-[5]-[6]    - Proposed chain parent
 	// -------------------------------------------------------
 	proposedChainParent := proposedChain.GetParent()
-	if mainChain != nil && !proposedChainParent.GetID().Equal(mainChain.GetID()) {
+	if mainChain != nil && proposedChainParent != nil && !proposedChainParent.GetID().
+		Equal(mainChain.GetID()) {
 		b.log.Info("Superior grand child detected. Re-organizing child's parent",
 			"GrandChildChainID", proposedChain.GetID().SS(),
 			"ParentChainID", proposedChainParent.GetID().SS())
