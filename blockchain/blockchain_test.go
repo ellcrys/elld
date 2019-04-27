@@ -289,10 +289,16 @@ var _ = Describe("IntegrationBlockchain", func() {
 		})
 
 		Describe(".getRootChain", func() {
-			It("should get the chain with no branch", func() {
+
+			// Create a chain with a parent and add the chain
+			BeforeEach(func() {
 				ch := NewChain("abc", db, cfg, log)
+				ch.parentChain = genesisChain
 				bc.addChain(ch)
 				Expect(bc.chains).To(HaveLen(2))
+			})
+
+			It("should get the chain with no branch", func() {
 				root := bc.getRootChain()
 				Expect(root.GetID().Equal(genesisChain.GetID())).To(BeTrue())
 			})

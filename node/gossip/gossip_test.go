@@ -37,7 +37,7 @@ var _ = Describe("Gossip", func() {
 		When("protocol id is Handshake", func() {
 
 			BeforeEach(func() {
-				stream, cc, err = lp.Gossip().NewStream(rp, config.Versions.Handshake)
+				stream, cc, err = lp.Gossip().NewStream(rp, config.GetVersions().Handshake)
 				Expect(err).To(BeNil())
 				defer cc()
 				defer stream.Close()
@@ -57,7 +57,7 @@ var _ = Describe("Gossip", func() {
 			})
 
 			BeforeEach(func() {
-				stream, cc, err = lp.Gossip().NewStream(rp, config.Versions.GetAddr)
+				stream, cc, err = lp.Gossip().NewStream(rp, config.GetVersions().GetAddr)
 				Expect(err).To(BeNil())
 				defer cc()
 				defer stream.Close()
@@ -78,7 +78,7 @@ var _ = Describe("Gossip", func() {
 			})
 
 			BeforeEach(func() {
-				stream, cc, err = lp.Gossip().NewStream(rp, config.Versions.Addr)
+				stream, cc, err = lp.Gossip().NewStream(rp, config.GetVersions().Addr)
 				Expect(err).To(BeNil())
 				defer cc()
 				defer stream.Close()

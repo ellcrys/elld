@@ -23,7 +23,7 @@ func (g *Manager) SelfAdvertise(connectedPeers []core.Engine) int {
 	sent := 0
 	for _, peer := range bp.Peers() {
 
-		s, c, err := g.NewStream(peer, config.Versions.Addr)
+		s, c, err := g.NewStream(peer, config.GetVersions().Addr)
 		if err != nil {
 			g.logConnectErr(err, peer, "[SelfAdvertise] Failed to connect")
 			continue

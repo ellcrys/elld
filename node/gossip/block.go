@@ -45,7 +45,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) [
 			"BlockHash", block.GetHash().SS(),
 			"NumPeers", len(remotePeers))
 
-		s, c, err := g.NewStream(peer, config.Versions.BlockInfo)
+		s, c, err := g.NewStream(peer, config.GetVersions().BlockInfo)
 		if err != nil {
 			errs = append(errs, err)
 			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect")
@@ -87,7 +87,7 @@ func (g *Manager) BroadcastBlock(block types.Block, remotePeers []core.Engine) [
 		// At this point, we can send the block to the peer.
 		// First we need to create a new stream targeting the
 		// BlockBody handler
-		s2, c2, err := g.NewStream(peer, config.Versions.BlockBody)
+		s2, c2, err := g.NewStream(peer, config.GetVersions().BlockBody)
 		if err != nil {
 			errs = append(errs, err)
 			g.logConnectErr(err, peer, "[BroadcastBlock] Failed to connect to peer")
@@ -205,7 +205,7 @@ func (g *Manager) RequestBlock(rp core.Engine, blockHash util.Hash) error {
 		return nil
 	}
 
-	s, c, err := g.NewStream(rp, config.Versions.RequestBlock)
+	s, c, err := g.NewStream(rp, config.GetVersions().RequestBlock)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[RequestBlock] Failed to connect to peer")
 	}
@@ -309,7 +309,7 @@ func (g *Manager) SendGetBlockHashes(rp core.Engine,
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block headers", "PeerID", rpID)
 
-	s, c, err := g.NewStream(rp, config.Versions.GetBlockHashes)
+	s, c, err := g.NewStream(rp, config.GetVersions().GetBlockHashes)
 	if err != nil {
 		return nil, g.logConnectErr(err, rp, "[SendGetBlockHashes] Failed to connect")
 	}
@@ -462,7 +462,7 @@ func (g *Manager) SendGetBlockBodies(rp core.Engine, hashes []util.Hash) (*core.
 	rpID := rp.ShortID()
 	g.log.Debug("Requesting block bodies", "PeerID", rpID, "NumHashes", len(hashes))
 
-	s, c, err := g.NewStream(rp, config.Versions.GetBlockBodies)
+	s, c, err := g.NewStream(rp, config.GetVersions().GetBlockBodies)
 	if err != nil {
 		return nil, g.logConnectErr(err, rp, "[SendGetBlockBodies] Failed to connect")
 	}

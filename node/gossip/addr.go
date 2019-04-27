@@ -195,7 +195,7 @@ func (g *Manager) RelayAddresses(addrs []*core.Address) []error {
 			msg.Addresses = append(msg.Addresses, p)
 		}
 
-		s, c, err := g.NewStream(rp, config.Versions.Addr)
+		s, c, err := g.NewStream(rp, config.GetVersions().Addr)
 		if err != nil {
 			err := g.logConnectErr(err, rp, "[RelayAddresses] Failed to connect to peer")
 			errs = append(errs, err)

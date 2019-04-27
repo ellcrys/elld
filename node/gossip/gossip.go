@@ -203,7 +203,7 @@ func (g *Manager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error 
 	skipAcquaintanceCheck := false
 
 	// Perform no checks for handshake messages
-	if s.Protocol() == protocol.ID(config.Versions.Handshake) {
+	if s.Protocol() == protocol.ID(config.GetVersions().Handshake) {
 		return nil
 	}
 
@@ -212,7 +212,7 @@ func (g *Manager) CheckRemotePeer(ws *core.WrappedStream, rp core.Engine) error 
 	// message to be processed.
 	// We need to accept this unsolicited message so
 	// that peer discovery will be more effective.
-	if s.Protocol() == protocol.ID(config.Versions.Addr) &&
+	if s.Protocol() == protocol.ID(config.GetVersions().Addr) &&
 		!g.PM().PeerExist(rp.StringID()) {
 		skipAcquaintanceCheck = true
 	}

@@ -18,7 +18,7 @@ Protocol Version: %s
 Go Version:       %s
 Commit Hash: 	  %s
 Build Date: 	  %s`,
-			BuildVersion, config.Versions.Protocol, GoVersion, BuildCommit, BuildDate))
+			BuildVersion, config.GetVersions().Protocol, GoVersion, BuildCommit, BuildDate))
 	},
 }
 

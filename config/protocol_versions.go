@@ -1,24 +1,29 @@
 package config
 
+import "sync"
+
 // DefaultNetVersion is the default network
 // version used when no network version is provided.
 const DefaultNetVersion = "0001"
 
 var (
-	// Versions contains protocol handlers versions information
-	Versions *ProtocolVersions
+	// versions contains protocol handlers versions information
+	versions *ProtocolVersions
+	cfgLck   = &sync.RWMutex{}
 )
 
 // SetVersions sets the protocol version.
 // All protocol handlers will be prefixed
 // with the version to create a
 func SetVersions(netVersion string) {
+	cfgLck.Lock()
+	defer cfgLck.Unlock()
 
 	if netVersion == "" {
 		netVersion = DefaultNetVersion
 	}
 
-	Versions = &ProtocolVersions{
+	versions = &ProtocolVersions{
 		Protocol:       netVersion,
 		Handshake:      netVersion + "/handshake/1",
 		Ping:           netVersion + "/ping/1",
@@ -30,6 +35,13 @@ func SetVersions(netVersion string) {
 		RequestBlock:   netVersion + "/requestblock/1",
 		GetBlockBodies: netVersion + "/getblockbodies/1",
 	}
+}
+
+// GetVersions returns the protocol version object
+func GetVersions() *ProtocolVersions {
+	cfgLck.RLock()
+	defer cfgLck.RUnlock()
+	return versions
 }
 
 func init() {

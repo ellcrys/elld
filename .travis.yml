@@ -1,0 +1,17 @@
+dist: xenial
+language: go
+go:
+- 1.12.4
+before_install:
+- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+- go get github.com/onsi/ginkgo/ginkgo
+install:
+- dep ensure -v
+script:
+- ginkgo -v -race ./...
+cache:
+  directories:
+  - vendor
+notifications:
+  slack:
+    secure: a/JzDKjun3yXPLhxLFzgeE7EmbbS+Mo//BRsjsUHzMzhtzlkBnx+cwDjCKEl81k69eKCbgM7+zYL0q7p5CtlQH8maz6f/akB+rl+xSSV/cmRKKQeCH+Ht9q7qr8nkW0q7UaomK8bWml3ODTl9iEOfxUt6gJK3uufXEFJ8dMtbU73IEitUDFNfSnXHt1hBMjbfNu52aFcbzwDJciYdNN5n6uw2kd0fXSIbWfOwjqUJGQvzH5zFmE8M6yQ6f9U45RqBmNAA7rWkOK0qDTiA0d/DnAytLrWVMe+PT78/gfMpXXqMilooEOV7RLufOZjAsnAQDxrVuuRdmnBwRnHHe9I+uabW+1iFkDXwppztpmx54FO5+r6pePbQlNkOWuAkGjj7KXm3kEKAvh13uI/7lYbUur/jVIe8g/MOnWhm48c39vfaSnyq3teHzbYVfePYbzzNHDMG604o/AurXFOUNLkN1GzcREg7pzFSatcATkShubu2DmAncxPGC33M0Ci6CzbcpuCb8KciUX/x2PGyy5pOmo4nEX5N9pFneQV/ggpvEEShh9LQOkVWoWOftwV/5j/NsLmolOkxMoomh/niGsb1GQUr/jLmwFZ8ppNI0fQGeiMWW2Ov0vjQ+dFvAiOU9GxKEEWKtegrLaxGubSm1i7XtUvCMdro7cb3UB1ObNL8S8=

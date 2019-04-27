@@ -154,7 +154,7 @@ var _ = Describe("TestAddr", func() {
 			It("should select relay peers from the relayed addresses", func(done Done) {
 				wait := make(chan bool)
 
-				stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
+				stream, c, err := lp.Gossip().NewStream(rp, config.GetVersions().Addr)
 				Expect(err).To(BeNil())
 
 				err = gossip.WriteStream(stream, addrMsg)
@@ -180,7 +180,7 @@ var _ = Describe("TestAddr", func() {
 			// 	wait := make(chan bool)
 
 			// 	rp.GetCfg().Node.MaxAddrsExpected = 1
-			// 	stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
+			// 	stream, c, err := lp.Gossip().NewStream(rp, config.GetVersions().Addr)
 
 			// 	Expect(err).To(BeNil())
 			// 	defer c()
@@ -214,7 +214,7 @@ var _ = Describe("TestAddr", func() {
 
 			It("should not add the address as a peer", func(done Done) {
 				wait := make(chan bool)
-				stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
+				stream, c, err := lp.Gossip().NewStream(rp, config.GetVersions().Addr)
 
 				Expect(err).To(BeNil())
 				defer c()
