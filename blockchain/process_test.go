@@ -564,7 +564,7 @@ var _ = Describe("ProcessBlock", func() {
 		var block types.Block
 
 		BeforeEach(func() {
-			block = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+			block = MakeBlockWithTx(bc, genesisChain, sender, 1)
 		})
 
 		It("should reject the block if it has been added to the rejected cache", func() {
@@ -612,8 +612,8 @@ var _ = Describe("ProcessBlock", func() {
 				var block2 types.Block
 
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTxAndTime(bc, genesisChain, sender,
-						receiver, 2, genesisBlock.GetHeader().GetTimestamp()-1)
+					block2 = MakeBlockWithTxAndTime(bc, genesisChain, sender,
+						2, genesisBlock.GetHeader().GetTimestamp()-1)
 				})
 
 				It("should return error", func() {
@@ -629,15 +629,15 @@ var _ = Describe("ProcessBlock", func() {
 				var staleBlock types.Block
 
 				BeforeEach(func() {
-					block2 := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+					block2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
 					err = genesisChain.append(block2)
 					Expect(err).To(BeNil())
 
-					block3 := MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+					block3 := MakeBlockWithTx(bc, genesisChain, sender, 1)
 					err = genesisChain.append(block3)
 					Expect(err).To(BeNil())
 
-					staleBlock = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+					staleBlock = MakeBlockWithTx(bc, genesisChain, sender, 1)
 					staleBlock.GetHeader().SetNumber(2)
 					staleBlock.SetHash(staleBlock.ComputeHash())
 					sig, _ := core.BlockSign(staleBlock, sender.PrivKey().Base58())
@@ -658,8 +658,8 @@ var _ = Describe("ProcessBlock", func() {
 				var err error
 
 				BeforeEach(func() {
-					block2 = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
-					block2_2 = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+					block2 = MakeBlockWithTx(bc, genesisChain, sender, 1)
+					block2_2 = MakeBlockWithTx(bc, genesisChain, sender, 1)
 
 					err = genesisChain.append(block2)
 					Expect(err).To(BeNil())
@@ -689,13 +689,13 @@ var _ = Describe("ProcessBlock", func() {
 			var badStateRoot, okStateRoot types.Block
 
 			BeforeEach(func() {
-				badStateRoot = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+				badStateRoot = MakeBlockWithTx(bc, genesisChain, sender, 1)
 				badStateRoot.GetHeader().SetStateRoot(util.StrToHash("incorrect"))
 				badStateRoot.SetHash(badStateRoot.ComputeHash())
 				badStateRootStateRootSig, _ := core.BlockSign(badStateRoot, sender.PrivKey().Base58())
 				badStateRoot.SetSignature(badStateRootStateRootSig)
 
-				okStateRoot = MakeBlockWithSingleTx(bc, genesisChain, sender, receiver, 1)
+				okStateRoot = MakeBlockWithTx(bc, genesisChain, sender, 1)
 			})
 
 			It("should return error when block state root does not match", func() {
@@ -745,7 +745,7 @@ var _ = Describe("ProcessBlock", func() {
 				var block types.Block
 
 				BeforeEach(func() {
-					block = MakeBlockWithNoPoolAddition(bc, genesisChain, sender, receiver)
+					block = MakeBlockWithTxNotInPool(bc, genesisChain, sender)
 				})
 
 				It("should return no error", func() {
@@ -801,11 +801,11 @@ var _ = Describe("ProcessBlock", func() {
 			_, err = bc2.ProcessBlock(parent1)
 			Expect(err).To(BeNil())
 
-			orphanParent = MakeBlockWithSingleTx(bc2, bc2.bestChain, sender, receiver, 2)
+			orphanParent = MakeBlockWithTx(bc2, bc2.bestChain, sender, 2)
 			_, err = bc2.ProcessBlock(orphanParent)
 			Expect(err).To(BeNil())
 
-			orphan = MakeBlockWithSingleTx(bc2, bc2.bestChain, sender, receiver, 3)
+			orphan = MakeBlockWithTx(bc2, bc2.bestChain, sender, 3)
 			_, err = bc2.ProcessBlock(orphan)
 			Expect(err).To(BeNil())
 

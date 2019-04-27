@@ -21,7 +21,6 @@ import (
 var _ = Describe("IntegrationBlockchain", func() {
 
 	var err error
-	var bc *Blockchain
 	var cfg *config.EngineConfig
 	var db elldb.DB
 	var genesisBlock types.Block
@@ -38,10 +37,6 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 		sender = crypto.NewKeyFromIntSeed(1)
 		receiver = crypto.NewKeyFromIntSeed(2)
-
-		bc = New(txpool.New(100), cfg, log)
-		bc.SetDB(db)
-		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	AfterEach(func() {
@@ -51,44 +46,82 @@ var _ = Describe("IntegrationBlockchain", func() {
 	})
 
 	Describe(".Up", func() {
+		var bc *Blockchain
 
-		It("should return error if db is not set", func() {
-			bc.SetDB(nil)
-			err = bc.Up()
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("db has not been initialized"))
+		BeforeEach(func() {
+			bc = New(txpool.New(100), cfg, log)
+			bc.SetDB(db)
+			bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
 		})
 
-		When("well configured", func() {
+		AfterEach(func() {
+			bc.chains = map[util.String]*Chain{}
+			bc.bestChain = nil
+		})
+
+		When("db is not set", func() {
+			It("should return err='db has not been initialized'", func() {
+				bc.SetDB(nil)
+				err = bc.Up()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("db has not been initialized"))
+			})
+		})
+
+		When("no genesis block file does not exist", func() {
+			It("should return err='block file not found'", func() {
+				GenesisBlockFileName = "unknown.json"
+				err = bc.Up()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("block file not found"))
+			})
+		})
+
+		When("genesis block number is not equal to 1", func() {
+			BeforeEach(func() {
+				genesisBlock, err = LoadBlockFromFile("genesis-test.json")
+				Expect(err).To(BeNil())
+				genesisBlock.GetHeader().SetNumber(2)
+				bc.SetGenesisBlock(genesisBlock)
+			})
+
+			It("should return err='genesis block error: expected block number 1'", func() {
+				err = bc.Up()
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("genesis block error: expected block number 1"))
+			})
+		})
+
+		When("successful (no error occurred)", func() {
 			BeforeEach(func() {
 				genesisBlock, err = LoadBlockFromFile("genesis-test.json")
 				Expect(err).To(BeNil())
 				bc.SetGenesisBlock(genesisBlock)
-			})
-
-			It("should return nil", func() {
 				err = bc.Up()
 				Expect(err).To(BeNil())
 			})
 
-			It("should load all chains", func() {
-				c1 := NewChain("c_1", db, cfg, log)
-				err = bc.saveChain(c1, "", 0)
-				Expect(err).To(BeNil())
-				err = c1.append(genesisBlock)
-				Expect(err).To(BeNil())
+			Specify("that only one chain exist", func() {
+				Expect(bc.chains).To(HaveLen(1))
+			})
 
-				c2 := NewChain("c_2", db, cfg, log)
-				err = bc.saveChain(c2, "", 0)
-				Expect(err).To(BeNil())
+			Specify("that the best chain is the same with the only known chain", func() {
+				Expect(bc.chains[bc.bestChain.GetID()]).ToNot(BeNil())
+			})
 
-				bc.SetGenesisBlock(genesisBlock)
-				err = bc.Up()
-				Expect(err).To(BeNil())
+			When("chain is reset and .Up is called again", func() {
+				BeforeEach(func() {
+					err = bc.Up()
+					Expect(err).To(BeNil())
+				})
 
-				Expect(bc.chains).To(HaveLen(2))
-				Expect(bc.chains).To(HaveKey(c1.id))
-				Expect(bc.chains).To(HaveKey(c2.id))
+				It("should populate chain index with one chain", func() {
+					Expect(bc.chains).To(HaveLen(1))
+				})
+
+				Specify("that the best chain is the same with the only known chain", func() {
+					Expect(bc.chains[bc.bestChain.GetID()]).ToNot(BeNil())
+				})
 			})
 		})
 
@@ -109,7 +142,15 @@ var _ = Describe("IntegrationBlockchain", func() {
 		})
 	})
 
-	Context("With a well initialized blockchain instance", func() {
+	When("blockchain has been initialized", func() {
+
+		var bc *Blockchain
+
+		BeforeEach(func() {
+			bc = New(txpool.New(100), cfg, log)
+			bc.SetDB(db)
+			bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+		})
 
 		BeforeEach(func() {
 			genesisBlock, err = LoadBlockFromFile("genesis-test.json")
@@ -247,6 +288,22 @@ var _ = Describe("IntegrationBlockchain", func() {
 			})
 		})
 
+		Describe(".getRootChain", func() {
+
+			// Create a chain with a parent and add the chain
+			BeforeEach(func() {
+				ch := NewChain("abc", db, cfg, log)
+				ch.parentChain = genesisChain
+				bc.addChain(ch)
+				Expect(bc.chains).To(HaveLen(2))
+			})
+
+			It("should get the chain with no branch", func() {
+				root := bc.getRootChain()
+				Expect(root.GetID().Equal(genesisChain.GetID())).To(BeTrue())
+			})
+		})
+
 		Describe(".findChainInfo", func() {
 
 			var chain *Chain
@@ -277,8 +334,8 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 			BeforeEach(func() {
 				parentBlock = MakeBlock(bc, genesisChain, sender, receiver)
-				block = MakeBlockWithParentHash(bc, genesisChain, sender, receiver, parentBlock.GetHash())
-				unknownParent = MakeBlockWithParentHash(bc, genesisChain, sender, receiver, util.StrToHash("unknown"))
+				block = MakeBlockWithParentHash(bc, genesisChain, sender, parentBlock.GetHash())
+				unknownParent = MakeBlockWithParentHash(bc, genesisChain, sender, util.StrToHash("unknown"))
 			})
 
 			It("should return error if block is nil", func() {
@@ -382,7 +439,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 				BeforeEach(func() {
 					for i := uint64(1); i <= 9; i++ {
-						block := MakeBlockWithSingleTx(bc, genesisChain, sender, sender, i)
+						block := MakeBlockWithTx(bc, genesisChain, sender, i)
 						_, err := bc.ProcessBlock(block)
 						Expect(err).To(BeNil())
 						blocks = append(blocks, block)
@@ -423,7 +480,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 				BeforeEach(func() {
 					for i := uint64(1); i <= 19; i++ {
-						block := MakeBlockWithSingleTx(bc, genesisChain, sender, sender, i)
+						block := MakeBlockWithTx(bc, genesisChain, sender, i)
 						_, err := bc.ProcessBlock(block)
 						Expect(err).To(BeNil())
 						blocks = append(blocks, block)

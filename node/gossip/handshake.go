@@ -36,7 +36,7 @@ func createHandshakeMsg(msg *core.Handshake, bestChain types.ChainReaderFactory,
 func (g *Manager) SendHandshake(rp core.Engine) error {
 
 	rpIDShort := rp.ShortID()
-	s, c, err := g.NewStream(rp, config.Versions.Handshake)
+	s, c, err := g.NewStream(rp, config.GetVersions().Handshake)
 	if err != nil {
 		return g.logConnectErr(err, rp, "[SendHandshake] Failed to connect to peer")
 	}

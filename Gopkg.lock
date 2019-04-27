@@ -168,6 +168,14 @@
   version = "v1.2.1"
 
 [[projects]]
+  digest = "1:b60efdeb75d3c0ceed88783ac2495256aba3491a537d0f31401202579fd62a94"
+  name = "github.com/golang/mock"
+  packages = ["gomock"]
+  pruneopts = "UT"
+  revision = "51421b967af1f557f93a59e0057aaf15ca02e29c"
+  version = "v1.2.0"
+
+[[projects]]
   digest = "1:318f1c959a8a740366fce4b1e1eb2fd914036b4af58fbd0a003349b305f118ad"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
@@ -217,17 +225,6 @@
   pruneopts = "UT"
   revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
   version = "v1.4.0"
-
-[[projects]]
-  digest = "1:43c609cba7aa615eaae5aa8f2ddba65dc1b2d3af7bc434f738238df8d3797ddb"
-  name = "github.com/gxed/hashland"
-  packages = [
-    "keccakpg",
-    "murmur3",
-  ]
-  pruneopts = "UT"
-  revision = "a72cc0875a1e95edd309d3134bc7c11bf2d7360b"
-  version = "v0.0.1"
 
 [[projects]]
   digest = "1:0ade334594e69404d80d9d323445d2297ff8161637f9b2d347cc6973d2d6f05b"
@@ -870,6 +867,14 @@
   version = "v0.0.1"
 
 [[projects]]
+  digest = "1:02f7db2f26eb72c0771e11d8473c84db7f5ab7ee15d1729670fd0051b46a6c01"
+  name = "github.com/multiformats/go-multihash"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "c242156eec223a58ac13b8c114a2b31e87bbf558"
+  version = "v0.0.5"
+
+[[projects]]
   digest = "1:894daf10008cdef37454571b584832b2a281a5709f6b80d7bd440ff3a627c962"
   name = "github.com/multiformats/go-multistream"
   packages = ["."]
@@ -892,14 +897,6 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "d229c224a219dcf41e9d2af4684b9782f33f5eb7"
-
-[[projects]]
-  branch = "master"
-  digest = "1:e7d61f626291833d1a5ba054c86b0339c13a9a494360cf8ab8cf91c669eab631"
-  name = "github.com/ncodes/whereami"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "aebf70d4a772ea20216cfe6c428f439cb47cfaf2"
 
 [[projects]]
   branch = "master"
@@ -1060,6 +1057,14 @@
   pruneopts = "UT"
   revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
   version = "v1.4.1"
+
+[[projects]]
+  digest = "1:919bb3aa6d9d0b67648c219fa4925312bc3c2872da19e818fa769e9c97a2b643"
+  name = "github.com/spaolacci/murmur3"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9f5d223c60793748f04a9d5b4b4eacddfc1f755d"
+  version = "v1.1"
 
 [[projects]]
   digest = "1:bb495ec276ab82d3dd08504bbc0594a65de8c3b22c6f2aaa92d05b73fbf3a82e"
@@ -1379,6 +1384,7 @@
     "github.com/go-ozzo/ozzo-validation",
     "github.com/gobuffalo/packr",
     "github.com/gogo/protobuf/proto",
+    "github.com/golang/mock/gomock",
     "github.com/gorilla/mux",
     "github.com/gorilla/rpc/v2",
     "github.com/gorilla/rpc/v2/json2",
@@ -1399,7 +1405,6 @@
     "github.com/multiformats/go-multiaddr",
     "github.com/ncodes/authtoken",
     "github.com/ncodes/go-prettyjson",
-    "github.com/ncodes/whereami",
     "github.com/olebedev/emitter",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",

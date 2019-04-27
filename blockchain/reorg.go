@@ -6,6 +6,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/ellcrys/elld/params"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
@@ -133,24 +135,34 @@ func (b *Blockchain) chooseBestChain(opts ...types.CallOp) (*Chain, error) {
 	return largestPointerAddrs[0], nil
 }
 
-// decideBestChain determines and sets the current best chain
-// based on the split resolution rules.
+// decideBestChain determines and sets the current
+// best chain based on the split resolution rules.
+// It will keep start chain re-organization operation
+// of the main chain if it finds the proposed chain
+// and the main chain to be different.
 func (b *Blockchain) decideBestChain(opts ...types.CallOp) error {
+
+	// Do nothing if we are not ready to decide what
+	// chain is the best at this time. (For Integration Test)
+	if !b.canDecideBestChain() {
+		return nil
+	}
+
 	txOp := common.GetTxOp(b.db, opts...)
 	if txOp.Closed() {
 		return leveldb.ErrClosed
 	}
 
-	// If a db transaction was not injected,
-	// then we must prevent methods that we pass
-	// this transaction to from finalising it
-	// (commit/rollback)
+	// If a db transaction was not injected, then we must prevent
+	// methods that we pass this transaction to from finalising it
 	hasInjectTx := common.HasTxOp(opts...)
 	if !hasInjectTx {
 		txOp.CanFinish = false
 	}
 
-	proposedBestChain, err := b.chooseBestChain(txOp)
+start:
+	// Determine which chain is the best branch
+	proposedChain, err := b.chooseBestChain(txOp)
 	if err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		b.log.Error("Unable to determine best chain", "Err", err.Error())
@@ -158,47 +170,91 @@ func (b *Blockchain) decideBestChain(opts ...types.CallOp) error {
 	}
 
 	// At this point, we were just not able to choose a best chain.
-	// This will be unlikely and only possible in tests
-	if proposedBestChain == nil {
+	// This will be unlikely and only possible in mocked tests scenerio
+	if proposedChain == nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
-		b.log.Debug("Unable to choose best chain")
-		return fmt.Errorf("unable to choose best chain")
+		b.log.Debug("Unable to choose best chain: no chain was proposed")
+		return fmt.Errorf("unable to choose best chain: no chain was proposed")
 	}
 
-	mainChain := b.GetBestChain()
+	mainChain := b.GetBestChain().(*Chain)
 
-	// If the current best chain and the new best chain
-	// are not the same. Then we must reorganize
-	if mainChain.(*Chain) != nil && mainChain.GetID() != proposedBestChain.GetID() {
+	// Do nothing if the current best chain and the proposed
+	// best chain are the same.
+	if mainChain != nil && mainChain.GetID().Equal(proposedChain.GetID()) {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
+		return nil
+	}
+
+	// If the proposed chain is not a child of the main chain.
+	// We need to re-organise the proposed chain's parent with
+	// proposed chain and rerun the best block selection logic.
+	// Example: Chain structure that will trigger this:
+	// [1]-[2]-[3] 				  - Root/Main chain
+	//      '--[3]-[4]-[5] 		  - Proposed chain parent
+	//          '--[4]-[5]-[6]    - Proposed chain
+	// After re-org:
+	//      '--[3]-[4]-[5]-[6]    - Proposed chain parent
+	// -------------------------------------------------------
+	proposedChainParent := proposedChain.GetParent()
+	if mainChain != nil && proposedChainParent != nil && !proposedChainParent.GetID().
+		Equal(mainChain.GetID()) {
+		b.log.Info("Superior grand child detected. Re-organizing child's parent",
+			"GrandChildChainID", proposedChain.GetID().SS(),
+			"ParentChainID", proposedChainParent.GetID().SS())
+
+		b.setReOrgStatus(true)
+		_, err := b.reOrg(proposedChainParent, proposedChain, txOp)
+		if err != nil {
+			txOp.SetFinishable(!hasInjectTx).Rollback()
+			b.setReOrgStatus(false)
+			b.log.Error("Re-organization has failed", "Err", err.Error())
+			return fmt.Errorf("Reorganization has failed: %s", err)
+		}
+		b.setReOrgStatus(false)
+
+		// Go back to the top to re-determine the new proposed chain naturally.
+		goto start
+	}
+
+	// At this point, if the main chain is already known and the
+	// proposed chain is not the same as it, we need to re-organise
+	// the main chain with proposed chain.
+	// Example: Chain structure that will trigger this:
+	// [1]-[2]-[3] 				  - Root/Main chain
+	//      '--[3]-[4]-[5] 		  - Proposed chain
+	// After re-org:
+	// [1]-[2]-[3]-[4]-[5]-[6]    - Root/Main chain
+	// -------------------------------------------------------
+	if mainChain != nil && mainChain.GetID() != proposedChain.GetID() {
+
 		b.log.Info("Superior chain detected. Re-organizing...",
 			"CurBestChainID", mainChain.GetID().SS(),
-			"ProposedChainID",
-			proposedBestChain.GetID().SS())
+			"ProposedChainID", proposedChain.GetID().SS())
 
 		b.setReOrgStatus(true)
 
-		_, err := b.reOrg(proposedBestChain, txOp)
+		_, err := b.reOrg(mainChain, proposedChain, txOp)
 		if err != nil {
 			txOp.SetFinishable(!hasInjectTx).Rollback()
-			b.log.Error(err.Error())
 			b.setReOrgStatus(false)
 			b.log.Error("Re-organization has failed", "Err", err.Error())
 			return fmt.Errorf("Reorganization error: %s", err)
 		}
 
-		b.log.Info("Setting new main chain after re-organization",
-			"ChainID", proposedBestChain.GetID().SS())
-
-		b.SetBestChain(mainChain.(*Chain))
+		b.SetBestChain(mainChain)
 		b.setReOrgStatus(false)
 
-		b.log.Info("Reorganization completed", "ChainID", proposedBestChain.GetID().SS())
+		b.log.Info("Reorganization completed",
+			"MainChainID", mainChain.GetID().SS(),
+			"ProposedChainID", proposedChain.GetID().SS())
 	}
 
-	// When no best chain has been set, set
-	// the best chain to the proposed best chain
-	if mainChain.(*Chain) == nil {
-		b.SetBestChain(proposedBestChain)
+	// If at this point, a main chain has not been determined,
+	// we will consider the proposed chain to be the new main chain.
+	// This should only happen when no pre-existing chain has been created
+	if mainChain == nil {
+		b.SetBestChain(proposedChain)
 		b.log.Info("Best chain set", "CurBestChainID", b.bestChain.GetID().SS())
 	}
 
@@ -284,7 +340,7 @@ func (b *Blockchain) getReOrgs(opts ...types.CallOp) []*ReOrgInfo {
 // Returns the re-organized chain or error.
 //
 // NOTE: This method must be called with write chain lock held by the caller.
-func (b *Blockchain) reOrg(proposedBranch *Chain, opts ...types.CallOp) (*Chain, error) {
+func (b *Blockchain) reOrg(mainChain, proposedBranch *Chain, opts ...types.CallOp) (*Chain, error) {
 
 	now := time.Now()
 	txOp := common.GetTxOp(b.db, opts...)
@@ -296,10 +352,6 @@ func (b *Blockchain) reOrg(proposedBranch *Chain, opts ...types.CallOp) (*Chain,
 	if !hasInjectTx {
 		txOp.CanFinish = false
 	}
-
-	b.chl.RLock()
-	mainChain := b.bestChain
-	b.chl.RUnlock()
 
 	// Get the tip of the current best branch
 	tip, err := mainChain.Current(txOp)
@@ -322,9 +374,20 @@ func (b *Blockchain) reOrg(proposedBranch *Chain, opts ...types.CallOp) (*Chain,
 		return nil, fmt.Errorf("parent block not set on branch")
 	}
 
+	// We need to check whether the parent block from
+	// which this branch originated from exists on the
+	// main chain
+	ok, err := mainChain.hasBlock(parentBlock.GetHash(), txOp)
+	if err != nil {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
+		return nil, fmt.Errorf("failed to check the existence of branch parent block in main chain")
+	} else if !ok {
+		txOp.SetFinishable(!hasInjectTx).Rollback()
+		return nil, params.ErrBranchParentNotInMainChain
+	}
+
 	// Delete blocks of the current best chain,
 	// starting from proposed branch parent block + 1.
-	// Emit EventReOrgBlockRemoved when deletion succeeded
 	nextBlockNumber := parentBlock.GetNumber() + 1
 	for nextBlockNumber <= tip.GetNumber() {
 		_, err := mainChain.removeBlock(nextBlockNumber, txOp)
@@ -348,29 +411,21 @@ func (b *Blockchain) reOrg(proposedBranch *Chain, opts ...types.CallOp) (*Chain,
 			return nil, fmt.Errorf("failed to get proposed block: %s", err)
 		}
 
-		b.log.Debug("ReOrgProgress: Adding block", "BlockNo", proposedBlock.GetNumber())
-
 		// Attempt to process and append to the current main chain
 		if _, err := b.maybeAcceptBlock(proposedBlock, mainChain, txOp); err != nil {
 			txOp.SetFinishable(!hasInjectTx).Rollback()
 			return nil, fmt.Errorf("proposed block was not accepted: %s", err)
 		}
 
-		b.log.Debug("ReOrgProgress: Done adding block", "BlockNo", proposedBlock.GetNumber())
-
 		// Move to the next block in the chain (if any)
 		nextBlockNumber++
 	}
-
-	b.log.Debug("Recording re-org entry")
 
 	// Store a record of this re-org
 	if err := b.recordReOrg(now.Unix(), proposedBranch, txOp); err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to store re-org record")
 	}
-
-	b.log.Debug("Re-org entry recorded")
 
 	// Commit the re-org changes
 	if err := txOp.SetFinishable(!hasInjectTx).Commit(); err != nil {

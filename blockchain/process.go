@@ -394,7 +394,7 @@ process:
 			"ParentBlockNo", parentBlock.GetNumber())
 	}
 
-	if chain.HasParent() {
+	if chain.HasParent(txOp) {
 		// Update the validator context to ContextBranch
 		// since we intend to add the block to a branch.
 		bValidator.setContext(types.ContextBranch)
@@ -418,7 +418,7 @@ process:
 	// will occur.
 	// Note: OpAllowExec is used in tests for
 	// mocking branch blocks with valid state.
-	if chain.HasParent() && !common.ExecAllowed(opts...) {
+	if chain.HasParent(txOp) && !common.ExecAllowed(opts...) {
 		goto commit
 	}
 

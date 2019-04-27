@@ -2,7 +2,7 @@
 
 # Elld - Official Ellcrys Client
 [![GoDoc](https://godoc.org/github.com/ellcrys/elld?status.svg)](https://godoc.org/github.com/ellcrys/elld)
-[![CircleCI](https://circleci.com/gh/ellcrys/elld/tree/master.svg?style=svg)](https://circleci.com/gh/ellcrys/elld/tree/master)
+[![Build Status](https://travis-ci.org/ellcrys/elld.svg?branch=master)](https://travis-ci.org/ellcrys/elld)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/ellnet)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ellcrys/elld)](https://goreportcard.com/report/github.com/ellcrys/elld)
 

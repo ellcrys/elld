@@ -205,7 +205,7 @@ var _ = Describe("TransactionValidator", func() {
 					var block2 types.Block
 
 					BeforeEach(func() {
-						block2 = MakeBlockWithSingleTx(bc, genesisChain, sender, sender, 1)
+						block2 = MakeBlockWithTx(bc, genesisChain, sender, 1)
 						_, err := bc.ProcessBlock(block2)
 						Expect(err).To(BeNil())
 					})
@@ -231,7 +231,7 @@ var _ = Describe("TransactionValidator", func() {
 				var tx types.Transaction
 
 				BeforeEach(func() {
-					block := MakeBlockWithBalanceTx(bc, genesisChain, sender, sender)
+					block := MakeBlockWithTx(bc, genesisChain, sender, 1)
 					_, err := bc.ProcessBlock(block)
 					Expect(err).To(BeNil())
 					tx = block.GetTransactions()[0]

@@ -11,7 +11,7 @@ import (
 // must be processed using the OnAddr handler and return the response.
 func (g *Manager) SendGetAddrToPeer(rp core.Engine) ([]*core.Address, error) {
 
-	s, c, err := g.NewStream(rp, config.Versions.GetAddr)
+	s, c, err := g.NewStream(rp, config.GetVersions().GetAddr)
 	if err != nil {
 		return nil, g.logConnectErr(err, rp, "[SendGetAddrToPeer] Failed to connect")
 	}

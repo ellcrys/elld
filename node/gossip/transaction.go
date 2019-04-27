@@ -94,7 +94,7 @@ func (g *Manager) BroadcastTx(tx types.Transaction, remotePeers []core.Engine) e
 			continue
 		}
 
-		s, c, err := g.NewStream(peer, config.Versions.Tx)
+		s, c, err := g.NewStream(peer, config.GetVersions().Tx)
 		if err != nil {
 			g.logConnectErr(err, peer, "[BroadcastTx] Failed to connect")
 			continue

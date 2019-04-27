@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/util/activeobject"
-
 	"github.com/ellcrys/elld/crypto"
 	"github.com/syndtr/goleveldb/leveldb"
 
@@ -33,6 +31,11 @@ const (
 
 	// MaxRejectedBlocksCacheSize is the number of blocks we can keep in the rejected block cache
 	MaxRejectedBlocksCacheSize = 100
+)
+
+var (
+	// GenesisBlockFileName is the name of the file that contains the genesis block
+	GenesisBlockFileName = "genesis.json"
 )
 
 // Blockchain represents the Ellcrys blockchain. It provides
@@ -76,9 +79,11 @@ type Blockchain struct {
 	// events or broadcast events about its state
 	eventEmitter *emitter.Emitter
 
-	// activeObj provides active object pattern for handling
-	// function calls
-	activeObj *activeobject.ActiveObject
+	// skipDecideBestChain skips the operation to decide which chain is the best
+	// when a block is processed.
+	// Note: Used to prevent re-organisation when creating
+	// and assembling blocks into desired chains in integration test.
+	skipDecideBestChain bool
 
 	// chl is a lock for chain events
 	chl *sync.RWMutex
@@ -111,7 +116,6 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.orphanBlocks = cache.NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = cache.NewCache(MaxRejectedBlocksCacheSize)
 	bc.eventEmitter = &emitter.Emitter{}
-	bc.activeObj = activeobject.NewActiveObject()
 	return bc
 }
 
@@ -176,7 +180,7 @@ func (b *Blockchain) Up() error {
 	// been set, we attempt to load it from the
 	// genesis.json file.
 	if b.genesisBlock == nil {
-		b.genesisBlock, err = LoadBlockFromFile("genesis.json")
+		b.genesisBlock, err = LoadBlockFromFile(GenesisBlockFileName)
 		if err != nil {
 			return err
 		}
@@ -222,6 +226,9 @@ func (b *Blockchain) Up() error {
 		b.log.Info("Known branches have been loaded", "NumBranches", numChains)
 	}
 
+	// Set the root chain and make it the initial main chain
+	b.bestChain = b.getRootChain()
+
 	// Using the best chain rule, we mush select the best chain
 	// and set it as the current bestChain.
 	err = b.decideBestChain()
@@ -229,6 +236,19 @@ func (b *Blockchain) Up() error {
 		return fmt.Errorf("failed to determine best chain: %s", err)
 	}
 
+	return nil
+}
+
+// getRootChain finds the root chain of the tree.
+// This is usually the main chain and it has no branch.
+func (b *Blockchain) getRootChain() *Chain {
+	b.chl.RLock()
+	defer b.chl.RUnlock()
+	for _, c := range b.chains {
+		if !c.HasParent() {
+			return c
+		}
+	}
 	return nil
 }
 

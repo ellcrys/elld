@@ -62,7 +62,7 @@ func (db *LevelDB) Open(namespace string) error {
 // Close closes the database
 func (db *LevelDB) Close() error {
 	db.Lock()
-	db.Unlock()
+	defer db.Unlock()
 
 	if db.ldb != nil {
 		return db.ldb.Close()
