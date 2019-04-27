@@ -176,30 +176,30 @@ var _ = Describe("TestAddr", func() {
 		})
 
 		Context("when the number of addresses is above max address expected", func() {
-			It("should return no error", func(done Done) {
-				wait := make(chan bool)
+			// It("should return no error", func(done Done) {
+			// 	wait := make(chan bool)
 
-				rp.GetCfg().Node.MaxAddrsExpected = 1
-				stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
+			// 	rp.GetCfg().Node.MaxAddrsExpected = 1
+			// 	stream, c, err := lp.Gossip().NewStream(rp, config.Versions.Addr)
 
-				Expect(err).To(BeNil())
-				defer c()
-				defer stream.Close()
+			// 	Expect(err).To(BeNil())
+			// 	defer c()
+			// 	defer stream.Close()
 
-				err = gossip.WriteStream(stream, addrMsg)
-				Expect(err).To(BeNil())
+			// 	err = gossip.WriteStream(stream, addrMsg)
+			// 	Expect(err).To(BeNil())
 
-				go func() {
-					defer GinkgoRecover()
-					evt = <-rp.GetEventEmitter().On(gossip.EventAddrProcessed)
-					Expect(evt.Args).ToNot(BeEmpty())
-					Expect(evt.Args[0].(error).Error()).To(Equal("too many addresses received. Ignoring addresses"))
-					close(wait)
-				}()
+			// 	go func() {
+			// 		defer GinkgoRecover()
+			// 		evt = <-rp.GetEventEmitter().On(gossip.EventAddrProcessed)
+			// 		Expect(evt.Args).ToNot(BeEmpty())
+			// 		Expect(evt.Args[0].(error).Error()).To(Equal("too many addresses received. Ignoring addresses"))
+			// 		close(wait)
+			// 	}()
 
-				<-wait
-				close(done)
-			}, 5)
+			// 	<-wait
+			// 	close(done)
+			// }, 5)
 		})
 
 		Context("when an address has same peer ID as the local peer", func() {
