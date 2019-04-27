@@ -87,6 +87,10 @@ func (c *Chain) GetID() util.String {
 	return c.id
 }
 
+func (c Chain) String() string {
+	return fmt.Sprintf(`<Chain ID=%s>`, c.GetID())
+}
+
 // ChainReader gets a chain reader for this chain
 func (c *Chain) ChainReader() types.ChainReaderFactory {
 	return NewChainReader(c)
@@ -420,14 +424,6 @@ func (c *Chain) GetTransaction(hash util.Hash, opts ...types.CallOp) (types.Tran
 		return nil, err
 	}
 	return tx, nil
-}
-
-func (c *Chain) String() string {
-	parent := ""
-	if p := c.GetParent(); p != nil {
-		parent = p.GetID().String()
-	}
-	return fmt.Sprintf("<chain id=%s parent=%s>", c.id, parent)
 }
 
 // PutMinedBlock records a block mined by the block creator
