@@ -524,7 +524,8 @@ func (b *Blockchain) ProcessBlock(block types.Block,
 	defer b.processLock.Unlock()
 
 	b.log.Debug("Processing block", "BlockNo", block.GetNumber(),
-		"Hash", block.GetHash().SS())
+		"Hash", block.GetHash().SS(),
+		"ChainID", b.GetBestChain().GetID())
 
 	// If ever we forgot to set the transaction pool,
 	// the client should be forced to exit.

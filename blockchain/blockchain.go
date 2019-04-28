@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thoas/go-funk"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/syndtr/goleveldb/leveldb"
 
@@ -242,9 +244,7 @@ func (b *Blockchain) Up() error {
 // getRootChain finds the root chain of the tree.
 // This is usually the main chain and it has no branch.
 func (b *Blockchain) getRootChain() *Chain {
-	b.chl.RLock()
-	defer b.chl.RUnlock()
-	for _, c := range b.chains {
+	for _, c := range b.copyChains(nil) {
 		if !c.HasParent() {
 			return c
 		}
@@ -252,7 +252,6 @@ func (b *Blockchain) getRootChain() *Chain {
 	return nil
 }
 
-// getBlockByHash finds and returns a block by hash only
 // SetEventEmitter sets the event emitter
 func (b *Blockchain) SetEventEmitter(ee *emitter.Emitter) {
 	b.eventEmitter = ee
@@ -356,23 +355,70 @@ func (b *Blockchain) removeChain(chain *Chain) {
 	return
 }
 
-// findChainByBlockHash finds the chain where the given block
-// hash exists. It returns the block, the chain, the header of
-// highest block in the chain.
-func (b *Blockchain) findChainByBlockHash(hash util.Hash,
-	opts ...types.CallOp) (block types.Block, chain *Chain,
-	chainTipHeader types.Header, err error) {
-
+// copyChains all known chains into a slice and will
+// exclude any chain whose ID is listed in ex.
+func (b *Blockchain) copyChains(ex []util.String) []*Chain {
+	if ex == nil {
+		ex = []util.String{}
+	}
 	b.chl.RLock()
 	defer b.chl.RUnlock()
-	chains := b.chains
+	chains := []*Chain{}
+	for _, ch := range b.chains {
+		if funk.Contains(ex, ch.GetID()) {
+			continue
+		}
+		chains = append(chains, ch)
+	}
+	return chains
+}
 
-	for _, chain := range chains {
+// copyChainsMap all known chains into another map and will
+// exclude any chain whose ID is listed in ex.
+func (b *Blockchain) copyChainsMap(ex []util.String) map[util.String]*Chain {
+	if ex == nil {
+		ex = []util.String{}
+	}
+	b.chl.RLock()
+	defer b.chl.RUnlock()
+	chains := map[util.String]*Chain{}
+	for _, ch := range b.chains {
+		if funk.Contains(ex, ch.GetID()) {
+			continue
+		}
+		chains[ch.GetID()] = ch
+	}
+	return chains
+}
 
-		// Find the block by its hash. If we don't
-		// find the block in this chain, we continue to the
-		// next chain.
-		block, err := chain.getBlockByHash(hash, opts...)
+// findChainByBlockHash finds the chain where the given block
+// hash exists. It returns the block, the chain, the header of
+// highest block in the chain. If multiple chains match, the
+// oldest is chosen.
+func (b *Blockchain) findChainByBlockHash(hash util.Hash, opts ...types.CallOp) (block types.Block,
+	chain *Chain, chainTipHeader types.Header, err error) {
+
+	// Get all known chains. Because we need to first check the
+	// main chain before any other, we filter it our from
+	// the call to copyChains but then append it to the final
+	// chain slice so that it is the first in the slice.
+	var chains []*Chain
+	var excludeList []util.String
+	mainChain := b.GetBestChain()
+	if mainChain != nil {
+		excludeList = append(excludeList, mainChain.GetID())
+		chains = b.copyChains(excludeList)
+		chains = append([]*Chain{mainChain.(*Chain)}, chains...)
+	} else {
+		chains = b.copyChains(excludeList)
+	}
+
+	oldestChainTimestamp := int64(0)
+	for _, _chain := range chains {
+
+		// Find the block in the chain by its hash. If we don't
+		// find the block on this chain, we continue to the next chain.
+		_block, err := _chain.getBlockByHash(hash, opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, nil, nil, err
@@ -380,19 +426,38 @@ func (b *Blockchain) findChainByBlockHash(hash util.Hash,
 			continue
 		}
 
-		// At the point, we have found chain the block belongs to.
-		// Next we get the header of the block at the tip of the chain.
-		chainTipHeader, err := chain.Current(opts...)
+		// Ok, so the block was found on this chain. We will ignore the
+		// chain if it is younger than the last chain that was found.
+		// But if the oldest chain timestamp is not set, we set it to
+		// this chain.
+		if oldestChainTimestamp == 0 {
+			oldestChainTimestamp = _chain.GetInfo().GetTimestamp()
+		} else if _chain.GetInfo().GetTimestamp() > oldestChainTimestamp {
+			continue
+		} else {
+			// If the chain's timestamp is the same as the previous
+			// oldest chain, we'll ignore it
+			if _chain.GetInfo().GetTimestamp() == oldestChainTimestamp {
+				continue
+			}
+			oldestChainTimestamp = _chain.GetInfo().GetTimestamp()
+		}
+
+		// At the point, we have found a chain.
+		// But we will collect it and find more chains.
+		_chainTipHeader, err := _chain.Current(opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
 				return nil, nil, nil, err
 			}
 		}
 
-		return block, chain, chainTipHeader, nil
+		chain = _chain
+		block = _block
+		chainTipHeader = _chainTipHeader
 	}
 
-	return nil, nil, nil, nil
+	return
 }
 
 // addRejectedBlock adds the block to the rejection cache.
@@ -435,9 +500,7 @@ func (b *Blockchain) NewChainFromChainInfo(ci types.ChainInfo) *Chain {
 // findChainInfo finds information about chain
 func (b *Blockchain) findChainInfo(chainID util.String) (*core.ChainInfo, error) {
 
-	b.chl.RLock()
-	chains := b.chains
-	b.chl.RUnlock()
+	chains := b.copyChainsMap(nil)
 
 	// check whether the chain exists in the cache
 	if chain, ok := chains[chainID]; ok {
@@ -615,7 +678,7 @@ func (b *Blockchain) GetChainReaderByHash(hash util.Hash) types.ChainReaderFacto
 func (b *Blockchain) GetChainsReader() (readers []types.ChainReaderFactory) {
 	b.chl.RLock()
 	defer b.chl.RUnlock()
-	chains := b.chains
+	chains := b.copyChainsMap(nil)
 	for _, c := range chains {
 		readers = append(readers, NewChainReader(c))
 	}

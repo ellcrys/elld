@@ -223,7 +223,6 @@ func (v *BlockValidator) CheckFields() (errs []error) {
 		errs = append(errs, fieldError("hash", "hash is required"))
 	} else if v.block.GetHeader() != nil && !v.block.GetHash().
 		Equal(v.block.ComputeHash()) {
-		// pp.Println(v.block.GetHash().HexStr(), "Computed:", v.block.ComputeHash().HexStr())
 		errs = append(errs, fieldError("hash", "hash is not correct"))
 	}
 
