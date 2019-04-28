@@ -244,8 +244,6 @@ func (b *Blockchain) Up() error {
 // getRootChain finds the root chain of the tree.
 // This is usually the main chain and it has no branch.
 func (b *Blockchain) getRootChain() *Chain {
-	b.chl.RLock()
-	defer b.chl.RUnlock()
 	for _, c := range b.copyChains(nil) {
 		if !c.HasParent() {
 			return c
