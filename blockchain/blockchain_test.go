@@ -161,26 +161,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 			genesisChain = bc.bestChain
 		})
 
-		Describe(".findChainByLastBlockHash", func() {
-
-			var b1 types.Block
-			var chain2 *Chain
-
-			BeforeEach(func() {
-				chain2 = NewChain("chain2", db, cfg, log)
-				bc.addChain(chain2)
-
-				err := bc.CreateAccount(1, chain2, &core.Account{
-					Type:    core.AccountTypeBalance,
-					Address: util.String(sender.Addr()),
-					Balance: "100",
-				})
-				Expect(err).To(BeNil())
-
-				b1 = MakeBlock(bc, chain2, sender, receiver)
-				err = chain2.append(b1)
-				Expect(err).To(BeNil())
-			})
+		Describe(".findChainByBlockHash", func() {
 
 			It("should return chain=nil, header=nil, err=nil if no block on the chain matches the hash", func() {
 				result, chain, header, err := bc.findChainByBlockHash(util.Hash{1, 2, 3})
@@ -190,43 +171,69 @@ var _ = Describe("IntegrationBlockchain", func() {
 				Expect(chain).To(BeNil())
 			})
 
-			Context("when the hash belongs to the highest block of a chain", func() {
-				It("should return the chain", func() {
-					_, chain, _, err := bc.findChainByBlockHash(b1.GetHash())
+			When("one chain includes the block", func() {
+				var b1 types.Block
+				var chain2 *Chain
+
+				BeforeEach(func() {
+					chain2 = NewChain("chain2", db, cfg, log)
+					bc.addChain(chain2)
+
+					err := bc.CreateAccount(1, chain2, &core.Account{
+						Type:    core.AccountTypeBalance,
+						Address: util.String(sender.Addr()),
+						Balance: "100",
+					})
+					Expect(err).To(BeNil())
+
+					b1 = MakeBlock(bc, chain2, sender, receiver)
+					err = chain2.append(b1)
+					Expect(err).To(BeNil())
+				})
+
+				It("should return the expected chain, chain tip header, queried block", func() {
+					qb, chain, header, err := bc.findChainByBlockHash(b1.GetHash())
 					Expect(err).To(BeNil())
 					Expect(chain.GetID()).To(Equal(chain2.id))
-				})
-
-				Specify("header must match the header of the recently added block", func() {
-					_, _, header, err := bc.findChainByBlockHash(b1.GetHash())
-					Expect(err).To(BeNil())
-					Expect(header.ComputeHash()).To(Equal(b1.GetHeader().ComputeHash()))
-				})
-
-				Specify("the returned block mush equal the block used for query", func() {
-					result, _, _, err := bc.findChainByBlockHash(b1.GetHash())
-					Expect(err).To(BeNil())
-					Expect(b1.GetBytes()).To(Equal(result.GetBytes()))
+					Expect(header.ComputeHash().Equal(b1.GetHeader().ComputeHash())).To(BeTrue())
+					Expect(qb.GetHash().Equal(b1.GetHash())).To(BeTrue())
 				})
 			})
 
-			Context("when the hash belongs to a block that is not the highest block", func() {
-
-				var b2 types.Block
+			When("more than one chain include the block", func() {
+				var b1 types.Block
+				var chain2, olderChain *Chain
 
 				BeforeEach(func() {
-					b2 = MakeBlock(bc, genesisChain, sender, receiver)
-					err = genesisChain.append(b2)
+					chain2 = NewChain("chain2", db, cfg, log)
+					chain2.info.Timestamp = time.Now().Unix()
+					bc.addChain(chain2)
+
+					olderChain = NewChain("older_chain", db, cfg, log)
+					olderChain.info.Timestamp = time.Now().Unix() - 1000
+					bc.addChain(olderChain)
+
+					err := bc.CreateAccount(1, chain2, &core.Account{
+						Type:    core.AccountTypeBalance,
+						Address: util.String(sender.Addr()),
+						Balance: "100",
+					})
+					Expect(err).To(BeNil())
+
+					b1 = MakeBlock(bc, chain2, sender, receiver)
+					err = chain2.append(b1)
+					Expect(err).To(BeNil())
+
+					err = olderChain.append(b1)
 					Expect(err).To(BeNil())
 				})
 
-				It("should return chain and header matching the header of block 1", func() {
-					result, chain, tipHeader, err := bc.findChainByBlockHash(genesisBlock.GetHash())
+				It("should return the expected chain, chain tip header, queried block", func() {
+					qb, chain, header, err := bc.findChainByBlockHash(b1.GetHash())
 					Expect(err).To(BeNil())
-					Expect(genesisBlock.GetBytes()).To(Equal(result.GetBytes()))
-					Expect(genesisBlock.GetNumber()).To(Equal(uint64(1)))
-					Expect(chain.GetID()).To(Equal(chain.id))
-					Expect(tipHeader.ComputeHash()).To(Equal(b2.GetHeader().ComputeHash()))
+					Expect(chain.GetID()).To(Equal(olderChain.GetID()))
+					Expect(header.ComputeHash().Equal(b1.GetHeader().ComputeHash())).To(BeTrue())
+					Expect(qb.GetHash().Equal(b1.GetHash())).To(BeTrue())
 				})
 			})
 		})
@@ -288,6 +295,76 @@ var _ = Describe("IntegrationBlockchain", func() {
 			})
 		})
 
+		Describe(".copyChains", func() {
+			var ch, ch2 *Chain
+
+			BeforeEach(func() {
+				ch = NewChain("c1", db, cfg, log)
+				ch2 = NewChain("c2", db, cfg, log)
+				ch3 := NewChain("c3", db, cfg, log)
+				bc.addChain(ch)
+				bc.addChain(ch2)
+				bc.addChain(ch3)
+			})
+
+			It("should return 4 chains", func() {
+				chains := bc.copyChains([]util.String{})
+				Expect(chains).To(HaveLen(4))
+			})
+
+			When("chain `c1` is added to the exclusion list", func() {
+				It("should return 3 chains but not `c1`", func() {
+					chains := bc.copyChains([]util.String{ch.GetID()})
+					Expect(chains).To(HaveLen(3))
+					Expect(chains).ToNot(ContainElement(ch))
+				})
+			})
+
+			When("chain `c1` and `c2` are added to the exclusion list", func() {
+				It("should return 2 chains but not `c1` and `c2`", func() {
+					chains := bc.copyChains([]util.String{ch.GetID(), ch2.GetID()})
+					Expect(chains).To(HaveLen(2))
+					Expect(chains).ToNot(ContainElement(ch))
+					Expect(chains).ToNot(ContainElement(ch2))
+				})
+			})
+		})
+
+		Describe(".copyChainsMap", func() {
+			var ch, ch2 *Chain
+
+			BeforeEach(func() {
+				ch = NewChain("c1", db, cfg, log)
+				ch2 = NewChain("c2", db, cfg, log)
+				ch3 := NewChain("c3", db, cfg, log)
+				bc.addChain(ch)
+				bc.addChain(ch2)
+				bc.addChain(ch3)
+			})
+
+			It("should return 4 chains", func() {
+				chains := bc.copyChainsMap([]util.String{})
+				Expect(chains).To(HaveLen(4))
+			})
+
+			When("chain `c1` is added to the exclusion list", func() {
+				It("should return 3 chains but not `c1`", func() {
+					chains := bc.copyChainsMap([]util.String{ch.GetID()})
+					Expect(chains).To(HaveLen(3))
+					Expect(chains).ToNot(ContainElement(ch))
+				})
+			})
+
+			When("chain `c1` and `c2` are added to the exclusion list", func() {
+				It("should return 2 chains but not `c1` and `c2`", func() {
+					chains := bc.copyChainsMap([]util.String{ch.GetID(), ch2.GetID()})
+					Expect(chains).To(HaveLen(2))
+					Expect(chains).ToNot(ContainElement(ch))
+					Expect(chains).ToNot(ContainElement(ch2))
+				})
+			})
+		})
+
 		Describe(".getRootChain", func() {
 
 			// Create a chain with a parent and add the chain
@@ -300,6 +377,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 
 			It("should get the chain with no branch", func() {
 				root := bc.getRootChain()
+				Expect(bc.chains).To(HaveLen(2))
 				Expect(root.GetID().Equal(genesisChain.GetID())).To(BeTrue())
 			})
 		})

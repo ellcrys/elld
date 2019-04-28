@@ -19,7 +19,7 @@ import (
 func (b *Blockchain) getBlockByHash(args ...interface{}) interface{} {
 	hash := args[0].(util.Hash)
 	opts := args[1].([]types.CallOp)
-	for _, chain := range b.chains {
+	for _, chain := range b.copyChainsMap(nil) {
 		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
@@ -35,9 +35,7 @@ func (b *Blockchain) getBlockByHash(args ...interface{}) interface{} {
 // HaveBlock checks whether we have a block matching
 // the hash in any of the known chains
 func (b *Blockchain) HaveBlock(hash util.Hash) (bool, error) {
-	b.chl.RLock()
-	defer b.chl.RUnlock()
-	chains := b.chains
+	chains := b.copyChainsMap(nil)
 	for _, chain := range chains {
 		has, err := chain.hasBlock(hash)
 		if err != nil {
@@ -237,10 +235,7 @@ func (b *Blockchain) Generate(params *types.GenerateBlockParams, opts ...types.C
 // GetBlock finds a block in any chain with a matching
 // block number and hash.
 func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error) {
-	b.chl.RLock()
-	defer b.chl.RUnlock()
-	chains := b.chains
-	for _, chain := range chains {
+	for _, chain := range b.copyChainsMap(nil) {
 		block, err := chain.getBlockByNumberAndHash(number, hash)
 		if err != nil {
 			if err != core.ErrBlockNotFound {
@@ -255,9 +250,7 @@ func (b *Blockchain) GetBlock(number uint64, hash util.Hash) (types.Block, error
 
 // GetBlockByHash finds a block in any chain with a matching hash.
 func (b *Blockchain) GetBlockByHash(hash util.Hash, opts ...types.CallOp) (types.Block, error) {
-	b.chl.RLock()
-	defer b.chl.RUnlock()
-	for _, chain := range b.chains {
+	for _, chain := range b.copyChainsMap(nil) {
 		block, err := chain.getBlockByHash(hash, opts...)
 		if err != nil {
 			if err != core.ErrBlockNotFound {

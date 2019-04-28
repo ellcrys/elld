@@ -57,9 +57,7 @@ func (b *Blockchain) chooseBestChain(opts ...types.CallOp) (*Chain, error) {
 		txOp.SetFinishable(!hasInjectTx).Discard()
 	}()
 
-	b.chl.RLock()
-	chains := b.chains
-	b.chl.RUnlock()
+	chains := b.copyChainsMap(nil)
 
 	// If no chain exists on the blockchain, return nil
 	if len(chains) == 0 {
@@ -212,6 +210,8 @@ start:
 			return fmt.Errorf("Reorganization has failed: %s", err)
 		}
 		b.setReOrgStatus(false)
+
+		b.log.Info("Parent and child re-organised")
 
 		// Go back to the top to re-determine the new proposed chain naturally.
 		goto start
