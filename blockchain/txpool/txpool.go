@@ -4,11 +4,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 
-	"github.com/ellcrys/mother/params"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 )
 
 // TxPool stores transactions.

@@ -8,9 +8,9 @@ import (
 
 	"github.com/thoas/go-funk"
 
-	"github.com/ellcrys/mother/params"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/util"
 	"github.com/shopspring/decimal"
 )
 

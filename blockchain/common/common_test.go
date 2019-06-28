@@ -4,13 +4,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/ellcrys/mother/config"
-	"github.com/ellcrys/mother/elldb"
-	"github.com/ellcrys/mother/testutil"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/testutil"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

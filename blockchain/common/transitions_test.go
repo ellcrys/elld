@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/elld/types/core"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/merkletree"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

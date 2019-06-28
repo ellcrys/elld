@@ -4,10 +4,10 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ellcrys/mother/crypto"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
 )
 
 // MakeTestBlock creates a block and adds

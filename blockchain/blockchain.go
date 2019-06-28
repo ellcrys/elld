@@ -7,18 +7,18 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/elld/crypto"
 
 	"github.com/gobuffalo/packr"
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/mother/config"
-	"github.com/ellcrys/mother/elldb"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
-	"github.com/ellcrys/mother/util/cache"
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util/cache"
+	"github.com/ellcrys/elld/util/logger"
 )
 
 const (
