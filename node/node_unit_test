@@ -3,10 +3,10 @@ package node
 import (
 	"context"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/testutil"
+	"github.com/ellcrys/mother/util"
 	host "github.com/libp2p/go-libp2p-host"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 

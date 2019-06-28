@@ -3,7 +3,7 @@ package common
 import (
 	"bytes"
 
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 	"github.com/ellcrys/merkletree"
 	"golang.org/x/crypto/blake2b"
 )

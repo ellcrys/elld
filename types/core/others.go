@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 )
 
 // ChainInfo describes a chain

@@ -3,11 +3,11 @@ package rpc
 import (
 	"sync"
 
-	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/mother/elldb"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/rpc/jsonrpc"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/rpc/jsonrpc"
+	"github.com/ellcrys/mother/util/logger"
 )
 
 // Result represent a response to a service method call

@@ -10,7 +10,7 @@ import (
 	pb "github.com/libp2p/go-libp2p-crypto/pb"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 	"github.com/ellcrys/go-ethereum/crypto/sha3"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/crypto/ripemd160"

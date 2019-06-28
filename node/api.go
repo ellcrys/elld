@@ -3,90 +3,28 @@ package node
 import (
 	"encoding/hex"
 	"encoding/json"
-	"runtime"
 	"strings"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/ellcrys/elld/config"
 
-	"github.com/ellcrys/elld/rpc"
-	"github.com/ellcrys/elld/rpc/jsonrpc"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/rpc"
+	"github.com/ellcrys/mother/rpc/jsonrpc"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util"
 )
 
 // apiBasicPublicNodeInfo returns basic
 // information about the node that can be
 // shared publicly
 func (n *Node) apiBasicPublicNodeInfo(arg interface{}) *jsonrpc.Response {
-
-	var mode = "development"
-	if n.ProdMode() {
-		mode = "production"
-	} else if n.TestMode() {
-		mode = "test"
-	}
-
-	// Get the tip block
-	tip, err := n.bChain.GetBestChain().GetBlock(0)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeBlockQuery, err.Error(), nil)
-	}
-
-	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
-		"name":                    n.Name,
-		"id":                      n.ID().Pretty(),
-		"mode":                    mode,
-		"netVersion":              config.GetVersions().Protocol,
-		"syncing":                 n.blockManager.IsSyncing(),
-		"buildVersion":            n.cfg.VersionInfo.BuildVersion,
-		"buildCommit":             n.cfg.VersionInfo.BuildCommit,
-		"buildDate":               n.cfg.VersionInfo.BuildDate,
-		"goVersion":               n.cfg.VersionInfo.GoVersion,
-		"tipBlockHeight":          tip.GetNumber(),
-		"tipBlockDifficulty":      tip.GetHeader().GetDifficulty(),
-		"tipBlockTotalDifficulty": tip.GetHeader().GetTotalDifficulty(),
-		"tipBlockHash":            tip.GetHash().HexStr(),
-	}))
+	return nil
 }
 
 // apiBasicNodeInfo returns basic
 // information about the node.
 func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
-
-	var mode = "development"
-	if n.ProdMode() {
-		mode = "production"
-	} else if n.TestMode() {
-		mode = "test"
-	}
-
-	tip, err := n.bChain.GetBestChain().GetBlock(0)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeBlockQuery, err.Error(), nil)
-	}
-
-	return jsonrpc.Success(map[string]interface{}{
-		"name":                    n.Name,
-		"id":                      n.ID().Pretty(),
-		"address":                 n.GetAddress().ConnectionString(),
-		"mode":                    mode,
-		"netVersion":              config.GetVersions().Protocol,
-		"syncing":                 n.blockManager.IsSyncing(),
-		"coinbasePublicKey":       n.coinbase.PubKey().Base58(),
-		"coinbase":                n.coinbase.Addr(),
-		"buildVersion":            n.cfg.VersionInfo.BuildVersion,
-		"buildCommit":             n.cfg.VersionInfo.BuildCommit,
-		"buildDate":               n.cfg.VersionInfo.BuildDate,
-		"goVersion":               n.cfg.VersionInfo.GoVersion,
-		"listeningAddresses":      n.GetListenAddresses(),
-		"numGoRoutines":           runtime.NumGoroutine(),
-		"tipBlockHeight":          tip.GetNumber(),
-		"tipBlockDifficulty":      tip.GetHeader().GetDifficulty(),
-		"tipBlockTotalDifficulty": tip.GetHeader().GetTotalDifficulty(),
-		"tipBlockHash":            tip.GetHash().HexStr(),
-	})
+	return nil
 }
 
 func (n *Node) apiGetConfig(arg interface{}) *jsonrpc.Response {
@@ -287,12 +225,12 @@ func (n *Node) apiGetPeers(arg interface{}) *jsonrpc.Response {
 
 // apiIsSyncing fetches the sync status
 func (n *Node) apiIsSyncing(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.blockManager.IsSyncing())
+	return nil
 }
 
 // apiGetSyncStat fetches the sync status
 func (n *Node) apiGetSyncStat(arg interface{}) *jsonrpc.Response {
-	return jsonrpc.Success(n.blockManager.GetSyncStat())
+	return nil
 }
 
 // apiTxPoolSizeInfo fetches the size information
@@ -412,19 +350,20 @@ func (n *Node) apiFetchPool(arg interface{}) *jsonrpc.Response {
 }
 
 func (n *Node) apiBroadcastPeers(arg interface{}) *jsonrpc.Response {
-	var result = map[string][]string{
-		"broadcasters":       {},
-		"randomBroadcasters": {},
-	}
-	for _, p := range n.Gossip().GetBroadcasters().Peers() {
-		result["broadcasters"] = append(result["broadcasters"],
-			p.GetAddress().ConnectionString())
-	}
-	for _, p := range n.Gossip().GetRandBroadcasters().Peers() {
-		result["randomBroadcasters"] = append(result["randomBroadcasters"],
-			p.GetAddress().ConnectionString())
-	}
-	return jsonrpc.Success(result)
+	// var result = map[string][]string{
+	// 	"broadcasters":       {},
+	// 	"randomBroadcasters": {},
+	// }
+	// for _, p := range n.Gossip().GetBroadcasters().Peers() {
+	// 	result["broadcasters"] = append(result["broadcasters"],
+	// 		p.GetAddress().ConnectionString())
+	// }
+	// for _, p := range n.Gossip().GetRandBroadcasters().Peers() {
+	// 	result["randomBroadcasters"] = append(result["randomBroadcasters"],
+	// 		p.GetAddress().ConnectionString())
+	// }
+	// return jsonrpc.Success(result)
+	return nil
 }
 
 func (n *Node) apiNoNetwork(arg interface{}) *jsonrpc.Response {

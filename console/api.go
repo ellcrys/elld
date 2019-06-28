@@ -1,7 +1,7 @@
 package console
 
 import (
-	"github.com/ellcrys/elld/rpc/jsonrpc"
+	"github.com/ellcrys/mother/rpc/jsonrpc"
 )
 
 // APIs returns all API handlers

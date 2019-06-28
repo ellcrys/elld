@@ -5,7 +5,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/mother/crypto"
 	"github.com/robertkrimen/otto"
 	goprompt "github.com/ellcrys/go-prompt"
 )

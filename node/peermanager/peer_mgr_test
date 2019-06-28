@@ -7,12 +7,12 @@ import (
 
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/node/peermanager"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/node"
+	"github.com/ellcrys/mother/node/peermanager"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util"
 	ma "github.com/multiformats/go-multiaddr"
 	. "github.com/onsi/ginkgo"
 

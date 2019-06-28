@@ -8,7 +8,7 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/vmihailenco/msgpack"
 
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 	"github.com/thoas/go-funk"
 )
 

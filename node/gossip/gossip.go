@@ -8,15 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/util"
 
 	"github.com/vmihailenco/msgpack"
 
-	"github.com/ellcrys/elld/node/peermanager"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/node/peermanager"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util/logger"
 	net "github.com/libp2p/go-libp2p-net"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 )

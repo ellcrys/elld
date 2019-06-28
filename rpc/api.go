@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"github.com/ellcrys/elld/rpc/jsonrpc"
-	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/mother/rpc/jsonrpc"
+	"github.com/ellcrys/mother/types"
 )
 
 func (s *Server) apiRPCAuth(params interface{}) *jsonrpc.Response {

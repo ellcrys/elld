@@ -10,16 +10,16 @@ import (
 	"path"
 	"sync"
 
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 
 	"github.com/fatih/color"
 
-	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/mother/rpc"
 
-	"github.com/ellcrys/elld/accountmgr"
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/accountmgr"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/util/logger"
 
 	prompt "github.com/c-bata/go-prompt"
 )

@@ -9,26 +9,23 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/ellcrys/elld/blockchain/txpool"
-	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/mother/params"
 	"github.com/pkg/profile"
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/miner"
-	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/mother/rpc"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
-	"github.com/ellcrys/elld/accountmgr"
+	"github.com/ellcrys/mother/accountmgr"
 	funk "github.com/thoas/go-funk"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/console"
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/console"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/node"
+	"github.com/ellcrys/mother/util"
 	"github.com/spf13/cobra"
 )
 
@@ -127,7 +124,7 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 // - start RPC server if enabled
 // - start console if enabled
 // - connect console to rpc server and prepare console vm if rpc server is enabled
-func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console, *miner.Miner) {
+func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console) {
 
 	var err error
 
@@ -152,7 +149,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	rpcAddress := viper.GetString("rpc.address")
 	seed := viper.GetInt64("node.seed")
 	mine := viper.GetBool("miner.enabled")
-	numMiners := viper.GetInt("miner.numMiners")
 	noNet := viper.GetBool("node.noNet")
 	syncDisabled := viper.GetBool("node.syncDisabled")
 
@@ -213,8 +209,8 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	}
 
 	// Configure transactions pool and assign to node
-	pool := txpool.New(params.PoolCapacity)
-	n.SetTxsPool(pool)
+	// pool := txpool.New(params.PoolCapacity)
+	// n.SetTxsPool(pool)
 
 	if !noNet {
 		// Add hardcoded bootstrap addresses
@@ -237,22 +233,21 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Initialize and set the blockchain manager's db,
 	// event emitter and pass it to the engine
-	bChain := blockchain.New(n.GetTxPool(), cfg, log)
-	bChain.SetDB(n.DB())
-	bChain.SetEventEmitter(event)
-	bChain.SetCoinbase(coinbase)
+	// bChain := blockchain.New(n.GetTxPool(), cfg, log)
+	// bChain.SetDB(n.DB())
+	// bChain.SetEventEmitter(event)
+	// bChain.SetCoinbase(coinbase)
 
 	// Initialize the miner, rpc server
-	miner := miner.NewMiner(coinbase, bChain, event, cfg, log)
+	// miner := miner.NewMiner(coinbase, bChain, event, cfg, log)
 	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
 
 	// Set the node's references
-	n.SetBlockchain(bChain)
+	// n.SetBlockchain(bChain)
 	n.SetEventEmitter(event)
 
 	// Setup block manager
 	bm := node.NewBlockManager(n)
-	bm.SetMiner(miner)
 	go bm.Manage()
 	n.SetBlockManager(bm)
 
@@ -262,25 +257,17 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	n.SetTxManager(tm)
 
 	// power up the blockchain manager
-	if err := bChain.Up(); err != nil {
-		log.Fatal("failed to load blockchain manager", "Err", err.Error())
-	}
+	// if err := bChain.Up(); err != nil {
+	// 	log.Fatal("failed to load blockchain manager", "Err", err.Error())
+	// }
 
 	// Start the block manager and the node
 	n.Start()
 
-	// Initialized and start the miner if enabled via the cli flag.
-	miner.SetNumThreads(numMiners)
-	if mine {
-		go miner.Begin()
-	}
-
 	// Add the RPC APIs from various components.
 	rpcServer.AddAPI(
 		n.APIs(),
-		miner.APIs(),
 		accountMgr.APIs(),
-		bChain.APIs(),
 		rpcServer.APIs(),
 	)
 
@@ -309,7 +296,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		go cs.Run()
 	}
 
-	return n, rpcServer, cs, miner
+	return n, rpcServer, cs
 }
 
 // startCmd represents the start command
@@ -354,12 +341,9 @@ var startCmd = &cobra.Command{
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
-		n, rpcServer, _, miner := start(cmd, args, false)
+		n, rpcServer, _ := start(cmd, args, false)
 
 		setTerminateFunc(func() {
-			if miner != nil {
-				miner.Stop()
-			}
 			if rpcServer != nil {
 				rpcServer.Stop()
 			}

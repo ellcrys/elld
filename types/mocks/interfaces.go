@@ -5,10 +5,10 @@
 package mocks
 
 import (
-	crypto "github.com/ellcrys/elld/crypto"
-	elldb "github.com/ellcrys/elld/elldb"
-	types "github.com/ellcrys/elld/types"
-	util "github.com/ellcrys/elld/util"
+	crypto "github.com/ellcrys/mother/crypto"
+	elldb "github.com/ellcrys/mother/elldb"
+	types "github.com/ellcrys/mother/types"
+	util "github.com/ellcrys/mother/util"
 	merkletree "github.com/ellcrys/merkletree"
 	gomock "github.com/golang/mock/gomock"
 	emitter "github.com/olebedev/emitter"

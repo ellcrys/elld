@@ -6,13 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util/logger"
 
-	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/mother/config"
 
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 )
 
 // Manager manages known peers connected to the local peer.
@@ -200,28 +200,30 @@ func (m *Manager) ConnectToPeer(peerID string) error {
 		return fmt.Errorf("peer not found")
 	}
 
-	m.log.Debug("Attempting to connect to peer",
-		"PeerID", peer.ShortID())
+	// m.log.Debug("Attempting to connect to peer",
+	// 	"PeerID", peer.ShortID())
 
-	gsp := m.localNode.Gossip()
-	err := gsp.SendHandshake(peer)
-	if err != nil {
-		return err
-	}
+	// gsp := m.localNode.Gossip()
+	// err := gsp.SendHandshake(peer)
+	// if err != nil {
+	// 	return err
+	// }
 
-	return gsp.SendGetAddr([]core.Engine{peer})
+	// return gsp.SendGetAddr([]core.Engine{peer})
+	return nil
 }
 
 // ConnectToNode attempts to a Handshake message
 // to a remote node. If successful, it sends a
 // GetAddr message.
 func (m *Manager) ConnectToNode(node core.Engine) error {
-	gsp := m.localNode.Gossip()
-	err := gsp.SendHandshake(node)
-	if err != nil {
-		return err
-	}
-	return gsp.SendGetAddr([]core.Engine{node})
+	// gsp := m.localNode.Gossip()
+	// err := gsp.SendHandshake(node)
+	// if err != nil {
+	// 	return err
+	// }
+	// return gsp.SendGetAddr([]core.Engine{node})
+	return nil
 }
 
 // GetUnconnectedPeers returns the peers that
@@ -289,66 +291,66 @@ func (m *Manager) Manage() {
 // doGetAddrMsg periodically sends wire.GetAddr
 // message to all active peers
 func (m *Manager) doGetAddrMsg(done chan bool) {
-	ticker := time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
-	for {
-		select {
-		case <-ticker.C:
+	// ticker := time.NewTicker(time.Duration(m.config.Node.GetAddrInterval) * time.Second)
+	// for {
+	// 	select {
+	// 	case <-ticker.C:
 
-			if m.localNode.IsNetworkDisabled() {
-				continue
-			}
+	// 		if m.localNode.IsNetworkDisabled() {
+	// 			continue
+	// 		}
 
-			m.localNode.Gossip().SendGetAddr(m.GetActivePeers(0))
-		case <-done:
-			ticker.Stop()
-			return
-		}
-	}
+	// 		m.localNode.Gossip().SendGetAddr(m.GetActivePeers(0))
+	// 	case <-done:
+	// 		ticker.Stop()
+	// 		return
+	// 	}
+	// }
 }
 
 // doPingMsgs periodically sends wire.Ping
 // messages to all peers.
 func (m *Manager) doPingMsgs(done chan bool) {
-	ticker := time.NewTicker(time.Duration(m.config.Node.PingInterval) * time.Second)
-	for {
-		select {
-		case <-ticker.C:
+	// ticker := time.NewTicker(time.Duration(m.config.Node.PingInterval) * time.Second)
+	// for {
+	// 	select {
+	// 	case <-ticker.C:
 
-			if m.localNode.IsNetworkDisabled() {
-				continue
-			}
+	// 		if m.localNode.IsNetworkDisabled() {
+	// 			continue
+	// 		}
 
-			m.localNode.Gossip().SendPing(m.GetActivePeers(0))
-		case <-done:
-			ticker.Stop()
-			return
-		}
-	}
+	// 		m.localNode.Gossip().SendPing(m.GetActivePeers(0))
+	// 	case <-done:
+	// 		ticker.Stop()
+	// 		return
+	// 	}
+	// }
 }
 
 // doSelfAdvert periodically send an wire.Addr
 // message containing only the local peer's
 // address to all connected peers.
 func (m *Manager) doSelfAdvert(done chan bool) {
-	ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
-	for {
-		select {
-		case <-ticker.C:
+	// ticker := time.NewTicker(time.Duration(m.config.Node.SelfAdvInterval) * time.Second)
+	// for {
+	// 	select {
+	// 	case <-ticker.C:
 
-			if m.localNode.IsNetworkDisabled() {
-				continue
-			}
+	// 		if m.localNode.IsNetworkDisabled() {
+	// 			continue
+	// 		}
 
-			peers := m.GetConnectedPeers()
-			if len(peers) > 0 {
-				m.localNode.Gossip().SelfAdvertise(peers)
-			}
-			m.CleanPeers()
-		case <-done:
-			ticker.Stop()
-			return
-		}
-	}
+	// 		peers := m.GetConnectedPeers()
+	// 		if len(peers) > 0 {
+	// 			m.localNode.Gossip().SelfAdvertise(peers)
+	// 		}
+	// 		m.CleanPeers()
+	// 	case <-done:
+	// 		ticker.Stop()
+	// 		return
+	// 	}
+	// }
 }
 
 // doCleanUp periodically cleans the peer list,

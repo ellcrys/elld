@@ -12,8 +12,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/ellcrys/elld/play/simulations/difficulty/helpers"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/play/simulations/difficulty/helpers"
+	"github.com/ellcrys/mother/util/logger"
 	funk "github.com/thoas/go-funk"
 )
 

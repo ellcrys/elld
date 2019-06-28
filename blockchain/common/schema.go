@@ -12,8 +12,8 @@
 package common
 
 import (
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/mother/util"
 )
 
 var (

@@ -7,10 +7,10 @@ import (
 
 	"github.com/vmihailenco/msgpack"
 
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/util/math"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/mother/util/math"
 )
 
 var mtx sync.RWMutex

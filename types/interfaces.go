@@ -3,12 +3,10 @@ package types
 import (
 	"math/big"
 
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/elldb"
-	"github.com/olebedev/emitter"
+	"github.com/ellcrys/mother/elldb"
 
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/merkletree"
+	"github.com/ellcrys/mother/util"
 )
 
 // Chainer (a.k.a Chains) defines an interface for accessing
@@ -116,75 +114,8 @@ type ChainStorer interface {
 
 // Blockchain defines an interface for a blockchain manager
 type Blockchain interface {
-
 	// Up initializes and loads the blockchain manager
 	Up() error
-
-	// SetCoinbase sets the coinbase key that is used to
-	// identify the current blockchain instance
-	SetCoinbase(coinbase *crypto.Key)
-
-	// GetBestChain gets the chain that is currently considered the main chain
-	GetBestChain() Chainer
-
-	// OrphanBlocks gets a reader for the orphan cache
-	OrphanBlocks() CacheReader
-
-	// GetEventEmitter gets the event emitter
-	GetEventEmitter() *emitter.Emitter
-
-	// HaveBlock checks whether we have a block matching the hash in any of the known chains
-	HaveBlock(hash util.Hash) (bool, error)
-
-	// GetTransaction finds and returns a transaction on the main chain
-	GetTransaction(util.Hash, ...CallOp) (Transaction, error)
-
-	// ProcessBlock attempts to process and append a block to the main or side chains
-	ProcessBlock(Block, ...CallOp) (ChainReaderFactory, error)
-
-	// Generate creates a new block for a target chain.
-	// The Chain is specified by passing to OpChain.
-	Generate(*GenerateBlockParams, ...CallOp) (Block, error)
-
-	// GetTxPool gets the transaction pool
-	GetTxPool() TxPool
-
-	// ChainReader gets a Reader for reading the main chain
-	ChainReader() ChainReaderFactory
-
-	// GetChainsReader gets chain reader for all known chains
-	GetChainsReader() (readers []ChainReaderFactory)
-
-	// SetDB sets the database
-	SetDB(elldb.DB)
-
-	// GetBlock finds a block in any chain with a matching
-	// block number and hash.
-	GetBlock(number uint64, hash util.Hash) (Block, error)
-
-	// GetBlockByHash finds a block in any chain with a matching hash.
-	GetBlockByHash(hash util.Hash, opts ...CallOp) (Block, error)
-
-	// GetChainReaderByHash returns a chain reader to a chain
-	// where a block with the given hash exists
-	GetChainReaderByHash(hash util.Hash) ChainReaderFactory
-
-	// SetGenesisBlock sets the genesis block
-	SetGenesisBlock(block Block)
-
-	// CreateAccount creates an account that is associated with
-	// the given block number and chain.
-	CreateAccount(blockNo uint64, chain Chainer, account Account) error
-
-	// GetAccount gets an account
-	GetAccount(address util.String, opts ...CallOp) (Account, error)
-
-	// GetAccountNonce gets the nonce of an account
-	GetAccountNonce(address util.String, opts ...CallOp) (uint64, error)
-
-	// GetLocators fetches a list of blockhashes used to
-	// compare and sync the local chain with a remote chain.
-	GetLocators() ([]util.Hash, error)
 }
 
 // BlockMaker defines an interface providing the

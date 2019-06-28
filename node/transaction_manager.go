@@ -1,15 +1,13 @@
 package node
 
 import (
-	"fmt"
 	"time"
 
 	"gopkg.in/oleiade/lane.v1"
 
-	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util/logger"
 	"github.com/olebedev/emitter"
 )
 
@@ -69,33 +67,33 @@ func (tm *TxManager) Manage() {
 func (tm *TxManager) AddTx(tx types.Transaction) error {
 
 	// TxTypeAlloc transactions are not allowed
-	if tx.GetType() == core.TxTypeAlloc {
-		err := fmt.Errorf("allocation transaction type is not allowed")
-		go tm.evt.Emit(core.EventTransactionInvalid, tx, err)
-		return err
-	}
+	// if tx.GetType() == core.TxTypeAlloc {
+	// 	err := fmt.Errorf("allocation transaction type is not allowed")
+	// 	go tm.evt.Emit(core.EventTransactionInvalid, tx, err)
+	// 	return err
+	// }
 
-	// We need to validate the transaction, returning
-	// the first error we find.
-	txValidator := blockchain.NewTxValidator(tx, tm.engine.txsPool, tm.bChain)
-	if errs := txValidator.Validate(); len(errs) > 0 {
-		go tm.evt.Emit(core.EventTransactionInvalid, tx, errs[0])
-		return errs[0]
-	}
+	// // We need to validate the transaction, returning
+	// // the first error we find.
+	// txValidator := blockchain.NewTxValidator(tx, tm.engine.txsPool, tm.bChain)
+	// if errs := txValidator.Validate(); len(errs) > 0 {
+	// 	go tm.evt.Emit(core.EventTransactionInvalid, tx, errs[0])
+	// 	return errs[0]
+	// }
 
-	// Next we attempt to add the transaction
-	// to the transactions pool.
-	if err := tm.engine.GetTxPool().Put(tx); err != nil {
-		go tm.evt.Emit(core.EventTransactionInvalid, tx, err)
-		return err
-	}
+	// // Next we attempt to add the transaction
+	// // to the transactions pool.
+	// if err := tm.engine.GetTxPool().Put(tx); err != nil {
+	// 	go tm.evt.Emit(core.EventTransactionInvalid, tx, err)
+	// 	return err
+	// }
 
-	// Since we successfully added the transaction
-	// to the pool, we need to add it to the
-	// broadcast queue so it will be broadcast to peers
-	tm.txBroadcastQueue.Append(tx)
+	// // Since we successfully added the transaction
+	// // to the pool, we need to add it to the
+	// // broadcast queue so it will be broadcast to peers
+	// tm.txBroadcastQueue.Append(tx)
 
-	go tm.evt.Emit(core.EventTransactionPooled, tx)
+	// go tm.evt.Emit(core.EventTransactionPooled, tx)
 
 	return nil
 }
@@ -103,11 +101,12 @@ func (tm *TxManager) AddTx(tx types.Transaction) error {
 // broadcastTx broadcast a transaction
 func (tm *TxManager) broadcastTx() error {
 
-	tx := tm.txBroadcastQueue.Shift()
-	if tx == nil {
-		return nil
-	}
+	// tx := tm.txBroadcastQueue.Shift()
+	// if tx == nil {
+	// 	return nil
+	// }
 
-	return tm.engine.gossipMgr.BroadcastTx(tx.(types.Transaction),
-		tm.engine.PM().GetAcquaintedPeers())
+	// return tm.engine.gossipMgr.BroadcastTx(tx.(types.Transaction),
+	// tm.engine.PM().GetAcquaintedPeers())
+	return nil
 }

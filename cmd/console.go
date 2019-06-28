@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/mother/config"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -63,11 +63,8 @@ var consoleCmd = &cobra.Command{
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
-		node, rpcServer, cs, miner := start(cmd, args, true)
+		node, rpcServer, cs := start(cmd, args, true)
 		cs.OnStop(func() {
-			if miner != nil {
-				miner.Stop()
-			}
 			rpcServer.Stop()
 			node.Stop()
 		})

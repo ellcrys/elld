@@ -9,29 +9,29 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dustinkirkland/golang-petname"
+	petname "github.com/dustinkirkland/golang-petname"
 
-	"github.com/ellcrys/elld/node/peermanager"
+	"github.com/ellcrys/mother/node/peermanager"
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/blockchain/txpool"
-	d_crypto "github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/node/gossip"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/mother/blockchain/txpool"
+	d_crypto "github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/mother/node/gossip"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
 
-	"github.com/ellcrys/elld/util/cache"
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/util/cache"
+	"github.com/ellcrys/mother/util/logger"
 
-	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/mother/config"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"
@@ -130,16 +130,16 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	g := gossip.NewGossip(node, log)
 	g.SetPeerManager(node.peerManager)
 	node.SetGossipManager(g)
-	node.SetProtocolHandler(config.GetVersions().Handshake, g.Handle(g.OnHandshake))
-	node.SetProtocolHandler(config.GetVersions().Ping, g.Handle(g.OnPing))
-	node.SetProtocolHandler(config.GetVersions().GetAddr, g.Handle(g.OnGetAddr))
-	node.SetProtocolHandler(config.GetVersions().Addr, g.Handle(g.OnAddr))
-	node.SetProtocolHandler(config.GetVersions().Tx, g.Handle(g.OnTx))
-	node.SetProtocolHandler(config.GetVersions().BlockInfo, g.Handle(g.OnBlockInfo))
-	node.SetProtocolHandler(config.GetVersions().BlockBody, g.Handle(g.OnBlockBody))
-	node.SetProtocolHandler(config.GetVersions().RequestBlock, g.Handle(g.OnRequestBlock))
-	node.SetProtocolHandler(config.GetVersions().GetBlockHashes, g.Handle(g.OnGetBlockHashes))
-	node.SetProtocolHandler(config.GetVersions().GetBlockBodies, g.Handle(g.OnGetBlockBodies))
+	// node.SetProtocolHandler(config.GetVersions().Handshake, g.Handle(g.OnHandshake))
+	// node.SetProtocolHandler(config.GetVersions().Ping, g.Handle(g.OnPing))
+	// node.SetProtocolHandler(config.GetVersions().GetAddr, g.Handle(g.OnGetAddr))
+	// node.SetProtocolHandler(config.GetVersions().Addr, g.Handle(g.OnAddr))
+	// node.SetProtocolHandler(config.GetVersions().Tx, g.Handle(g.OnTx))
+	// node.SetProtocolHandler(config.GetVersions().BlockInfo, g.Handle(g.OnBlockInfo))
+	// node.SetProtocolHandler(config.GetVersions().BlockBody, g.Handle(g.OnBlockBody))
+	// node.SetProtocolHandler(config.GetVersions().RequestBlock, g.Handle(g.OnRequestBlock))
+	// node.SetProtocolHandler(config.GetVersions().GetBlockHashes, g.Handle(g.OnGetBlockHashes))
+	// node.SetProtocolHandler(config.GetVersions().GetBlockBodies, g.Handle(g.OnGetBlockBodies))
 
 	log.Info("Opened local database", "Backend", "LevelDB")
 

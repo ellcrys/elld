@@ -3,8 +3,8 @@ package types
 import (
 	"math/big"
 
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/util"
 )
 
 const (

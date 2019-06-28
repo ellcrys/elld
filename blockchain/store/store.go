@@ -6,11 +6,11 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/syndtr/goleveldb/leveldb"
 
-	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/blockchain/common"
+	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util"
 )
 
 // MetadataKey is the key used to store the metadata

@@ -1,7 +1,7 @@
 package jsonrpc
 
 import (
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 )
 
 // Params represent JSON API parameters

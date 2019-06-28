@@ -23,11 +23,11 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/ellcrys/elld/accountmgr"
+	"github.com/ellcrys/mother/accountmgr"
 
-	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/mother/util/logger"
 
-	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/mother/config"
 	"github.com/spf13/cobra"
 )
 

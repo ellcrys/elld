@@ -5,9 +5,9 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/util"
 )
 
 // DocType represents a document type

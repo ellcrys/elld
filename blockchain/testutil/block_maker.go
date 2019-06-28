@@ -4,11 +4,10 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ellcrys/elld/blockchain/common"
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util"
 )
 
 // MakeTestBlock creates a block and adds
@@ -16,16 +15,17 @@ import (
 // attached to the blockchain instance
 func MakeTestBlock(bc types.Blockchain, chain types.Chainer,
 	gp *types.GenerateBlockParams) types.Block {
-	blk, err := bc.Generate(gp, &common.OpChainer{Chain: chain})
-	if err != nil {
-		panic(err)
-	}
-	if !gp.NoPoolAdditionInTest && bc.GetTxPool() != nil {
-		for _, tx := range blk.GetTransactions() {
-			bc.GetTxPool().Put(tx)
-		}
-	}
-	return blk
+	// blk, err := bc.Generate(gp, &common.OpChainer{Chain: chain})
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// if !gp.NoPoolAdditionInTest && bc.GetTxPool() != nil {
+	// 	for _, tx := range blk.GetTransactions() {
+	// 		bc.GetTxPool().Put(tx)
+	// 	}
+	// }
+	// return blk
+	return nil
 }
 
 // MakeBlock creates a block

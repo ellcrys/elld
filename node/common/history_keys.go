@@ -1,9 +1,9 @@
 package common
 
 import (
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util"
 )
 
 // KeyBlock returns a key for storing the hash

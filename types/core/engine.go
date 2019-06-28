@@ -6,11 +6,11 @@ import (
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
-	"github.com/ellcrys/elld/util/cache"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/mother/util/cache"
 	host "github.com/libp2p/go-libp2p-host"
 	peer "github.com/libp2p/go-libp2p-peer"
 )

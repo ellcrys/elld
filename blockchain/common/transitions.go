@@ -1,8 +1,8 @@
 package common
 
 import (
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/mother/util"
 )
 
 // Transition represents a mutation to the state of a chain

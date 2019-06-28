@@ -18,8 +18,8 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/util"
 	"github.com/ellcrys/go-prompt"
 )
 

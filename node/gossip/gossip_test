@@ -3,10 +3,10 @@ package gossip_test
 import (
 	"context"
 
-	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/node"
-	"github.com/ellcrys/elld/types/core"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/mother/node"
+	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/mother/util"
 	net "github.com/libp2p/go-libp2p-net"
 
 	. "github.com/onsi/ginkgo"

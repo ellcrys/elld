@@ -6,8 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/util"
 	net "github.com/libp2p/go-libp2p-net"
 	"github.com/vmihailenco/msgpack"
 )
@@ -196,52 +195,52 @@ type WrappedStream struct {
 type Gossip interface {
 
 	// Address messages
-	OnAddr(s net.Stream, rp Engine) error
-	RelayAddresses(addrs []*Address) []error
+	// OnAddr(s net.Stream, rp Engine) error
+	// RelayAddresses(addrs []*Address) []error
 
-	// Block messages
-	BroadcastBlock(block types.Block, remotePeers []Engine) []error
-	OnBlockInfo(s net.Stream, rp Engine) error
-	OnBlockBody(s net.Stream, rp Engine) error
-	RequestBlock(rp Engine, blockHash util.Hash) error
-	OnRequestBlock(s net.Stream, rp Engine) error
-	SendGetBlockHashes(rp Engine, locators []util.Hash, seek util.Hash) (*BlockHashes, error)
-	OnGetBlockHashes(s net.Stream, rp Engine) error
-	SendGetBlockBodies(rp Engine, hashes []util.Hash) (*BlockBodies, error)
-	OnGetBlockBodies(s net.Stream, rp Engine) error
+	// // Block messages
+	// BroadcastBlock(block types.Block, remotePeers []Engine) []error
+	// OnBlockInfo(s net.Stream, rp Engine) error
+	// OnBlockBody(s net.Stream, rp Engine) error
+	// RequestBlock(rp Engine, blockHash util.Hash) error
+	// OnRequestBlock(s net.Stream, rp Engine) error
+	// SendGetBlockHashes(rp Engine, locators []util.Hash, seek util.Hash) (*BlockHashes, error)
+	// OnGetBlockHashes(s net.Stream, rp Engine) error
+	// SendGetBlockBodies(rp Engine, hashes []util.Hash) (*BlockBodies, error)
+	// OnGetBlockBodies(s net.Stream, rp Engine) error
 
-	// Handshake messages
-	SendHandshake(rp Engine) error
-	OnHandshake(s net.Stream, rp Engine) error
+	// // Handshake messages
+	// SendHandshake(rp Engine) error
+	// OnHandshake(s net.Stream, rp Engine) error
 
-	// GetAddr messages
-	SendGetAddrToPeer(remotePeer Engine) ([]*Address, error)
-	SendGetAddr(remotePeers []Engine) error
-	OnGetAddr(s net.Stream, rp Engine) error
+	// // GetAddr messages
+	// SendGetAddrToPeer(remotePeer Engine) ([]*Address, error)
+	// SendGetAddr(remotePeers []Engine) error
+	// OnGetAddr(s net.Stream, rp Engine) error
 
-	// Ping messages
-	SendPing(remotePeers []Engine)
-	SendPingToPeer(remotePeer Engine) error
-	OnPing(s net.Stream, rp Engine) error
+	// // Ping messages
+	// SendPing(remotePeers []Engine)
+	// SendPingToPeer(remotePeer Engine) error
+	// OnPing(s net.Stream, rp Engine) error
 
-	// Node advertisement
-	SelfAdvertise(connectedPeers []Engine) int
+	// // Node advertisement
+	// SelfAdvertise(connectedPeers []Engine) int
 
-	// Transaction messages
-	BroadcastTx(tx types.Transaction, remotePeers []Engine) error
-	OnTx(s net.Stream, rp Engine) error
+	// // Transaction messages
+	// BroadcastTx(tx types.Transaction, remotePeers []Engine) error
+	// OnTx(s net.Stream, rp Engine) error
 
-	// PickBroadcasters selects N random addresses from
-	// the given slice of addresses and caches them to
-	// be used as broadcasters.
-	// They are returned on subsequent calls and only
-	// renewed when there are less than N addresses or the
-	// cache is over 24 hours since it was last updated.
-	PickBroadcasters(cache *BroadcastPeers, addresses []*Address, n int) *BroadcastPeers
+	// // PickBroadcasters selects N random addresses from
+	// // the given slice of addresses and caches them to
+	// // be used as broadcasters.
+	// // They are returned on subsequent calls and only
+	// // renewed when there are less than N addresses or the
+	// // cache is over 24 hours since it was last updated.
+	// PickBroadcasters(cache *BroadcastPeers, addresses []*Address, n int) *BroadcastPeers
 
-	// GetBroadcasters returns the broadcasters
-	GetBroadcasters() *BroadcastPeers
-	GetRandBroadcasters() *BroadcastPeers
+	// // GetBroadcasters returns the broadcasters
+	// GetBroadcasters() *BroadcastPeers
+	// GetRandBroadcasters() *BroadcastPeers
 
 	// NewStream creates a stream for a given protocol
 	// ID and between the local peer and the given remote peer.

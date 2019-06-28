@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/mother/util"
 	funk "github.com/thoas/go-funk"
 	"github.com/vmihailenco/msgpack"
 )
