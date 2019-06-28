@@ -58,14 +58,6 @@
   revision = "11339a705ed2dfd341d0b99e95b478dd0d8366ef"
 
 [[projects]]
-  branch = "feature/create-mint-protocol"
-  digest = "1:9e790e5f4d7dc80fa7ed20f644b194f597e2330c9fa585b411b0d11872705ae6"
-  name = "github.com/ellcrys/elld"
-  packages = ["miner"]
-  pruneopts = "UT"
-  revision = "a32c9dd7b44265252b9fdeca745210feae5dc1e7"
-
-[[projects]]
   digest = "1:04b0d7489d8fb6418af67d95d7fd2e6cd306a01e8224e1a06eefca1de517272a"
   name = "github.com/ellcrys/go-ethereum"
   packages = ["crypto/sha3"]
@@ -1356,7 +1348,6 @@
     "github.com/dgrijalva/jwt-go",
     "github.com/dustin/go-humanize",
     "github.com/dustinkirkland/golang-petname",
-    "github.com/ellcrys/elld/miner",
     "github.com/ellcrys/go-ethereum/crypto/sha3",
     "github.com/ellcrys/go-prompt",
     "github.com/ellcrys/merkletree",
