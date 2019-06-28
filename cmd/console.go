@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/elld/config"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

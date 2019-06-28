@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ellcrys/mother/config"
-	"github.com/ellcrys/mother/testutil"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/testutil"
 
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 )
 
 var cfg *config.EngineConfig

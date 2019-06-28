@@ -3,7 +3,7 @@ package elldb
 import (
 	"bytes"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 )
 
 const (

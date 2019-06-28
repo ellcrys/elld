@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ellcrys/mother/cmd"
+	"github.com/ellcrys/elld/cmd"
 )
 
 var (

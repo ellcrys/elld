@@ -15,8 +15,8 @@ import (
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
 
-	"github.com/ellcrys/mother/config"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"

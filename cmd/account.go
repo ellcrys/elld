@@ -19,8 +19,8 @@ import (
 	"os"
 	path "path/filepath"
 
-	"github.com/ellcrys/mother/accountmgr"
-	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/elld/accountmgr"
+	"github.com/ellcrys/elld/config"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )

@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ellcrys/mother/util"
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/mitchellh/go-homedir"
 )

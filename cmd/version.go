@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
 )
 

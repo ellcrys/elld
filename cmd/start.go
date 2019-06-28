@@ -9,23 +9,23 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/ellcrys/mother/params"
+	"github.com/ellcrys/elld/params"
 	"github.com/pkg/profile"
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/mother/rpc"
+	"github.com/ellcrys/elld/rpc"
 
 	"gopkg.in/asaskevich/govalidator.v4"
 
-	"github.com/ellcrys/mother/accountmgr"
+	"github.com/ellcrys/elld/accountmgr"
 	funk "github.com/thoas/go-funk"
 
-	"github.com/ellcrys/mother/config"
-	"github.com/ellcrys/mother/console"
-	"github.com/ellcrys/mother/crypto"
-	"github.com/ellcrys/mother/node"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/console"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/node"
+	"github.com/ellcrys/elld/util"
 	"github.com/spf13/cobra"
 )
 

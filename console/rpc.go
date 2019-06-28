@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ellcrys/mother/rpc/jsonrpc"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
 	json "github.com/gorilla/rpc/v2/json2"
 )
 

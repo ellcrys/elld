@@ -3,12 +3,12 @@ package node
 import (
 	"sync"
 
-	"github.com/ellcrys/mother/util/cache"
+	"github.com/ellcrys/elld/util/cache"
 
 	"gopkg.in/oleiade/lane.v1"
 
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/olebedev/emitter"
 )
 

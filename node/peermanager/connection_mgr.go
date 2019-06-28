@@ -4,9 +4,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"
 )

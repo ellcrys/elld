@@ -7,11 +7,11 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 
-	"github.com/ellcrys/mother/rpc"
-	"github.com/ellcrys/mother/rpc/jsonrpc"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/rpc"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
 )
 
 // apiBasicPublicNodeInfo returns basic

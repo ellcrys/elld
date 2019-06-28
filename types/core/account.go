@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 )
 
 const (

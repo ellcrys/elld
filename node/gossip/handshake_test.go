@@ -3,12 +3,12 @@ package gossip_test
 // import (
 // 	"math/big"
 
-// 	. "github.com/ellcrys/mother/blockchain/testutil"
-// 	"github.com/ellcrys/mother/crypto"
-// 	"github.com/ellcrys/mother/node"
-// 	"github.com/ellcrys/mother/types"
-// 	"github.com/ellcrys/mother/types/core"
-// 	"github.com/ellcrys/mother/util"
+// 	. "github.com/ellcrys/elld/blockchain/testutil"
+// 	"github.com/ellcrys/elld/crypto"
+// 	"github.com/ellcrys/elld/node"
+// 	"github.com/ellcrys/elld/types"
+// 	"github.com/ellcrys/elld/types/core"
+// 	"github.com/ellcrys/elld/util"
 // 	. "github.com/onsi/ginkgo"
 // 	. "github.com/onsi/gomega"
 // )

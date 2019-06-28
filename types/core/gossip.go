@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 	net "github.com/libp2p/go-libp2p-net"
 	"github.com/vmihailenco/msgpack"
 )

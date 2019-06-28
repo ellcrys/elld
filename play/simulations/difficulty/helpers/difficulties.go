@@ -4,7 +4,7 @@ import (
 	gomath "math"
 	"math/big"
 
-	"github.com/ellcrys/mother/util/math"
+	"github.com/ellcrys/elld/util/math"
 )
 
 var (

@@ -17,9 +17,9 @@ package cmd
 import (
 	"os"
 
-	"github.com/ellcrys/mother/config"
-	"github.com/ellcrys/mother/console"
-	"github.com/ellcrys/mother/crypto"
+	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/console"
+	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

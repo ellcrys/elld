@@ -1,8 +1,8 @@
 package accountmgr
 
 import (
-	"github.com/ellcrys/mother/rpc/jsonrpc"
-	"github.com/ellcrys/mother/types"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
+	"github.com/ellcrys/elld/types"
 )
 
 func (am *AccountManager) apiListAccounts(interface{}) *jsonrpc.Response {

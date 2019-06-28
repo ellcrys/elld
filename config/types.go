@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/util/logger"
 )
 
 const (

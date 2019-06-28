@@ -7,8 +7,8 @@ import (
 
 	"github.com/btcsuite/btcutil/base58"
 
-	"github.com/ellcrys/mother/types/core"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util"
 )
 
 // TxBuilder provides methods for building

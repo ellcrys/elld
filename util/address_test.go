@@ -12,8 +12,8 @@ import (
 	host "github.com/libp2p/go-libp2p-host"
 	. "github.com/onsi/gomega"
 
-	"github.com/ellcrys/mother/testutil"
-	. "github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/testutil"
+	. "github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 )
 

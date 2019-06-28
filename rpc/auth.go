@@ -3,7 +3,7 @@ package rpc
 import (
 	"fmt"
 
-	"github.com/ellcrys/mother/rpc/jsonrpc"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
 )
 
 // auth creates a session token when username and

@@ -8,17 +8,17 @@ import (
 
 	goprompt "github.com/ellcrys/go-prompt"
 
-	"github.com/ellcrys/mother/rpc"
+	"github.com/ellcrys/elld/rpc"
 	"github.com/gobuffalo/packr"
 
-	"github.com/ellcrys/mother/accountmgr"
+	"github.com/ellcrys/elld/accountmgr"
 
 	prompt "github.com/c-bata/go-prompt"
 
-	"github.com/ellcrys/mother/crypto"
-	"github.com/ellcrys/mother/rpc/jsonrpc"
-	"github.com/ellcrys/mother/util"
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/rpc/jsonrpc"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/fatih/color"
 	"github.com/fatih/structs"
 	prettyjson "github.com/ncodes/go-prettyjson"

@@ -3,10 +3,10 @@ package types
 import (
 	"math/big"
 
-	"github.com/ellcrys/mother/elldb"
+	"github.com/ellcrys/elld/elldb"
 
 	"github.com/ellcrys/merkletree"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 )
 
 // Chainer (a.k.a Chains) defines an interface for accessing

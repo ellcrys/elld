@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcutil/base58"
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

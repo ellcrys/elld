@@ -11,27 +11,27 @@ import (
 
 	petname "github.com/dustinkirkland/golang-petname"
 
-	"github.com/ellcrys/mother/node/peermanager"
+	"github.com/ellcrys/elld/node/peermanager"
 
 	"github.com/olebedev/emitter"
 
-	"github.com/ellcrys/mother/blockchain/txpool"
-	d_crypto "github.com/ellcrys/mother/crypto"
-	"github.com/ellcrys/mother/elldb"
-	"github.com/ellcrys/mother/node/gossip"
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
+	"github.com/ellcrys/elld/blockchain/txpool"
+	d_crypto "github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/node/gossip"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
 
-	"github.com/ellcrys/mother/util/cache"
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/util/cache"
+	"github.com/ellcrys/elld/util/logger"
 
-	"github.com/ellcrys/mother/config"
+	"github.com/ellcrys/elld/config"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 	libp2p "github.com/libp2p/go-libp2p"
 	host "github.com/libp2p/go-libp2p-host"
 	inet "github.com/libp2p/go-libp2p-net"

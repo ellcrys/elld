@@ -5,9 +5,9 @@ import (
 
 	"gopkg.in/oleiade/lane.v1"
 
-	"github.com/ellcrys/mother/types"
-	"github.com/ellcrys/mother/types/core"
-	"github.com/ellcrys/mother/util/logger"
+	"github.com/ellcrys/elld/types"
+	"github.com/ellcrys/elld/types/core"
+	"github.com/ellcrys/elld/util/logger"
 	"github.com/olebedev/emitter"
 )
 

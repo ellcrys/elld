@@ -3,7 +3,7 @@ package cache
 import (
 	"time"
 
-	"github.com/ellcrys/mother/util"
+	"github.com/ellcrys/elld/util"
 
 	"github.com/hashicorp/golang-lru"
 )
