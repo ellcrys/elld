@@ -330,14 +330,14 @@ func (c *Chain) GetAccounts(opts ...types.CallOp) ([]types.Account, error) {
 	return c.store.GetAccounts()
 }
 
-// append adds a block to the tail of the chain. It returns
+// Append adds a block to the tail of the chain. It returns
 // error if the previous block hash in the header is not the hash
 // of the current block and if the difference between the chain tip
 // and the candidate block number is not 1. If there is no block on
 // the chain yet, then we assume this to be the first block of a fork.
 //
 // The caller is expected to have validated the block prior to calling this method.
-func (c *Chain) append(candidate types.Block, opts ...types.CallOp) error {
+func (c *Chain) Append(candidate types.Block, opts ...types.CallOp) error {
 
 	var err error
 	var txOp = common.GetTxOp(c.store, opts...)

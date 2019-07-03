@@ -4,58 +4,63 @@
  * method names inline with Javascript naming practice.
  * @param {Object} builder Native transaction builder implementation
  */
-function TxBalanceBuilder(builder) {
+function TxTransferBuilder(builder) {
 	this.builder = builder;
 }
 
-TxBalanceBuilder.prototype.payload = function(finalize) {
+TxTransferBuilder.prototype.payload = function(finalize) {
 	return this.builder.Payload(finalize);
 };
 
-TxBalanceBuilder.prototype.packed = function() {
-	return this.builder.Packed();
+TxTransferBuilder.prototype.serialize = function() {
+	return this.builder.Serialize();
 };
 
-TxBalanceBuilder.prototype.send = function() {
+TxTransferBuilder.prototype.send = function() {
 	return this.builder.Send();
 };
 
-TxBalanceBuilder.prototype.nonce = function(nonce) {
+TxTransferBuilder.prototype.nonce = function(nonce) {
 	this.builder.Nonce(nonce);
 	return this;
 };
 
-TxBalanceBuilder.prototype.from = function(from) {
+TxTransferBuilder.prototype.from = function(from) {
 	this.builder.From(from);
 	return this;
 };
 
-TxBalanceBuilder.prototype.senderPubKey = function(pk) {
+TxTransferBuilder.prototype.senderPubKey = function(pk) {
 	this.builder.SenderPubKey(pk);
 	return this;
 };
 
-TxBalanceBuilder.prototype.to = function(addr) {
+TxTransferBuilder.prototype.to = function(addr) {
 	this.builder.To(addr);
 	return this;
 };
 
-TxBalanceBuilder.prototype.value = function(amount) {
+TxTransferBuilder.prototype.value = function(amount) {
 	this.builder.Value(amount);
 	return this;
 };
 
-TxBalanceBuilder.prototype.fee = function(amount) {
+TxTransferBuilder.prototype.fee = function(amount) {
 	this.builder.Fee(amount);
 	return this;
 };
 
-TxBalanceBuilder.prototype.reset = function() {
+TxTransferBuilder.prototype.reset = function() {
 	this.builder.Reset();
 	return this;
 };
 
-// Add the builder class to the 'ell' namespace
+// Add the balance builder class to the 'ell' namespace
 ell["balance"] = function() {
-	return new TxBalanceBuilder(_system.balance());
+	return new TxTransferBuilder(_system.balance());
 };
+
+// Add ticket bid builder class to the 'ell' namespace
+ell["ticketBid"] = function () {
+	return new TxTransferBuilder(_system.ticketBid())
+}

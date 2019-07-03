@@ -8,7 +8,6 @@ import (
 
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/types/core"
 )
 
 // TxPool stores transactions.
@@ -49,6 +48,8 @@ func (tp *TxPool) Put(tx types.Transaction) error {
 }
 
 // isExpired checks whether a transaction has expired
+// TODO: This function should be improved to check the tx time against its time
+// in the pool and not against itself and a fixed TTL. Signed transactions cannot expire
 func (tp *TxPool) isExpired(tx types.Transaction) bool {
 	expTime := time.Unix(tx.GetTimestamp(), 0).UTC().AddDate(0, 0, params.TxTTL)
 	return time.Now().UTC().After(expTime)
@@ -65,14 +66,9 @@ func (tp *TxPool) clean() {
 }
 
 // addTx adds a transaction to the queue.
+// Caller should ensure transaction have been validated.
 // (Not thread-safe)
 func (tp *TxPool) addTx(tx types.Transaction) error {
-
-	switch tx.GetType() {
-	case core.TxTypeBalance:
-	default:
-		return core.ErrTxTypeUnknown
-	}
 
 	// Ensure the transaction does not
 	// already exist in the queue

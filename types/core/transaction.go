@@ -29,6 +29,9 @@ var (
 
 	// TxTypeAlloc represents a transaction to alloc coins to an account
 	TxTypeAlloc int64 = 0x2
+
+	// TxTypeTicketBid represents a transaction to bid of tickets
+	TxTypeTicketBid int64 = 0x3
 )
 
 // Base58CheckVersionTxPayload is the base58 encode version adopted
@@ -51,15 +54,14 @@ type Transaction struct {
 	Value        util.String `json:"value" msgpack:"value"`
 	Timestamp    int64       `json:"timestamp" msgpack:"timestamp"`
 	Fee          util.String `json:"fee" msgpack:"fee"`
-	InvokeArgs   *InvokeArgs `json:"invokeArgs,omitempty" msgpack:"invokeArgs"`
+	InvokeArgs   *InvokeArgs `json:"invokeArgs,omitempty" msgpack:"invokeArgs"` // TODO: Remove this
 	Sig          []byte      `json:"sig" msgpack:"sig"`
 	Hash         util.Hash   `json:"hash" msgpack:"hash"`
 }
 
-// NewTransaction creates a new transaction
-func NewTransaction(txType int64, nonce uint64, to util.String,
-	senderPubKey util.String, value util.String,
-	fee util.String, timestamp int64) (tx *Transaction) {
+// NewTxObj creates a transaction that is unsigned, with no hash value.
+func NewTxObj(txType int64, nonce uint64, to util.String, senderPubKey util.String,
+	value util.String, fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce
@@ -72,7 +74,8 @@ func NewTransaction(txType int64, nonce uint64, to util.String,
 }
 
 // NewTx creates a new, signed transaction
-func NewTx(txType int64, nonce uint64, to util.String, senderKey *crypto.Key, value util.String, fee util.String, timestamp int64) (tx *Transaction) {
+func NewTx(txType int64, nonce uint64, to util.String, senderKey *crypto.Key,
+	value util.String, fee util.String, timestamp int64) (tx *Transaction) {
 	tx = new(Transaction)
 	tx.Type = txType
 	tx.Nonce = nonce

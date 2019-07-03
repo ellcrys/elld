@@ -71,7 +71,7 @@ var _ = Describe("ReOrg", func() {
 		BeforeEach(func() {
 			genesisChainBlock2 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
 				new(big.Int).SetInt64(10))
-			err := genesisChain.append(genesisChainBlock2)
+			err := genesisChain.Append(genesisChainBlock2)
 			Expect(err).To(BeNil())
 		})
 
@@ -87,7 +87,7 @@ var _ = Describe("ReOrg", func() {
 					chainABlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
 						new(big.Int).SetInt64(100))
 
-					err = chainA.append(chainABlock1)
+					err = chainA.Append(chainABlock1)
 					Expect(err).To(BeNil())
 				})
 
@@ -109,7 +109,7 @@ var _ = Describe("ReOrg", func() {
 					chainBBlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
 						new(big.Int).SetInt64(5))
 
-					err = chainB.append(chainBBlock1)
+					err = chainB.Append(chainBBlock1)
 					Expect(err).To(BeNil())
 				})
 
@@ -135,7 +135,7 @@ var _ = Describe("ReOrg", func() {
 					chainABlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
 						new(big.Int).SetInt64(10))
 
-					err = chainA.append(chainABlock1)
+					err = chainA.Append(chainABlock1)
 					Expect(err).To(BeNil())
 				})
 
@@ -162,7 +162,7 @@ var _ = Describe("ReOrg", func() {
 					chainABlock1 := MakeBlockWithTotalDifficulty(bc, genesisChain, sender,
 						new(big.Int).SetInt64(10))
 
-					err = chainA.append(chainABlock1)
+					err = chainA.Append(chainABlock1)
 					Expect(err).To(BeNil())
 				})
 
@@ -265,7 +265,7 @@ var _ = Describe("ReOrg", func() {
 				})
 				Expect(err).To(BeNil())
 				block := MakeBlock(bc, chain, sender, receiver)
-				err = chain.append(block)
+				err = chain.Append(block)
 				Expect(err).To(BeNil())
 
 				// set the parent block the chain the parent block  (with unknown hash)
@@ -544,7 +544,7 @@ var _ = Describe("ReOrg", func() {
 
 		BeforeEach(func() {
 			branch = NewChain("s1", db, cfg, log)
-			err := branch.append(genesisBlock)
+			err := branch.Append(genesisBlock)
 			branch.parentBlock = genesisBlock
 			Expect(err).To(BeNil())
 		})
@@ -561,7 +561,7 @@ var _ = Describe("ReOrg", func() {
 
 		BeforeEach(func() {
 			branch = NewChain("s1", db, cfg, log)
-			err := branch.append(genesisBlock)
+			err := branch.Append(genesisBlock)
 			branch.parentBlock = genesisBlock
 			Expect(err).To(BeNil())
 		})

@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ellcrys/elld/types/core"
+
 	"github.com/thoas/go-funk"
 
 	"github.com/ellcrys/elld/params"
@@ -181,25 +183,38 @@ func (q *TxContainer) Last() types.Transaction {
 func (q *TxContainer) Sort() {
 	q.gmx.Lock()
 	defer q.gmx.Unlock()
-	sort.Slice(q.container, func(i, j int) bool {
 
-		// When transaction i & j belongs to same sender
-		// Sort by nonce in ascending order when the nonces are not the same.
-		// When they are the same, we sort by the highest fee rate
-		if q.container[i].Tx.GetFrom() == q.container[j].Tx.GetFrom() {
-			if q.container[i].Tx.GetNonce() < q.container[j].Tx.GetNonce() {
+	// Sort all transactions by highest fee rate
+	sort.Slice(q.container, func(i, j int) bool {
+		txI := q.container[i]
+		txJ := q.container[j]
+		return txI.FeeRate.Decimal().GreaterThan(txJ.FeeRate.Decimal())
+	})
+
+	// Sort only ticket bid transactions by value (bid) in descending order
+	sort.Slice(q.container, func(i, j int) bool {
+		txI := q.container[i]
+		txJ := q.container[j]
+		if txI.Tx.GetType() == core.TxTypeTicketBid && txJ.Tx.GetType() == core.TxTypeTicketBid {
+			if txI.Tx.GetValue().Decimal().GreaterThan(txJ.Tx.GetValue().Decimal()) {
 				return true
 			}
-			if q.container[i].Tx.GetNonce() == q.container[j].Tx.GetNonce() &&
-				q.container[i].FeeRate.Decimal().GreaterThan(q.container[j].FeeRate.Decimal()) {
+		}
+		return false
+	})
+
+	// When transaction i & j belongs to same sender, sort by nonce in ascending order.
+	sort.Slice(q.container, func(i, j int) bool {
+		txI := q.container[i]
+		txJ := q.container[j]
+
+		if txI.Tx.GetFrom() == txJ.Tx.GetFrom() {
+			if txI.Tx.GetNonce() < txJ.Tx.GetNonce() {
 				return true
 			}
-			return false
 		}
 
-		// For other transactions, sort by highest fee rate
-		return q.container[i].FeeRate.Decimal().
-			GreaterThan(q.container[j].FeeRate.Decimal())
+		return false
 	})
 }
 

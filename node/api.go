@@ -331,8 +331,7 @@ func (n *Node) processTx(txData map[string]interface{}) *jsonrpc.Response {
 	// We expect the hash to be an hex string
 	if hash, ok := txData["hash"].(string); ok {
 
-		// If the signature begins with `0x`,
-		// we must strip it away
+		// If the signature begins with `0x`, we must strip it away
 		if strings.HasPrefix(hash, "0x") {
 			hash = hash[2:]
 		}

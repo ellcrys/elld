@@ -473,7 +473,7 @@ process:
 commit:
 	// At this point, the block is good to go.
 	// We add it to the chain
-	if err := chain.append(block, txOp); err != nil {
+	if err := chain.Append(block, txOp); err != nil {
 		txOp.SetFinishable(!hasInjectTx).Rollback()
 		return nil, fmt.Errorf("failed to add block: %s", err)
 	}

@@ -47,7 +47,7 @@ var _ = Describe("Transaction", func() {
 	})
 
 	Describe(".BroadcastTx", func() {
-		tx := core.NewTransaction(core.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "2.4", time.Now().Unix())
+		tx := core.NewTxObj(core.TxTypeBalance, 1, util.String(receiver.Addr()), util.String(sender.PubKey().Base58()), "1", "2.4", time.Now().Unix())
 		tx.From = util.String(sender.Addr())
 		tx.Hash = tx.ComputeHash()
 		sig, _ := core.TxSign(tx, sender.PrivKey().Base58())

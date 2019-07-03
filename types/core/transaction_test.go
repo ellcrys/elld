@@ -13,6 +13,14 @@ var _ = Describe("Transaction", func() {
 
 	var address = crypto.NewKeyFromIntSeed(1)
 
+	Describe(".NewTxObj", func() {
+		It("should create transaction that has no hash and signature", func() {
+			tx := NewTxObj(TxTypeAlloc, 1, "addr", "sender_pk", "0.1", "0.1", time.Now().Unix())
+			Expect(tx.Hash.IsEmpty()).To(BeTrue())
+			Expect(tx.Sig).To(BeEmpty())
+		})
+	})
+
 	Describe(".NewTx", func() {
 		It("should successfully create and sign a new transaction", func() {
 			Expect(func() {

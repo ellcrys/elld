@@ -14,11 +14,32 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
+	"github.com/shopspring/decimal"
 
 	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
+
+type MockTicketManager struct {
+	price float64
+}
+
+func NewMockTicketManager(price float64) *MockTicketManager {
+	return &MockTicketManager{price: price}
+}
+
+func (m *MockTicketManager) DetermineTerm(blockNum uint64) uint {
+	return 0
+}
+
+func (m *MockTicketManager) DetermineCurrentTerm() (uint, error) {
+	return 0, nil
+}
+
+func (m *MockTicketManager) DeterminePrice() decimal.Decimal {
+	return decimal.NewFromFloat(10)
+}
 
 var _ = Describe("TransactionValidator", func() {
 
@@ -72,6 +93,8 @@ var _ = Describe("TransactionValidator", func() {
 		})
 
 		It("should test validation rules", func() {
+			bc.ticketMgr = NewMockTicketManager(10)
+
 			var cases = map[types.Transaction]interface{}{
 				&core.Transaction{
 					Type: 0,
@@ -81,6 +104,20 @@ var _ = Describe("TransactionValidator", func() {
 					Type:  core.TxTypeBalance,
 					Nonce: 0,
 				}: fmt.Errorf("index:0, field:to, error:recipient address is required"),
+
+				&core.Transaction{
+					To:    util.String(sender.Addr()),
+					Type:  core.TxTypeTicketBid,
+					Value: "0",
+					Nonce: 0,
+				}: fmt.Errorf("index:0, field:to, error:recipient address is not expected"),
+
+				&core.Transaction{
+					To:    "",
+					Type:  core.TxTypeTicketBid,
+					Value: "1",
+					Nonce: 0,
+				}: fmt.Errorf("index:0, field:value, error:value must be equal or greater than current ticket price (10)"),
 
 				&core.Transaction{
 					To:    "invalid",

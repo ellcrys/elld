@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/blockchain/ticket"
+
 	"github.com/thoas/go-funk"
 
 	"github.com/ellcrys/elld/crypto"
@@ -67,6 +69,10 @@ type Blockchain struct {
 	// db is the the database
 	db elldb.DB
 
+	// ticketMgr analyses the main chain for tickets, calculates
+	// ticket prices, maintains and index and allows fast access.
+	ticketMgr types.TicketManager
+
 	// orphanBlocks stores blocks whose parents are unknown
 	orphanBlocks *cache.Cache
 
@@ -118,6 +124,7 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.orphanBlocks = cache.NewCache(MaxOrphanBlocksCacheSize)
 	bc.rejectedBlocks = cache.NewCache(MaxRejectedBlocksCacheSize)
 	bc.eventEmitter = &emitter.Emitter{}
+	bc.ticketMgr = ticket.NewManager(bc)
 	return bc
 }
 
@@ -266,6 +273,11 @@ func (b *Blockchain) getBlockValidator(block types.Block) *BlockValidator {
 // GetTxPool gets the transaction pool
 func (b *Blockchain) GetTxPool() types.TxPool {
 	return b.txPool
+}
+
+// GetTicketManager returns the ticket manager
+func (b *Blockchain) GetTicketManager() types.TicketManager {
+	return b.ticketMgr
 }
 
 func (b *Blockchain) reOrgIsActive() bool {

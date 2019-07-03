@@ -155,9 +155,14 @@ func (e *Executor) PrepareContext() ([]prompt.Suggest, error) {
 	nsObj["personal"]["importAccount"] = e.importAccount
 	nsObj["personal"]["listLocalAccounts"] = e.listLocalAccounts
 
-	// "private" functions used by system scripts
-	nsObj["_system"]["balance"] = func() *TxBalanceBuilder {
+	// Add balance transaction builder to system namespace
+	nsObj["_system"]["balance"] = func() *TxTransferBuilder {
 		return NewTxBuilder(e).Balance()
+	}
+
+	// Add ticket bid transaction builder to system namespace
+	nsObj["_system"]["ticketBid"] = func() *TxTransferBuilder {
+		return NewTxBuilder(e).TicketBid()
 	}
 
 	defer func() {

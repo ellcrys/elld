@@ -14,13 +14,13 @@ var _ = Describe("TxContainer", func() {
 
 	Describe(".Add", func() {
 		It("should return false when capacity is reached", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
 			q := newTxContainer(0)
 			Expect(q.Add(tx)).To(BeFalse())
 		})
 
 		It("should successfully add transaction", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
 			q := newTxContainer(1)
 			Expect(q.Add(tx)).To(BeTrue())
 			Expect(q.container).To(HaveLen(1))
@@ -28,8 +28,8 @@ var _ = Describe("TxContainer", func() {
 
 		When("sorting is disabled", func() {
 			It("should return transactions in the following order tx2, tx1", func() {
-				tx1 := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.10", time.Now().Unix())
-				tx2 := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix())
+				tx1 := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.10", time.Now().Unix())
+				tx2 := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix())
 				q := NewQueueNoSort(2)
 				q.Add(tx1)
 				q.Add(tx2)
@@ -42,7 +42,7 @@ var _ = Describe("TxContainer", func() {
 
 	Describe(".Size", func() {
 		It("should return size = 1", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
 			q := newTxContainer(2)
 			Expect(q.Add(tx)).To(BeTrue())
 			Expect(q.Size()).To(Equal(int64(1)))
@@ -59,8 +59,8 @@ var _ = Describe("TxContainer", func() {
 		Context("with sorting disabled", func() {
 			It("should return first transaction in the queue and reduce queue size to 1", func() {
 				q := NewQueueNoSort(2)
-				tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-				tx2 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "0", time.Now().Unix())
+				tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
+				tx2 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "0", time.Now().Unix())
 				q.Add(tx)
 				q.Add(tx2)
 				Expect(q.First()).To(Equal(tx))
@@ -74,9 +74,9 @@ var _ = Describe("TxContainer", func() {
 			When("sender has two transactions with same nonce", func() {
 				It("after sorting, the first transaction must be the one with the highest fee rate", func() {
 					q := newTxContainer(2)
-					tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+					tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 					tx.From = "sender_a"
-					tx2 := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix())
+					tx2 := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix())
 					tx2.From = "sender_a"
 					q.Add(tx)
 					q.Add(tx2)
@@ -89,9 +89,9 @@ var _ = Describe("TxContainer", func() {
 			When("sender has two transaction with different nonce", func() {
 				It("after sorting, the first transaction must be the one with the lowest nonce", func() {
 					q := newTxContainer(2)
-					tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+					tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 					tx.From = "sender_a"
-					tx2 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
+					tx2 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
 					tx2.From = "sender_a"
 					q.Add(tx)
 					q.Add(tx2)
@@ -104,11 +104,11 @@ var _ = Describe("TxContainer", func() {
 			When("container has 2 transactions from a sender and one from a different sender", func() {
 				It("after sorting, the first transaction must be the one with the highest fee rate", func() {
 					q := newTxContainer(3)
-					tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+					tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 					tx.From = "sender_a"
-					tx2 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
+					tx2 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
 					tx2.From = "sender_a"
-					tx3 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "2", time.Now().Unix())
+					tx3 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "2", time.Now().Unix())
 					tx3.From = "sender_b"
 					q.Add(tx)
 					q.Add(tx2)
@@ -118,6 +118,110 @@ var _ = Describe("TxContainer", func() {
 					Expect(q.Size()).To(Equal(int64(2)))
 					Expect(q.container[0].Tx).To(Equal(tx))
 					Expect(q.container[1].Tx).To(Equal(tx2))
+				})
+			})
+
+			When("container has 2 tx bids with same fee and same value", func() {
+				var tx, tx2 *core.Transaction
+				var q *TxContainer
+
+				BeforeEach(func() {
+					q = newTxContainer(2)
+					tx = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "10", "0.1", 1562165124)
+					tx.From = "sender_a"
+					q.Add(tx)
+					tx2 = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "10", "0.1", 1562165124)
+					tx2.From = "sender_b"
+					q.Add(tx2)
+				})
+
+				Specify("that there is not change in the insertion order", func() {
+					Expect(q.container).To(HaveLen(2))
+					Expect(q.First()).To(Equal(tx))
+					Expect(q.First()).To(Equal(tx2))
+				})
+			})
+
+			When("container has 2 tx bids; both with same value but 1 with a higher fee", func() {
+				var tx, tx2 *core.Transaction
+				var q *TxContainer
+
+				BeforeEach(func() {
+					q = newTxContainer(2)
+					tx = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "10", "0.1", 1562165124)
+					tx.From = "sender_a"
+					q.Add(tx)
+					tx2 = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "10", "0.2", 1562165124)
+					tx2.From = "sender_b"
+					q.Add(tx2)
+				})
+
+				Specify("that the tx with the higher fee is at index 0 (head)", func() {
+					Expect(q.container).To(HaveLen(2))
+					Expect(q.First()).To(Equal(tx2))
+				})
+			})
+
+			When("container has 2 tx bids; both with same fee but 1 with a higher value", func() {
+				var tx, tx2 *core.Transaction
+				var q *TxContainer
+
+				BeforeEach(func() {
+					q = newTxContainer(2)
+					tx = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "10", "0.1", 1562165124)
+					tx.From = "sender_a"
+					q.Add(tx)
+					tx2 = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "20", "0.1", 1562165124)
+					tx2.From = "sender_b"
+					q.Add(tx2)
+				})
+
+				Specify("that the tx with the higher value is at index 0 (head)", func() {
+					Expect(q.container).To(HaveLen(2))
+					Expect(q.First()).To(Equal(tx2))
+					Expect(q.First()).To(Equal(tx))
+				})
+			})
+
+			When("container has 2 tx bids; one with a lower value but higher fee", func() {
+				var tx, tx2 *core.Transaction
+				var q *TxContainer
+
+				BeforeEach(func() {
+					q = newTxContainer(2)
+					tx = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "10", "1000", 1562165124)
+					tx.From = "sender_a"
+					q.Add(tx)
+					tx2 = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "20", "0.1", 1562165124)
+					tx2.From = "sender_b"
+					q.Add(tx2)
+				})
+
+				Specify("that the tx with the lower fee is at index 0 (head)", func() {
+					Expect(q.container).To(HaveLen(2))
+					Expect(q.First()).To(Equal(tx2))
+					Expect(q.First()).To(Equal(tx))
+				})
+			})
+
+			When("container has 2 tx bids; both with same fee but 1 with a higher value", func() {
+				var tx, tx2 *core.Transaction
+				var q *TxContainer
+
+				BeforeEach(func() {
+					q = newTxContainer(2)
+					tx = core.NewTxObj(core.TxTypeTicketBid, 2, "something", "pub_key", "10", "0.1", 1562165124)
+					tx.From = "sender_a"
+					q.Add(tx)
+					tx2 = core.NewTxObj(core.TxTypeTicketBid, 1, "something", "pub_key", "20", "0.1", 1562165124)
+					tx2.From = "sender_a"
+					q.Add(tx2)
+				})
+
+				Specify("that the tx with the higher value is at index 0 (head)", func() {
+					Expect(q.container).To(HaveLen(2))
+					Expect(q.First()).To(Equal(tx2))
+					Expect(q.First()).To(Equal(tx))
 				})
 			})
 		})
@@ -132,8 +236,8 @@ var _ = Describe("TxContainer", func() {
 		Context("with sorting disabled", func() {
 			It("should return last transaction in the queue and reduce queue size to 1", func() {
 				q := newTxContainer(2)
-				tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
-				tx2 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "0", time.Now().Unix())
+				tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0", time.Now().Unix())
+				tx2 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "0", time.Now().Unix())
 				q.Add(tx)
 				q.Add(tx2)
 				Expect(q.Last()).To(Equal(tx2))
@@ -145,9 +249,9 @@ var _ = Describe("TxContainer", func() {
 			When("sender has two transactions with same nonce", func() {
 				It("after sorting, the last transaction must be the one with the lowest fee rate", func() {
 					q := newTxContainer(2)
-					tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+					tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 					tx.From = "sender_a"
-					tx2 := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix())
+					tx2 := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "1", time.Now().Unix())
 					tx2.From = "sender_a"
 					q.Add(tx)
 					q.Add(tx2)
@@ -161,9 +265,9 @@ var _ = Describe("TxContainer", func() {
 		When("sender has two transaction with different nonce", func() {
 			It("after sorting, the last transaction must be the one with the highest nonce", func() {
 				q := newTxContainer(2)
-				tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+				tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 				tx.From = "sender_a"
-				tx2 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
+				tx2 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
 				tx2.From = "sender_a"
 				q.Add(tx)
 				q.Add(tx2)
@@ -176,11 +280,11 @@ var _ = Describe("TxContainer", func() {
 		When("container has 2 transactions from a sender (A) and one from a different sender (B)", func() {
 			It("after sorting, the last transaction must be sender (A) transaction with the highest nonce", func() {
 				q := newTxContainer(3)
-				tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+				tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 				tx.From = "sender_a"
-				tx2 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
+				tx2 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "1", time.Now().Unix())
 				tx2.From = "sender_a"
-				tx3 := core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "2", time.Now().Unix())
+				tx3 := core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "2", time.Now().Unix())
 				tx3.From = "sender_b"
 				q.Add(tx)
 				q.Add(tx2)
@@ -198,8 +302,8 @@ var _ = Describe("TxContainer", func() {
 		It("with 2 transactions by same sender; sort by nonce in ascending order", func() {
 			q := newTxContainer(2)
 			items := []*ContainerItem{
-				{Tx: &core.Transaction{From: "a", Nonce: 2, Value: "10"}},
-				{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}},
+				{Tx: &core.Transaction{From: "a", Nonce: 2, Value: "10"}, FeeRate: "0"},
+				{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0"},
 			}
 			q.container = append(q.container, items...)
 			q.Sort()
@@ -239,7 +343,7 @@ var _ = Describe("TxContainer", func() {
 	Describe(".Has", func() {
 		It("should return true when tx exist in queue", func() {
 			q := newTxContainer(1)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			added := q.Add(tx)
 			Expect(added).To(BeTrue())
@@ -249,7 +353,7 @@ var _ = Describe("TxContainer", func() {
 
 		It("should return false when tx does not exist in queue", func() {
 			q := newTxContainer(1)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			has := q.Has(tx)
 			Expect(has).To(BeFalse())
@@ -259,7 +363,7 @@ var _ = Describe("TxContainer", func() {
 	Describe(".HasByHash", func() {
 		It("should return true when tx exist in queue", func() {
 			q := newTxContainer(1)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			added := q.Add(tx)
 			Expect(added).To(BeTrue())
@@ -269,7 +373,7 @@ var _ = Describe("TxContainer", func() {
 
 		It("should return false when tx does not exist in queue", func() {
 			q := newTxContainer(1)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			has := q.HasByHash(tx.GetHash().HexStr())
 			Expect(has).To(BeFalse())
@@ -283,22 +387,22 @@ var _ = Describe("TxContainer", func() {
 
 		BeforeEach(func() {
 			q = newTxContainer(4)
-			tx = core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx = core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			q.Add(tx)
-			tx2 = core.NewTransaction(core.TxTypeBalance, 1, "something2", "pub_key", "0", "0.2", time.Now().Unix())
+			tx2 = core.NewTxObj(core.TxTypeBalance, 1, "something2", "pub_key", "0", "0.2", time.Now().Unix())
 			tx2.Hash = tx2.ComputeHash()
 			q.Add(tx2)
-			tx3 = core.NewTransaction(core.TxTypeBalance, 1, "something2", "pub_key", "0", "0.2", time.Now().Unix())
+			tx3 = core.NewTxObj(core.TxTypeBalance, 1, "something2", "pub_key", "0", "0.2", time.Now().Unix())
 			tx3.Hash = tx3.ComputeHash()
 			q.Add(tx3)
-			tx4 = core.NewTransaction(core.TxTypeBalance, 1, "something2", "pub_key", "0", "0.4", time.Now().Unix())
+			tx4 = core.NewTxObj(core.TxTypeBalance, 1, "something2", "pub_key", "0", "0.4", time.Now().Unix())
 			tx4.Hash = tx4.ComputeHash()
 			q.Add(tx4)
 		})
 
 		It("should do nothing when transaction does not exist in the container", func() {
-			unknownTx := core.NewTransaction(core.TxTypeBalance, 1, "unknown", "pub_key", "0", "0.2", time.Now().Unix())
+			unknownTx := core.NewTxObj(core.TxTypeBalance, 1, "unknown", "pub_key", "0", "0.2", time.Now().Unix())
 			unknownTx.Hash = unknownTx.ComputeHash()
 			q.Remove(unknownTx)
 			Expect(q.Size()).To(Equal(int64(4)))
@@ -321,9 +425,9 @@ var _ = Describe("TxContainer", func() {
 
 		BeforeEach(func() {
 			q = newTxContainer(3)
-			tx1 = core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
-			tx2 = core.NewTransaction(core.TxTypeBalance, 2, "something", "pub_key", "0", "0.2", time.Now().Unix())
-			tx3 = core.NewTransaction(core.TxTypeBalance, 3, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx1 = core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx2 = core.NewTxObj(core.TxTypeBalance, 2, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx3 = core.NewTxObj(core.TxTypeBalance, 3, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			q.Add(tx1)
 			q.Add(tx2)
 			q.Add(tx3)
@@ -363,7 +467,7 @@ var _ = Describe("TxContainer", func() {
 	Describe(".Get", func() {
 		It("should return Not nil when tx exist in queue", func() {
 			q := newTxContainer(1)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			added := q.Add(tx)
 			Expect(added).To(BeTrue())
@@ -373,7 +477,7 @@ var _ = Describe("TxContainer", func() {
 
 		It("should return nil when tx does not exist in queue", func() {
 			q := newTxContainer(1)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", "pub_key", "0", "0.2", time.Now().Unix())
 			tx.Hash = tx.ComputeHash()
 			txData := q.GetByHash(tx.Hash.HexStr())
 			Expect(txData).To(BeNil())

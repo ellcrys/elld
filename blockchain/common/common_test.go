@@ -131,8 +131,8 @@ var _ = Describe("Common", func() {
 	Describe(".ComputeTxsRoot", func() {
 		It("should return expected root", func() {
 			txs := []types.Transaction{
-				core.NewTransaction(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
-				core.NewTransaction(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
+				core.NewTxObj(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
+				core.NewTxObj(1, 1, "abc", "xyz", "10", "0.01", time.Now().Unix()),
 			}
 			root := ComputeTxsRoot(txs)
 			Expect(root).To(Equal(util.Hash{

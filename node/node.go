@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dustinkirkland/golang-petname"
+	petname "github.com/dustinkirkland/golang-petname"
 
 	"github.com/ellcrys/elld/node/peermanager"
 
@@ -70,6 +70,7 @@ type Node struct {
 	Name                string              // Random name for this node
 	hardcodedPeers      map[string]struct{} // A collection of seed peers that were manually provided
 	syncMode            core.SyncMode
+	cancel              context.CancelFunc
 }
 
 // NewNode creates a node instance at the specified port
@@ -95,13 +96,13 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		h = "127.0.0.1"
 	}
 
-	opts := []libp2p.Option{
+	ctx, cancel := context.WithCancel(context.Background())
+	host, err := libp2p.New(ctx, []libp2p.Option{
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/%s/tcp/%s", h, port)),
 		libp2p.Identity(priv),
-	}
-
-	host, err := libp2p.New(context.Background(), opts...)
+	}...)
 	if err != nil {
+		cancel()
 		return nil, fmt.Errorf("failed to create host > %s", err)
 	}
 
@@ -121,6 +122,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		hardcodedPeers: make(map[string]struct{}),
 		Name:           petname.Generate(3, "-"),
 		syncMode:       NewDefaultSyncMode(false),
+		cancel:         cancel,
 	}
 
 	node.localNode = node
@@ -634,7 +636,7 @@ func (n *Node) Stop() {
 
 	// Shut down the host
 	if n.host != nil {
-		n.host.Close()
+		n.cancel()
 	}
 
 	if n.db != nil {

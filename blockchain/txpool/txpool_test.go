@@ -19,7 +19,7 @@ var _ = Describe("TxPool", func() {
 		It("should return err = 'capacity reached' when txpool capacity is reached", func() {
 			tp := New(0)
 			a, _ := crypto.NewKey(nil)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			err := tp.Put(tx)
 			Expect(err).ToNot(BeNil())
 			Expect(err).To(Equal(ErrContainerFull))
@@ -28,7 +28,7 @@ var _ = Describe("TxPool", func() {
 		It("should return err = 'exact transaction already in the pool' when transaction has already been added", func() {
 			tp := New(10)
 			a, _ := crypto.NewKey(nil)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := core.TxSign(tx, a.PrivKey().Base58())
 			tx.Sig = sig
 			err := tp.Put(tx)
@@ -37,21 +37,10 @@ var _ = Describe("TxPool", func() {
 			Expect(err).To(Equal(ErrTxAlreadyAdded))
 		})
 
-		It("should return err = 'unknown transaction type' when tx type is unknown", func() {
-			tp := New(1)
-			a, _ := crypto.NewKey(nil)
-			tx := core.NewTransaction(10200, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
-			sig, _ := core.TxSign(tx, a.PrivKey().Base58())
-			tx.Sig = sig
-			err := tp.Put(tx)
-			Expect(err).ToNot(BeNil())
-			Expect(err.Error()).To(Equal("unknown transaction type"))
-		})
-
 		It("should return nil and added to queue", func() {
 			tp := New(1)
 			a, _ := crypto.NewKey(nil)
-			tx := core.NewTransaction(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 1, "something", util.String(a.PubKey().Base58()), "0", "0", time.Now().Unix())
 			sig, _ := core.TxSign(tx, a.PrivKey().Base58())
 			tx.Sig = sig
 			err := tp.Put(tx)
@@ -69,13 +58,13 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should return true when tx exist", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			tp.Put(tx)
 			Expect(tp.Has(tx)).To(BeTrue())
 		})
 
 		It("should return false when tx does not exist", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			Expect(tp.Has(tx)).To(BeFalse())
 		})
 	})
@@ -116,7 +105,7 @@ var _ = Describe("TxPool", func() {
 		})
 
 		It("should return 1", func() {
-			tx := core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx := core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			tp.Put(tx)
 			Expect(tp.Size()).To(Equal(int64(1)))
 		})
@@ -132,9 +121,9 @@ var _ = Describe("TxPool", func() {
 		})
 
 		BeforeEach(func() {
-			tx = core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx = core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			tx.SetHash(util.StrToHash("hash1"))
-			tx2 = core.NewTransaction(core.TxTypeBalance, 100, "something_2", util.String("xyz"), "0", "0", time.Now().Unix())
+			tx2 = core.NewTxObj(core.TxTypeBalance, 100, "something_2", util.String("xyz"), "0", "0", time.Now().Unix())
 			tx2.SetHash(util.StrToHash("hash2"))
 			tp.Put(tx)
 			tp.Put(tx2)
@@ -179,11 +168,11 @@ var _ = Describe("TxPool", func() {
 				params.TxTTL = 1
 				tp = New(2)
 
-				tx = core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+				tx = core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 				tx.SetHash(util.StrToHash("hash1"))
 				tx.SetTimestamp(time.Now().UTC().AddDate(0, 0, -2).Unix())
 
-				tx2 = core.NewTransaction(core.TxTypeBalance, 101, "something2", util.String("abc"), "0", "0", time.Now().Unix())
+				tx2 = core.NewTxObj(core.TxTypeBalance, 101, "something2", util.String("abc"), "0", "0", time.Now().Unix())
 				tx2.SetHash(util.StrToHash("hash2"))
 				tx2.SetTimestamp(time.Now().Unix())
 
@@ -209,15 +198,15 @@ var _ = Describe("TxPool", func() {
 		BeforeEach(func() {
 			tp = New(100)
 
-			tx = core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx = core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			tx.SetHash(tx.ComputeHash())
 			tp.Put(tx)
 
-			tx2 = core.NewTransaction(core.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
+			tx2 = core.NewTxObj(core.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
 			tx2.SetHash(tx2.ComputeHash())
 			tp.Put(tx2)
 
-			tx3 = core.NewTransaction(core.TxTypeBalance, 100, "something3", util.String("abc3"), "0", "0", time.Now().Unix())
+			tx3 = core.NewTxObj(core.TxTypeBalance, 100, "something3", util.String("abc3"), "0", "0", time.Now().Unix())
 			tx3.SetHash(tx3.ComputeHash())
 			tp.Put(tx3)
 		})
@@ -238,11 +227,11 @@ var _ = Describe("TxPool", func() {
 		BeforeEach(func() {
 			tp = New(100)
 
-			tx = core.NewTransaction(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
+			tx = core.NewTxObj(core.TxTypeBalance, 100, "something", util.String("abc"), "0", "0", time.Now().Unix())
 			tx.SetHash(tx.ComputeHash())
 			tp.Put(tx)
 
-			tx2 = core.NewTransaction(core.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
+			tx2 = core.NewTxObj(core.TxTypeBalance, 100, "something2", util.String("abc2"), "0", "0", time.Now().Unix())
 			tx2.SetHash(tx2.ComputeHash())
 		})
 

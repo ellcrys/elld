@@ -82,7 +82,7 @@ var _ = Describe("Block", func() {
 				chain := NewChain("chain", db, cfg, log)
 				bc.addChain(chain)
 				Expect(err).To(BeNil())
-				err = chain.append(block)
+				err = chain.Append(block)
 				Expect(err).To(BeNil())
 			})
 
@@ -99,7 +99,7 @@ var _ = Describe("Block", func() {
 
 		BeforeEach(func() {
 			block = MakeBlock(bc, genesisChain, sender, receiver)
-			err = genesisChain.append(block)
+			err = genesisChain.Append(block)
 			Expect(err).To(BeNil())
 		})
 
@@ -125,9 +125,9 @@ var _ = Describe("Block", func() {
 
 			BeforeEach(func() {
 				chain2 := NewChain("chain_2", db, cfg, log)
-				err = chain2.append(genesisBlock)
+				err = chain2.Append(genesisBlock)
 				Expect(err).To(BeNil())
-				err = chain2.append(block)
+				err = chain2.Append(block)
 				Expect(err).To(BeNil())
 
 				block3 = MakeTestBlock(bc, chain2, &types.GenerateBlockParams{
@@ -139,7 +139,7 @@ var _ = Describe("Block", func() {
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
-				err = genesisChain.append(block3)
+				err = genesisChain.Append(block3)
 				Expect(err).To(BeNil())
 			})
 
@@ -163,7 +163,7 @@ var _ = Describe("Block", func() {
 				Nonce:      util.EncodeNonce(1),
 				Difficulty: new(big.Int).SetInt64(131072),
 			})
-			err = genesisChain.append(block)
+			err = genesisChain.Append(block)
 			Expect(err).To(BeNil())
 		})
 
@@ -185,9 +185,9 @@ var _ = Describe("Block", func() {
 
 			BeforeEach(func() {
 				chain2 := NewChain("chain_2", db, cfg, log)
-				err = chain2.append(genesisBlock)
+				err = chain2.Append(genesisBlock)
 				Expect(err).To(BeNil())
-				err = chain2.append(block)
+				err = chain2.Append(block)
 				Expect(err).To(BeNil())
 
 				block3 = MakeTestBlock(bc, chain2, &types.GenerateBlockParams{
@@ -199,7 +199,7 @@ var _ = Describe("Block", func() {
 					Difficulty: new(big.Int).SetInt64(131072),
 				})
 
-				err = genesisChain.append(block3)
+				err = genesisChain.Append(block3)
 				Expect(err).To(BeNil())
 			})
 

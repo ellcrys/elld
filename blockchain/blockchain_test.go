@@ -187,7 +187,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 					Expect(err).To(BeNil())
 
 					b1 = MakeBlock(bc, chain2, sender, receiver)
-					err = chain2.append(b1)
+					err = chain2.Append(b1)
 					Expect(err).To(BeNil())
 				})
 
@@ -221,10 +221,10 @@ var _ = Describe("IntegrationBlockchain", func() {
 					Expect(err).To(BeNil())
 
 					b1 = MakeBlock(bc, chain2, sender, receiver)
-					err = chain2.append(b1)
+					err = chain2.Append(b1)
 					Expect(err).To(BeNil())
 
-					err = olderChain.append(b1)
+					err = olderChain.Append(b1)
 					Expect(err).To(BeNil())
 				})
 
@@ -248,7 +248,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 				err := bc.saveChain(chain, "", 0)
 				Expect(err).To(BeNil())
 				block = MakeBlock(bc, genesisChain, sender, receiver)
-				err = chain.append(block)
+				err = chain.Append(block)
 				Expect(err).To(BeNil())
 
 				childChain = NewChain("child_chain", db, cfg, log)
@@ -455,7 +455,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 			BeforeEach(func() {
 				chain = NewChain("chain_a", db, cfg, log)
 				block = MakeBlock(bc, genesisChain, sender, receiver)
-				err := chain.append(block)
+				err := chain.Append(block)
 				Expect(err).To(BeNil())
 				err = chain.PutTransactions(block.GetTransactions(), block.GetNumber())
 				Expect(err).To(BeNil())

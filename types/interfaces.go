@@ -3,6 +3,8 @@ package types
 import (
 	"math/big"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/olebedev/emitter"
@@ -158,6 +160,9 @@ type Blockchain interface {
 	// SetDB sets the database
 	SetDB(elldb.DB)
 
+	// Returns the ticket manager
+	GetTicketManager() TicketManager
+
 	// GetBlock finds a block in any chain with a matching
 	// block number and hash.
 	GetBlock(number uint64, hash util.Hash) (Block, error)
@@ -185,6 +190,19 @@ type Blockchain interface {
 	// GetLocators fetches a list of blockhashes used to
 	// compare and sync the local chain with a remote chain.
 	GetLocators() ([]util.Hash, error)
+}
+
+// TicketManager manages tickets, pricing, query and indexing.
+type TicketManager interface {
+
+	// DetermineTerm takes a block number returns its term number.
+	DetermineTerm(blockNum uint64) uint
+
+	// DetermineCurrentTerm returns the current ticket term
+	DetermineCurrentTerm() (uint, error)
+
+	// DeterminePrice calculates the price for the current term
+	DeterminePrice() decimal.Decimal
 }
 
 // BlockMaker defines an interface providing the

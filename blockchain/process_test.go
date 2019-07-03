@@ -575,7 +575,7 @@ var _ = Describe("ProcessBlock", func() {
 		})
 
 		It("should return error if block already exists in one of the known chains", func() {
-			err = genesisChain.append(block)
+			err = genesisChain.Append(block)
 			Expect(err).To(BeNil())
 			_, err = bc.ProcessBlock(block)
 			Expect(err).ToNot(BeNil())
@@ -630,11 +630,11 @@ var _ = Describe("ProcessBlock", func() {
 
 				BeforeEach(func() {
 					block2 := MakeBlockWithTx(bc, genesisChain, sender, 1)
-					err = genesisChain.append(block2)
+					err = genesisChain.Append(block2)
 					Expect(err).To(BeNil())
 
 					block3 := MakeBlockWithTx(bc, genesisChain, sender, 1)
-					err = genesisChain.append(block3)
+					err = genesisChain.Append(block3)
 					Expect(err).To(BeNil())
 
 					staleBlock = MakeBlockWithTx(bc, genesisChain, sender, 1)
@@ -661,7 +661,7 @@ var _ = Describe("ProcessBlock", func() {
 					block2 = MakeBlockWithTx(bc, genesisChain, sender, 1)
 					block2_2 = MakeBlockWithTx(bc, genesisChain, sender, 1)
 
-					err = genesisChain.append(block2)
+					err = genesisChain.Append(block2)
 					Expect(err).To(BeNil())
 
 					ch, err = bc.ProcessBlock(block2_2)

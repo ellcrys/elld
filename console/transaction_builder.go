@@ -24,22 +24,21 @@ func NewTxBuilder(e *Executor) *TxBuilder {
 	}
 }
 
-// TxBalanceBuilder provides methods for building
+// TxTransferBuilder provides methods for building
 // a balance transaction.
-type TxBalanceBuilder struct {
+type TxTransferBuilder struct {
 	e    *Executor
 	data map[string]interface{}
 }
 
 // Balance creates a balance transaction builder.
-// It will attempt to fetch the address
-func (o *TxBuilder) Balance() *TxBalanceBuilder {
+func (o *TxBuilder) Balance() *TxTransferBuilder {
 
 	if o.e.coinbase == nil {
 		panic(o.e.vm.MakeCustomError("BuilderError", "account not loaded"))
 	}
 
-	return &TxBalanceBuilder{
+	return &TxTransferBuilder{
 		e: o.e,
 		data: map[string]interface{}{
 			"from":         o.e.coinbase.Addr(),
@@ -49,11 +48,28 @@ func (o *TxBuilder) Balance() *TxBalanceBuilder {
 	}
 }
 
+// TicketBid creates a ticket bid transaction builder.
+func (o *TxBuilder) TicketBid() *TxTransferBuilder {
+
+	if o.e.coinbase == nil {
+		panic(o.e.vm.MakeCustomError("BuilderError", "account not loaded"))
+	}
+
+	return &TxTransferBuilder{
+		e: o.e,
+		data: map[string]interface{}{
+			"from":         o.e.coinbase.Addr(),
+			"type":         core.TxTypeTicketBid,
+			"senderPubKey": o.e.coinbase.PubKey().Base58(),
+		},
+	}
+}
+
 // Payload returns the transaction being built.
 // If finalize is true, the builder attempts
 // to compute the hash, sign and other fields
 // before returning the transaction
-func (o *TxBalanceBuilder) Payload(finalize bool) map[string]interface{} {
+func (o *TxTransferBuilder) Payload(finalize bool) map[string]interface{} {
 	if finalize {
 		o.Finalize()
 	}
@@ -63,7 +79,7 @@ func (o *TxBalanceBuilder) Payload(finalize bool) map[string]interface{} {
 // Send signs, compute hash and signature
 // and sends the payload to the transaction
 // handling RPC API.
-func (o *TxBalanceBuilder) Send() map[string]interface{} {
+func (o *TxTransferBuilder) Send() map[string]interface{} {
 	resp, err := o.send()
 	if err != nil {
 		panic(o.e.vm.MakeCustomError("SendError", err.Error()))
@@ -74,7 +90,7 @@ func (o *TxBalanceBuilder) Send() map[string]interface{} {
 // Finalize returns the transaction payload
 // with nonce, timestamp, hash and signature
 // computed and ready for broadcast.
-func (o *TxBalanceBuilder) Finalize() map[string]interface{} {
+func (o *TxTransferBuilder) Finalize() map[string]interface{} {
 
 	var result map[string]interface{}
 	var err error
@@ -124,15 +140,14 @@ sign:
 	return o.data
 }
 
-// Packed returns a base58check encode
-// equivalent of the signed payload.
-func (o *TxBalanceBuilder) Packed() string {
+// Serialize returns a base58check encode equivalent of the signed payload.
+func (o *TxTransferBuilder) Serialize() string {
 	data := o.Finalize()
 	bs, _ := json.Marshal(data)
 	return base58.CheckEncode(bs, core.Base58CheckVersionTxPayload)
 }
 
-func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
+func (o *TxTransferBuilder) send() (map[string]interface{}, error) {
 
 	data := o.Finalize()
 
@@ -146,42 +161,42 @@ func (o *TxBalanceBuilder) send() (map[string]interface{}, error) {
 }
 
 // Nonce sets the nonce
-func (o *TxBalanceBuilder) Nonce(nonce int64) *TxBalanceBuilder {
+func (o *TxTransferBuilder) Nonce(nonce int64) *TxTransferBuilder {
 	o.data["nonce"] = nonce
 	return o
 }
 
 // To sets the recipient's address
-func (o *TxBalanceBuilder) To(address string) *TxBalanceBuilder {
+func (o *TxTransferBuilder) To(address string) *TxTransferBuilder {
 	o.data["to"] = address
 	return o
 }
 
 // From sets the sender's address
-func (o *TxBalanceBuilder) From(address string) *TxBalanceBuilder {
+func (o *TxTransferBuilder) From(address string) *TxTransferBuilder {
 	o.data["from"] = address
 	return o
 }
 
 // SenderPubKey sets the senders public key
-func (o *TxBalanceBuilder) SenderPubKey(pk string) *TxBalanceBuilder {
+func (o *TxTransferBuilder) SenderPubKey(pk string) *TxTransferBuilder {
 	o.data["senderPubKey"] = pk
 	return o
 }
 
 // Value sets the amount to be sent
-func (o *TxBalanceBuilder) Value(amount string) *TxBalanceBuilder {
+func (o *TxTransferBuilder) Value(amount string) *TxTransferBuilder {
 	o.data["value"] = amount
 	return o
 }
 
 // Fee sets the fee
-func (o *TxBalanceBuilder) Fee(amount string) *TxBalanceBuilder {
+func (o *TxTransferBuilder) Fee(amount string) *TxTransferBuilder {
 	o.data["fee"] = amount
 	return o
 }
 
 // Reset the builder
-func (o *TxBalanceBuilder) Reset() {
+func (o *TxTransferBuilder) Reset() {
 	o.data = make(map[string]interface{})
 }

@@ -231,24 +231,24 @@ var _ = Describe("Chain", func() {
 
 		It("should return err when the block number does not serially match the current tip number", func() {
 			genesisBlock.GetHeader().SetNumber(3)
-			err = genesisChain.append(genesisBlock)
+			err = genesisChain.Append(genesisBlock)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unable to append: candidate block number {3} is not the expected block number {expected=2}"))
 		})
 
 		It("should return err when the block's parent hash does not match the hash of the current tip block", func() {
-			err = genesisChain.append(genesisBlock)
+			err = genesisChain.Append(genesisBlock)
 			Expect(err).To(BeNil())
 
 			genesisBlock.GetHeader().SetNumber(3)
 			genesisBlock.GetHeader().SetParentHash(util.StrToHash("incorrect"))
-			err = genesisChain.append(genesisBlock)
+			err = genesisChain.Append(genesisBlock)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("unable to append block: parent hash does not match the hash of the current block"))
 		})
 
 		It("should return no error", func() {
-			err = genesisChain.append(genesisBlock)
+			err = genesisChain.Append(genesisBlock)
 			Expect(err).To(BeNil())
 		})
 	})
@@ -283,7 +283,7 @@ var _ = Describe("Chain", func() {
 		})
 
 		It("should return 1 if chain contains 1 block", func() {
-			err := chain.append(genesisBlock)
+			err := chain.Append(genesisBlock)
 			Expect(err).To(BeNil())
 
 			height, err := chain.height()
@@ -478,15 +478,15 @@ var _ = Describe("Chain", func() {
 
 			BeforeEach(func() {
 				block1 = MakeBlock(bc, chain, sender, receiver)
-				Expect(chain.append(block1)).To(BeNil())
+				Expect(chain.Append(block1)).To(BeNil())
 				Expect(chain.store.PutMinedBlock(block1)).To(BeNil())
 
 				block2 = MakeBlock(bc, chain, receiver, receiver) // different creator pub key
-				Expect(chain.append(block2)).To(BeNil())
+				Expect(chain.Append(block2)).To(BeNil())
 				Expect(chain.store.PutMinedBlock(block2)).To(BeNil())
 
 				block3 = MakeBlock(bc, chain, sender, receiver)
-				Expect(chain.append(block3)).To(BeNil())
+				Expect(chain.Append(block3)).To(BeNil())
 				Expect(chain.store.PutMinedBlock(block3)).To(BeNil())
 			})
 

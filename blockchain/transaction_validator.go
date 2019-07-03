@@ -20,6 +20,7 @@ import (
 // KnownTransactionTypes are the supported transaction types
 var KnownTransactionTypes = []int64{
 	core.TxTypeBalance,
+	core.TxTypeTicketBid,
 	core.TxTypeAlloc,
 }
 
@@ -77,8 +78,7 @@ func NewTxValidator(tx types.Transaction, txPool types.TxPool,
 	}
 }
 
-// Validate execute validation checks
-// against each transactions
+// Validate execute validation checks against each transactions
 func (v *TxsValidator) Validate(opts ...types.CallOp) (errs []error) {
 	var seenTxs = make(map[string]struct{})
 	for i, tx := range v.txs {
@@ -195,13 +195,20 @@ func (v *TxsValidator) CheckFields(tx types.Transaction) (errs []error) {
 			"unsupported transaction type"))),
 	))
 
-	// Recipient's address must be set and it must be valid
-	errs = appendErr(errs, validation.Validate(tx.GetTo(),
-		validation.Required.Error(fieldErrorWithIndex(v.curIndex, "to",
-			"recipient address is required").Error()),
-		validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to",
-			"recipient address is not valid"))),
-	))
+	// If this transaction is not a ticket bid transaction, then recipient's
+	// address must be set and it must be valid. Otherwise, no recipient address
+	// is expected
+	if tx.GetType() != core.TxTypeTicketBid {
+		errs = appendErr(errs, validation.Validate(tx.GetTo(),
+			validation.Required.Error(fieldErrorWithIndex(v.curIndex, "to",
+				"recipient address is required").Error()),
+			validation.By(validAddrRule(fieldErrorWithIndex(v.curIndex, "to",
+				"recipient address is not valid"))),
+		))
+	} else if !tx.GetTo().Equal("") {
+		errs = appendErr(errs, fieldErrorWithIndex(v.curIndex,
+			"to", "recipient address is not expected"))
+	}
 
 	// Value must be >= 0 and it must be valid number
 	errs = appendErr(errs, validation.Validate(tx.GetValue(),
@@ -209,6 +216,16 @@ func (v *TxsValidator) CheckFields(tx types.Transaction) (errs []error) {
 			"value is required").Error()),
 		validation.By(validValueRule("value")),
 	))
+
+	// For ticket bid transaction, the value must not be less than the price of 1 ticket
+	if tx.GetType() == core.TxTypeTicketBid {
+		curTicketPrice := v.bChain.GetTicketManager().DeterminePrice()
+		if curTicketPrice.GreaterThan(tx.GetValue().Decimal()) {
+			errs = appendErr(errs, fieldErrorWithIndex(v.curIndex,
+				"value", fmt.Sprintf("value must be equal or greater "+
+					"than current ticket price (%s)", curTicketPrice.String())))
+		}
+	}
 
 	// Timestamp is required.
 	errs = appendErr(errs, validation.Validate(tx.GetTimestamp(),
