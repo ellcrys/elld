@@ -299,26 +299,60 @@ var _ = Describe("TxContainer", func() {
 	})
 
 	Describe(".Sort", func() {
-		It("with 2 transactions by same sender; sort by nonce in ascending order", func() {
-			q := newTxContainer(2)
-			items := []*ContainerItem{
-				{Tx: &core.Transaction{From: "a", Nonce: 2, Value: "10"}, FeeRate: "0"},
-				{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0"},
-			}
-			q.container = append(q.container, items...)
-			q.Sort()
-			Expect(q.container[0]).To(Equal(items[1]))
+		Context("2 transactions by same sender; sort by nonce in ascending order", func() {
+			Specify("that item at index 1 with lowest nonce is the first", func() {
+				q := newTxContainer(2)
+				items := []*ContainerItem{
+					{Tx: &core.Transaction{From: "a", Nonce: 2, Value: "10"}, FeeRate: "0"},
+					{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0"},
+				}
+				q.container = append(q.container, items...)
+				q.Sort()
+				Expect(q.container[0]).To(Equal(items[1]))
+			})
 		})
 
-		It("with 2 transactions by same sender; same nonce; sort by fee rate in descending order", func() {
-			q := newTxContainer(2)
-			items := []*ContainerItem{
-				{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
-				{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.2"},
-			}
-			q.container = append(q.container, items...)
-			q.Sort()
-			Expect(q.container[0]).To(Equal(items[1]))
+		Context("2 transactions by same sender; same nonce; sort by fee rate in descending order", func() {
+			Specify("that the item at index 1 with the highest fee rate is the first", func() {
+				q := newTxContainer(2)
+				items := []*ContainerItem{
+					{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
+					{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.2"},
+				}
+				q.container = append(q.container, items...)
+				q.Sort()
+				Expect(q.container[0]).To(Equal(items[1]))
+			})
+		})
+
+		Context("2 transactions by same sender; same nonce, with fee rate sorting disabled", func() {
+			It("should remain unsorted/the same", func() {
+				q := newTxContainer(2)
+				q.sorter.IgnoreFeeRate()
+				items := []*ContainerItem{
+					{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
+					{Tx: &core.Transaction{From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.2"},
+				}
+				q.container = append(q.container, items...)
+				q.Sort()
+				Expect(q.container[0]).To(Equal(items[0]))
+				Expect(q.container[1]).To(Equal(items[1]))
+			})
+		})
+
+		Context("2 transactions; same fee rate; with value sorting disabled", func() {
+			It("should remain unsorted/the same", func() {
+				q := newTxContainer(2)
+				items := []*ContainerItem{
+					{Tx: &core.Transaction{Type: core.TxTypeTicketBid, From: "a", Nonce: 1, Value: "10"}, FeeRate: "0.1"},
+					{Tx: &core.Transaction{Type: core.TxTypeTicketBid, From: "b", Nonce: 2, Value: "20"}, FeeRate: "0.1"},
+				}
+				q.container = append(q.container, items...)
+				q.sorter.IgnoreValue()
+				q.Sort()
+				Expect(q.container[0]).To(Equal(items[0]))
+				Expect(q.container[1]).To(Equal(items[1]))
+			})
 		})
 
 		Specify(`3 transactions; 

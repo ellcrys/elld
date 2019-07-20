@@ -3,10 +3,7 @@ package txpool
 import (
 	"fmt"
 	"math/big"
-	"sort"
 	"sync"
-
-	"github.com/ellcrys/elld/types/core"
 
 	"github.com/thoas/go-funk"
 
@@ -51,6 +48,7 @@ type TxContainer struct {
 	noSorting bool
 	index     map[string]interface{}
 	byteSize  int64
+	sorter    *TransactionSorter
 }
 
 // newTxContainer creates a new container
@@ -60,6 +58,7 @@ func newTxContainer(cap int64) *TxContainer {
 	q.cap = cap
 	q.gmx = &sync.RWMutex{}
 	q.index = map[string]interface{}{}
+	q.sorter = NewSorter(q.container)
 	return q
 }
 
@@ -72,6 +71,7 @@ func NewQueueNoSort(cap int64) *TxContainer {
 	q.gmx = &sync.RWMutex{}
 	q.index = map[string]interface{}{}
 	q.noSorting = true
+	q.sorter = NewSorter(q.container)
 	return q
 }
 
@@ -183,39 +183,8 @@ func (q *TxContainer) Last() types.Transaction {
 func (q *TxContainer) Sort() {
 	q.gmx.Lock()
 	defer q.gmx.Unlock()
-
-	// Sort all transactions by highest fee rate
-	sort.Slice(q.container, func(i, j int) bool {
-		txI := q.container[i]
-		txJ := q.container[j]
-		return txI.FeeRate.Decimal().GreaterThan(txJ.FeeRate.Decimal())
-	})
-
-	// Sort only ticket bid transactions by value (bid) in descending order
-	sort.Slice(q.container, func(i, j int) bool {
-		txI := q.container[i]
-		txJ := q.container[j]
-		if txI.Tx.GetType() == core.TxTypeTicketBid && txJ.Tx.GetType() == core.TxTypeTicketBid {
-			if txI.Tx.GetValue().Decimal().GreaterThan(txJ.Tx.GetValue().Decimal()) {
-				return true
-			}
-		}
-		return false
-	})
-
-	// When transaction i & j belongs to same sender, sort by nonce in ascending order.
-	sort.Slice(q.container, func(i, j int) bool {
-		txI := q.container[i]
-		txJ := q.container[j]
-
-		if txI.Tx.GetFrom() == txJ.Tx.GetFrom() {
-			if txI.Tx.GetNonce() < txJ.Tx.GetNonce() {
-				return true
-			}
-		}
-
-		return false
-	})
+	q.sorter.container = q.container
+	q.sorter.Sort()
 }
 
 // IFind iterates over the transactions

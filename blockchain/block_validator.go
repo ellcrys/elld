@@ -14,7 +14,6 @@ import (
 	"github.com/ellcrys/elld/blockchain/common"
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/miner/blakimoto"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
@@ -77,9 +76,6 @@ type BlockValidator struct {
 	// bChain is the blockchain manager. We use it
 	// to query transactions and blocks
 	bChain types.Blockchain
-
-	// blakimoto is an instance of PoW implementation
-	blakimoto *blakimoto.Blakimoto
 }
 
 // NewBlockValidator creates and returns a BlockValidator object
@@ -87,10 +83,9 @@ func NewBlockValidator(block types.Block, txPool types.TxPool,
 	bChain types.Blockchain, cfg *config.EngineConfig,
 	log logger.Logger) *BlockValidator {
 	return &BlockValidator{
-		block:     block,
-		txpool:    txPool,
-		bChain:    bChain,
-		blakimoto: blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log),
+		block:  block,
+		txpool: txPool,
+		bChain: bChain,
 	}
 }
 
@@ -167,20 +162,6 @@ func (v *BlockValidator) validateHeader(h types.Header) (errs []error) {
 // If chain is set, the parent chain is search within the provided
 // chain, otherwise, the best chain is searched
 func (v *BlockValidator) CheckPoW(opts ...types.CallOp) (errs []error) {
-
-	// find the parent header
-	parentHeader, err := v.bChain.GetBlockByHash(v.block.GetHeader().
-		GetParentHash(), opts...)
-	if err != nil {
-		errs = append(errs, fieldError("parentHash", err.Error()))
-		return errs
-	}
-
-	if err := v.blakimoto.VerifyHeader(v.block.GetHeader(),
-		parentHeader.GetHeader(), true); err != nil {
-		errs = append(errs, fieldError("header", err.Error()))
-	}
-
 	return
 }
 
@@ -271,17 +252,6 @@ func (v *BlockValidator) CheckAllocs() (errs []error) {
 		}
 		totalFees = totalFees.Add(tx.GetFee().Decimal())
 	}
-
-	// Compute the expected allocations we
-	// expect the block to include.
-	// 1. Accumulated fee addressed to the block creator.
-	minerPubKey, _ := crypto.PubKeyFromBase58(v.block.GetHeader().
-		GetCreatorPubKey().String())
-	expectedAllocs = append(expectedAllocs, []interface{}{
-		minerPubKey.Addr(),
-		minerPubKey.Addr(),
-		totalFees.StringFixed(params.Decimals),
-	})
 
 	// Compare the allocations in the block
 	// with the computed expected allocations.

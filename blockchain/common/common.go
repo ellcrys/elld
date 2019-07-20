@@ -78,8 +78,8 @@ func GetBlockQueryRangeOp(opts ...types.CallOp) *OpBlockQueryRange {
 	return &OpBlockQueryRange{}
 }
 
-// GetTransitions finds a Transitions option from a given
-// slice of call options and returns a slice of transition objects
+// GetTransitions returns any transitions found 
+// in the OpTransitions object and passed to opts.
 func GetTransitions(opts ...types.CallOp) (transitions []Transition) {
 	for _, op := range opts {
 		switch _op := op.(type) {

@@ -81,13 +81,13 @@ func NewTxValidator(tx types.Transaction, txPool types.TxPool,
 // Validate execute validation checks against each transactions
 func (v *TxsValidator) Validate(opts ...types.CallOp) (errs []error) {
 	var seenTxs = make(map[string]struct{})
+
 	for i, tx := range v.txs {
 		v.curIndex = i
 
-		// check duplicate
+		// Check for duplicate
 		if _, ok := seenTxs[tx.GetHash().HexStr()]; ok {
-			errs = appendErr(errs,
-				fieldErrorWithIndex(v.curIndex, "", "duplicate transaction"))
+			errs = appendErr(errs, fieldErrorWithIndex(v.curIndex, "", "duplicate transaction"))
 			continue
 		}
 

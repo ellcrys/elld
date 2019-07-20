@@ -16,7 +16,6 @@ import (
 	"github.com/olebedev/emitter"
 
 	"github.com/ellcrys/elld/blockchain"
-	"github.com/ellcrys/elld/miner"
 	"github.com/ellcrys/elld/rpc"
 
 	"gopkg.in/asaskevich/govalidator.v4"
@@ -127,7 +126,7 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 // - start RPC server if enabled
 // - start console if enabled
 // - connect console to rpc server and prepare console vm if rpc server is enabled
-func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console, *miner.Miner) {
+func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console) {
 
 	var err error
 
@@ -141,8 +140,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	viper.BindPFlag("rpc.disableAuth", cmd.Flags().Lookup("rpc-disable-auth"))
 	viper.BindPFlag("rpc.sessionTTL", cmd.Flags().Lookup("rpc-session-ttl"))
 	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
-	viper.BindPFlag("miner.enabled", cmd.Flags().Lookup("mine"))
-	viper.BindPFlag("miner.numMiners", cmd.Flags().Lookup("miners"))
 	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("no-net"))
 	viper.BindPFlag("node.syncDisabled", cmd.Flags().Lookup("sync-disabled"))
 	account := viper.GetString("node.account")
@@ -151,8 +148,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	startRPC := viper.GetBool("rpc.enabled")
 	rpcAddress := viper.GetString("rpc.address")
 	seed := viper.GetInt64("node.seed")
-	mine := viper.GetBool("miner.enabled")
-	numMiners := viper.GetInt("miner.numMiners")
 	noNet := viper.GetBool("node.noNet")
 	syncDisabled := viper.GetBool("node.syncDisabled")
 
@@ -174,11 +169,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	coinbase, err := getKey(account, password, seed)
 	if err != nil {
 		log.Fatal(err.Error())
-	}
-
-	// Prevent mining when the node's key is ephemeral
-	if mine && coinbase.Meta["ephemeral"] != nil {
-		log.Fatal(params.ErrMiningWithEphemeralKey.Error())
 	}
 
 	// Create event the global event handler
@@ -242,8 +232,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	bChain.SetEventEmitter(event)
 	bChain.SetCoinbase(coinbase)
 
-	// Initialize the miner, rpc server
-	miner := miner.NewMiner(coinbase, bChain, event, cfg, log)
+	// Initialize rpc server
 	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
 
 	// Set the node's references
@@ -252,7 +241,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Setup block manager
 	bm := node.NewBlockManager(n)
-	bm.SetMiner(miner)
 	go bm.Manage()
 	n.SetBlockManager(bm)
 
@@ -269,16 +257,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Start the block manager and the node
 	n.Start()
 
-	// Initialized and start the miner if enabled via the cli flag.
-	miner.SetNumThreads(numMiners)
-	if mine {
-		go miner.Begin()
-	}
-
 	// Add the RPC APIs from various components.
 	rpcServer.AddAPI(
 		n.APIs(),
-		miner.APIs(),
 		accountMgr.APIs(),
 		bChain.APIs(),
 		rpcServer.APIs(),
@@ -309,7 +290,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		go cs.Run()
 	}
 
-	return n, rpcServer, cs, miner
+	return n, rpcServer, cs
 }
 
 // startCmd represents the start command
@@ -354,12 +335,9 @@ var startCmd = &cobra.Command{
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
-		n, rpcServer, _, miner := start(cmd, args, false)
+		n, rpcServer, _ := start(cmd, args, false)
 
 		setTerminateFunc(func() {
-			if miner != nil {
-				miner.Stop()
-			}
 			if rpcServer != nil {
 				rpcServer.Stop()
 			}
@@ -383,8 +361,6 @@ func init() {
 	startCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
 	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
-	startCmd.Flags().Bool("mine", false, "Start Blake2 CPU mining")
-	startCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 	startCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
 	startCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
 }

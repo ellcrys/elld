@@ -5,8 +5,6 @@ import (
 
 	"github.com/thoas/go-funk"
 
-	"github.com/mitchellh/mapstructure"
-
 	"github.com/ellcrys/elld/rpc"
 	"github.com/ellcrys/elld/rpc/jsonrpc"
 	"github.com/ellcrys/elld/types"
@@ -70,37 +68,6 @@ func (b *Blockchain) apiGetBlock(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(util.EncodeForJS(block))
-}
-
-// apiGetMinedBlocks fetches blocks mined by this node
-func (b *Blockchain) apiGetMinedBlocks(arg interface{}) *jsonrpc.Response {
-	mainChain := b.GetBestChain().(*Chain)
-
-	var opt core.ArgGetMinedBlock
-	if arg != nil {
-		decoded, ok := arg.(map[string]interface{})
-		if !ok {
-			return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-				rpc.ErrMethodArgType("Map").Error(), nil)
-		}
-		mapstructure.Decode(decoded, &opt)
-	}
-
-	result, hasMore, err := mainChain.GetMinedBlocks(&opt)
-	if err != nil {
-		return jsonrpc.Error(types.ErrCodeQueryFailed,
-			err.Error(), nil)
-	}
-
-	var friendlyResult = []interface{}{}
-	for _, r := range result {
-		friendlyResult = append(friendlyResult, util.EncodeForJS(r, "timestamp"))
-	}
-
-	return jsonrpc.Success(map[string]interface{}{
-		"blocks":  friendlyResult,
-		"hasMore": hasMore,
-	})
 }
 
 // apiGetTipBlock fetches the highest block on the main chain
@@ -275,46 +242,10 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 
 // apiGetTransactionStatus gets the status of
 // a transaction matching a given hash.
-// Status: 'unknown' - not found, 'pooled' - in
-// the transaction pool & 'mined' - In a mined block.
 func (b *Blockchain) apiGetTransactionStatus(arg interface{}) *jsonrpc.Response {
-
-	txHash, ok := arg.(string)
-	if !ok {
-		return jsonrpc.Error(types.ErrCodeUnexpectedArgType,
-			rpc.ErrMethodArgType("String").Error(), nil)
-	}
-
-	var status = "unknown"
-
-	if b.txPool.HasByHash(txHash) {
-		status = "pooled"
-	}
-
-	hash, err := util.HexToHash(txHash)
-	if err != nil {
-		return jsonrpc.Error(
-			types.ErrCodeQueryParamError,
-			fmt.Sprintf("invalid transaction id: %s", err.Error()),
-			nil,
-		)
-	}
-
-	tx, err := b.GetTransaction(hash)
-	if err != nil {
-		if err != core.ErrTxNotFound {
-			return jsonrpc.Error(types.ErrCodeQueryFailed, err.Error(), nil)
-		}
-	}
-
-	if tx != nil {
-		status = "mined"
-	}
-
 	return jsonrpc.Success(map[string]interface{}{
-		"status": status,
+		"status": "not implemented",
 	})
-
 }
 
 // apiGetTransactionFromPool gets the transaction
@@ -488,11 +419,6 @@ func (b *Blockchain) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceState,
 			Description: "Get a block by hash",
 			Func:        b.apiGetBlockByHash,
-		},
-		"getMinedBlocks": {
-			Namespace:   types.NamespaceState,
-			Description: "Get blocks mined on this node",
-			Func:        b.apiGetMinedBlocks,
 		},
 		"getOrphans": {
 			Namespace:   types.NamespaceState,

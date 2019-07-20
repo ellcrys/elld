@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/ellcrys/elld/miner/blakimoto"
-
 	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/blockchain/txpool"
 	"github.com/ellcrys/elld/config"
@@ -32,7 +30,6 @@ var _ = Describe("BlockValidator", func() {
 	var genesisBlock types.Block
 	var genesisChain *Chain
 	var sender, receiver *crypto.Key
-	var bkm *blakimoto.Blakimoto
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -48,8 +45,6 @@ var _ = Describe("BlockValidator", func() {
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
 		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
-
-		bkm = blakimoto.ConfiguredBlakimoto(blakimoto.ModeNormal, log)
 	})
 
 	BeforeEach(func() {
@@ -313,41 +308,41 @@ var _ = Describe("BlockValidator", func() {
 			})
 		})
 
-		Context("when block has a invalid total difficulty", func() {
+		// Context("when block has a invalid total difficulty", func() {
 
-			var block types.Block
+		// 	var block types.Block
 
-			BeforeEach(func() {
-				block = MakeBlock(bc, genesisChain, sender, receiver)
-				diff := bkm.CalcDifficulty(block.GetHeader(), genesisBlock.GetHeader())
-				block.GetHeader().SetDifficulty(diff)
-				block.GetHeader().SetTotalDifficulty(new(big.Int).SetInt64(10222))
-			})
+		// 	BeforeEach(func() {
+		// 		block = MakeBlock(bc, genesisChain, sender, receiver)
+		// 		diff := bkm.CalcDifficulty(block.GetHeader(), genesisBlock.GetHeader())
+		// 		block.GetHeader().SetDifficulty(diff)
+		// 		block.GetHeader().SetTotalDifficulty(new(big.Int).SetInt64(10222))
+		// 	})
 
-			It("should return no error", func() {
-				errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
-				Expect(errs).To(HaveLen(1))
-				Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid total difficulty: have 10222, want 200000")))
-			})
-		})
+		// 	It("should return no error", func() {
+		// 		errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
+		// 		Expect(errs).To(HaveLen(1))
+		// 		Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid total difficulty: have 10222, want 200000")))
+		// 	})
+		// })
 
-		Context("when block has a valid difficulty and total difficulty", func() {
+		// Context("when block has a valid difficulty and total difficulty", func() {
 
-			var block types.Block
+		// 	var block types.Block
 
-			BeforeEach(func() {
-				block = MakeBlock(bc, genesisChain, sender, receiver)
-				diff := bkm.CalcDifficulty(block.GetHeader(), genesisBlock.GetHeader())
-				block.GetHeader().SetDifficulty(diff)
-				block.GetHeader().SetTotalDifficulty(new(big.Int).Add(diff, genesisBlock.GetHeader().GetDifficulty()))
-			})
+		// 	BeforeEach(func() {
+		// 		block = MakeBlock(bc, genesisChain, sender, receiver)
+		// 		diff := bkm.CalcDifficulty(block.GetHeader(), genesisBlock.GetHeader())
+		// 		block.GetHeader().SetDifficulty(diff)
+		// 		block.GetHeader().SetTotalDifficulty(new(big.Int).Add(diff, genesisBlock.GetHeader().GetDifficulty()))
+		// 	})
 
-			It("should return invalid proof-of-work error", func() {
-				errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
-				Expect(errs).To(HaveLen(1))
-				Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid proof-of-work")))
-			})
-		})
+		// 	It("should return invalid proof-of-work error", func() {
+		// 		errs := NewBlockValidator(block, nil, bc, cfg, log).CheckPoW()
+		// 		Expect(errs).To(HaveLen(1))
+		// 		Expect(errs).To(ContainElement(fmt.Errorf("field:header, error:invalid proof-of-work")))
+		// 	})
+		// })
 	})
 
 	Describe(".checkSignature", func() {

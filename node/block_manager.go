@@ -13,7 +13,6 @@ import (
 
 	"gopkg.in/oleiade/lane.v1"
 
-	"github.com/ellcrys/elld/miner"
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
@@ -62,9 +61,6 @@ type BlockManager struct {
 	// bChain is the blockchain manager
 	bChain types.Blockchain
 
-	// miner is CPU miner
-	miner *miner.Miner
-
 	// engine is the node's instance
 	engine *Node
 
@@ -102,25 +98,8 @@ func NewBlockManager(node *Node) *BlockManager {
 	return bm
 }
 
-// SetMiner sets a reference of the CPU miner
-func (bm *BlockManager) SetMiner(m *miner.Miner) {
-	bm.miner = m
-}
-
 // Manage handles all incoming block related events.
 func (bm *BlockManager) Manage() {
-
-	go func() {
-		for evt := range bm.evt.On(core.EventFoundBlock) {
-			b := evt.Args[0].(*miner.FoundBlock)
-			bm.mined.Add(b.Block.GetHash().HexStr(), struct{}{})
-			errCh := evt.Args[1].(chan error)
-			bm.unprocessed.Append(&unprocessedBlock{
-				block: b.Block,
-				done:  errCh,
-			})
-		}
-	}()
 
 	go func() {
 		for evt := range bm.evt.On(core.EventNewBlock) {
@@ -183,37 +162,8 @@ func (bm *BlockManager) Manage() {
 }
 
 // handleProcessedBlocks fetches blocks from the processed
-// block queue to perform post-append operations such as
-// updating clearing processed transactions from the pool,
-// restarting miners and relaying the processed block.
+// block queue to perform post-append operations
 func (bm *BlockManager) handleProcessedBlocks() error {
-
-	var pb = bm.processedBlocks.Shift()
-	if pb == nil {
-		return nil
-	}
-
-	b := pb.(*processedBlock).block
-	atSyncTime := pb.(*processedBlock).atSyncTime
-
-	// Remove the blocks transactions from the pool.
-	bm.engine.txsPool.Remove(b.(*core.Block).GetTransactions()...)
-
-	// Restart miner workers if the block was created
-	// by another peer. The miner typically manages its
-	// restart when it finds a block. But when a remote
-	// peer finds a block, we need to force the miner to restart.
-	if !bm.mined.Has(b.(*core.Block).GetHash().HexStr()) {
-		bm.miner.RestartWorkers()
-	}
-
-	// Relay the block to peers only when the block is not
-	// the genesis block, was not processed during a sync session
-	// and sync mode has not been disabled.
-	if b.(*core.Block).GetNumber() > 1 && !atSyncTime && !bm.engine.syncMode.IsDisabled() {
-		_ = bm.engine.Gossip().BroadcastBlock(b.(*core.Block), bm.engine.PM().GetAcquaintedPeers())
-	}
-
 	return nil
 }
 

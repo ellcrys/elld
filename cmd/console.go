@@ -63,11 +63,8 @@ var consoleCmd = &cobra.Command{
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
-		node, rpcServer, cs, miner := start(cmd, args, true)
+		node, rpcServer, cs := start(cmd, args, true)
 		cs.OnStop(func() {
-			if miner != nil {
-				miner.Stop()
-			}
 			rpcServer.Stop()
 			node.Stop()
 		})

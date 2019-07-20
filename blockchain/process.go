@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/k0kubun/pp"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/config"
@@ -137,7 +138,7 @@ func (b *Blockchain) processBalanceTx(tx types.Transaction, ops []common.Transit
 	return txOps, nil
 }
 
-// processAllocCoinTx process a TxTypeAllocCoin. It
+// processAllocTx process a TxTypeAllocCoin. It
 // allocates value set in a transaction to specific
 // account.
 //
@@ -147,7 +148,7 @@ func (b *Blockchain) processBalanceTx(tx types.Transaction, ops []common.Transit
 //
 // It will create a OpCreateAccount transition
 // object if the account does not exist.
-func (b *Blockchain) processAllocCoinTx(tx types.Transaction, ops []common.Transition,
+func (b *Blockchain) processAllocTx(tx types.Transaction, ops []common.Transition,
 	chain types.Chainer,
 	opts ...types.CallOp) ([]common.Transition, error) {
 	var err error
@@ -199,8 +200,16 @@ func (b *Blockchain) processAllocCoinTx(tx types.Transaction, ops []common.Trans
 	return txOps, nil
 }
 
-// opsToKVObjects takes a slice of operations
-// and apply them to the provided chain
+// TODO:
+func (b *Blockchain) processTicketBid(tx types.Transaction, ops []common.Transition,
+	chain types.Chainer,
+	opts ...types.CallOp) ([]common.Transition, error) {
+	return nil, nil
+}
+
+// opsToStateObjects takes a slice of operations and returns
+// state objects that can be used to update the state of the
+// given chain
 func (b *Blockchain) opsToStateObjects(block types.Block, chain types.Chainer,
 	ops []common.Transition) ([]*common.StateObject, error) {
 
@@ -237,16 +246,23 @@ func (b *Blockchain) opsToStateObjects(block types.Block, chain types.Chainer,
 func (b *Blockchain) ProcessTransactions(txs []types.Transaction, chain types.Chainer,
 	opts ...types.CallOp) ([]common.Transition, error) {
 
+	// Process individual transactions and produce state transitions
 	var ops = common.GetTransitions(opts...)
 	for i, tx := range txs {
 		var err error
 		var newOps []common.Transition
-
 		switch tx.GetType() {
+
+		// Process balance transaction
 		case core.TxTypeBalance:
 			newOps, err = b.processBalanceTx(tx, ops, chain, opts...)
+
+		// Process allocation transaction
 		case core.TxTypeAlloc:
-			newOps, err = b.processAllocCoinTx(tx, ops, chain, opts...)
+			newOps, err = b.processAllocTx(tx, ops, chain, opts...)
+
+		default:
+			return nil, fmt.Errorf("unknown transaction type (%d)", tx.GetType())
 		}
 
 		if err != nil {
@@ -257,6 +273,13 @@ func (b *Blockchain) ProcessTransactions(txs []types.Transaction, chain types.Ch
 			ops = addOp(ops, op)
 		}
 	}
+
+	// TODO: 
+	// At this point, we need to process ticket bids.
+	// Before we proceed, we need to sort the bids by
+	// their value and nonce to ensure only the top
+	// bids are granted tickets
+	pp.Println(txs)
 
 	return ops, nil
 }
