@@ -137,11 +137,6 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	node.SetProtocolHandler(config.GetVersions().GetAddr, g.Handle(g.OnGetAddr))
 	node.SetProtocolHandler(config.GetVersions().Addr, g.Handle(g.OnAddr))
 	node.SetProtocolHandler(config.GetVersions().Tx, g.Handle(g.OnTx))
-	node.SetProtocolHandler(config.GetVersions().BlockInfo, g.Handle(g.OnBlockInfo))
-	node.SetProtocolHandler(config.GetVersions().BlockBody, g.Handle(g.OnBlockBody))
-	node.SetProtocolHandler(config.GetVersions().RequestBlock, g.Handle(g.OnRequestBlock))
-	node.SetProtocolHandler(config.GetVersions().GetBlockHashes, g.Handle(g.OnGetBlockHashes))
-	node.SetProtocolHandler(config.GetVersions().GetBlockBodies, g.Handle(g.OnGetBlockBodies))
 
 	log.Info("Opened local database", "Backend", "LevelDB")
 

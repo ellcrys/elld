@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
+	"github.com/ellcrys/elld/ltcsuite/ltcd"
 	"github.com/ellcrys/elld/params"
 	"github.com/pkg/profile"
 
@@ -142,6 +143,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
 	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("no-net"))
 	viper.BindPFlag("node.syncDisabled", cmd.Flags().Lookup("sync-disabled"))
+	viper.BindPFlag("litecoin.args", cmd.Flags().Lookup("ltc-args"))
 	account := viper.GetString("node.account")
 	password := viper.GetString("node.password")
 	listeningAddr := viper.GetString("node.address")
@@ -150,6 +152,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed := viper.GetInt64("node.seed")
 	noNet := viper.GetBool("node.noNet")
 	syncDisabled := viper.GetBool("node.syncDisabled")
+	ltcArgs := viper.GetString("litecoin.args")
 
 	// Unmarshal configurations known to viper into our
 	// config object.
@@ -170,6 +173,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	os.Args = append([]string{""}, strings.Split(ltcArgs, " ")...)
+	go ltcd.Main()
 
 	// Create event the global event handler
 	event := &emitter.Emitter{}
@@ -335,12 +341,22 @@ var startCmd = &cobra.Command{
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
+		// Start the local node and other subservices
 		n, rpcServer, _ := start(cmd, args, false)
+		_ = rpcServer
 
+		// Register function to be called when  termination signal is received
 		setTerminateFunc(func() {
+
+			// Shutdown litcoin server
+			ltcd.SendShutdownRequest()
+
+			// Shutdown rpc server
 			if rpcServer != nil {
 				rpcServer.Stop()
 			}
+
+			// Shutdown the local node server
 			if n != nil {
 				n.Stop()
 			}
@@ -363,4 +379,5 @@ func init() {
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
 	startCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
+	startCmd.Flags().String("ltc-args", "", "Provide arguments to pass to the Litecoin node")
 }

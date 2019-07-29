@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/ltcsuite/ltcd"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -64,8 +65,17 @@ var consoleCmd = &cobra.Command{
 		}
 
 		node, rpcServer, cs := start(cmd, args, true)
+
+		// Stop all subservices once console is terminated
 		cs.OnStop(func() {
+
+			// Shutdown litcoin server
+			ltcd.SendShutdownRequest()
+
+			// Shutdown RPC server
 			rpcServer.Stop()
+
+			// Shutdown the local node
 			node.Stop()
 		})
 
@@ -88,4 +98,5 @@ func init() {
 	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 	consoleCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
 	consoleCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
+	consoleCmd.Flags().String("ltc-args", "", "Provide arguments to pass to the Litecoin node")
 }

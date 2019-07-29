@@ -1,13 +1,10 @@
 package node
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ellcrys/elld/params"
-
-	"github.com/ellcrys/elld/node/common"
 
 	"github.com/ellcrys/elld/util/cache"
 
@@ -16,7 +13,6 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/jinzhu/copier"
 	"github.com/olebedev/emitter"
 	"github.com/shopspring/decimal"
 )
@@ -206,20 +202,6 @@ func (bm *BlockManager) handleUnprocessedBlocks() error {
 // handleOrphan sends a RequestBlock message to
 // the originator of an orphaned block.
 func (bm *BlockManager) handleOrphan(b *core.Block) {
-
-	// When the block has no broadcaster, it is likely
-	// because it was created by the local node and
-	// became an orphan due to reorganization that
-	// saw its parent deleted.
-	if b.Broadcaster == nil {
-		return
-	}
-
-	parentHash := b.GetHeader().GetParentHash()
-	bm.log.Debug("Requesting orphan parent block from broadcaster",
-		"BlockNo", b.GetNumber(),
-		"ParentBlockHash", parentHash.SS())
-	bm.engine.gossipMgr.RequestBlock(b.Broadcaster, parentHash)
 }
 
 // isSyncCandidate checks whether a peer is a
@@ -261,119 +243,8 @@ func (bm *BlockManager) pickBestSyncCandidate() *types.SyncPeerChainInfo {
 	return bestCandidate
 }
 
-// sync starts sync sessions with the available candidates
-// starting with the best candidate. The best candidate is
-// the one with the highest total difficulty. It continues
-// to sync with the best candidate until it is completely
-// in sync with it or fails to connect to it.
-//
-// If there is a failure in connection or a failure in
-// requesting for sync objects, the candidate is removed
-// and synchronization is restarted.
+// sync
 func (bm *BlockManager) sync() error {
-
-	var blockBodies *core.BlockBodies
-	var blockHashes *core.BlockHashes
-	var syncStatus *core.SyncStateInfo
-	var err error
-
-	// Abort synchronization if disabled on the engine
-	if bm.engine.syncMode.IsDisabled() {
-		return core.ErrAbortedDueToSyncDisablement
-	}
-
-	// Abort synchronization if an existing sync
-	// session is on-going.
-	if bm.IsSyncing() {
-		return fmt.Errorf("aborted. Synchronization is ongoing")
-	}
-
-	bm.syncMtx.Lock()
-	if len(bm.syncCandidate) == 0 {
-		bm.syncMtx.Unlock()
-		return nil
-	}
-
-	bm.syncing = true
-
-	// Choose the best candidate peer and
-	// set it as the current sync peer
-	bm.bestSyncCandidate = bm.pickBestSyncCandidate()
-	bm.syncMtx.Unlock()
-
-	var peer = bm.engine.peerManager.GetPeer(bm.bestSyncCandidate.PeerID)
-	if peer == nil {
-		err := fmt.Errorf("best candidate not found in peer list")
-		bm.log.Debug(err.Error(), "PeerID", bm.bestSyncCandidate.PeerID)
-		delete(bm.syncCandidate, bm.bestSyncCandidate.PeerID)
-		goto resync
-	}
-
-	// Request block hashes from the peer
-	blockHashes, err = bm.engine.gossipMgr.SendGetBlockHashes(peer, nil,
-		bm.bestSyncCandidate.LastBlockSent)
-	if err != nil {
-		bm.log.Debug("Failed to get block hashes", "Err", err.Error())
-		delete(bm.syncCandidate, bm.bestSyncCandidate.PeerID)
-		goto resync
-	}
-
-	// Request for block bodies
-	blockBodies, err = bm.engine.gossipMgr.SendGetBlockBodies(peer, blockHashes.Hashes)
-	if err != nil {
-		bm.log.Debug("Failed to get block bodies", "Err", err.Error())
-		delete(bm.syncCandidate, bm.bestSyncCandidate.PeerID)
-		goto resync
-	}
-
-	bm.log.Debug("Received block bodies",
-		"PeerID", bm.bestSyncCandidate.PeerID,
-		"NumBlockBodies", len(blockBodies.Blocks))
-
-	// Attempt to append the block bodies to the blockchain
-	for _, bb := range blockBodies.Blocks {
-		var block core.Block
-		copier.Copy(&block, bb)
-
-		// Set the broadcaster
-		block.SetBroadcaster(peer)
-		bm.bestSyncCandidate.LastBlockSent = block.GetHash()
-
-		hk := common.KeyBlock2(block.GetHashAsHex(), bm.bestSyncCandidate.PeerID)
-		bm.engine.GetHistory().AddMulti(cache.Sec(600), hk...)
-
-		// Process the block
-		bm.unprocessed.Append(&unprocessedBlock{
-			block: &block,
-		})
-	}
-
-	// Let's check if the candidate is still a viable
-	// sync candidate. If it is not, remove it as a
-	// sync candidate and proceed to starting the sync
-	// process with another peer.
-	if !bm.isSyncCandidate(bm.bestSyncCandidate) {
-		delete(bm.syncCandidate, bm.bestSyncCandidate.PeerID)
-		goto resync
-	}
-
-	syncStatus = bm.GetSyncStat()
-	if syncStatus != nil {
-		bm.log.Info("Current synchronization status",
-			"TargetTD", syncStatus.TargetTD,
-			"CurTD", syncStatus.CurrentTD,
-			"TargetChainHeight", syncStatus.TargetChainHeight,
-			"CurChainHeight", syncStatus.CurrentChainHeight,
-			"Progress(%)", syncStatus.ProgressPercent)
-	}
-
-resync:
-	bm.syncMtx.Lock()
-	bm.syncing = false
-	bm.bestSyncCandidate = nil
-	bm.syncMtx.Unlock()
-	bm.sync()
-
 	return nil
 }
 
