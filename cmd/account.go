@@ -74,7 +74,7 @@ var accountCreateCmd = &cobra.Command{
 		if err != nil {
 			return
 		}
-		fmt.Println("New account created, encrypted and stored")
+		fmt.Println("New account created, encrypted and stored.")
 		fmt.Println("Address:", color.CyanString(key.Addr().String()))
 	},
 }
@@ -165,15 +165,62 @@ var accountRevealCmd = &cobra.Command{
 	},
 }
 
+// accountCreateBurnerCmd represents the account command
+var accountCreateBurnerCmd = &cobra.Command{
+	Use:   "create-burner",
+	Short: "Create a Litecoin burner account used for burning coins",
+	Long: `Description:
+  This command creates a Litecoin burner account and encrypts it using a passphrase
+  you provide. Do not forget your passphrase, you will not be able 
+  to unlock your account if you do.
+
+  Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `/
+  ` + config.BurnerAccountDirName + `. It is safe to transfer the directory or individual 
+  accounts to another node. 
+
+  Use --pwd to directly specify a password without going interactive mode. You 
+  can also provide a path to a file containing a password. If a path is provided,
+  password is fetched with leading and trailing newline character removed. 
+
+  Always backup your keeps regularly.`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		// Get flag values
+		pwd, _ := cmd.Flags().GetString("pwd")
+		seed, _ := cmd.Flags().GetInt64("seed")
+		net, _ := rootCmd.Flags().GetString("net")
+
+		// Instantiate the account manager
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+
+		inTestnet := true
+		if config.IsMainNetVersion(net) {
+			inTestnet = false
+		}
+
+		// Create a burner account
+		key, err := am.CreateBurnerCmd(seed, pwd, inTestnet)
+		if err != nil {
+			return
+		}
+
+		fmt.Println("New litecoin burner account created, encrypted and stored.")
+		fmt.Println("Address:", color.CyanString(key.Addr()))
+	},
+}
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)
 	accountCmd.AddCommand(accountUpdateCmd)
 	accountCmd.AddCommand(accountImportCmd)
 	accountCmd.AddCommand(accountRevealCmd)
+	accountCmd.AddCommand(accountCreateBurnerCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	accountImportCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountRevealCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
+	accountCreateBurnerCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
+	accountCreateBurnerCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	rootCmd.AddCommand(accountCmd)
 }

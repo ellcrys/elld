@@ -29,7 +29,9 @@ var PublicKeyVersion byte = 93
 // PrivateKeyVersion is the base58 encode version adopted for private keys
 var PrivateKeyVersion byte = 94
 
-// Key represents an address
+// Key includes a wrapped Ed25519 private key and
+// convenient methods to get the corresponding public
+// key and transaction address.
 type Key struct {
 	privKey *PrivKey
 	Meta    map[string]interface{}
@@ -45,7 +47,7 @@ type PrivKey struct {
 	privKey crypto.PrivKey
 }
 
-// NewKey creates a new key
+// NewKey creates a new Ed25519 key
 func NewKey(seed *int64) (*Key, error) {
 
 	var r = rand.Reader
@@ -54,6 +56,7 @@ func NewKey(seed *int64) (*Key, error) {
 		r = mrand.New(mrand.NewSource(*seed))
 	}
 
+	// TODO: crypto.GenerateEd25519Key has been deprecated
 	priv, _, err := crypto.GenerateEd25519Key(r)
 	if err != nil {
 		return nil, err
@@ -65,20 +68,20 @@ func NewKey(seed *int64) (*Key, error) {
 	}, nil
 }
 
-// NewKeyFromIntSeed is like NewKey but accepts seed of type Int and casts to Int64
-// Error is not returned.
-// Intended to be used in test
+// NewKeyFromIntSeed is like NewKey but accepts seed of
+// type Int and casts to Int64.
 func NewKeyFromIntSeed(seed int) *Key {
 	int64Seed := int64(seed)
 	key, _ := NewKey(&int64Seed)
 	return key
 }
 
-// NewKeyFromPrivKey creates a new address from a private key
+// NewKeyFromPrivKey creates a new Key instance from a PrivKey
 func NewKeyFromPrivKey(sk *PrivKey) *Key {
 	return &Key{privKey: sk}
 }
 
+// idFromPublicKey derives the libp2p peer ID from an Ed25519 public key
 func idFromPublicKey(pk crypto.PubKey) (string, error) {
 	id, err := peer.IDFromPublicKey(pk)
 	if err != nil {
@@ -87,13 +90,13 @@ func idFromPublicKey(pk crypto.PubKey) (string, error) {
 	return id.String(), nil
 }
 
-// PeerID returns the IPFS compatible peer ID for the corresponding public key
+// PeerID returns the IPFS compatible peer ID
 func (k *Key) PeerID() string {
 	pid, _ := idFromPublicKey(k.PubKey().pubKey)
 	return pid
 }
 
-// Addr returns the address corresponding to the public key
+// Addr returns the transaction address
 func (k *Key) Addr() util.String {
 	return k.PubKey().Addr()
 }

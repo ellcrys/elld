@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ellcrys/elld/config"
+
 	"github.com/thoas/go-funk"
 
 	"github.com/ellcrys/elld/crypto"
@@ -31,10 +33,13 @@ func testPrompt2(count *int, responses []string) PasswordPrompt {
 var _ = Describe("AccountMgr", func() {
 
 	path := filepath.Join("./", "test_cfg")
-	accountPath := filepath.Join(path, "accounts")
+	accountPath := filepath.Join(path, config.AccountDirName)
+	burnerAccountPath := filepath.Join(accountPath, config.BurnerAccountDirName)
 
 	BeforeEach(func() {
 		err := os.MkdirAll(accountPath, 0700)
+		Expect(err).To(BeNil())
+		err = os.MkdirAll(burnerAccountPath, 0700)
 		Expect(err).To(BeNil())
 	})
 
@@ -77,7 +82,7 @@ var _ = Describe("AccountMgr", func() {
 		})
 	})
 
-	Describe(".createAccount", func() {
+	Describe(".CreateAccount", func() {
 		am := New(accountPath)
 
 		It("should return err = 'Address is required' when address is nil", func() {
@@ -123,13 +128,70 @@ var _ = Describe("AccountMgr", func() {
 				Expect(found).ToNot(BeNil())
 			})
 
-			It("should return err = 'Account already exist' when account with same address already exist", func() {
+			It("should return err = 'An account with a matching seed already exist' when account with same address already exist", func() {
 				seed := int64(1)
 				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
 				err := am.CreateAccount(address, passphrase)
 				Expect(err).ToNot(BeNil())
-				Expect(err.Error()).To(Equal("Account already exist"))
+				Expect(err.Error()).To(Equal("An account with a matching seed already exist"))
+			})
+		})
+	})
+
+	Describe(".CreateBurnerAccount", func() {
+		am := New(accountPath)
+
+		It("should return err = 'Address is required' when address is nil", func() {
+			err := am.CreateBurnerAccount(nil, "")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("WIF structure is required"))
+		})
+
+		It("should return err = 'Passphrase is required' when passphrase is empty", func() {
+			seed := int64(1)
+			key, _ := crypto.NewSecp256k1(&seed, true, false)
+			err := am.CreateBurnerAccount(key, "")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("Passphrase is required"))
+		})
+
+		It("should return nil when account has been created", func() {
+			seed := int64(1)
+			key, _ := crypto.NewSecp256k1(&seed, true, false)
+			passphrase := "edge123"
+			err := am.CreateBurnerAccount(key, passphrase)
+			Expect(err).To(BeNil())
+		})
+
+		When("account has been created", func() {
+
+			var key *crypto.Secp256k1Key
+
+			BeforeEach(func() {
+				seed := int64(1)
+				key, _ = crypto.NewSecp256k1(&seed, true, false)
+				passphrase := "edge123"
+				err := am.CreateBurnerAccount(key, passphrase)
+				Expect(err).To(BeNil())
+			})
+
+			It("should have a keyfile in the burner account directory", func() {
+				kfs, err := ioutil.ReadDir(burnerAccountPath)
+				Expect(err).To(BeNil())
+				found := funk.Find(kfs, func(x os.FileInfo) bool {
+					return funk.Contains(x.Name(), key.Addr())
+				})
+				Expect(found).ToNot(BeNil())
+			})
+
+			It("should return err = 'An account with a matching seed already exist' when account with same address already exist", func() {
+				seed := int64(1)
+				key, _ = crypto.NewSecp256k1(&seed, true, false)
+				passphrase := "edge123"
+				err := am.CreateBurnerAccount(key, passphrase)
+				Expect(err).ToNot(BeNil())
+				Expect(err.Error()).To(Equal("An account with a matching seed already exist"))
 			})
 		})
 	})

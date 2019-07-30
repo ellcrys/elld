@@ -6,11 +6,19 @@ import "sync"
 // version used when no network version is provided.
 const DefaultNetVersion = "0001"
 
+// MainNetVersion is the main net version number
+const MainNetVersion = "0001"
+
 var (
 	// versions contains protocol handlers versions information
 	versions *ProtocolVersions
 	cfgLck   = &sync.RWMutex{}
 )
+
+// IsMainNetVersion checks whether a given version represents the mainnet version
+func IsMainNetVersion(version string) bool {
+	return version == MainNetVersion
+}
 
 // SetVersions sets the protocol version.
 // All protocol handlers will be prefixed

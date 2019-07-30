@@ -41,6 +41,23 @@ func (am *AccountManager) AccountExist(address string) (bool, error) {
 	return false, nil
 }
 
+// BurnerAccountExist checks if a burner account with a matching address exists
+func (am *AccountManager) BurnerAccountExist(address string) (bool, error) {
+
+	accounts, err := am.ListBurnerAccounts()
+	if err != nil {
+		return false, err
+	}
+
+	for _, acct := range accounts {
+		if acct.Address == address {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // GetDefault gets the oldest account. Usually the account with 0 index.
 func (am *AccountManager) GetDefault() (*StoredAccount, error) {
 

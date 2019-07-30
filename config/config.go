@@ -27,6 +27,9 @@ var SeedAddresses = []string{
 // AccountDirName is the name of the directory for storing accounts
 var AccountDirName = "accounts"
 
+// BurnerAccountDirName is the name of the directory for storing burner accounts
+var BurnerAccountDirName = "burner_accounts"
+
 // setDefaultConfig sets default config values.
 // They are used when their values is not provided
 // in flag, env or config file.
@@ -81,6 +84,7 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 	// Create the data directory and other sub directories
 	os.MkdirAll(dataDir, 0700)
 	os.MkdirAll(path.Join(dataDir, AccountDirName), 0700)
+	os.MkdirAll(path.Join(dataDir, AccountDirName, BurnerAccountDirName), 0700)
 
 	// Set viper configuration
 	setDefaultConfig()
