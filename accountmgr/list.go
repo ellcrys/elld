@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ellcrys/elld/config"
-
 	humanize "github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 )
@@ -38,40 +36,6 @@ func (am *AccountManager) ListAccounts() (accounts []*StoredAccount, err error) 
 		unixTime, _ := strconv.ParseInt(nameParts[0], 10, 64)
 		timeCreated := time.Unix(unixTime, 0)
 		cipher, _ := ioutil.ReadFile(filepath.Join(am.accountDir, f.Name()))
-		if len(cipher) > 0 {
-			accounts = append(accounts, &StoredAccount{
-				Address:   nameParts[1],
-				Cipher:    cipher,
-				CreatedAt: timeCreated,
-			})
-		}
-	}
-	return
-}
-
-// ListBurnerAccounts returns the burner accounts stored on disk.
-func (am *AccountManager) ListBurnerAccounts() (accounts []*StoredAccount, err error) {
-
-	files, err := ioutil.ReadDir(filepath.Join(am.accountDir, config.BurnerAccountDirName))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, f := range files {
-
-		if f.IsDir() {
-			continue
-		}
-
-		m, _ := regexp.Match("^[0-9]{10}_[a-zA-Z0-9]{26,34}(_testnet)?$", []byte(f.Name()))
-		if !m {
-			continue
-		}
-		nameParts := strings.Split(f.Name(), "_")
-		unixTime, _ := strconv.ParseInt(nameParts[0], 10, 64)
-		timeCreated := time.Unix(unixTime, 0)
-		path := filepath.Join(am.accountDir, config.BurnerAccountDirName, f.Name())
-		cipher, _ := ioutil.ReadFile(path)
 		if len(cipher) > 0 {
 			accounts = append(accounts, &StoredAccount{
 				Address:   nameParts[1],

@@ -35,7 +35,7 @@ var accountCmd = &cobra.Command{
   by you. Please understand that if you forget the password, it is IMPOSSIBLE to 
   unlock your account.
 
-  Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `. It is safe to transfer the 
+  Password will be stored under <DATADIR>/` + config.AccountDirName + `. It is safe to transfer the 
   directory or individual accounts to another node. 
 
   Always backup your keeps regularly.`,
@@ -53,7 +53,7 @@ var accountCreateCmd = &cobra.Command{
   you provide. Do not forget your passphrase, you will not be able 
   to unlock your account if you do.
 
-  Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `. 
+  Password will be stored under <DATADIR>/` + config.AccountDirName + `. 
   It is safe to transfer the directory or individual accounts to another node. 
 
   Use --pwd to directly specify a password without going interactive mode. You 
@@ -83,10 +83,10 @@ var accountListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all accounts",
 	Long: `Description:
-  This command lists all accounts existing under <CONFIGDIR>/` + config.AccountDirName + `.
+  This command lists all accounts existing under <DATADIR>/` + config.AccountDirName + `.
 
   Given that an account in the directory begins with a timestamp of its creation time and the 
-  list is lexicographically ordered, the most recently created account will the last on the list.
+  list is lexicographically sorted such that the oldest account will be at the top on the list
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
@@ -174,7 +174,7 @@ var accountCreateBurnerCmd = &cobra.Command{
   you provide. Do not forget your passphrase, you will not be able 
   to unlock your account if you do.
 
-  Password will be stored under <CONFIGDIR>/` + config.AccountDirName + `/
+  Password will be stored under <DATADIR>/` + config.AccountDirName + `/
   ` + config.BurnerAccountDirName + `. It is safe to transfer the directory or individual 
   accounts to another node. 
 
@@ -209,6 +209,24 @@ var accountCreateBurnerCmd = &cobra.Command{
 	},
 }
 
+var accountListBurnersCmd = &cobra.Command{
+	Use:   "list-burners",
+	Short: "List all burner accounts",
+	Long: `Description:
+  This command lists all burner accounts existing under <DATADIR>/` + config.AccountDirName + `/
+  ` + config.BurnerAccountDirName + `.
+
+  Given that an account in the directory begins with a timestamp of its creation time, the 
+  list is lexicographically sorted such that the oldest account will be at the top on the list.
+  
+  Testnet accounts have the [testnet] tag. 
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am.ListBurnerCmd()
+	},
+}
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)
@@ -216,6 +234,7 @@ func init() {
 	accountCmd.AddCommand(accountImportCmd)
 	accountCmd.AddCommand(accountRevealCmd)
 	accountCmd.AddCommand(accountCreateBurnerCmd)
+	accountCmd.AddCommand(accountListBurnersCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	accountImportCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")

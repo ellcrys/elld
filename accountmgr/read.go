@@ -22,6 +22,7 @@ type StoredAccount struct {
 	Cipher    []byte
 	key       *crypto.Key
 	CreatedAt time.Time
+	meta      map[string]interface{} // Store other information about the account here
 }
 
 // AccountExist checks if an account with a matching address exists
