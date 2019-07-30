@@ -106,11 +106,11 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 	}
 
 	// Use the password to decrypt the account
-	if err = storedAccount.Decrypt(password); err != nil {
+	if err = storedAccount.Decrypt(password, false); err != nil {
 		return nil, fmt.Errorf("account unlock failed. %s", err)
 	}
 
-	return storedAccount.GetAddress(), nil
+	return storedAccount.GetKey().(*crypto.Key), nil
 }
 
 // starts the node.

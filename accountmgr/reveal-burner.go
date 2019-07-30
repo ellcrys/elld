@@ -6,18 +6,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ellcrys/elld/crypto"
-	"github.com/fatih/color"
+	"github.com/ellcrys/elld/ltcsuite/ltcutil"
 
+	"github.com/fatih/color"
 	funk "github.com/thoas/go-funk"
 )
 
-// RevealCmd decrypts an account and outputs the private key.
+// RevealBurnerCmd decrypts a burner account and outputs the WIF key.
 // If pwd is provide and it is not a file path, it is used as
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
-// is set, interactive password collection is not used.
-func (am *AccountManager) RevealCmd(address, pwd string) error {
+// is set, interactive password collection is not initialized.
+func (am *AccountManager) RevealBurnerCmd(address, pwd string) error {
 
 	var passphrase string
 
@@ -26,7 +26,7 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 		return fmt.Errorf("address is required")
 	}
 
-	storedAcct, err := am.GetByAddress(address)
+	storedAcct, err := am.GetBurnerAccountByAddress(address)
 	if err != nil {
 		printErr(err.Error())
 		return err
@@ -73,14 +73,12 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 
 unlock:
 
-	if err = storedAcct.Decrypt(passphrase, false); err != nil {
+	if err = storedAcct.Decrypt(passphrase, true); err != nil {
 		printErr("Invalid password. Could not unlock account.")
 		return err
 	}
 
-	fmt.Println(color.HiCyanString("Private Key:"), storedAcct.key.(*crypto.Key).
-		PrivKey().Base58())
+	fmt.Println(color.HiCyanString("Private Key (WIF):"), storedAcct.key.(*ltcutil.WIF).String())
 
 	return nil
-
 }

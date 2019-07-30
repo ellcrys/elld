@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ellcrys/elld/ltcsuite/ltcutil"
+
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
@@ -18,11 +20,21 @@ var (
 
 // StoredAccount represents an encrypted account stored on disk
 type StoredAccount struct {
-	Address   string
-	Cipher    []byte
-	key       *crypto.Key
+
+	// Address is the account's address
+	Address string
+
+	// Cipher includes the encryption data
+	Cipher []byte
+
+	// key stores the instantiated equivalent of the stored account key
+	key interface{}
+
+	// CreatedAt represents the time the account was created and stored on disk
 	CreatedAt time.Time
-	meta      map[string]interface{} // Store other information about the account here
+
+	// Store other information about the account here
+	meta map[string]interface{}
 }
 
 // AccountExist checks if an account with a matching address exists
@@ -90,8 +102,7 @@ func (am *AccountManager) GetByIndex(i int) (*StoredAccount, error) {
 	return accounts[i], nil
 }
 
-// GetByAddress gets an account by its address in the
-// list of accounts which is ordered by the time of creation.
+// GetByAddress gets an account by its address in the list of accounts.
 func (am *AccountManager) GetByAddress(addr string) (*StoredAccount, error) {
 
 	accounts, err := am.ListAccounts()
@@ -110,19 +121,37 @@ func (am *AccountManager) GetByAddress(addr string) (*StoredAccount, error) {
 	return account.(*StoredAccount), nil
 }
 
-// GetAddress returns the address object which contains the private
-// key and public key. Must call Decrypt() first.
-func (sa *StoredAccount) GetAddress() *crypto.Key {
+// GetBurnerAccountByAddress gets a burner account
+// by its address in the list of accounts.
+func (am *AccountManager) GetBurnerAccountByAddress(addr string) (*StoredAccount, error) {
+
+	accounts, err := am.ListBurnerAccounts()
+	if err != nil {
+		return nil, err
+	}
+
+	account := funk.Find(accounts, func(x *StoredAccount) bool {
+		return x.Address == addr
+	})
+
+	if account == nil {
+		return nil, ErrAccountNotFound
+	}
+
+	return account.(*StoredAccount), nil
+}
+
+// GetKey gets an instance of the decrypted account's key.
+// Decrypt() must be called first.
+func (sa *StoredAccount) GetKey() interface{} {
 	return sa.key
 }
 
-// GetKey gets the decrypted key
-func (sa *StoredAccount) GetKey() *crypto.Key {
-	return sa.key
-}
-
-// Decrypt decrypts the account cipher and initializes the address field
-func (sa *StoredAccount) Decrypt(passphrase string) error {
+// Decrypt decrypts the account cipher and initializes the address field.
+// The asWIF argument will assume the store key is Litecoin WIF key
+// and attempt to create an instance of ltcutil.WIF to be included as
+// the value of sa.key.
+func (sa *StoredAccount) Decrypt(passphrase string, asWIF bool) error {
 
 	passphraseBs := hardenPassword([]byte(passphrase))
 	acctBytes, err := util.Decrypt(sa.Cipher, passphraseBs[:])
@@ -145,11 +174,23 @@ func (sa *StoredAccount) Decrypt(passphrase string) error {
 		return fmt.Errorf("unable to parse account data")
 	}
 
-	privKey, err := crypto.PrivKeyFromBase58(accountData["sk"])
-	if err != nil {
-		return err
+	if !asWIF {
+		privKey, err := crypto.PrivKeyFromBase58(accountData["sk"])
+		if err != nil {
+			return err
+		}
+
+		sa.key = crypto.NewKeyFromPrivKey(privKey)
+		return nil
 	}
 
-	sa.key = crypto.NewKeyFromPrivKey(privKey)
+	// At this point, we assume the sk to be a WIF key and attempt to
+	// to create an instance of ltcutil.WIF
+	wif, err := ltcutil.DecodeWIF(accountData["sk"])
+	if err != nil {
+		return fmt.Errorf("failed to decode decrypted as a WIF key")
+	}
+
+	sa.key = wif
 	return nil
 }

@@ -6,8 +6,8 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/robertkrimen/otto"
 	goprompt "github.com/ellcrys/go-prompt"
+	"github.com/robertkrimen/otto"
 )
 
 func (e *Executor) accountError(msg string) otto.Value {
@@ -73,11 +73,12 @@ func (e *Executor) loadAccount(address string, optionalArgs ...string) {
 		panic(e.accountError(err.Error()))
 	}
 
-	if err := sa.Decrypt(passphrase); err != nil {
+	// Decrypt the account
+	if err := sa.Decrypt(passphrase, false); err != nil {
 		panic(e.accountError(err.Error()))
 	}
 
-	e.coinbase = sa.GetKey()
+	e.coinbase = sa.GetKey().(*crypto.Key)
 }
 
 // loadedAccount returns the currently loaded account

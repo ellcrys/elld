@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/crypto"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,9 +15,12 @@ var _ = Describe("Read", func() {
 
 	path := filepath.Join("./", "test_cfg")
 	accountPath := filepath.Join(path, "accounts")
+	burnerAccountPath := filepath.Join(accountPath, config.BurnerAccountDirName)
 
 	BeforeEach(func() {
 		err := os.MkdirAll(accountPath, 0700)
+		Expect(err).To(BeNil())
+		err = os.MkdirAll(burnerAccountPath, 0700)
 		Expect(err).To(BeNil())
 	})
 
@@ -51,7 +55,32 @@ var _ = Describe("Read", func() {
 				Expect(err).To(BeNil())
 				Expect(exist).To(BeFalse())
 			})
+		})
 
+		Describe(".BurnerAccountExist", func() {
+
+			am := New(accountPath)
+
+			It("should return true and err = nil when account exists", func() {
+				seed := int64(1)
+				key, _ := crypto.NewSecp256k1(&seed, true, true)
+				passphrase := "edge123"
+				err := am.CreateBurnerAccount(key, passphrase)
+				Expect(err).To(BeNil())
+
+				exist, err := am.BurnerAccountExist(key.Addr())
+				Expect(err).To(BeNil())
+				Expect(exist).To(BeTrue())
+			})
+
+			It("should return false and err = nil when account does not exist", func() {
+				seed := int64(1)
+				key, _ := crypto.NewSecp256k1(&seed, true, true)
+
+				exist, err := am.AccountExist(key.Addr())
+				Expect(err).To(BeNil())
+				Expect(exist).To(BeFalse())
+			})
 		})
 
 		Describe(".GetDefault", func() {
@@ -147,6 +176,32 @@ var _ = Describe("Read", func() {
 		})
 	})
 
+	Describe(".GetBurnerAccountByAddress", func() {
+
+		var key *crypto.Secp256k1Key
+		am := New(accountPath)
+
+		BeforeEach(func() {
+			seed := int64(1)
+			key, _ = crypto.NewSecp256k1(&seed, true, true)
+			passphrase := "edge123"
+			err := am.CreateBurnerAccount(key, passphrase)
+			Expect(err).To(BeNil())
+		})
+
+		It("should successfully get account with address", func() {
+			act, err := am.GetBurnerAccountByAddress(key.Addr())
+			Expect(err).To(BeNil())
+			Expect(act.Address).To(Equal(key.Addr()))
+		})
+
+		It("should return err = 'account not found' when address does not exist", func() {
+			_, err := am.GetBurnerAccountByAddress("unknown_address")
+			Expect(err).ToNot(BeNil())
+			Expect(err).To(Equal(ErrAccountNotFound))
+		})
+	})
+
 	Describe("StoredAccount", func() {
 
 		Describe(".Decrypt", func() {
@@ -170,13 +225,13 @@ var _ = Describe("Read", func() {
 			})
 
 			It("should return err = 'invalid password' when password is invalid", func() {
-				err := account.Decrypt("invalid")
+				err := account.Decrypt("invalid", false)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("invalid password"))
 			})
 
 			It("should return nil when decryption is successful. account.address must not be nil.", func() {
-				err := account.Decrypt(passphrase)
+				err := account.Decrypt(passphrase, false)
 				Expect(err).To(BeNil())
 				Expect(account.key).ToNot(BeNil())
 			})

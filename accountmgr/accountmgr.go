@@ -229,14 +229,17 @@ func (am *AccountManager) CreateBurnerAccount(key *crypto.Secp256k1Key, passphra
 	}
 
 	// construct, json encode and encrypt account data
-	burnAccData, _ := msgpack.Marshal(map[string]interface{}{
+	burnAccData, _ := msgpack.Marshal(map[string]string{
 		"addr":    key.Addr(),
 		"sk":      wif.String(),
-		"testnet": key.ForTestnet(),
+		"testnet": "1",
 		"v":       burnerAccountEncryptionVersion,
 	})
 
-	ct, err := util.Encrypt([]byte(burnAccData), passphraseHardened[:])
+	// base58 check encode
+	b58AcctBs := base58.CheckEncode(burnAccData, 1)
+
+	ct, err := util.Encrypt([]byte(b58AcctBs), passphraseHardened[:])
 	if err != nil {
 		return err
 	}
