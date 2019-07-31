@@ -7,18 +7,21 @@ import (
 	"strings"
 
 	"github.com/ellcrys/elld/crypto"
+	"github.com/ellcrys/elld/ltcsuite/ltcutil"
 	"github.com/fatih/color"
 
 	funk "github.com/thoas/go-funk"
 )
 
-// ImportCmd takes a keyfile containing unencrypted password to create
-// a new account. Keyfile must be a path to a file that exists.
+// ImportBurnerCmd takes a keyfile containing a Litecoin WIF key to create
+// a new burner account. Keyfile must be a path to a file that exists.
 // If pwd is provide and it is not a file path, it is used as
 // the password. Otherwise, the file is read, trimmed of newline
 // characters (left and right) and used as the password. When pwd
 // is set, interactive password collection is not used.
-func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
+// The testnet argument indicates that the burner account should be created
+// according to the burn chain's testnet address format
+func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) error {
 
 	if keyfile == "" {
 		printErr("Keyfile is required.")
@@ -42,12 +45,12 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 		return err
 	}
 
-	// attempt to validate and instantiate the private key
+	// Attempt to validate and instantiate a ltcutil.WIF instance
 	fileContentStr := strings.TrimSpace(string(keyFileContent))
-	sk, err := crypto.PrivKeyFromBase58(fileContentStr)
+	wif, err := ltcutil.DecodeWIF(fileContentStr)
 	if err != nil {
-		printErr("Keyfile contains invalid private key")
-		return err
+		printErr("File content is not a valid WIF key")
+		return fmt.Errorf("File content is not a valid WIF key")
 	}
 
 	var content []byte
@@ -83,14 +86,19 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 	passphrase = strings.TrimSpace(strings.Trim(passphrase, "/n"))
 
 create:
-	address := crypto.NewKeyFromPrivKey(sk)
-	if err := am.CreateAccount(address, passphrase); err != nil {
+	key, err := crypto.NewSecp256k1FromWif(wif, testnet, true)
+	if err != nil {
+		printErr("Failed to create Secp256k1 key from WIF key: %s", err)
+		return err
+	}
+
+	if err := am.CreateBurnerAccount(key, passphrase); err != nil {
 		printErr(err.Error())
 		return err
 	}
 
-	fmt.Println("Import successful. New account created, encrypted and stored")
-	fmt.Println("Address:", color.CyanString(address.Addr().String()))
+	fmt.Println("Import successful. New burner account created, encrypted and stored.")
+	fmt.Println("Address:", color.CyanString(key.Addr()))
 
 	return nil
 }

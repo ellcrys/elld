@@ -28,7 +28,7 @@ import (
 // accountCmd represents the account command
 var accountCmd = &cobra.Command{
 	Use:   "account command [flags]",
-	Short: "Create and manage your accounts",
+	Short: "Create and manage your accounts.",
 	Long: `Description:
   This command provides the ability to create an account, list, import and update 
   accounts. Accounts are stored in an encrypted format using a passphrase provided 
@@ -47,7 +47,7 @@ var accountCmd = &cobra.Command{
 // accountCreateCmd represents the account command
 var accountCreateCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Create an account",
+	Short: "Create an account.",
 	Long: `Description:
   This command creates an account and encrypts it using a passphrase
   you provide. Do not forget your passphrase, you will not be able 
@@ -81,7 +81,7 @@ var accountCreateCmd = &cobra.Command{
 
 var accountListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all accounts",
+	Short: "List all accounts.",
 	Long: `Description:
   This command lists all accounts existing under <DATADIR>/` + config.AccountDirName + `.
 
@@ -96,7 +96,7 @@ var accountListCmd = &cobra.Command{
 
 var accountUpdateCmd = &cobra.Command{
 	Use:   "update [flags] <address>",
-	Short: "Update an account",
+	Short: "Update an account.",
 	Long: `Description:
   This command allows you to update the password of an account and to
   convert an account encrypted in an old format to a new one.
@@ -115,7 +115,7 @@ var accountUpdateCmd = &cobra.Command{
 
 var accountImportCmd = &cobra.Command{
 	Use:   "import [flags] <keyfile>",
-	Short: "Import an existing, unencrypted private key",
+	Short: "Import an existing, unencrypted private key.",
 	Long: `Description:
   This command allows you to import a private key from a <keyfile> and create
   a new account. You will be prompted to provide your password. Your account is saved 
@@ -144,7 +144,7 @@ var accountImportCmd = &cobra.Command{
 
 var accountRevealCmd = &cobra.Command{
 	Use:   "reveal [flags] <address>",
-	Short: "Reveal the private key of an account",
+	Short: "Reveal the private key of an account.",
 	Long: `Description:
   This command reveals the private key of an account. You will be prompted to 
   provide your password. 
@@ -167,8 +167,8 @@ var accountRevealCmd = &cobra.Command{
 
 // accountCreateBurnerCmd represents the account command
 var accountCreateBurnerCmd = &cobra.Command{
-	Use:   "create-burner",
-	Short: "Create a Litecoin burner account used for burning coins",
+	Use:   "burner-create",
+	Short: "Create a Litecoin burner account used for burning coins.",
 	Long: `Description:
   This command creates a Litecoin burner account and encrypts it using a passphrase
   you provide. Do not forget your passphrase, you will not be able 
@@ -210,8 +210,8 @@ var accountCreateBurnerCmd = &cobra.Command{
 }
 
 var accountListBurnersCmd = &cobra.Command{
-	Use:   "list-burners",
-	Short: "List all burner accounts",
+	Use:   "burners-list",
+	Short: "List all Litecoin burner accounts.",
 	Long: `Description:
   This command lists all burner accounts existing under <DATADIR>/` + config.AccountDirName + `/
   ` + config.BurnerAccountDirName + `.
@@ -228,8 +228,8 @@ var accountListBurnersCmd = &cobra.Command{
 }
 
 var accountRevealBurnerCmd = &cobra.Command{
-	Use:   "reveal-burner [flags] <address>",
-	Short: "Reveal the private key WIF of an account",
+	Use:   "burner-reveal [flags] <address>",
+	Short: "Reveal the Litecoin WIF of a burner account.",
 	Long: `Description:
   This command reveals the private key WIF of an account. You will be prompted to 
   provide your password. 
@@ -250,6 +250,42 @@ var accountRevealBurnerCmd = &cobra.Command{
 	},
 }
 
+var accountImportBurnerCmd = &cobra.Command{
+	Use:   "burner-import [flags] <keyfile>",
+	Short: "Import a Litecoin WIF key stored in a keyfile to create a burner account.",
+	Long: `Description:
+  This command allows you to import a WIF key stored in a <keyfile> to create a burner account.
+  You will be prompted to provide your password which will be used to encrypt the new 
+  burner account.
+	
+  The keyfile is expected to contain a valid Litecoin WIF key.
+
+  You can skip the interactive mode by providing your password via the '--pwd' flag. 
+  Also, a path to a file containing a password can be provided to the flag.
+
+  You must not forget your password, otherwise you will not be able to unlock your
+  account.
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		var keyfile string
+		if len(args) >= 1 {
+			keyfile = args[0]
+		}
+
+		net, _ := rootCmd.Flags().GetString("net")
+
+		inTestnet := true
+		if config.IsMainNetVersion(net) {
+			inTestnet = false
+		}
+
+		pwd, _ := cmd.Flags().GetString("pwd")
+		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+		am.ImportBurnerCmd(keyfile, pwd, inTestnet)
+	},
+}
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)
@@ -259,6 +295,7 @@ func init() {
 	accountCmd.AddCommand(accountCreateBurnerCmd)
 	accountCmd.AddCommand(accountListBurnersCmd)
 	accountCmd.AddCommand(accountRevealBurnerCmd)
+	accountCmd.AddCommand(accountImportBurnerCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	accountImportCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
