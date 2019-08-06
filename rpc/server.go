@@ -52,7 +52,7 @@ func NewServer(db elldb.DB, addr string, cfg *config.EngineConfig, log logger.Lo
 		addr:      addr,
 		log:       log,
 		cfg:       cfg,
-		rpc:       jsonrpc.New(addr, cfg.RPC.SessionSecretKey, cfg.RPC.DisableAuth),
+		rpc:       jsonrpc.New(log, addr, cfg.RPC.SessionSecretKey, cfg.RPC.DisableAuth),
 		interrupt: interrupt,
 	}
 }
@@ -66,7 +66,6 @@ func (s *Server) GetAddr() string {
 
 // Serve starts the server
 func (s *Server) Serve() {
-
 	go func() {
 		if s.interrupt != nil {
 			<-s.interrupt

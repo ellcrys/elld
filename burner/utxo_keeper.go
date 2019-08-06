@@ -190,7 +190,8 @@ func (k *AccountsUTXOKeeper) index(address string, block *btcjson.GetBlockVerbos
 // begin indexes the utxo of the given burner address.
 // address argument is the address whose utxos are searched and indexed.
 // skipToHeight forces the algorithm to ignore blocks below the height.
-func (k *AccountsUTXOKeeper) begin(workerID int, address string, skipToHeight int32) error {
+// reIndex overwrite the last scanned height to zero, causing a rescan.
+func (k *AccountsUTXOKeeper) begin(workerID int, address string, skipToHeight int32, reIndex bool) error {
 begin:
 
 	k.log.Debug("Beginning account indexation", "Account", address, "WorkerID", workerID)
@@ -203,10 +204,15 @@ begin:
 		return err
 	}
 
-	// Get the last scanned block height.
+	lastScannedHeight := int32(0)
+
+	// Get the last scanned block height only if re-index is not requested.
+	if !reIndex {
+		lastScannedHeight = k.lastScannedHeight(address)
+	}
+
 	// If skipToHeight is set and it is greater than the last scanned height,
 	// use the skip heigh value as the last scanned height
-	lastScannedHeight := k.lastScannedHeight(address)
 	if skipToHeight > 0 && skipToHeight > lastScannedHeight {
 		lastScannedHeight = skipToHeight
 	}
@@ -286,7 +292,7 @@ func (k *AccountsUTXOKeeper) Stop() {
 // Begin initiates the scanning and indexing process.
 // Must be called in a goroutine.
 func (k *AccountsUTXOKeeper) Begin(am *accountmgr.AccountManager,
-	numWorkers int, skipToHeight int32) error {
+	numWorkers int, skipToHeight int32, reIndex bool) error {
 
 	go func() {
 		<-k.interrupt
@@ -333,7 +339,7 @@ func (k *AccountsUTXOKeeper) Begin(am *accountmgr.AccountManager,
 					break
 				}
 				addr := acct.(*accountmgr.StoredAccount).Address
-				if err := k.begin(id, addr, skipToHeight); err != nil {
+				if err := k.begin(id, addr, skipToHeight, reIndex); err != nil {
 					k.log.Error("Failed to begin UTXO indexation", "Account", addr)
 				}
 			}

@@ -1,6 +1,7 @@
 package jsonrpc
 
 import (
+	"github.com/ellcrys/elld/util/logger"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -16,9 +17,10 @@ import (
 var _ = Describe("RPC", func() {
 
 	var rpc *JSONRPC
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
-		rpc = New("", "abc", false)
+		rpc = New(log, "", "abc", false)
 	})
 
 	Describe(".handle", func() {

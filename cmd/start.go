@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ellcrys/elld/elldb"
 
@@ -150,19 +151,25 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 	viper.BindPFlag("burner.notls", cmd.Flags().Lookup("burner-notls"))
 	viper.BindPFlag("burner.rpclisten", cmd.Flags().Lookup("burner-rpclisten"))
 	viper.BindPFlag("burner.utxokeeperskip", cmd.Flags().Lookup("burner-utxokeeperskip"))
+	viper.BindPFlag("burner.utxokeeperworkers", cmd.Flags().Lookup("burner-utxokeeperworkers"))
+	viper.BindPFlag("burner.utxokeeperoff", cmd.Flags().Lookup("burner-utxokeeperoff"))
+	viper.BindPFlag("burner.utxokeeperreindex", cmd.Flags().Lookup("burner-utxokeeperreindex"))
 
-	burnerTestnet := viper.GetBool("burner.testnet")
-	burnerNoTLS := viper.GetBool("burner.notls")
-	burnerRPCUser := viper.GetString("burner.rpcuser")
-	burnerRPCPass := viper.GetString("burner.rpcpass")
-	burnerRPCListen := viper.GetString("burner.rpclisten")
-	burnerUTXOKeeperSkip := viper.GetInt32("burner.utxokeeperskip")
+	testnet := viper.GetBool("burner.testnet")
+	noTLS := viper.GetBool("burner.notls")
+	rpcUser := viper.GetString("burner.rpcuser")
+	rpcPass := viper.GetString("burner.rpcpass")
+	rpcListen := viper.GetString("burner.rpclisten")
+	utxoKeeperSkip := viper.GetInt32("burner.utxokeeperskip")
+	utxoKeeperNumThread := viper.GetInt("burner.utxokeeperworkers")
+	noUTXOKeeper := viper.GetBool("burner.utxokeeperoff")
+	reIndex := viper.GetBool("burner.utxokeeperreindex")
 
 	// Set default burner RPC listening address
-	if len(burnerRPCListen) == 0 {
-		burnerRPCListen = "127.0.0.1:9334"
-		if burnerTestnet {
-			burnerRPCListen = "127.0.0.1:19334"
+	if len(rpcListen) == 0 {
+		rpcListen = "127.0.0.1:9334"
+		if testnet {
+			rpcListen = "127.0.0.1:19334"
 		}
 	}
 
@@ -170,7 +177,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 	// The status channel is used inform other processes about errors
 	// that caused the burner server to stop.
 	os.Args = append([]string{""}, makeBurnerChainArgs()...)
-	config.SetBurnerMainnet(!burnerTestnet)
+	config.SetBurnerMainnet(!testnet)
 	status := make(chan error)
 	go ltcd.Main(interrupt, status)
 
@@ -183,16 +190,18 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 
 	// If the burner RPC user and pass are provided, then
 	// we need to start the burner account utxo indexer
-	if burnerRPCUser != "" && burnerRPCPass != "" {
-		bc, err := burner.GetClient(burnerRPCListen, burnerRPCUser, burnerRPCPass, burnerNoTLS)
-		if err != nil {
-			ltcd.SendShutdownRequest()
-			log.Fatal("failed to setup burner RPC server client", "Err", err.Error())
-		}
+	if rpcUser != "" && rpcPass != "" {
+		if !noUTXOKeeper {
+			bc, err := burner.GetClient(rpcListen, rpcUser, rpcPass, noTLS)
+			if err != nil {
+				close(interrupt)
+				log.Fatal("failed to setup burner RPC server client", "Err", err.Error())
+			}
 
-		utxoKeeper := burner.NewBurnerAccountUTXOKeeper(log, db, config.GetNetVersion(), interrupt)
-		utxoKeeper.SetClient(bc)
-		go utxoKeeper.Begin(accountMgr, 2, burnerUTXOKeeperSkip)
+			utxoKeeper := burner.NewBurnerAccountUTXOKeeper(log, db, config.GetNetVersion(), interrupt)
+			utxoKeeper.SetClient(bc)
+			go utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex)
+		}
 	}
 
 	return status
@@ -362,8 +371,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 		burnerAPI.APIs(),
 	)
 
+	// Start the JSON-RPC 2.0 server and wait for it to start
 	if startRPC {
 		go rpcServer.Serve()
+		time.Sleep(1 * time.Second)
 	}
 
 	// Initialize and start the console if
@@ -462,6 +473,9 @@ func init() {
 	startCmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
 	startCmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
 	startCmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
-	startCmd.Flags().String("burner-rpclisten", "", "Set the interface/port to listen for RPC connections")
-	startCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the utxo keeper to skip blocks below the given height")
+	startCmd.Flags().String("burner-rpclisten", "", "Set the burner RPC server interface/port to listen for connections.")
+	startCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the burner account utxo keeper to skip blocks below the given height.")
+	startCmd.Flags().Int("burner-utxokeeperworkers", 3, "Set the number of burner account UTXO keeper worker threads.")
+	startCmd.Flags().Bool("burner-utxokeeperoff", false, "Disable the burner account UTXO keeper service.")
+	startCmd.Flags().Bool("burner-utxokeeperreindex", false, "Force the UTXO keeper to re-index burner accounts")
 }

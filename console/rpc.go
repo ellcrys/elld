@@ -85,9 +85,7 @@ func (e *Executor) startRPCServer() {
 		return
 	}
 
-	go func() {
-		e.rpcServer.Serve()
-	}()
+	go e.rpcServer.Serve()
 
 	go func() {
 		time.Sleep(10 * time.Millisecond)

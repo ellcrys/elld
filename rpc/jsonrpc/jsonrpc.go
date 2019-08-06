@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/ncodes/authtoken"
 
@@ -83,6 +85,9 @@ func (r Response) IsError() bool {
 // defined in packages that offer RPC APIs.`
 type JSONRPC struct {
 
+	// log is the logger for this package
+	log logger.Logger
+
 	// addr is the listening address
 	addr string
 
@@ -108,8 +113,8 @@ type JSONRPC struct {
 	// handle has been configured
 	handlerConfigured bool
 
-	// cancel function is used to stop the server
-	cancel context.CancelFunc
+	// server is the rpc server
+	server *http.Server
 }
 
 // MakeSessionToken creates a session token for RPC requests.
@@ -166,12 +171,13 @@ func Success(result interface{}) *Response {
 }
 
 // New creates a JSONRPC server
-func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
+func New(log logger.Logger, addr string, sessionKey string, disableAuth bool) *JSONRPC {
 	rpc := &JSONRPC{
 		addr:        addr,
 		apiSet:      APISet{},
 		sessionKey:  sessionKey,
 		disableAuth: disableAuth,
+		log:         log.Module("JSONRPC"),
 	}
 	rpc.MergeAPISet(rpc.APIs())
 	return rpc
@@ -213,15 +219,9 @@ func (s *JSONRPC) Serve() {
 	server.RegisterCodec(json2.NewCodec(), "application/json;charset=UTF-8")
 	r.Handle("/rpc", server)
 
-	srv := &http.Server{Addr: s.addr}
+	s.server = &http.Server{Addr: s.addr}
 	s.registerHandler()
-	go srv.ListenAndServe()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
-	defer cancel()
-	srv.Shutdown(ctx)
-	<-ctx.Done()
+	s.server.ListenAndServe()
 }
 
 func (s *JSONRPC) registerHandler() {
@@ -242,8 +242,10 @@ func (s *JSONRPC) registerHandler() {
 
 // Stop stops the RPC server
 func (s *JSONRPC) Stop() {
-	if s.cancel != nil {
-		s.cancel()
+	if s.server != nil {
+		s.log.Debug("Server is shutting down...")
+		s.server.Shutdown(context.Background())
+		s.log.Debug("Server has shutdown")
 	}
 }
 

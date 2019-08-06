@@ -82,10 +82,15 @@ func init() {
 	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 	consoleCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
 	consoleCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
+
+	// Burner chain related flags
 	consoleCmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
 	consoleCmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
 	consoleCmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
 	consoleCmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
-	consoleCmd.Flags().String("burner-rpclisten", "127.0.0.1:8334", "Set the interface/port to listen for RPC connections")
-	consoleCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the utxo keeper to skip blocks below the given height")
+	consoleCmd.Flags().String("burner-rpclisten", "", "Set the burner RPC server interface/port to listen for connections.")
+	consoleCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the burner account utxo keeper to skip blocks below the given height.")
+	consoleCmd.Flags().Int("burner-utxokeeperworkers", 3, "Set the number of burner account UTXO keeper worker threads.")
+	consoleCmd.Flags().Bool("burner-utxokeeperoff", false, "Disable the burner account UTXO keeper service.")
+	consoleCmd.Flags().Bool("burner-utxokeeperreindex", false, "Force the UTXO keeper to re-index burner accounts")
 }
