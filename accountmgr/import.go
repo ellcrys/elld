@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ellcrys/elld/util"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/fatih/color"
 
@@ -21,23 +23,23 @@ import (
 func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 
 	if keyfile == "" {
-		printErr("Keyfile is required.")
+		util.PrintCLIError("Keyfile is required.")
 		return fmt.Errorf("Keyfile is required")
 	}
 
 	fullKeyfilePath, err := filepath.Abs(keyfile)
 	if err != nil {
-		printErr("Invalid keyfile path {%s}", keyfile)
+		util.PrintCLIError("Invalid keyfile path {%s}", keyfile)
 		return fmt.Errorf("Invalid keyfile path")
 	}
 
 	keyFileContent, err := ioutil.ReadFile(fullKeyfilePath)
 	if err != nil {
 		if funk.Contains(err.Error(), "no such file") {
-			printErr("Keyfile {%s} not found.", keyfile)
+			util.PrintCLIError("Keyfile {%s} not found.", keyfile)
 		}
 		if funk.Contains(err.Error(), "is a directory") {
-			printErr("Keyfile {%s} is a directory. Expects a file.", keyfile)
+			util.PrintCLIError("Keyfile {%s} is a directory. Expects a file.", keyfile)
 		}
 		return err
 	}
@@ -46,7 +48,7 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 	fileContentStr := strings.TrimSpace(string(keyFileContent))
 	sk, err := crypto.PrivKeyFromBase58(fileContentStr)
 	if err != nil {
-		printErr("Keyfile contains invalid private key")
+		util.PrintCLIError("Keyfile contains invalid private key")
 		return err
 	}
 
@@ -58,7 +60,7 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 		fmt.Println("Your new account needs to be locked with a password. Please enter a password.")
 		passphrase, err = am.AskForPassword()
 		if err != nil {
-			printErr(err.Error())
+			util.PrintCLIError(err.Error())
 			return err
 		}
 		goto create
@@ -72,10 +74,10 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 	content, err = ioutil.ReadFile(pwd)
 	if err != nil {
 		if funk.Contains(err.Error(), "no such file") {
-			printErr("Password file {%s} not found.", pwd)
+			util.PrintCLIError("Password file {%s} not found.", pwd)
 		}
 		if funk.Contains(err.Error(), "is a directory") {
-			printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+			util.PrintCLIError("Password file path {%s} is a directory. Expects a file.", pwd)
 		}
 		return err
 	}
@@ -85,7 +87,7 @@ func (am *AccountManager) ImportCmd(keyfile, pwd string) error {
 create:
 	address := crypto.NewKeyFromPrivKey(sk)
 	if err := am.CreateAccount(address, passphrase); err != nil {
-		printErr(err.Error())
+		util.PrintCLIError(err.Error())
 		return err
 	}
 

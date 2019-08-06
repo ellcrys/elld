@@ -195,6 +195,7 @@ func (c *Console) OnStop(f func()) {
 
 // Run the console
 func (c *Console) Run() {
+	fmt.Println("")
 	c.about()
 	c.prompt.Run()
 }
@@ -204,14 +205,14 @@ func (c *Console) Run() {
 func (c *Console) Stop(immediately bool) {
 	c.Lock()
 	defer c.Unlock()
-	
+
 	if c.confirmedStop || immediately {
 		c.saveHistory()
 		if c.onStopFunc != nil {
 			c.onStopFunc()
 		}
 	}
-	
+
 	fmt.Println("(To exit, press ^C again or type .exit)")
 	c.confirmedStop = true
 }

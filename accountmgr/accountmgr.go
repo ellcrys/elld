@@ -19,8 +19,6 @@ import (
 	"github.com/vmihailenco/msgpack"
 	"golang.org/x/crypto/scrypt"
 
-	"github.com/fatih/color"
-
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/go-prompt"
@@ -158,7 +156,7 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 		fmt.Println("Your new account needs to be locked with a password. Please enter a password.")
 		passphrase, err = am.AskForPassword()
 		if err != nil {
-			printErr(err.Error())
+			util.PrintCLIError(err.Error())
 			return nil, err
 		}
 	}
@@ -168,10 +166,10 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 		content, err := ioutil.ReadFile(pwd)
 		if err != nil {
 			if funk.Contains(err.Error(), "no such file") {
-				printErr("Password file {%s} not found.", pwd)
+				util.PrintCLIError("Password file {%s} not found.", pwd)
 			}
 			if funk.Contains(err.Error(), "is a directory") {
-				printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+				util.PrintCLIError("Password file path {%s} is a directory. Expects a file.", pwd)
 			}
 			return nil, err
 		}
@@ -194,7 +192,7 @@ func (am *AccountManager) CreateCmd(seed int64, pwd string) (*crypto.Key, error)
 
 	// Create and encrypted the account on disk
 	if err := am.CreateAccount(address, passphrase); err != nil {
-		printErr(err.Error())
+		util.PrintCLIError(err.Error())
 		return nil, err
 	}
 
@@ -284,7 +282,7 @@ func (am *AccountManager) CreateBurnerCmd(seed int64, pwd string, testnet bool) 
 		fmt.Println("Your new account needs to be locked with a password. Please enter a password.")
 		passphrase, err = am.AskForPassword()
 		if err != nil {
-			printErr(err.Error())
+			util.PrintCLIError(err.Error())
 			return nil, err
 		}
 	}
@@ -294,10 +292,10 @@ func (am *AccountManager) CreateBurnerCmd(seed int64, pwd string, testnet bool) 
 		content, err := ioutil.ReadFile(pwd)
 		if err != nil {
 			if funk.Contains(err.Error(), "no such file") {
-				printErr("Password file {%s} not found.", pwd)
+				util.PrintCLIError("Password file {%s} not found.", pwd)
 			}
 			if funk.Contains(err.Error(), "is a directory") {
-				printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+				util.PrintCLIError("Password file path {%s} is a directory. Expects a file.", pwd)
 			}
 			return nil, err
 		}
@@ -316,15 +314,11 @@ func (am *AccountManager) CreateBurnerCmd(seed int64, pwd string, testnet bool) 
 
 	// Create the burner account
 	if err = am.CreateBurnerAccount(key, passphrase); err != nil {
-		printErr("Failed to create burner account: %s", err)
+		util.PrintCLIError("Failed to create burner account: %s", err)
 		return nil, err
 	}
 
 	return key, nil
-}
-
-func printErr(msg string, args ...interface{}) {
-	fmt.Println(color.RedString("Error:"), fmt.Sprintf(msg, args...))
 }
 
 // harden improves a password's security and hardens it against

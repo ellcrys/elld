@@ -83,4 +83,35 @@ var _ = FDescribe("Secp256k1", func() {
 			Expect(testnet).To(BeFalse())
 		})
 	})
+
+	Describe(".NetParam", func() {
+		It("should return testnet param", func() {
+			sk, _ := NewSecp256k1(nil, true, false)
+			param := sk.NetParam()
+			Expect(*param).To(Equal(chaincfg.TestNet4Params))
+		})
+	})
+
+	Describe(".NetParam", func() {
+		It("should return testnet param", func() {
+			sk, _ := NewSecp256k1(nil, true, false)
+			param := sk.NetParam()
+			Expect(*param).To(Equal(chaincfg.TestNet4Params))
+		})
+
+		It("should return mainnet param", func() {
+			sk, _ := NewSecp256k1(nil, false, false)
+			param := sk.NetParam()
+			Expect(*param).To(Equal(chaincfg.MainNetParams))
+		})
+	})
+
+	FDescribe(".WIFToAddress", func() {
+		It("", func() {
+			seed := int64(1)
+			sk, _ := NewSecp256k1(&seed, false, true)
+			wif, _ := sk.WIF()
+			WIFToAddress(wif)
+		})
+	})
 })

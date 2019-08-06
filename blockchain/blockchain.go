@@ -46,6 +46,8 @@ var (
 // functionalities for interacting with the underlying database
 // and primitives.
 type Blockchain struct {
+	interrupt <-chan struct{}
+
 	// lock is a general purpose lock for store etc
 	lock *sync.RWMutex
 
@@ -126,6 +128,12 @@ func New(txPool types.TxPool, cfg *config.EngineConfig, log logger.Logger) *Bloc
 	bc.eventEmitter = &emitter.Emitter{}
 	bc.ticketMgr = ticket.NewManager(bc)
 	return bc
+}
+
+// SetInterrupt sets the interrupt channel. When closed,
+// the blockchain should be closed and all operations gracefull stopped.
+func (b *Blockchain) SetInterrupt(interrupt <-chan struct{}) {
+	b.interrupt = interrupt
 }
 
 // SetCoinbase sets the coinbase key that is used to

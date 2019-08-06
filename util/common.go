@@ -354,3 +354,30 @@ func EncodeForJS(obj interface{}, fieldToIgnore ...string) interface{} {
 
 	return m
 }
+
+// PrintCLIError prints an error message formatted for the command line
+func PrintCLIError(msg string, args ...interface{}) {
+	fmt.Println(color.RedString("Error:"), fmt.Sprintf(msg, args...))
+}
+
+// IsBoolChanClosed checks whether a boolean channel is closed
+func IsBoolChanClosed(c chan bool) bool {
+	select {
+	case <-c:
+		return true
+	default:
+	}
+
+	return false
+}
+
+// IsStructChanClosed checks whether a struct channel is closed
+func IsStructChanClosed(c <-chan struct{}) bool {
+	select {
+	case <-c:
+		return true
+	default:
+	}
+
+	return false
+}

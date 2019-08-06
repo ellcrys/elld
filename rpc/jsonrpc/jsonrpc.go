@@ -108,9 +108,8 @@ type JSONRPC struct {
 	// handle has been configured
 	handlerConfigured bool
 
-	// done is used to wait for the server to
-	// shutdown
-	done chan bool
+	// cancel function is used to stop the server
+	cancel context.CancelFunc
 }
 
 // MakeSessionToken creates a session token for RPC requests.
@@ -173,7 +172,6 @@ func New(addr string, sessionKey string, disableAuth bool) *JSONRPC {
 		apiSet:      APISet{},
 		sessionKey:  sessionKey,
 		disableAuth: disableAuth,
-		done:        make(chan bool),
 	}
 	rpc.MergeAPISet(rpc.APIs())
 	return rpc
@@ -209,8 +207,6 @@ func (s *JSONRPC) Methods() (methodsInfo []MethodInfo) {
 // Serve starts the server
 func (s *JSONRPC) Serve() {
 
-	s.done = make(chan bool)
-
 	r := mux.NewRouter()
 	server := rpc.NewServer()
 	server.RegisterCodec(json2.NewCodec(), "application/json")
@@ -221,8 +217,11 @@ func (s *JSONRPC) Serve() {
 	s.registerHandler()
 	go srv.ListenAndServe()
 
-	<-s.done
-	srv.Shutdown(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+	defer cancel()
+	srv.Shutdown(ctx)
+	<-ctx.Done()
 }
 
 func (s *JSONRPC) registerHandler() {
@@ -243,7 +242,9 @@ func (s *JSONRPC) registerHandler() {
 
 // Stop stops the RPC server
 func (s *JSONRPC) Stop() {
-	close(s.done)
+	if s.cancel != nil {
+		s.cancel()
+	}
 }
 
 // MergeAPISet merges an API set with s current api sets
@@ -264,7 +265,8 @@ func (s *JSONRPC) AddAPI(name string, api APIInfo) {
 // the request according to JSON RPC specification,
 // find the method and passes it off.
 func (s *JSONRPC) handle(w http.ResponseWriter, r *http.Request) *Response {
-	// attempt to decode the body
+
+	// Decode the body
 	var newReq Request
 	if err := json.NewDecoder(r.Body).Decode(&newReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)

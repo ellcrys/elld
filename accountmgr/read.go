@@ -18,6 +18,9 @@ var (
 	ErrAccountNotFound = fmt.Errorf("account not found")
 )
 
+// StoredAccountMeta represents additional meta data of an account
+type StoredAccountMeta map[string]interface{}
+
 // StoredAccount represents an encrypted account stored on disk
 type StoredAccount struct {
 
@@ -34,7 +37,7 @@ type StoredAccount struct {
 	CreatedAt time.Time
 
 	// Store other information about the account here
-	meta map[string]interface{}
+	meta StoredAccountMeta
 }
 
 // AccountExist checks if an account with a matching address exists
@@ -139,6 +142,22 @@ func (am *AccountManager) GetBurnerAccountByAddress(addr string) (*StoredAccount
 	}
 
 	return account.(*StoredAccount), nil
+}
+
+// HasKey checks whether a key exist
+func (sm StoredAccountMeta) HasKey(key string) bool {
+	_, ok := sm[key]
+	return ok
+}
+
+// Get returns a value
+func (sm StoredAccountMeta) Get(key string) interface{} {
+	return sm[key]
+}
+
+// GetMeta returns the meta information of the account
+func (sa *StoredAccount) GetMeta() StoredAccountMeta {
+	return sa.meta
 }
 
 // GetKey gets an instance of the decrypted account's key.

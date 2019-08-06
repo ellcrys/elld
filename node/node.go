@@ -41,6 +41,7 @@ import (
 
 // Node represents a network node
 type Node struct {
+	interrupt           <-chan struct{}
 	mtx                 sync.RWMutex
 	cfg                 *config.EngineConfig // node config
 	address             util.NodeAddr        // node address
@@ -143,6 +144,12 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 	return node, nil
 }
 
+// SetInterrupt sets the interrupt channel. When closed,
+// the node should be closed and all operations gracefull stopped.
+func (n *Node) SetInterrupt(interrupt <-chan struct{}) {
+	n.interrupt = interrupt
+}
+
 // GetListenAddresses gets the address at which the node listens
 func (n *Node) GetListenAddresses() (addrs []util.NodeAddr) {
 	lAddrs, _ := n.host.Network().InterfaceListenAddresses()
@@ -225,9 +232,8 @@ func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 }
 
 // OpenDB opens the database.
-// In dev mode, create a namespace
-// and open database file prefixed
-// with the namespace.
+// In dev mode, create a namespace and open
+// database file prefixed with the namespace.
 func (n *Node) OpenDB() error {
 
 	if n.db != nil {
@@ -589,6 +595,13 @@ func (n *Node) SetGossipManager(m core.Gossip) {
 
 // Start starts the node.
 func (n *Node) Start() {
+
+	go func() {
+		if n.interrupt != nil {
+			<-n.interrupt
+			n.Stop()
+		}
+	}()
 
 	// Start the peer manager
 	n.PM().Manage()

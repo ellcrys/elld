@@ -48,6 +48,10 @@ const (
 	// NamespaceLogger is the namespace for RPC methods
 	// for configuring the logger
 	NamespaceLogger = "logger"
+
+	// NamespaceBurner is the namespace for RPC methods
+	// for burning coins
+	NamespaceBurner = "burner"
 )
 
 // ValidationContext is used to

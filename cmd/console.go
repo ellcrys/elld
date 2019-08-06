@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"github.com/ellcrys/elld/config"
-	"github.com/ellcrys/elld/ltcsuite/ltcd"
 	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -64,22 +63,7 @@ var consoleCmd = &cobra.Command{
 			defer profile.Start(profile.MutexProfile, profilePath).Stop()
 		}
 
-		node, rpcServer, cs := start(cmd, args, true)
-
-		// Stop all subservices once console is terminated
-		cs.OnStop(func() {
-
-			// Shutdown litcoin server
-			ltcd.SendShutdownRequest()
-
-			// Shutdown RPC server
-			rpcServer.Stop()
-
-			// Shutdown the local node
-			node.Stop()
-		})
-
-		node.Wait()
+		start(cmd, args, true, interrupt)
 	},
 }
 
@@ -98,5 +82,10 @@ func init() {
 	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
 	consoleCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
 	consoleCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
-	consoleCmd.Flags().String("ltc-args", "", "Provide arguments to pass to the Litecoin node")
+	consoleCmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
+	consoleCmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
+	consoleCmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
+	consoleCmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
+	consoleCmd.Flags().String("burner-rpclisten", "127.0.0.1:8334", "Set the interface/port to listen for RPC connections")
+	consoleCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the utxo keeper to skip blocks below the given height")
 }

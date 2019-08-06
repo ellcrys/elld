@@ -19,7 +19,6 @@ import (
 	"os/signal"
 	path "path/filepath"
 	"sync"
-	"syscall"
 
 	"github.com/spf13/viper"
 
@@ -54,9 +53,10 @@ var (
 	consoleHistoryFilePath string
 	log                    logger.Logger
 	devMode                bool
-	sigs                   chan os.Signal
+	sig                    chan os.Signal
 	accountMgr             *accountmgr.AccountManager
 	onTerminate            func()
+	interrupt              = make(chan struct{})
 	mtx                    = &sync.Mutex{}
 )
 
@@ -85,19 +85,6 @@ func Execute() {
 }
 
 func init() {
-	sigs = make(chan os.Signal, 1)
-	signal.Reset()
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigs
-		mtx.Lock()
-		defer mtx.Unlock()
-		if onTerminate != nil {
-			onTerminate()
-		}
-	}()
-
 	rootCmd.PersistentFlags().String("net", config.DefaultNetVersion, "Set the network version")
 	rootCmd.PersistentFlags().String("data-dir", "", "Set configuration directory")
 	rootCmd.PersistentFlags().Bool("dev", false, "Run client in development mode")
@@ -107,6 +94,27 @@ func init() {
 	rootCmd.PersistentFlags().Bool("mutex-profile", false, "Start Mutex Profiling")
 	viper.BindPFlag("net.version", rootCmd.PersistentFlags().Lookup("net"))
 	cobra.OnInitialize(initConfig)
+
+	sig = make(chan os.Signal, 1)
+	signal.Reset()
+	signal.Notify(sig, os.Interrupt)
+	signalReceived := false
+
+	go func() {
+		for {
+			select {
+			case s := <-sig:
+				if signalReceived {
+					log.Info("Already received signal. Shutting down...", "Signal", s)
+					continue
+				}
+				log.Info("Received signal. Shutting down...", "Signal", s)
+				close(interrupt)
+				signalReceived = true
+			default:
+			}
+		}
+	}()
 }
 
 func initConfig() {

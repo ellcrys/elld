@@ -238,4 +238,34 @@ var _ = Describe("Read", func() {
 		})
 	})
 
+	Describe("StoredAccountMeta", func() {
+		Describe(".HasKey", func() {
+			It("should return false when key does not exist", func() {
+				sa := StoredAccount{meta: map[string]interface{}{}}
+				r := sa.meta.HasKey("key")
+				Expect(r).To(BeFalse())
+			})
+
+			It("should return true when key exist", func() {
+				sa := StoredAccount{meta: map[string]interface{}{"key": 2}}
+				r := sa.meta.HasKey("key")
+				Expect(r).To(BeTrue())
+			})
+		})
+
+		Describe(".Get", func() {
+			It("should return nil when key does not exist", func() {
+				sa := StoredAccount{meta: map[string]interface{}{}}
+				r := sa.meta.Get("key")
+				Expect(r).To(BeNil())
+			})
+
+			It("should return expected value when key exist", func() {
+				sa := StoredAccount{meta: map[string]interface{}{"key": 2}}
+				r := sa.meta.Get("key")
+				Expect(r).To(Equal(2))
+			})
+		})
+	})
+
 })

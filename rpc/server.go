@@ -20,6 +20,8 @@ type Result struct {
 
 // Server represents a rpc server
 type Server struct {
+	interrupt <-chan struct{}
+
 	sync.RWMutex
 
 	// db is the raw database
@@ -43,14 +45,16 @@ type Server struct {
 }
 
 // NewServer creates a new RPC server
-func NewServer(db elldb.DB, addr string, cfg *config.EngineConfig, log logger.Logger) *Server {
-	s := new(Server)
-	s.db = db
-	s.addr = addr
-	s.log = log
-	s.cfg = cfg
-	s.rpc = jsonrpc.New(addr, cfg.RPC.SessionSecretKey, cfg.RPC.DisableAuth)
-	return s
+func NewServer(db elldb.DB, addr string, cfg *config.EngineConfig, log logger.Logger,
+	interrupt <-chan struct{}) *Server {
+	return &Server{
+		db:        db,
+		addr:      addr,
+		log:       log,
+		cfg:       cfg,
+		rpc:       jsonrpc.New(addr, cfg.RPC.SessionSecretKey, cfg.RPC.DisableAuth),
+		interrupt: interrupt,
+	}
 }
 
 // GetAddr gets the address
@@ -62,6 +66,14 @@ func (s *Server) GetAddr() string {
 
 // Serve starts the server
 func (s *Server) Serve() {
+
+	go func() {
+		if s.interrupt != nil {
+			<-s.interrupt
+			s.Stop()
+		}
+	}()
+
 	s.AddAPI(s.APIs())
 	s.Lock()
 	s.started = true

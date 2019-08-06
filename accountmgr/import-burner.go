@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ellcrys/elld/util"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/ltcsuite/ltcutil"
 	"github.com/fatih/color"
@@ -24,23 +26,23 @@ import (
 func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) error {
 
 	if keyfile == "" {
-		printErr("Keyfile is required.")
+		util.PrintCLIError("Keyfile is required.")
 		return fmt.Errorf("Keyfile is required")
 	}
 
 	fullKeyfilePath, err := filepath.Abs(keyfile)
 	if err != nil {
-		printErr("Invalid keyfile path {%s}", keyfile)
+		util.PrintCLIError("Invalid keyfile path {%s}", keyfile)
 		return fmt.Errorf("Invalid keyfile path")
 	}
 
 	keyFileContent, err := ioutil.ReadFile(fullKeyfilePath)
 	if err != nil {
 		if funk.Contains(err.Error(), "no such file") {
-			printErr("Keyfile {%s} not found.", keyfile)
+			util.PrintCLIError("Keyfile {%s} not found.", keyfile)
 		}
 		if funk.Contains(err.Error(), "is a directory") {
-			printErr("Keyfile {%s} is a directory. Expects a file.", keyfile)
+			util.PrintCLIError("Keyfile {%s} is a directory. Expects a file.", keyfile)
 		}
 		return err
 	}
@@ -49,7 +51,7 @@ func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) err
 	fileContentStr := strings.TrimSpace(string(keyFileContent))
 	wif, err := ltcutil.DecodeWIF(fileContentStr)
 	if err != nil {
-		printErr("File content is not a valid WIF key")
+		util.PrintCLIError("File content is not a valid WIF key")
 		return fmt.Errorf("File content is not a valid WIF key")
 	}
 
@@ -61,7 +63,7 @@ func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) err
 		fmt.Println("Your new account needs to be locked with a password. Please enter a password.")
 		passphrase, err = am.AskForPassword()
 		if err != nil {
-			printErr(err.Error())
+			util.PrintCLIError(err.Error())
 			return err
 		}
 		goto create
@@ -75,10 +77,10 @@ func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) err
 	content, err = ioutil.ReadFile(pwd)
 	if err != nil {
 		if funk.Contains(err.Error(), "no such file") {
-			printErr("Password file {%s} not found.", pwd)
+			util.PrintCLIError("Password file {%s} not found.", pwd)
 		}
 		if funk.Contains(err.Error(), "is a directory") {
-			printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+			util.PrintCLIError("Password file path {%s} is a directory. Expects a file.", pwd)
 		}
 		return err
 	}
@@ -86,14 +88,11 @@ func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) err
 	passphrase = strings.TrimSpace(strings.Trim(passphrase, "/n"))
 
 create:
-	key, err := crypto.NewSecp256k1FromWif(wif, testnet, true)
-	if err != nil {
-		printErr("Failed to create Secp256k1 key from WIF key: %s", err)
-		return err
-	}
+
+	key := crypto.NewSecp256k1FromWIF(wif, testnet, true)
 
 	if err := am.CreateBurnerAccount(key, passphrase); err != nil {
-		printErr(err.Error())
+		util.PrintCLIError(err.Error())
 		return err
 	}
 

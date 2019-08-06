@@ -16,7 +16,7 @@ import (
 func (am *AccountManager) UpdateCmd(address string) error {
 
 	if len(address) == 0 {
-		printErr("Address is required")
+		util.PrintCLIError("Address is required")
 		return fmt.Errorf("Address is required")
 	}
 
@@ -31,7 +31,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	})
 
 	if account == nil {
-		printErr("Account {%s} does not exist", address)
+		util.PrintCLIError("Account {%s} does not exist", address)
 		return fmt.Errorf("account not found")
 	}
 
@@ -47,7 +47,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	acctBytes, err := util.Decrypt(account.(*StoredAccount).Cipher, passphraseBs[:])
 	if err != nil {
 		if funk.Contains(err.Error(), "invalid key") {
-			printErr("Invalid password. Could not unlock account.")
+			util.PrintCLIError("Invalid password. Could not unlock account.")
 			return err
 		}
 		return err
@@ -56,14 +56,14 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	// we expect a base58check content, verify it
 	acctBytesBase58Dec, _, err := base58.CheckDecode(string(acctBytes))
 	if err != nil {
-		printErr("Invalid password. Could not unlock account.")
+		util.PrintCLIError("Invalid password. Could not unlock account.")
 		return err
 	}
 
 	// attempt to decode to ensure content is json encoded
 	var accountData map[string]string
 	if err := msgpack.Unmarshal(acctBytesBase58Dec, &accountData); err != nil {
-		printErr("Unable to parse unlocked account data")
+		util.PrintCLIError("Unable to parse unlocked account data")
 		return err
 	}
 
@@ -71,7 +71,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	fmt.Println("Enter your new password")
 	newPassphrase, err := am.AskForPassword()
 	if err != nil {
-		printErr(err.Error())
+		util.PrintCLIError(err.Error())
 		return err
 	}
 
@@ -86,7 +86,7 @@ func (am *AccountManager) UpdateCmd(address string) error {
 	filename := filepath.Join(am.accountDir, fmt.Sprintf("%d_%s", acct.CreatedAt.Unix(), acct.Address))
 	err = ioutil.WriteFile(filename, updatedCipher, 0644)
 	if err != nil {
-		printErr("Unable to persist cipher. %s", err.Error())
+		util.PrintCLIError("Unable to persist cipher. %s", err.Error())
 		return err
 	}
 

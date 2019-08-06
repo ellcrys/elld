@@ -11,13 +11,30 @@ const MainNetVersion = "0001"
 
 var (
 	// versions contains protocol handlers versions information
-	versions *ProtocolVersions
-	cfgLck   = &sync.RWMutex{}
+	versions      *ProtocolVersions
+	cfgLck        = &sync.RWMutex{}
+	curNetVersion = DefaultNetVersion
+	burnerMainnet = true
 )
 
 // IsMainNetVersion checks whether a given version represents the mainnet version
 func IsMainNetVersion(version string) bool {
 	return version == MainNetVersion
+}
+
+// IsMainNet returns true if the current network is the mainnet
+func IsMainNet() bool {
+	return GetNetVersion() == MainNetVersion
+}
+
+// SetBurnerMainnet sets whether the burner chain is a mainnet
+func SetBurnerMainnet(mainnet bool) {
+	burnerMainnet = mainnet
+}
+
+// IsBurnerMainnet returns true if the burner node is on the mainnet
+func IsBurnerMainnet() bool {
+	return burnerMainnet
 }
 
 // SetVersions sets the protocol version.
@@ -29,6 +46,8 @@ func SetVersions(netVersion string) {
 
 	if netVersion == "" {
 		netVersion = DefaultNetVersion
+	} else {
+		curNetVersion = netVersion
 	}
 
 	versions = &ProtocolVersions{
@@ -50,6 +69,11 @@ func GetVersions() *ProtocolVersions {
 	cfgLck.RLock()
 	defer cfgLck.RUnlock()
 	return versions
+}
+
+// GetNetVersion returns the current network version
+func GetNetVersion() string {
+	return curNetVersion
 }
 
 func init() {

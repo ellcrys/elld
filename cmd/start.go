@@ -7,6 +7,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ellcrys/elld/elldb"
+
+	"github.com/ellcrys/elld/burner"
+
 	"github.com/spf13/viper"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -113,6 +117,87 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 	return storedAccount.GetKey().(*crypto.Key), nil
 }
 
+// makeBurnerChainArgs returns arguments
+// compatible with the burn chain
+func makeBurnerChainArgs() []string {
+	args := []string{}
+	if viper.GetBool("burner.testnet") {
+		args = append(args, "--testnet")
+	}
+	if viper.GetBool("burner.notls") {
+		args = append(args, "--notls")
+	}
+	if rpcUser := viper.GetString("burner.rpcuser"); len(rpcUser) > 0 {
+		args = append(args, []string{"--rpcuser", rpcUser}...)
+	}
+	if rpcPass := viper.GetString("burner.rpcpass"); len(rpcPass) > 0 {
+		args = append(args, []string{"--rpcpass", rpcPass}...)
+	}
+	if rpcListen := viper.GetString("burner.rpclisten"); len(rpcListen) > 0 {
+		args = append(args, []string{"--rpclisten", rpcListen}...)
+	}
+	return args
+}
+
+// initBurnerServer sets up the burner server.
+// It will return nil if the server stopped gracefully
+// or error if it was interrupted.
+func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
+
+	viper.BindPFlag("burner.testnet", cmd.Flags().Lookup("burner-testnet"))
+	viper.BindPFlag("burner.rpcuser", cmd.Flags().Lookup("burner-rpcuser"))
+	viper.BindPFlag("burner.rpcpass", cmd.Flags().Lookup("burner-rpcpass"))
+	viper.BindPFlag("burner.notls", cmd.Flags().Lookup("burner-notls"))
+	viper.BindPFlag("burner.rpclisten", cmd.Flags().Lookup("burner-rpclisten"))
+	viper.BindPFlag("burner.utxokeeperskip", cmd.Flags().Lookup("burner-utxokeeperskip"))
+
+	burnerTestnet := viper.GetBool("burner.testnet")
+	burnerNoTLS := viper.GetBool("burner.notls")
+	burnerRPCUser := viper.GetString("burner.rpcuser")
+	burnerRPCPass := viper.GetString("burner.rpcpass")
+	burnerRPCListen := viper.GetString("burner.rpclisten")
+	burnerUTXOKeeperSkip := viper.GetInt32("burner.utxokeeperskip")
+
+	// Set default burner RPC listening address
+	if len(burnerRPCListen) == 0 {
+		burnerRPCListen = "127.0.0.1:9334"
+		if burnerTestnet {
+			burnerRPCListen = "127.0.0.1:19334"
+		}
+	}
+
+	// Configure burn chain argument and start the burn chain server.
+	// The status channel is used inform other processes about errors
+	// that caused the burner server to stop.
+	os.Args = append([]string{""}, makeBurnerChainArgs()...)
+	config.SetBurnerMainnet(!burnerTestnet)
+	status := make(chan error)
+	go ltcd.Main(interrupt, status)
+
+	// Ensure the burner server did not fail to start.
+	// If it did, terminate the program using os.Exit(1)
+	err := <-status
+	if err != nil {
+		os.Exit(1)
+	}
+
+	// If the burner RPC user and pass are provided, then
+	// we need to start the burner account utxo indexer
+	if burnerRPCUser != "" && burnerRPCPass != "" {
+		bc, err := burner.GetClient(burnerRPCListen, burnerRPCUser, burnerRPCPass, burnerNoTLS)
+		if err != nil {
+			ltcd.SendShutdownRequest()
+			log.Fatal("failed to setup burner RPC server client", "Err", err.Error())
+		}
+
+		utxoKeeper := burner.NewBurnerAccountUTXOKeeper(log, db, config.GetNetVersion(), interrupt)
+		utxoKeeper.SetClient(bc)
+		go utxoKeeper.Begin(accountMgr, 2, burnerUTXOKeeperSkip)
+	}
+
+	return status
+}
+
 // starts the node.
 // - Parse flags
 // - Validate node bind address
@@ -127,7 +212,7 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 // - start RPC server if enabled
 // - start console if enabled
 // - connect console to rpc server and prepare console vm if rpc server is enabled
-func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *rpc.Server, *console.Console) {
+func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan struct{}) {
 
 	var err error
 
@@ -143,7 +228,8 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
 	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("no-net"))
 	viper.BindPFlag("node.syncDisabled", cmd.Flags().Lookup("sync-disabled"))
-	viper.BindPFlag("litecoin.args", cmd.Flags().Lookup("ltc-args"))
+
+	// Host chain config variables
 	account := viper.GetString("node.account")
 	password := viper.GetString("node.password")
 	listeningAddr := viper.GetString("node.address")
@@ -152,7 +238,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	seed := viper.GetInt64("node.seed")
 	noNet := viper.GetBool("node.noNet")
 	syncDisabled := viper.GetBool("node.syncDisabled")
-	ltcArgs := viper.GetString("litecoin.args")
 
 	// Unmarshal configurations known to viper into our
 	// config object.
@@ -174,9 +259,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal(err.Error())
 	}
 
-	os.Args = append([]string{""}, strings.Split(ltcArgs, " ")...)
-	go ltcd.Main()
-
 	// Create event the global event handler
 	event := &emitter.Emitter{}
 
@@ -193,14 +275,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 
 	// Set sync mode
 	n.SetSyncMode(node.NewDefaultSyncMode(syncDisabled))
-
-	log.Info("Elld has started",
-		"ClientVersion", cfg.VersionInfo.BuildVersion,
-		"NetVersion", config.GetVersions().Protocol,
-		"DevMode", devMode,
-		"SyncEnabled", !n.GetSyncMode().IsDisabled(),
-		"NetworkEnabled", !noNet,
-		"Name", n.Name)
 
 	// Disable network if required
 	if noNet {
@@ -229,21 +303,34 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		log.Fatal("failed to open local database", "Err", err.Error())
 	}
 
+	log.Info("Elld has started",
+		"ClientVersion", cfg.VersionInfo.BuildVersion,
+		"NetVersion", config.GetVersions().Protocol,
+		"DevMode", devMode,
+		"SyncEnabled", !n.GetSyncMode().IsDisabled(),
+		"NetworkEnabled", !noNet,
+		"Name", n.Name)
+
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
+
+	// Initialize the burner chain
+	burnerStatus := initBurnerServer(cmd, n.DB())
 
 	// Initialize and set the blockchain manager's db,
 	// event emitter and pass it to the engine
 	bChain := blockchain.New(n.GetTxPool(), cfg, log)
 	bChain.SetDB(n.DB())
+	bChain.SetInterrupt(interrupt)
 	bChain.SetEventEmitter(event)
 	bChain.SetCoinbase(coinbase)
 
 	// Initialize rpc server
-	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log)
+	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log, interrupt)
 
 	// Set the node's references
 	n.SetBlockchain(bChain)
 	n.SetEventEmitter(event)
+	n.SetInterrupt(interrupt)
 
 	// Setup block manager
 	bm := node.NewBlockManager(n)
@@ -263,12 +350,16 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 	// Start the block manager and the node
 	n.Start()
 
+	// Create a burner API
+	burnerAPI := burner.NewAPI()
+
 	// Add the RPC APIs from various components.
 	rpcServer.AddAPI(
 		n.APIs(),
 		accountMgr.APIs(),
 		bChain.APIs(),
 		rpcServer.APIs(),
+		burnerAPI.APIs(),
 	)
 
 	if startRPC {
@@ -292,11 +383,17 @@ func start(cmd *cobra.Command, args []string, startConsole bool) (*node.Node, *r
 		}
 
 		// Run the console.
-		fmt.Println("") // Extra space in console
 		go cs.Run()
+
+		cs.OnStop(func() {
+			close(interrupt)
+		})
 	}
 
-	return n, rpcServer, cs
+	<-burnerStatus
+	n.Wait()
+
+	return
 }
 
 // startCmd represents the start command
@@ -342,27 +439,7 @@ var startCmd = &cobra.Command{
 		}
 
 		// Start the local node and other subservices
-		n, rpcServer, _ := start(cmd, args, false)
-		_ = rpcServer
-
-		// Register function to be called when  termination signal is received
-		setTerminateFunc(func() {
-
-			// Shutdown litcoin server
-			ltcd.SendShutdownRequest()
-
-			// Shutdown rpc server
-			if rpcServer != nil {
-				rpcServer.Stop()
-			}
-
-			// Shutdown the local node server
-			if n != nil {
-				n.Stop()
-			}
-		})
-
-		n.Wait()
+		start(cmd, args, false, interrupt)
 	},
 }
 
@@ -379,5 +456,12 @@ func init() {
 	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
 	startCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
 	startCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
-	startCmd.Flags().String("ltc-args", "", "Provide arguments to pass to the Litecoin node")
+
+	// Burner chain related flags
+	startCmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
+	startCmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
+	startCmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
+	startCmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
+	startCmd.Flags().String("burner-rpclisten", "", "Set the interface/port to listen for RPC connections")
+	startCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the utxo keeper to skip blocks below the given height")
 }

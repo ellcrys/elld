@@ -410,4 +410,16 @@ var _ = Describe("Common", func() {
 		})
 	})
 
+	Describe(".IsBoolChanClosed", func() {
+		It("should return false if not closed", func() {
+			c := make(chan bool)
+			Expect(IsBoolChanClosed(c)).To(BeFalse())
+		})
+
+		It("should return true if closed", func() {
+			c := make(chan bool)
+			close(c)
+			Expect(IsBoolChanClosed(c)).To(BeTrue())
+		})
+	})
 })

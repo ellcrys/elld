@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ellcrys/elld/util"
+
 	"github.com/ellcrys/elld/crypto"
 	"github.com/fatih/color"
 
@@ -22,13 +24,13 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 	var passphrase string
 
 	if address == "" {
-		printErr("Address is required.")
+		util.PrintCLIError("Address is required.")
 		return fmt.Errorf("address is required")
 	}
 
 	storedAcct, err := am.GetByAddress(address)
 	if err != nil {
-		printErr(err.Error())
+		util.PrintCLIError(err.Error())
 		return err
 	}
 
@@ -40,7 +42,7 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 		fmt.Println("The account needs to be unlocked. Please enter a password.")
 		passphrase, err = am.AskForPasswordOnce()
 		if err != nil {
-			printErr(err.Error())
+			util.PrintCLIError(err.Error())
 			return err
 		}
 		goto unlock
@@ -55,17 +57,17 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 
 	fullPath, err = filepath.Abs(pwd)
 	if err != nil {
-		printErr("Invalid file path {%s}: %s", pwd, err.Error())
+		util.PrintCLIError("Invalid file path {%s}: %s", pwd, err.Error())
 		return err
 	}
 
 	content, err = ioutil.ReadFile(fullPath)
 	if err != nil {
 		if funk.Contains(err.Error(), "no such file") {
-			printErr("Password file {%s} not found.", pwd)
+			util.PrintCLIError("Password file {%s} not found.", pwd)
 		}
 		if funk.Contains(err.Error(), "is a directory") {
-			printErr("Password file path {%s} is a directory. Expects a file.", pwd)
+			util.PrintCLIError("Password file path {%s} is a directory. Expects a file.", pwd)
 		}
 		return err
 	}
@@ -74,7 +76,7 @@ func (am *AccountManager) RevealCmd(address, pwd string) error {
 unlock:
 
 	if err = storedAcct.Decrypt(passphrase, false); err != nil {
-		printErr("Invalid password. Could not unlock account.")
+		util.PrintCLIError("Invalid password. Could not unlock account.")
 		return err
 	}
 
