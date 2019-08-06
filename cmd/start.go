@@ -322,9 +322,6 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
 
-	// Initialize the burner chain
-	burnerStatus := initBurnerServer(cmd, n.DB())
-
 	// Initialize and set the blockchain manager's db,
 	// event emitter and pass it to the engine
 	bChain := blockchain.New(n.GetTxPool(), cfg, log)
@@ -355,6 +352,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 	if err := bChain.Up(); err != nil {
 		log.Fatal("failed to load blockchain manager", "Err", err.Error())
 	}
+
+	// Initialize the burner chain
+	burnerStatus := initBurnerServer(cmd, n.DB())
 
 	// Start the block manager and the node
 	n.Start()
@@ -397,7 +397,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 		go cs.Run()
 
 		cs.OnStop(func() {
-			close(interrupt)
+			if !util.IsStructChanClosed(interrupt) {
+				close(interrupt)
+			}
 		})
 	}
 
