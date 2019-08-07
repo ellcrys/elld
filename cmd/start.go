@@ -154,6 +154,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 	viper.BindPFlag("burner.utxokeeperworkers", cmd.Flags().Lookup("burner-utxokeeperworkers"))
 	viper.BindPFlag("burner.utxokeeperoff", cmd.Flags().Lookup("burner-utxokeeperoff"))
 	viper.BindPFlag("burner.utxokeeperreindex", cmd.Flags().Lookup("burner-utxokeeperreindex"))
+	viper.BindPFlag("burner.utxokeeperfocus", cmd.Flags().Lookup("burner-utxokeeperfocus"))
 
 	testnet := viper.GetBool("burner.testnet")
 	noTLS := viper.GetBool("burner.notls")
@@ -164,6 +165,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 	utxoKeeperNumThread := viper.GetInt("burner.utxokeeperworkers")
 	noUTXOKeeper := viper.GetBool("burner.utxokeeperoff")
 	reIndex := viper.GetBool("burner.utxokeeperreindex")
+	focusAddr := viper.GetString("burner.utxokeeperfocus")
 
 	// Set default burner RPC listening address
 	if len(rpcListen) == 0 {
@@ -200,7 +202,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 
 			utxoKeeper := burner.NewBurnerAccountUTXOKeeper(log, db, config.GetNetVersion(), interrupt)
 			utxoKeeper.SetClient(bc)
-			go utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex)
+			go utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
 		}
 	}
 
@@ -458,26 +460,5 @@ var startCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.Flags().StringSliceP("add-node", "j", nil, "Add the address of a node to connect to.")
-	startCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address local node will listen on.")
-	startCmd.Flags().Bool("rpc", false, "Enables the RPC server")
-	startCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on.")
-	startCmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
-	startCmd.Flags().Int64("rpc-session-ttl", 3600000, "The time-to-live (in milliseconds) of RPC session tokens")
-	startCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
-	startCmd.Flags().String("pwd", "", "The password of the node's network account.")
-	startCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
-	startCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
-	startCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
-
-	// Burner chain related flags
-	startCmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
-	startCmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
-	startCmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
-	startCmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
-	startCmd.Flags().String("burner-rpclisten", "", "Set the burner RPC server interface/port to listen for connections.")
-	startCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the burner account utxo keeper to skip blocks below the given height.")
-	startCmd.Flags().Int("burner-utxokeeperworkers", 3, "Set the number of burner account UTXO keeper worker threads.")
-	startCmd.Flags().Bool("burner-utxokeeperoff", false, "Disable the burner account UTXO keeper service.")
-	startCmd.Flags().Bool("burner-utxokeeperreindex", false, "Force the UTXO keeper to re-index burner accounts")
+	setStartFlags(startCmd)
 }

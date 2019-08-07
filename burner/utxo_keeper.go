@@ -292,7 +292,7 @@ func (k *AccountsUTXOKeeper) Stop() {
 // Begin initiates the scanning and indexing process.
 // Must be called in a goroutine.
 func (k *AccountsUTXOKeeper) Begin(am *accountmgr.AccountManager,
-	numWorkers int, skipToHeight int32, reIndex bool) error {
+	numWorkers int, skipToHeight int32, reIndex bool, focusAddr string) error {
 
 	go func() {
 		<-k.interrupt
@@ -317,6 +317,20 @@ func (k *AccountsUTXOKeeper) Begin(am *accountmgr.AccountManager,
 		r := a.GetMeta().Get("testnet")
 		return r != nil && r.(bool) == !isMainnet
 	}).([]*accountmgr.StoredAccount)
+
+	// If focus address is set, we need to ensure the address is known
+	// and then we index the address only
+	if focusAddr != "" {
+		found := funk.Find(accounts, func(a *accountmgr.StoredAccount) bool {
+			return a.Address == focusAddr
+		})
+		if found != nil {
+			accounts = []*accountmgr.StoredAccount{found.(*accountmgr.StoredAccount)}
+		} else {
+			k.log.Error("Cannot focus on an unknown account", "FocusAddress", focusAddr)
+			return fmt.Errorf("focus address is unknown")
+		}
+	}
 
 	k.log.Debug("Starting burner accounts UTXO indexation",
 		"NumWorkers", numWorkers,

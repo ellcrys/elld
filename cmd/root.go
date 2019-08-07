@@ -135,3 +135,28 @@ func initConfig() {
 	// Set the path where console history will be stored
 	consoleHistoryFilePath = path.Join(cfg.NetDataDir(), ".console_history")
 }
+
+func setStartFlags(cmd *cobra.Command) {
+	cmd.Flags().StringSliceP("add-node", "j", nil, "IP of a node to connect to")
+	cmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
+	cmd.Flags().Bool("rpc", false, "Launch RPC server")
+	cmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on")
+	cmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
+	cmd.Flags().Int64("rpc-session-ttl", 3600000, "The time-to-live (in milliseconds) of RPC session tokens")
+	cmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
+	cmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
+	cmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
+	cmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
+	cmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
+
+	cmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
+	cmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
+	cmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
+	cmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
+	cmd.Flags().String("burner-rpclisten", "", "Set the burner RPC server interface/port to listen for connections.")
+	cmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the burner account utxo keeper to skip blocks below the given height.")
+	cmd.Flags().Int("burner-utxokeeperworkers", 3, "Set the number of burner account UTXO keeper worker threads.")
+	cmd.Flags().Bool("burner-utxokeeperoff", false, "Disable the burner account UTXO keeper service.")
+	cmd.Flags().Bool("burner-utxokeeperreindex", false, "Force the UTXO keeper to re-index burner accounts")
+	cmd.Flags().String("burner-utxokeeperfocus", "", "Force the UTXO keeper to focus on a specific account")
+}

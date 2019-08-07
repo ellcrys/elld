@@ -69,28 +69,5 @@ var consoleCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(consoleCmd)
-	consoleCmd.Flags().StringSliceP("add-node", "j", nil, "IP of a node to connect to")
-	consoleCmd.Flags().StringP("address", "a", "127.0.0.1:9000", "Address to listen on")
-	consoleCmd.Flags().Bool("rpc", false, "Launch RPC server")
-	consoleCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on")
-	consoleCmd.Flags().Bool("rpc-disable-auth", false, "Disable RPC authentication (not recommended)")
-	consoleCmd.Flags().Int64("rpc-session-ttl", 3600000, "The time-to-live (in milliseconds) of RPC session tokens")
-	consoleCmd.Flags().String("account", "", "Coinbase account to load. An ephemeral account is used as default.")
-	consoleCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed for network account creation (not recommended)")
-	consoleCmd.Flags().String("pwd", "", "Used as password during initial account creation or loading an account")
-	consoleCmd.Flags().Bool("mine", false, "Start Blake2 CPU mining")
-	consoleCmd.Flags().Int("miners", 0, "The number of miner threads to use. (Default: Number of CPU)")
-	consoleCmd.Flags().Bool("no-net", false, "Closes the network host and prevents (in/out) connections")
-	consoleCmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
-
-	// Burner chain related flags
-	consoleCmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
-	consoleCmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
-	consoleCmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
-	consoleCmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
-	consoleCmd.Flags().String("burner-rpclisten", "", "Set the burner RPC server interface/port to listen for connections.")
-	consoleCmd.Flags().Int32("burner-utxokeeperskip", 0, "Force the burner account utxo keeper to skip blocks below the given height.")
-	consoleCmd.Flags().Int("burner-utxokeeperworkers", 3, "Set the number of burner account UTXO keeper worker threads.")
-	consoleCmd.Flags().Bool("burner-utxokeeperoff", false, "Disable the burner account UTXO keeper service.")
-	consoleCmd.Flags().Bool("burner-utxokeeperreindex", false, "Force the UTXO keeper to re-index burner accounts")
+	setStartFlags(consoleCmd)
 }
