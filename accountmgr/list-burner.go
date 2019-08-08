@@ -75,10 +75,6 @@ func (am *AccountManager) ListBurnerCmd() error {
 			tags = append(tags, color.YellowString("[testnet]"))
 		}
 
-		if i == 0 {
-			tags = append(tags, "[default]")
-		}
-
 		fmt.Println(fmt.Sprintf("[%d]\t%s     %s\t     %s", i, color.CyanString(a.Address),
 			humanize.Time(a.CreatedAt), strings.Join(tags, " ")))
 	}

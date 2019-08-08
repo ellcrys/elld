@@ -41,7 +41,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		burnerAddress, _ := cmd.Flags().GetString("burner")
+		burnerAddress, _ := cmd.Flags().GetString("account")
 		coinbaseAddress, _ := cmd.Flags().GetString("coinbase")
 		amount, _ := cmd.Flags().GetString("amount")
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
@@ -147,7 +147,7 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(burnCmd)
 	burnCmd.Flags().String("pwd", "", "Providing the burner account password or path to a file containing it (No interactive mode)")
-	burnCmd.Flags().String("burner", "", "The Litecoin burner account to burn coins from. Accepts account index or address.")
-	burnCmd.Flags().String("coinbase", "", "The client account that will be granted mining privilege.")
+	burnCmd.Flags().StringP("account", "a", "", "The Litecoin burner account to burn coins from. Accepts account index or address.")
+	burnCmd.Flags().StringP("coinbase", "c", "", "The client account that will be granted mining privilege.")
 	burnCmd.Flags().String("amount", "", "The amount of coins to burn")
 }

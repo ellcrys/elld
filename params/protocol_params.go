@@ -78,8 +78,4 @@ var (
 	// MinimumBurnAmt is the amount of coin of the burn chain
 	// that needs to be burned to acquire a block producer ticket
 	MinimumBurnAmt = decimal.NewFromFloat(100)
-
-	// BurnerUTXOIndexerIntDur is the duration between each
-	// UTXO indexation process
-	BurnerUTXOIndexerIntDur = time.Second * 15
 )

@@ -3,7 +3,6 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/k0kubun/pp"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/ellcrys/elld/config"
@@ -274,12 +273,12 @@ func (b *Blockchain) ProcessTransactions(txs []types.Transaction, chain types.Ch
 		}
 	}
 
-	// TODO: 
+	// TODO:
 	// At this point, we need to process ticket bids.
 	// Before we proceed, we need to sort the bids by
 	// their value and nonce to ensure only the top
 	// bids are granted tickets
-	pp.Println(txs)
+	// pp.Println(txs)
 
 	return ops, nil
 }

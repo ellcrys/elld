@@ -40,7 +40,7 @@ func (e *Executor) createAccount(passphrase ...string) string {
 	}
 
 	key, _ := crypto.NewKey(nil)
-	if err := e.acctMgr.CreateAccount(key, pass); err != nil {
+	if err := e.acctMgr.CreateAccount(false, key, pass); err != nil {
 		panic(e.accountError(err.Error()))
 	}
 
@@ -130,7 +130,7 @@ func (e *Executor) importAccount(privateKey string, optionalArgs ...string) stri
 	}
 
 	key := crypto.NewKeyFromPrivKey(privKey)
-	if err := e.acctMgr.CreateAccount(key, passphrase); err != nil {
+	if err := e.acctMgr.CreateAccount(false, key, passphrase); err != nil {
 		panic(e.accountError(err.Error()))
 	}
 

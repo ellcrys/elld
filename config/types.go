@@ -58,6 +58,10 @@ type NodeConfig struct {
 
 	// Account is the coinbase account
 	Account string `json:"account" mapstructure:"account"`
+
+	// UTXOKeeperIndexInterval is the number of seconds between
+	// every burner accounts utxo indexation execution
+	UTXOKeeperIndexInterval int64 `json:"utxoKeeperIndexInt" mapstructure:"utxoKeeperIndexInt"`
 }
 
 // RPCConfig defines configuration for the RPC component

@@ -40,7 +40,6 @@ import (
 // getKey unlocks an account and returns the corresponding key.
 func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 
-	var key *crypto.Key
 	var err error
 	var storedAccount *accountmgr.StoredAccount
 
@@ -74,18 +73,25 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 			}
 		}
 	} else {
-		// At this point, the user did not specify an identifier
-		// for an account they want, so we will create a random
-		// address and tag it as an ephemeral address
-		key, _ = accountMgr.CreateCmd(0, util.RandString(32))
-		key.Meta["ephemeral"] = true
-		return key, nil
+
+		// At this point, the user did not specify an account,
+		// so we will just used the default account.
+		storedAccount, err = accountMgr.GetDefault()
+		if err != nil {
+			if err == accountmgr.ErrAccountNotFound {
+				return nil, fmt.Errorf(`No default account found. Node environment has ` +
+					`not been initialized. Run 'elld init' to initialize the node or specify ` +
+					`an existing account using '--account' flag.`)
+			}
+			return nil, err
+		}
 	}
 
 	// If the password is unset, start an interactive session to
 	// request password from user.
 	if password == "" {
-		fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.", storedAccount.Address))
+		fmt.Println(fmt.Sprintf("Account {%s} needs to be unlocked. Please enter your password.",
+			storedAccount.Address))
 		password, err = accountMgr.AskForPasswordOnce()
 		if err != nil {
 			log.Error(err.Error())
@@ -95,14 +101,16 @@ func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
 
 	// If password is set and it's a path to a file,
 	// read the file and use its content as the password
-	if len(password) > 1 && (os.IsPathSeparator(password[0]) || (len(password) >= 2 && password[:2] == "./")) {
+	if len(password) > 1 && (os.IsPathSeparator(password[0]) || (len(password) >= 2 &&
+		password[:2] == "./")) {
 		content, err := ioutil.ReadFile(password)
 		if err != nil {
 			if funk.Contains(err.Error(), "no such file") {
 				return nil, fmt.Errorf("password file {%s} not found", password)
 			}
 			if funk.Contains(err.Error(), "is a directory") {
-				return nil, fmt.Errorf("password file path {%s} is a directory. Expects a file", password)
+				return nil, fmt.Errorf("password file path {%s} is a directory. Expects a file",
+					password)
 			}
 			return nil, err
 		}
@@ -194,15 +202,19 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 	// we need to start the burner account utxo indexer
 	if rpcUser != "" && rpcPass != "" {
 		if !noUTXOKeeper {
+			log.Info("UTXO keeper is turned ON")
 			bc, err := burner.GetClient(rpcListen, rpcUser, rpcPass, noTLS)
 			if err != nil {
 				close(interrupt)
 				log.Fatal("failed to setup burner RPC server client", "Err", err.Error())
 			}
 
-			utxoKeeper := burner.NewBurnerAccountUTXOKeeper(log, db, config.GetNetVersion(), interrupt)
+			utxoKeeper := burner.NewBurnerAccountUTXOKeeper(cfg, log, db,
+				config.GetNetVersion(), interrupt)
 			utxoKeeper.SetClient(bc)
-			go utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
+			utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
+		} else {
+			log.Info("UTXO keeper is turned OFF")
 		}
 	}
 
@@ -413,7 +425,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 
 // startCmd represents the start command
 var startCmd = &cobra.Command{
-	Use:   "start",
+	Use:   "start [flags]",
 	Short: "Starts the node",
 	Long: `Description:
   Starts a node.

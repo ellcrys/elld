@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ellcrys/elld/params"
-
 	"github.com/ellcrys/elld/config"
 
 	"gopkg.in/oleiade/lane.v1"
@@ -39,20 +37,22 @@ type AccountsUTXOKeeper struct {
 	stop          bool
 	indexerTicker *time.Ticker
 	interrupt     <-chan struct{}
+	cfg           *config.EngineConfig
 }
 
 // NewBurnerAccountUTXOKeeper creates an instance of AccountsUTXOKeeper.
 // The netVersion argument is used to namespace the database such that
 // testnet and mainnet utxos are not mixed up.
-func NewBurnerAccountUTXOKeeper(log logger.Logger, db elldb.DB, netVersion string,
-	interrupt <-chan struct{}) *AccountsUTXOKeeper {
+func NewBurnerAccountUTXOKeeper(cfg *config.EngineConfig, log logger.Logger, db elldb.DB,
+	netVersion string, interrupt <-chan struct{}) *AccountsUTXOKeeper {
 	log = log.Module("BurnerUTXOKeeper")
 	return &AccountsUTXOKeeper{
 		Mutex:      &sync.Mutex{},
-		log:        log,
 		netVersion: netVersion,
-		db:         db,
 		interrupt:  interrupt,
+		log:        log,
+		db:         db,
+		cfg:        cfg,
 	}
 }
 
@@ -220,7 +220,7 @@ begin:
 	// If the last scanned block height is at least equal to the
 	// current best block height, we should do nothing.
 	if lastScannedHeight >= bestHeight {
-		k.log.Debug("UTXO database is up to date")
+		k.log.Debug("UTXO of account is up to date", "Address", address)
 		return nil
 	}
 
@@ -290,7 +290,6 @@ func (k *AccountsUTXOKeeper) Stop() {
 }
 
 // Begin initiates the scanning and indexing process.
-// Must be called in a goroutine.
 func (k *AccountsUTXOKeeper) Begin(am *accountmgr.AccountManager,
 	numWorkers int, skipToHeight int32, reIndex bool, focusAddr string) error {
 
@@ -300,69 +299,70 @@ func (k *AccountsUTXOKeeper) Begin(am *accountmgr.AccountManager,
 		k.log.Info("UTXO keeper has been interrupted and is stopping")
 	}()
 
-	k.indexerTicker = time.NewTicker(params.BurnerUTXOIndexerIntDur)
-	// for range k.indexerTicker.C {
-	// 	//
-	// }
+	dur := time.Duration(k.cfg.Node.UTXOKeeperIndexInterval) * time.Second
+	k.indexerTicker = time.NewTicker(dur)
 
-	// Get the burner accounts
-	accounts, err := am.ListBurnerAccounts()
-	if err != nil {
-		return fmt.Errorf("failed to get burner accounts: %s", err)
-	}
+	go func() {
+		for range k.indexerTicker.C {
+			// Get the burner accounts
+			accounts, err := am.ListBurnerAccounts()
+			if err != nil {
+				return
+			}
 
-	// Only work with accounts compatible with either the mainnet or testnet
-	isMainnet := config.IsBurnerMainnet()
-	accounts = funk.Filter(accounts, func(a *accountmgr.StoredAccount) bool {
-		r := a.GetMeta().Get("testnet")
-		return r != nil && r.(bool) == !isMainnet
-	}).([]*accountmgr.StoredAccount)
+			// Only work with accounts compatible with either the mainnet or testnet
+			isMainnet := config.IsBurnerMainnet()
+			accounts = funk.Filter(accounts, func(a *accountmgr.StoredAccount) bool {
+				r := a.GetMeta().Get("testnet")
+				return r != nil && r.(bool) == !isMainnet
+			}).([]*accountmgr.StoredAccount)
 
-	// If focus address is set, we need to ensure the address is known
-	// and then we index the address only
-	if focusAddr != "" {
-		found := funk.Find(accounts, func(a *accountmgr.StoredAccount) bool {
-			return a.Address == focusAddr
-		})
-		if found != nil {
-			accounts = []*accountmgr.StoredAccount{found.(*accountmgr.StoredAccount)}
-		} else {
-			k.log.Error("Cannot focus on an unknown account", "FocusAddress", focusAddr)
-			return fmt.Errorf("focus address is unknown")
-		}
-	}
-
-	k.log.Debug("Starting burner accounts UTXO indexation",
-		"NumWorkers", numWorkers,
-		"NumAccounts", len(accounts))
-
-	// Added the burner accounts to a queue
-	queue := *lane.NewQueue()
-	for _, a := range accounts {
-		queue.Append(a)
-	}
-
-	// Start indexer workers to process the queue
-	wg := &sync.WaitGroup{}
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func(id int) {
-			for {
-				acct := queue.Shift()
-				if acct == nil {
-					break
-				}
-				addr := acct.(*accountmgr.StoredAccount).Address
-				if err := k.begin(id, addr, skipToHeight, reIndex); err != nil {
-					k.log.Error("Failed to begin UTXO indexation", "Account", addr)
+			// If focus address is set, we need to ensure the address is known
+			// and then we index the address only
+			if focusAddr != "" {
+				found := funk.Find(accounts, func(a *accountmgr.StoredAccount) bool {
+					return a.Address == focusAddr
+				})
+				if found != nil {
+					accounts = []*accountmgr.StoredAccount{found.(*accountmgr.StoredAccount)}
+				} else {
+					k.log.Error("Cannot focus on an unknown account", "FocusAddress", focusAddr)
+					return
 				}
 			}
-			wg.Done()
-		}(i + 1)
-	}
 
-	wg.Wait()
-	k.log.Info("UTXO keeper has stopped", "NumAccounts", len(accounts))
+			k.log.Debug("Starting burner accounts UTXO indexation",
+				"NumWorkers", numWorkers,
+				"NumAccounts", len(accounts))
+
+			// Added the burner accounts to a queue
+			queue := *lane.NewQueue()
+			for _, a := range accounts {
+				queue.Append(a)
+			}
+
+			// Start indexer workers to process the queue
+			wg := &sync.WaitGroup{}
+			for i := 0; i < numWorkers; i++ {
+				wg.Add(1)
+				go func(id int) {
+					for {
+						acct := queue.Shift()
+						if acct == nil {
+							break
+						}
+						addr := acct.(*accountmgr.StoredAccount).Address
+						if err := k.begin(id, addr, skipToHeight, reIndex); err != nil {
+							k.log.Error("Failed to begin UTXO indexation", "Account", addr)
+						}
+					}
+					wg.Done()
+				}(i + 1)
+			}
+
+			wg.Wait()
+		}
+	}()
 
 	return nil
 }

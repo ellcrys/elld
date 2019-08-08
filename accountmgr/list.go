@@ -27,7 +27,7 @@ func (am *AccountManager) ListAccounts() (accounts []*StoredAccount, err error) 
 			continue
 		}
 
-		m, _ := regexp.Match("^[0-9]{10}_[a-zA-Z0-9]{34,}$", []byte(f.Name()))
+		m, _ := regexp.Match("^[0-9]{10}_[a-zA-Z0-9]{34,}(_default)?$", []byte(f.Name()))
 		if !m {
 			continue
 		}
@@ -41,19 +41,23 @@ func (am *AccountManager) ListAccounts() (accounts []*StoredAccount, err error) 
 				Address:   nameParts[1],
 				Cipher:    cipher,
 				CreatedAt: timeCreated,
+				Default:   strings.HasSuffix(f.Name(), "_default"),
 			})
 		}
 	}
+
 	return
 }
 
 // ListCmd fetches and lists all accounts
 func (am *AccountManager) ListCmd() error {
 
-	fmt.Println(fmt.Sprintf("\t%s%s%s",
+	fmt.Println(fmt.Sprintf("\t%s%s%s%s%s",
 		color.HiBlackString("Address"),
 		strings.Repeat(" ", 32),
-		color.HiBlackString("Date Created")),
+		color.HiBlackString("Date Created"),
+		strings.Repeat(" ", 10),
+		color.HiBlackString("Tag(s)")),
 	)
 
 	accts, err := am.ListAccounts()
@@ -62,11 +66,12 @@ func (am *AccountManager) ListCmd() error {
 	}
 
 	for i, a := range accts {
-		defStr := "[default]"
-		if i != 0 {
-			defStr = ""
+		tagStr := ""
+		if a.Default {
+			tagStr = "[default]"
 		}
-		fmt.Println(fmt.Sprintf("[%d]\t%s     %s\t%s", i, color.CyanString(a.Address), humanize.Time(a.CreatedAt), defStr))
+		fmt.Println(fmt.Sprintf("[%d]\t%s     %s\t     %s", i, color.CyanString(a.Address),
+			humanize.Time(a.CreatedAt), tagStr))
 	}
 
 	return nil

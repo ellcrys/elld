@@ -39,7 +39,7 @@ var _ = Describe("Read", func() {
 				seed := int64(1)
 				address, _ := crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.CreateAccount(address, passphrase)
+				err := am.CreateAccount(false, address, passphrase)
 				Expect(err).To(BeNil())
 
 				exist, err := am.AccountExist(address.Addr().String())
@@ -87,18 +87,18 @@ var _ = Describe("Read", func() {
 
 			am := New(accountPath)
 
-			It("should return oldest account with address", func() {
+			It("should return the address whose keyfile ends with `_default`", func() {
 				seed := int64(1)
 				address, _ := crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.CreateAccount(address, passphrase)
+				err := am.CreateAccount(true, address, passphrase)
 				Expect(err).To(BeNil())
 				time.Sleep(1 * time.Second)
 
 				seed = int64(2)
 				address2, _ := crypto.NewKey(&seed)
 				passphrase = "edge123"
-				err = am.CreateAccount(address2, passphrase)
+				err = am.CreateAccount(false, address2, passphrase)
 				Expect(err).To(BeNil())
 
 				account, err := am.GetDefault()
@@ -107,9 +107,10 @@ var _ = Describe("Read", func() {
 				Expect(account.Address).To(Equal(address.Addr().String()))
 			})
 
-			It("should return nil if no address was found", func() {
+			It("should return ErrAccountNotFound if no address was found", func() {
 				account, err := am.GetDefault()
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(BeNil())
+				Expect(err).To(Equal(ErrAccountNotFound))
 				Expect(account).To(BeNil())
 			})
 		})
@@ -123,14 +124,14 @@ var _ = Describe("Read", func() {
 				seed := int64(1)
 				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.CreateAccount(address, passphrase)
+				err := am.CreateAccount(false, address, passphrase)
 				Expect(err).To(BeNil())
 				time.Sleep(1 * time.Second)
 
 				seed = int64(2)
 				address2, _ = crypto.NewKey(&seed)
 				passphrase = "edge123"
-				err = am.CreateAccount(address2, passphrase)
+				err = am.CreateAccount(false, address2, passphrase)
 				Expect(err).To(BeNil())
 			})
 
@@ -158,7 +159,7 @@ var _ = Describe("Read", func() {
 				seed := int64(1)
 				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.CreateAccount(address, passphrase)
+				err := am.CreateAccount(false, address, passphrase)
 				Expect(err).To(BeNil())
 			})
 
@@ -216,7 +217,7 @@ var _ = Describe("Read", func() {
 
 				address, _ := crypto.NewKey(&seed)
 				passphrase = "edge123"
-				err = am.CreateAccount(address, passphrase)
+				err = am.CreateAccount(true, address, passphrase)
 				Expect(err).To(BeNil())
 
 				account, err = am.GetDefault()

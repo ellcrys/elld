@@ -36,6 +36,9 @@ type StoredAccount struct {
 	// CreatedAt represents the time the account was created and stored on disk
 	CreatedAt time.Time
 
+	// Default indicates that this account is the default client account
+	Default bool
+
 	// Store other information about the account here
 	meta StoredAccountMeta
 }
@@ -74,7 +77,7 @@ func (am *AccountManager) BurnerAccountExist(address string) (bool, error) {
 	return false, nil
 }
 
-// GetDefault gets the oldest account. Usually the account with 0 index.
+// GetDefault gets the default account
 func (am *AccountManager) GetDefault() (*StoredAccount, error) {
 
 	accounts, err := am.ListAccounts()
@@ -83,10 +86,16 @@ func (am *AccountManager) GetDefault() (*StoredAccount, error) {
 	}
 
 	if len(accounts) == 0 {
-		return nil, nil
+		return nil, ErrAccountNotFound
 	}
 
-	return accounts[0], nil
+	for _, a := range accounts {
+		if a.Default {
+			return a, nil
+		}
+	}
+
+	return nil, ErrAccountNotFound
 }
 
 // GetByIndex returns an account by its current position in the

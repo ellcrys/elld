@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ellcrys/elld/config"
 
@@ -86,7 +87,7 @@ var _ = Describe("AccountMgr", func() {
 		am := New(accountPath)
 
 		It("should return err = 'Address is required' when address is nil", func() {
-			err := am.CreateAccount(nil, "")
+			err := am.CreateAccount(false, nil, "")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("Address is required"))
 		})
@@ -94,7 +95,7 @@ var _ = Describe("AccountMgr", func() {
 		It("should return err = 'Passphrase is required' when passphrase is empty", func() {
 			seed := int64(1)
 			address, _ := crypto.NewKey(&seed)
-			err := am.CreateAccount(address, "")
+			err := am.CreateAccount(false, address, "")
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("Passphrase is required"))
 		})
@@ -103,7 +104,7 @@ var _ = Describe("AccountMgr", func() {
 			seed := int64(1)
 			address, _ := crypto.NewKey(&seed)
 			passphrase := "edge123"
-			err := am.CreateAccount(address, passphrase)
+			err := am.CreateAccount(false, address, passphrase)
 			Expect(err).To(BeNil())
 		})
 
@@ -115,7 +116,7 @@ var _ = Describe("AccountMgr", func() {
 				seed := int64(1)
 				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.CreateAccount(address, passphrase)
+				err := am.CreateAccount(false, address, passphrase)
 				Expect(err).To(BeNil())
 			})
 
@@ -132,9 +133,30 @@ var _ = Describe("AccountMgr", func() {
 				seed := int64(1)
 				address, _ = crypto.NewKey(&seed)
 				passphrase := "edge123"
-				err := am.CreateAccount(address, passphrase)
+				err := am.CreateAccount(false, address, passphrase)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal("An account with a matching seed already exist"))
+			})
+		})
+
+		When("the created account is a default account", func() {
+			var address *crypto.Key
+
+			BeforeEach(func() {
+				seed := int64(1)
+				address, _ = crypto.NewKey(&seed)
+				passphrase := "edge123"
+				err := am.CreateAccount(true, address, passphrase)
+				Expect(err).To(BeNil())
+			})
+
+			It("should have a keyfile in the account directory with a name ending with '_default'", func() {
+				kfs, err := ioutil.ReadDir(accountPath)
+				Expect(err).To(BeNil())
+				found := funk.Find(kfs, func(x os.FileInfo) bool {
+					return funk.Contains(x.Name(), address.Addr()) && strings.HasSuffix(x.Name(), "_default")
+				})
+				Expect(found).ToNot(BeNil())
 			})
 		})
 	})

@@ -46,7 +46,7 @@ var accountCmd = &cobra.Command{
 
 // accountCreateCmd represents the account command
 var accountCreateCmd = &cobra.Command{
-	Use:   "create",
+	Use:   "create [flags]",
 	Short: "Create an account.",
 	Long: `Description:
   This command creates an account and encrypts it using a passphrase
@@ -70,7 +70,7 @@ var accountCreateCmd = &cobra.Command{
 		pwd, _ := cmd.Flags().GetString("pwd")
 		seed, _ := cmd.Flags().GetInt64("seed")
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
-		key, err := am.CreateCmd(seed, pwd)
+		key, err := am.CreateCmd(false, seed, pwd)
 		if err != nil {
 			return
 		}
@@ -80,7 +80,7 @@ var accountCreateCmd = &cobra.Command{
 }
 
 var accountListCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "list [flags]",
 	Short: "List all accounts.",
 	Long: `Description:
   This command lists all accounts existing under <DATADIR>/` + config.AccountDirName + `.
@@ -167,7 +167,7 @@ var accountRevealCmd = &cobra.Command{
 
 // accountCreateBurnerCmd represents the account command
 var accountCreateBurnerCmd = &cobra.Command{
-	Use:   "burner-create",
+	Use:   "burner-create [flags]",
 	Short: "Create a Litecoin burner account used for burning coins.",
 	Long: `Description:
   This command creates a Litecoin burner account and encrypts it using a passphrase
@@ -210,7 +210,7 @@ var accountCreateBurnerCmd = &cobra.Command{
 }
 
 var accountListBurnersCmd = &cobra.Command{
-	Use:   "burners-list",
+	Use:   "burners-list [flags]",
 	Short: "List all Litecoin burner accounts.",
 	Long: `Description:
   This command lists all burner accounts existing under <DATADIR>/` + config.AccountDirName + `/
@@ -286,6 +286,21 @@ var accountImportBurnerCmd = &cobra.Command{
 	},
 }
 
+var accountBurnerBalanceCmd = &cobra.Command{
+	Use:   "burner-balance [flags] <address>",
+	Short: "Get the balance of a burner account",
+	Long: `Description:
+  This command returns the sum of unspent output of a given burner account. It makes
+  use of UTXOs indexed by the utxo keeper module. 
+`,
+	Run: func(cmd *cobra.Command, args []string) {
+
+		// db := elldb.New
+		// net, _ := rootCmd.Flags().GetString("net")
+		// am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
+	},
+}
+
 func init() {
 	accountCmd.AddCommand(accountCreateCmd)
 	accountCmd.AddCommand(accountListCmd)
@@ -296,6 +311,7 @@ func init() {
 	accountCmd.AddCommand(accountListBurnersCmd)
 	accountCmd.AddCommand(accountRevealBurnerCmd)
 	accountCmd.AddCommand(accountImportBurnerCmd)
+	accountCmd.AddCommand(accountBurnerBalanceCmd)
 	accountCreateCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
 	accountImportCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
