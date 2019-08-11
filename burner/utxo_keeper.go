@@ -31,7 +31,6 @@ import (
 type AccountsUTXOKeeper struct {
 	*sync.Mutex
 	client        *rpcclient.Client
-	netVersion    string
 	db            elldb.DB
 	log           logger.Logger
 	stop          bool
@@ -47,12 +46,11 @@ func NewBurnerAccountUTXOKeeper(cfg *config.EngineConfig, log logger.Logger, db 
 	netVersion string, interrupt <-chan struct{}) *AccountsUTXOKeeper {
 	log = log.Module("BurnerUTXOKeeper")
 	return &AccountsUTXOKeeper{
-		Mutex:      &sync.Mutex{},
-		netVersion: netVersion,
-		interrupt:  interrupt,
-		log:        log,
-		db:         db,
-		cfg:        cfg,
+		Mutex:     &sync.Mutex{},
+		interrupt: interrupt,
+		log:       log,
+		db:        db,
+		cfg:       cfg,
 	}
 }
 
@@ -63,7 +61,7 @@ func (k *AccountsUTXOKeeper) SetClient(client *rpcclient.Client) {
 
 // lastScannedHeight returns the last scanned block
 func (k *AccountsUTXOKeeper) lastScannedHeight(address string) int32 {
-	key := MakeKeyLastScannedBlock(k.netVersion, address)
+	key := MakeKeyLastScannedBlock(address)
 	result := k.db.GetFirstOrLast(key, true)
 	if result == nil {
 		return 0
@@ -74,7 +72,7 @@ func (k *AccountsUTXOKeeper) lastScannedHeight(address string) int32 {
 
 // setLastScannedHeight sets the last scanned block for the given address
 func (k *AccountsUTXOKeeper) setLastScannedHeight(db elldb.Tx, address string, height int64) error {
-	key := MakeKeyLastScannedBlock(k.netVersion, address)
+	key := MakeKeyLastScannedBlock(address)
 	kv := elldb.NewKVObject(key, util.EncodeNumber(uint64(height)))
 	if err := db.Put([]*elldb.KVObject{kv}); err != nil {
 		return err
@@ -128,7 +126,7 @@ func (k *AccountsUTXOKeeper) index(address string, block *btcjson.GetBlockVerbos
 				continue
 			}
 
-			key := MakeKeyAddressUTXO(block.Height, k.netVersion, address, tx.Txid, out.N)
+			key := MakeKeyAddressUTXO(block.Height, address, tx.Txid, out.N)
 
 			// Check whether the UTXO is already indexed
 			res := db.GetByPrefix(key)
@@ -159,7 +157,7 @@ func (k *AccountsUTXOKeeper) index(address string, block *btcjson.GetBlockVerbos
 		// existing in the utxo database. If found, we must delete
 		// them from the database as they are now spent
 		for _, in := range tx.Vin {
-			key := MakeQueryKeyAddressUTXO(k.netVersion, address, in.Txid, in.Vout)
+			key := MakeQueryKeyAddressUTXO(address, in.Txid, in.Vout)
 
 			// Check whether the UTXO is already indexed
 			res := db.GetByPrefix(key)
@@ -257,18 +255,25 @@ begin:
 	goto begin
 }
 
-// balanceOf sums up the total value of all unspent output
-func (k *AccountsUTXOKeeper) balanceOf(address string) float64 {
-	key := MakeQueryKeyAddressUTXOs(k.netVersion, address)
-	result := k.db.GetByPrefix(key)
-	var total = decimal.Zero
+// GetAllUTXO returns all UTXOs of an address
+func GetAllUTXO(db elldb.DB, address string) (utxos []*DocUTXO) {
+	key := MakeQueryKeyAddressUTXOs(address)
+	result := db.GetByPrefix(key)
 	for _, o := range result {
 		var utxo DocUTXO
 		o.Scan(&utxo)
+		utxos = append(utxos, &utxo)
+	}
+	return
+}
+
+// BalanceOf sums up the total value of all unspent output
+func BalanceOf(db elldb.DB, address string) string {
+	var total = decimal.Zero
+	for _, utxo := range GetAllUTXO(db, address) {
 		total = total.Add(decimal.NewFromFloat(utxo.Value))
 	}
-	totalF, _ := total.Float64()
-	return totalF
+	return total.String()
 }
 
 // HasStopped checks whether the keeper has stopped

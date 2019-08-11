@@ -29,7 +29,7 @@ func (b *Blockchain) apiGetDBObjects(arg interface{}) *jsonrpc.Response {
 
 	queryType := mArgs["type"]
 	if queryType == nil {
-		return jsonrpc.Error(types.ErrCodeQueryParamError,
+		return jsonrpc.Error(types.ErrCodeCallParamError,
 			"type is required", nil)
 	}
 

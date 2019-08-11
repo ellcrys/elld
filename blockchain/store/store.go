@@ -143,7 +143,7 @@ func (s *ChainStore) PutTransactions(txs []types.Transaction, blockNumber uint64
 }
 
 // PutMinedBlock stores a brief information about a
-// block that was created by the blockchain's coinbase key
+// block that was created by the blockchain's node key
 func (s *ChainStore) PutMinedBlock(block types.Block, opts ...types.CallOp) error {
 	var txOp = common.GetTxOp(s.db, opts...)
 	if txOp.Closed() {

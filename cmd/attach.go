@@ -37,26 +37,26 @@ interactive session, set the unlock password using '--pwd' flag. The provided
 account does not exist, the command will fail.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		viper.BindPFlag("node.account", cmd.Flags().Lookup("account"))
+		viper.BindPFlag("node.id", cmd.Flags().Lookup("id"))
 		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
 		viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpc-address"))
-		account := viper.GetString("node.account")
+		account := viper.GetString("node.id")
 		password := viper.GetString("node.password")
 		rpcAddress := viper.GetString("rpc.address")
 
 		var err error
-		var coinbase *crypto.Key
+		var nodeKey *crypto.Key
 
-		// load the coinbase coinbase account.
+		// load the nodeKey nodeKey account.
 		if account != "" {
-			coinbase, err = getKey(account, password, 0)
+			nodeKey, err = getKey(account, password)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
 		}
 
 		// Set up the console in attach mode
-		cs := console.NewAttached(coinbase, consoleHistoryFilePath, cfg, log)
+		cs := console.NewAttached(nodeKey, consoleHistoryFilePath, cfg, log)
 		cs.SetVersions(config.GetVersions().Protocol, BuildVersion, GoVersion, BuildCommit)
 
 		// Set the RPC server address to be dialled
@@ -78,6 +78,6 @@ account does not exist, the command will fail.`,
 func init() {
 	rootCmd.AddCommand(attachCmd)
 	attachCmd.Flags().String("rpc-address", "127.0.0.1:8999", "Address RPC server will listen on")
-	attachCmd.Flags().String("account", "", "Account to load. Default account is used if not provided")
+	attachCmd.Flags().String("id", "", "Specify a different node account if the default is not desirable.")
 	attachCmd.Flags().String("pwd", "", "Used as password during initial account creation or to unlock an account")
 }

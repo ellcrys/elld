@@ -26,14 +26,14 @@ func RPCClientError(msg string) error {
 // call invokes a method in the server
 func (c *RPCClient) call(method string, params interface{}, authToken string) (*jsonrpc.Response, error) {
 
-	// create the message
+	// Create the message
 	message, err := json.EncodeClientRequest(method, params)
 	if err != nil {
 		return nil, RPCClientError("failed to create message")
 	}
 
-	// create a request, pass the message
-	// and send the request
+	// Create a request
+
 	req, err := http.NewRequest("POST", c.Address, bytes.NewBuffer(message))
 	if err != nil {
 		return nil, RPCClientError(err.Error())
@@ -62,8 +62,7 @@ type RPCConfig struct {
 	Client RPCClient
 }
 
-// GetAddr constructs the appropriate
-// RPC server address
+// GetAddr returns the RPC server address
 func makeAddr(addr string, secured bool) string {
 	var s = "s"
 	if !secured {

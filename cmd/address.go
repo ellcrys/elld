@@ -21,6 +21,7 @@ import (
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // addressCmd represents the address command
@@ -45,8 +46,10 @@ var addressNewCmd = &cobra.Command{
 	Long:  `Create a new address`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		var seed *int64 = nil
-		_seed, _ := cmd.Flags().GetInt64("seed")
+		viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
+
+		var seed *int64
+		_seed := viper.GetInt64("node.seed")
 		if _seed != -1 {
 			seed = &_seed
 		}

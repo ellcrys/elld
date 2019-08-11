@@ -225,7 +225,7 @@ func (b *Blockchain) apiGetTransaction(arg interface{}) *jsonrpc.Response {
 	hash, err := util.HexToHash(txHash)
 	if err != nil {
 		return jsonrpc.Error(
-			types.ErrCodeQueryParamError,
+			types.ErrCodeCallParamError,
 			fmt.Sprintf("invalid transaction id: %s", err.Error()),
 			nil,
 		)
@@ -261,7 +261,7 @@ func (b *Blockchain) apiGetTransactionFromPool(arg interface{}) *jsonrpc.Respons
 	_, err := util.HexToHash(txHash)
 	if err != nil {
 		return jsonrpc.Error(
-			types.ErrCodeQueryParamError,
+			types.ErrCodeCallParamError,
 			fmt.Sprintf("invalid transaction id: %s", err.Error()),
 			nil,
 		)

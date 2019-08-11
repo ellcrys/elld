@@ -6,6 +6,7 @@ import (
 	"bytes"
 	encJson "encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -42,11 +43,7 @@ type Options struct {
 // URL returns a fully formed url to
 // use for making requests
 func (o *Options) URL() string {
-	var url = "http://"
-	if o.HTTPS {
-		url = "https://"
-	}
-	return url + net.JoinHostPort(o.Host, strconv.Itoa(o.Port))
+	return "http://" + net.JoinHostPort(o.Host, strconv.Itoa(o.Port))
 }
 
 // Error represents a custom JSON-RPC error
@@ -59,15 +56,12 @@ func (e *Error) Error() string {
 }
 
 // NewClient creates an instance of Client
-func NewClient() *Client {
-	return &Client{}
-}
+func NewClient(opts *Options) *Client {
 
-// New creates an initialized request ready
-// to be used for making JSON-RPC 2.0 calls.
-// Panics if `opts.host` is unset.
-// If opts.port is not set, it defaults to 8999
-func (c *Client) New(opts *Options) IClient {
+	if opts == nil {
+		opts = &Options{}
+	}
+
 	if opts.Host == "" {
 		panic("options.host is required")
 	}
@@ -118,6 +112,12 @@ func (c *Client) Call(method string, params interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("failed to call method: %s", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return nil, fmt.Errorf("request unsuccessful. Status code: %d. Body: %s",
+			resp.StatusCode, string(body))
+	}
 
 	var m interface{}
 	err = json.DecodeClientResponse(resp.Body, &m)

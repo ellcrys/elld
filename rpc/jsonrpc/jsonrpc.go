@@ -217,7 +217,7 @@ func (s *JSONRPC) Serve() {
 	server := rpc.NewServer()
 	server.RegisterCodec(json2.NewCodec(), "application/json")
 	server.RegisterCodec(json2.NewCodec(), "application/json;charset=UTF-8")
-	r.Handle("/rpc", server)
+	r.Handle("/", server)
 
 	s.server = &http.Server{Addr: s.addr}
 	s.registerHandler()
@@ -258,9 +258,15 @@ func (s *JSONRPC) MergeAPISet(apiSets ...APISet) {
 	}
 }
 
+// MakeFullAPIName returns the full API name used to map
+// a RPC method to a server
+func MakeFullAPIName(namespace, apiName string) string {
+	return fmt.Sprintf("%s_%s", namespace, apiName)
+}
+
 // AddAPI adds an API to s api set
 func (s *JSONRPC) AddAPI(name string, api APIInfo) {
-	s.apiSet[api.Namespace+"_"+name] = api
+	s.apiSet[MakeFullAPIName(api.Namespace, name)] = api
 }
 
 // handle processes incoming requests. It validates

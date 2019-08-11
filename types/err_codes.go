@@ -32,12 +32,14 @@ const (
 const (
 	// ErrCodeUnexpectedArgType for when an argument type is invalid
 	ErrCodeUnexpectedArgType = 60000
-	// ErrCodeQueryParamError for when a query parameter is invalid
-	ErrCodeQueryParamError = 60001
+	// ErrCodeCallParamError for when a call parameter is invalid
+	ErrCodeCallParamError = 60001
 	// ErrValueDecodeFailed for when decoding a value failed
 	ErrValueDecodeFailed = 60002
 	// ErrCodeUnexpected for when an unexpected error occurs
 	ErrCodeUnexpected = 60003
+	// ErrCodeCallParamTypeError for when a call parameter type is invalid
+	ErrCodeCallParamTypeError = 60004
 )
 
 // Engine package error codes

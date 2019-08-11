@@ -77,5 +77,8 @@ var (
 var (
 	// MinimumBurnAmt is the amount of coin of the burn chain
 	// that needs to be burned to acquire a block producer ticket
-	MinimumBurnAmt = decimal.NewFromFloat(100)
+	MinimumBurnAmt = decimal.NewFromFloat(0.0001)
+
+	// DefaultBurnTxFee is the default fee to use during coin burning
+	DefaultBurnTxFee = 0.01
 )

@@ -34,16 +34,16 @@ type TxTransferBuilder struct {
 // Balance creates a balance transaction builder.
 func (o *TxBuilder) Balance() *TxTransferBuilder {
 
-	if o.e.coinbase == nil {
+	if o.e.nodeKey == nil {
 		panic(o.e.vm.MakeCustomError("BuilderError", "account not loaded"))
 	}
 
 	return &TxTransferBuilder{
 		e: o.e,
 		data: map[string]interface{}{
-			"from":         o.e.coinbase.Addr(),
+			"from":         o.e.nodeKey.Addr(),
 			"type":         core.TxTypeBalance,
-			"senderPubKey": o.e.coinbase.PubKey().Base58(),
+			"senderPubKey": o.e.nodeKey.PubKey().Base58(),
 		},
 	}
 }
@@ -51,16 +51,16 @@ func (o *TxBuilder) Balance() *TxTransferBuilder {
 // TicketBid creates a ticket bid transaction builder.
 func (o *TxBuilder) TicketBid() *TxTransferBuilder {
 
-	if o.e.coinbase == nil {
+	if o.e.nodeKey == nil {
 		panic(o.e.vm.MakeCustomError("BuilderError", "account not loaded"))
 	}
 
 	return &TxTransferBuilder{
 		e: o.e,
 		data: map[string]interface{}{
-			"from":         o.e.coinbase.Addr(),
+			"from":         o.e.nodeKey.Addr(),
 			"type":         core.TxTypeTicketBid,
-			"senderPubKey": o.e.coinbase.PubKey().Base58(),
+			"senderPubKey": o.e.nodeKey.PubKey().Base58(),
 		},
 	}
 }
@@ -130,7 +130,7 @@ sign:
 	o.data["hash"] = tx.ComputeHash().HexStr()
 
 	// Compute and set signature
-	sig, err := core.TxSign(&tx, o.e.coinbase.PrivKey().Base58())
+	sig, err := core.TxSign(&tx, o.e.nodeKey.PrivKey().Base58())
 	if err != nil {
 		err = fmt.Errorf("failed to sign tx: %s", err)
 		panic(o.e.vm.MakeCustomError("BuilderError", err.Error()))

@@ -27,7 +27,7 @@ var _ = Describe("Chain", func() {
 	var db elldb.DB
 	var genesisBlock types.Block
 	var genesisChain *Chain
-	var coinbase, sender, receiver *crypto.Key
+	var nodeKey, sender, receiver *crypto.Key
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -40,10 +40,10 @@ var _ = Describe("Chain", func() {
 		sender = crypto.NewKeyFromIntSeed(1)
 		receiver = crypto.NewKeyFromIntSeed(2)
 
-		coinbase = sender
+		nodeKey = sender
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
-		bc.SetCoinbase(coinbase)
+		bc.SetNodeKey(nodeKey)
 	})
 
 	BeforeEach(func() {
@@ -361,9 +361,9 @@ var _ = Describe("Chain", func() {
 		})
 
 		Context("mined block must be deleted", func() {
-			When("block creator and coinbase are the same", func() {
+			When("block creator and nodeKey are the same", func() {
 				BeforeEach(func() {
-					block2 = MakeBlock(bc, genesisChain, coinbase, receiver)
+					block2 = MakeBlock(bc, genesisChain, nodeKey, receiver)
 					_, err := bc.ProcessBlock(block2)
 					Expect(err).To(BeNil())
 

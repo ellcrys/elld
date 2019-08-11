@@ -203,6 +203,41 @@ func IsValidAddr(addr string) error {
 	return nil
 }
 
+// DecodeAddr validates an address, decodes it and returns
+// raw encoded 20-bytes address
+func DecodeAddr(addr string) ([20]byte, error) {
+
+	var b [20]byte
+
+	if err := IsValidAddr(addr); err != nil {
+		return b, err
+	}
+
+	result, _, err := base58.CheckDecode(addr)
+	if err != nil {
+		return b, err
+	}
+
+	copy(b[:], result)
+
+	return b, nil
+}
+
+// DecodeAddrOnly is like DecodeAddr except it does not validate the address
+func DecodeAddrOnly(addr string) ([20]byte, error) {
+
+	var b [20]byte
+
+	result, _, err := base58.CheckDecode(addr)
+	if err != nil {
+		return b, err
+	}
+
+	copy(b[:], result)
+
+	return b, nil
+}
+
 // IsValidPubKey checks whether a public key is valid
 func IsValidPubKey(pubKey string) error {
 

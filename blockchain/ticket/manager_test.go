@@ -45,7 +45,7 @@ var _ = Describe("Manager", func() {
 		var db elldb.DB
 		var genesisBlock types.Block
 		var genesisChain *blockchain.Chain
-		var coinbase, sender, receiver *crypto.Key
+		var nodeKey, sender, receiver *crypto.Key
 
 		BeforeEach(func() {
 			cfg, err = testutil.SetTestCfg()
@@ -58,10 +58,10 @@ var _ = Describe("Manager", func() {
 			sender = crypto.NewKeyFromIntSeed(1)
 			receiver = crypto.NewKeyFromIntSeed(2)
 
-			coinbase = sender
+			nodeKey = sender
 			bc = blockchain.New(txpool.New(100), cfg, log)
 			bc.SetDB(db)
-			bc.SetCoinbase(coinbase)
+			bc.SetNodeKey(nodeKey)
 		})
 
 		BeforeEach(func() {

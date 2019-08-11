@@ -74,8 +74,8 @@ func (n *Node) apiBasicNodeInfo(arg interface{}) *jsonrpc.Response {
 		"mode":                    mode,
 		"netVersion":              config.GetVersions().Protocol,
 		"syncing":                 n.blockManager.IsSyncing(),
-		"coinbasePublicKey":       n.coinbase.PubKey().Base58(),
-		"coinbase":                n.coinbase.Addr(),
+		"nodePublicKey":           n.nodeKey.PubKey().Base58(),
+		"nodeKey":                 n.nodeKey.Addr(),
 		"buildVersion":            n.cfg.VersionInfo.BuildVersion,
 		"buildCommit":             n.cfg.VersionInfo.BuildCommit,
 		"buildDate":               n.cfg.VersionInfo.BuildDate,
@@ -323,8 +323,7 @@ func (n *Node) processTx(txData map[string]interface{}) *jsonrpc.Response {
 		var err error
 		tx.Sig, err = hex.DecodeString(sig)
 		if err != nil {
-			return jsonrpc.Error(types.ErrCodeTxFailed,
-				"signature is not a valid hex string", nil)
+			return jsonrpc.Error(types.ErrCodeTxFailed, "signature is not a valid hex string", nil)
 		}
 	}
 
@@ -338,8 +337,7 @@ func (n *Node) processTx(txData map[string]interface{}) *jsonrpc.Response {
 
 		hashBytes, err := hex.DecodeString(hash)
 		if err != nil {
-			return jsonrpc.Error(types.ErrCodeTxFailed,
-				"hash is not a valid hex string", nil)
+			return jsonrpc.Error(types.ErrCodeTxFailed, "hash is not a valid hex string", nil)
 		}
 		tx.Hash = util.BytesToHash(hashBytes)
 	}
@@ -379,8 +377,7 @@ func (n *Node) apiSendRaw(arg interface{}) *jsonrpc.Response {
 
 	var txData map[string]interface{}
 	if err := json.Unmarshal(txBytes, &txData); err != nil {
-		return jsonrpc.Error(types.ErrCodeTxFailed,
-			"json: tx not correctly encoded", nil)
+		return jsonrpc.Error(types.ErrCodeTxFailed, "json: tx not correctly encoded", nil)
 	}
 
 	return n.processTx(txData)

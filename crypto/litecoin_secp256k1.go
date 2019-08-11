@@ -49,19 +49,11 @@ func NewSecp256k1(seed *int64, testnet, compressed bool) (*Secp256k1Key, error) 
 }
 
 // NewSecp256k1FromWIF creates an instance of Secp256k1Key from a ltcutil.WIF instance
-func NewSecp256k1FromWIF(wif *ltcutil.WIF, testnet, compressed bool) *Secp256k1Key {
+func NewSecp256k1FromWIF(wif *ltcutil.WIF) *Secp256k1Key {
 	return &Secp256k1Key{
 		sk:         wif.PrivKey.ToECDSA(),
-		testnet:    testnet,
-		compressed: compressed,
-	}
-}
-
-// NewSecp256k1FromWIF2 is like NewSecp256k1FromWIF except it does not
-// accept testnet and compressed arguments
-func NewSecp256k1FromWIF2(wif *ltcutil.WIF) *Secp256k1Key {
-	return &Secp256k1Key{
-		sk: wif.PrivKey.ToECDSA(),
+		testnet:    wif.IsForNet(&chaincfg.TestNet4Params),
+		compressed: wif.CompressPubKey,
 	}
 }
 
@@ -125,6 +117,26 @@ func (k *Secp256k1Key) Addr() string {
 	return pubKey.EncodeAddress()
 }
 
+// Address returns the Litecoin address that satisfies ltcutil.Address interface
+func (k *Secp256k1Key) Address() ltcutil.Address {
+	wif, err := k.WIF()
+	if err != nil {
+		panic(err)
+	}
+
+	netCfg := &chaincfg.TestNet4Params
+	if !wif.IsForNet(&chaincfg.TestNet4Params) {
+		netCfg = &chaincfg.MainNetParams
+	}
+
+	address, err := ltcutil.DecodeAddress(k.Addr(), netCfg)
+	if err != nil {
+		panic(err)
+	}
+
+	return address
+}
+
 // ForTestnet checks whether the key is for the testnet
 func (k *Secp256k1Key) ForTestnet() bool {
 	return k.testnet
@@ -132,6 +144,6 @@ func (k *Secp256k1Key) ForTestnet() bool {
 
 // WIFToAddress derives an address from a WIF
 func WIFToAddress(wif *ltcutil.WIF) (ltcutil.Address, error) {
-	key := NewSecp256k1FromWIF2(wif)
+	key := NewSecp256k1FromWIF(wif)
 	return ltcutil.DecodeAddress(key.Addr(), key.NetParam())
 }

@@ -44,9 +44,9 @@ type Console struct {
 	// is in attach mode.
 	attached bool
 
-	// coinbase is the default account required
-	// for signing secure operations
-	coinbase *crypto.Key
+	// nodeKey is the start-up key used by the
+	// client to interact with the network.
+	nodeKey *crypto.Key
 
 	// historyFile is the path to the file
 	// where the file is stored.
@@ -75,13 +75,13 @@ type Console struct {
 
 // New creates a new Console instance.
 // signatory is the address
-func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
+func New(nodeKey *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
 
 	c := new(Console)
 	c.historyFile = historyPath
-	c.executor = newExecutor(coinbase, log)
+	c.executor = newExecutor(nodeKey, log)
 	c.suggestMgr = newSuggestionManager(initialSuggestions)
-	c.coinbase = coinbase
+	c.nodeKey = nodeKey
 	c.executor.acctMgr = accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 	c.executor.console = c
 	c.cfg = cfg
@@ -99,8 +99,8 @@ func New(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log
 }
 
 // NewAttached is like New but enables attach mode
-func NewAttached(coinbase *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
-	c := New(coinbase, historyPath, cfg, log)
+func NewAttached(nodeKey *crypto.Key, historyPath string, cfg *config.EngineConfig, log logger.Logger) *Console {
+	c := New(nodeKey, historyPath, cfg, log)
 	c.attached = true
 	return c
 }

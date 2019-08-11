@@ -89,7 +89,7 @@ func (am *AccountManager) ImportBurnerCmd(keyfile, pwd string, testnet bool) err
 
 create:
 
-	key := crypto.NewSecp256k1FromWIF(wif, testnet, true)
+	key := crypto.NewSecp256k1FromWIF(wif)
 
 	if err := am.CreateBurnerAccount(key, passphrase); err != nil {
 		util.PrintCLIError(err.Error())

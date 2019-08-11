@@ -100,7 +100,7 @@ type ChainStorer interface {
 	PutTransactions(txs []Transaction, blockNumber uint64, opts ...CallOp) error
 
 	// PutMinedBlock stores a brief information about a
-	// block that was created by the blockchain's coinbase key
+	// block that was created by the blockchain's nodeKey key
 	PutMinedBlock(block Block, opts ...CallOp) error
 
 	// Current gets the current block at the tip of the chain
@@ -122,9 +122,9 @@ type Blockchain interface {
 	// Up initializes and loads the blockchain manager
 	Up() error
 
-	// SetCoinbase sets the coinbase key that is used to
-	// identify the current blockchain instance
-	SetCoinbase(coinbase *crypto.Key)
+	// SetNodeKey sets the start-up key used by the
+	// client to interact with the network.
+	SetNodeKey(nodeKey *crypto.Key)
 
 	// GetBestChain gets the chain that is currently considered the main chain
 	GetBestChain() Chainer

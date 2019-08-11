@@ -56,8 +56,8 @@ type NodeConfig struct {
 	// connect to or read from a peer.
 	MessageTimeout int64 `json:"messageTimeout" mapstructure:"messageTimeout"`
 
-	// Account is the coinbase account
-	Account string `json:"account" mapstructure:"account"`
+	// Key is the address of the node key to use for start up
+	Key string `json:"key" mapstructure:"key"`
 
 	// UTXOKeeperIndexInterval is the number of seconds between
 	// every burner accounts utxo indexation execution

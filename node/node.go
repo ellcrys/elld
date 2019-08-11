@@ -59,7 +59,7 @@ type Node struct {
 	txsPool             *txpool.TxPool
 	rSeed               []byte              // random 256 bit seed to be used for seed random operations
 	db                  elldb.DB            // used to access and modify local database
-	coinbase            *d_crypto.Key       // signatory address used to get node ID and for signing
+	nodeKey             *d_crypto.Key       // The start-up key used by the client to interact with the network.
 	history             *cache.Cache        // Used to track things we want to remember
 	event               *emitter.Emitter    // Provides access event emitting service
 	bChain              types.Blockchain    // The blockchain manager
@@ -76,13 +76,13 @@ type Node struct {
 
 // NewNode creates a node instance at the specified port
 func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
-	coinbase *d_crypto.Key, log logger.Logger) (*Node, error) {
+	nodeKey *d_crypto.Key, log logger.Logger) (*Node, error) {
 
-	if coinbase == nil {
+	if nodeKey == nil {
 		return nil, fmt.Errorf("signatory address required")
 	}
 
-	sk, _ := coinbase.PrivKey().Marshal()
+	sk, _ := nodeKey.PrivKey().Marshal()
 	priv, err := crypto.UnmarshalPrivateKey(sk)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func newNode(db elldb.DB, cfg *config.EngineConfig, address string,
 		wg:             sync.WaitGroup{},
 		log:            log,
 		rSeed:          util.RandBytes(64),
-		coinbase:       coinbase,
+		nodeKey:        nodeKey,
 		db:             db,
 		event:          &emitter.Emitter{},
 		history:        cache.NewActiveCache(5000),
@@ -231,22 +231,35 @@ func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	}
 }
 
+// GetDB instantiate a database
+func GetDB(cfg *config.EngineConfig, namespace string) (elldb.DB, error) {
+	db := elldb.NewDB(cfg.NetDataDir())
+	ns := ""
+	if cfg.Node.Mode == config.ModeDev {
+		if namespace == "" {
+			return nil, fmt.Errorf("namespace is required in dev mode")
+		}
+		ns = namespace
+	}
+
+	if err := db.Open(ns); err != nil {
+		return nil, err
+	}
+
+	return db, nil
+}
+
 // OpenDB opens the database.
 // In dev mode, create a namespace and open
 // database file prefixed with the namespace.
 func (n *Node) OpenDB() error {
-
 	if n.db != nil {
 		return fmt.Errorf("db already open")
 	}
 
-	n.db = elldb.NewDB(n.cfg.NetDataDir())
-	var namespace string
-	if n.DevMode() {
-		namespace = n.StringID()
-	}
-
-	return n.db.Open(namespace)
+	var err error
+	n.db, err = GetDB(n.cfg, n.nodeKey.Addr().String())
+	return err
 }
 
 // DB returns the database instance

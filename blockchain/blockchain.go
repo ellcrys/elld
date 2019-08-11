@@ -51,9 +51,9 @@ type Blockchain struct {
 	// lock is a general purpose lock for store etc
 	lock *sync.RWMutex
 
-	// coinbase is the key that identifies this blockchain
-	// instance.
-	coinbase *crypto.Key
+	// nodeKey is the start-up key used by the
+	// client to interact with the network.
+	nodeKey *crypto.Key
 
 	// genesisBlock is the initial, hardcoded block
 	// shared by all clients. It is the root of all chains.
@@ -136,10 +136,10 @@ func (b *Blockchain) SetInterrupt(interrupt <-chan struct{}) {
 	b.interrupt = interrupt
 }
 
-// SetCoinbase sets the coinbase key that is used to
-// identify the current blockchain instance
-func (b *Blockchain) SetCoinbase(coinbase *crypto.Key) {
-	b.coinbase = coinbase
+// SetNodeKey sets the start-up key used by the
+// client to interact with the network.
+func (b *Blockchain) SetNodeKey(nodeKey *crypto.Key) {
+	b.nodeKey = nodeKey
 }
 
 // SetGenesisBlock sets the genesis block

@@ -43,7 +43,7 @@ var _ = Describe("Process", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
-		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+		bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	BeforeEach(func() {
@@ -432,7 +432,7 @@ var _ = Describe("ExecBlock", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
-		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+		bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	BeforeEach(func() {
@@ -541,7 +541,7 @@ var _ = Describe("ProcessBlock", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
-		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+		bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	BeforeEach(func() {
@@ -792,7 +792,7 @@ var _ = Describe("ProcessBlock", func() {
 
 			bc2 = New(bc.txPool, cfg, log)
 			bc2.SetDB(db)
-			bc2.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+			bc2.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 			bc2.SetGenesisBlock(genesisBlock)
 			err = bc2.Up()
 			Expect(err).To(BeNil())

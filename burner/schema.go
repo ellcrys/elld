@@ -28,20 +28,18 @@ var (
 )
 
 // MakeKeyLastScannedBlock returns the key for storing/fetching the last scanned block
-func MakeKeyLastScannedBlock(netID, address string) []byte {
+func MakeKeyLastScannedBlock(address string) []byte {
 	return elldb.MakePrefix(
 		TagLastScannedBlock,
-		[]byte(netID),
 		[]byte(address),
 	)
 }
 
 // MakeQueryKeyAddressUTXO returns the key for fetching a specific utxo
-// belonging to a network, address and transaction.
-func MakeQueryKeyAddressUTXO(netID, address, txHash string, index uint32) []byte {
+// belonging to an address and transaction.
+func MakeQueryKeyAddressUTXO(address, txHash string, index uint32) []byte {
 	return elldb.MakePrefix(
 		TagAddressUTXO,
-		[]byte(netID),
 		[]byte(address),
 		[]byte(txHash),
 		[]byte(fmt.Sprintf("%d", index)),
@@ -49,22 +47,20 @@ func MakeQueryKeyAddressUTXO(netID, address, txHash string, index uint32) []byte
 }
 
 // MakeQueryKeyAddressUTXOs returns the key for fetching all UTXOs
-// belonging to a network and address.
-func MakeQueryKeyAddressUTXOs(netID, address string) []byte {
+// belonging to an address.
+func MakeQueryKeyAddressUTXOs(address string) []byte {
 	return elldb.MakePrefix(
 		TagAddressUTXO,
-		[]byte(netID),
 		[]byte(address),
 	)
 }
 
 // MakeKeyAddressUTXO returns the key for storing/fetching a specific utxo
 // belonging to a network, address and transaction.
-func MakeKeyAddressUTXO(blockHeight int64, netID, address, txHash string, index uint32) []byte {
+func MakeKeyAddressUTXO(blockHeight int64, address, txHash string, index uint32) []byte {
 	return elldb.MakeKey(
 		util.EncodeNumber(uint64(blockHeight)),
 		TagAddressUTXO,
-		[]byte(netID),
 		[]byte(address),
 		[]byte(txHash),
 		[]byte(fmt.Sprintf("%d", index)),

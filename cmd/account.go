@@ -23,6 +23,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // accountCmd represents the account command
@@ -67,13 +68,17 @@ var accountCreateCmd = &cobra.Command{
 			os.Exit(-1)
 		})
 
-		pwd, _ := cmd.Flags().GetString("pwd")
-		seed, _ := cmd.Flags().GetInt64("seed")
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
+		seed := viper.GetInt64("node.seed")
+		pwd := viper.GetString("node.password")
+
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		key, err := am.CreateCmd(false, seed, pwd)
 		if err != nil {
 			return
 		}
+
 		fmt.Println("New account created, encrypted and stored.")
 		fmt.Println("Address:", color.CyanString(key.Addr().String()))
 	},
@@ -136,7 +141,9 @@ var accountImportCmd = &cobra.Command{
 			keyfile = args[0]
 		}
 
-		pwd, _ := cmd.Flags().GetString("pwd")
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		pwd := viper.GetString("node.password")
+
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.ImportCmd(keyfile, pwd)
 	},
@@ -159,7 +166,9 @@ var accountRevealCmd = &cobra.Command{
 			address = args[0]
 		}
 
-		pwd, _ := cmd.Flags().GetString("pwd")
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		pwd := viper.GetString("node.password")
+
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.RevealCmd(address, pwd)
 	},
@@ -186,9 +195,12 @@ var accountCreateBurnerCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Get flag values
-		pwd, _ := cmd.Flags().GetString("pwd")
-		seed, _ := cmd.Flags().GetInt64("seed")
-		net, _ := rootCmd.Flags().GetString("net")
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
+		viper.BindPFlag("net.version", cmd.Flags().Lookup("net"))
+		seed := viper.GetInt64("node.seed")
+		pwd := viper.GetString("node.password")
+		net := viper.GetString("net.version")
 
 		// Instantiate the account manager
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
@@ -244,7 +256,9 @@ var accountRevealBurnerCmd = &cobra.Command{
 			address = args[0]
 		}
 
-		pwd, _ := cmd.Flags().GetString("pwd")
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		pwd := viper.GetString("node.password")
+
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.RevealBurnerCmd(address, pwd)
 	},
@@ -268,19 +282,21 @@ var accountImportBurnerCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		viper.BindPFlag("net.version", cmd.Flags().Lookup("net"))
+		net := viper.GetString("net.version")
+		pwd := viper.GetString("node.password")
+
 		var keyfile string
 		if len(args) >= 1 {
 			keyfile = args[0]
 		}
-
-		net, _ := rootCmd.Flags().GetString("net")
 
 		inTestnet := true
 		if config.IsMainNetVersion(net) {
 			inTestnet = false
 		}
 
-		pwd, _ := cmd.Flags().GetString("pwd")
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		am.ImportBurnerCmd(keyfile, pwd, inTestnet)
 	},
@@ -318,5 +334,7 @@ func init() {
 	accountRevealCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateBurnerCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	accountCreateBurnerCmd.Flags().Int64P("seed", "s", 0, "Provide a strong seed (not recommended)")
+	accountImportBurnerCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
+	accountRevealBurnerCmd.Flags().String("pwd", "", "Providing a password or path to a file containing a password (No interactive mode)")
 	rootCmd.AddCommand(accountCmd)
 }

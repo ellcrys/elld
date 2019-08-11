@@ -78,15 +78,15 @@ func (e *Executor) loadAccount(address string, optionalArgs ...string) {
 		panic(e.accountError(err.Error()))
 	}
 
-	e.coinbase = sa.GetKey().(*crypto.Key)
+	e.nodeKey = sa.GetKey().(*crypto.Key)
 }
 
 // loadedAccount returns the currently loaded account
 func (e *Executor) loadedAccount() string {
-	if e.coinbase == nil {
+	if e.nodeKey == nil {
 		return ""
 	}
-	return e.coinbase.Addr().String()
+	return e.nodeKey.Addr().String()
 }
 
 // listLocalAccounts returns a list of

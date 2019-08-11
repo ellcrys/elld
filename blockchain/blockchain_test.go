@@ -51,7 +51,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 		BeforeEach(func() {
 			bc = New(txpool.New(100), cfg, log)
 			bc.SetDB(db)
-			bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+			bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 		})
 
 		AfterEach(func() {
@@ -149,7 +149,7 @@ var _ = Describe("IntegrationBlockchain", func() {
 		BeforeEach(func() {
 			bc = New(txpool.New(100), cfg, log)
 			bc.SetDB(db)
-			bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+			bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 		})
 
 		BeforeEach(func() {
@@ -831,7 +831,7 @@ var _ = Describe("UnitBlock", func() {
 
 		bc = New(txpool.New(100), cfg, log)
 		bc.SetDB(db)
-		bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+		bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 	})
 
 	AfterEach(func() {

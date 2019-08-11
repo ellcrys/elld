@@ -484,9 +484,9 @@ process:
 
 	// To allow the client operator check for blocks they
 	// have mined, add a mined block index for this block
-	// only when the block was signed by the coinbase key
+	// only when the block was signed by the node key
 	if block.GetHeader().GetCreatorPubKey().
-		Equal(util.String(b.coinbase.PubKey().Base58())) {
+		Equal(util.String(b.nodeKey.PubKey().Base58())) {
 		if err := chain.PutMinedBlock(block, txOp); err != nil {
 			return nil, err
 		}

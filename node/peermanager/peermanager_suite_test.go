@@ -69,7 +69,7 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 	bc := blockchain.New(txp, cfg, log)
 	bc.SetEventEmitter(evtEmitter)
 	bc.SetDB(db)
-	bc.SetCoinbase(crypto.NewKeyFromIntSeed(1234))
+	bc.SetNodeKey(crypto.NewKeyFromIntSeed(1234))
 	genesisBlock, err := blockchain.LoadBlockFromFile("genesis-test.json")
 	Expect(err).To(BeNil())
 	bc.SetGenesisBlock(genesisBlock)

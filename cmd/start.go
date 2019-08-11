@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
+
 	"github.com/ellcrys/elld/elldb"
 
 	"github.com/ellcrys/elld/burner"
@@ -38,7 +40,7 @@ import (
 )
 
 // getKey unlocks an account and returns the corresponding key.
-func getKey(accountID, password string, seed int64) (*crypto.Key, error) {
+func getKey(accountID, password string) (*crypto.Key, error) {
 
 	var err error
 	var storedAccount *accountmgr.StoredAccount
@@ -145,13 +147,16 @@ func makeBurnerChainArgs() []string {
 	if rpcListen := viper.GetString("burner.rpclisten"); len(rpcListen) > 0 {
 		args = append(args, []string{"--rpclisten", rpcListen}...)
 	}
+	if viper.GetBool("burner.norpc") {
+		args = append(args, "--norpc")
+	}
 	return args
 }
 
 // initBurnerServer sets up the burner server.
 // It will return nil if the server stopped gracefully
 // or error if it was interrupted.
-func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
+func initBurnerServer(cmd *cobra.Command, db elldb.DB) (chan error, *burner.API) {
 
 	viper.BindPFlag("burner.testnet", cmd.Flags().Lookup("burner-testnet"))
 	viper.BindPFlag("burner.rpcuser", cmd.Flags().Lookup("burner-rpcuser"))
@@ -163,6 +168,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 	viper.BindPFlag("burner.utxokeeperoff", cmd.Flags().Lookup("burner-utxokeeperoff"))
 	viper.BindPFlag("burner.utxokeeperreindex", cmd.Flags().Lookup("burner-utxokeeperreindex"))
 	viper.BindPFlag("burner.utxokeeperfocus", cmd.Flags().Lookup("burner-utxokeeperfocus"))
+	viper.BindPFlag("burner.norpc", cmd.Flags().Lookup("burner-norpc"))
 
 	testnet := viper.GetBool("burner.testnet")
 	noTLS := viper.GetBool("burner.notls")
@@ -198,49 +204,52 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) chan error {
 		os.Exit(1)
 	}
 
-	// If the burner RPC user and pass are provided, then
-	// we need to start the burner account utxo indexer
-	if rpcUser != "" && rpcPass != "" {
-		if !noUTXOKeeper {
-			log.Info("UTXO keeper is turned ON")
-			bc, err := burner.GetClient(rpcListen, rpcUser, rpcPass, noTLS)
-			if err != nil {
-				close(interrupt)
-				log.Fatal("failed to setup burner RPC server client", "Err", err.Error())
-			}
+	var utxoKeeper *burner.AccountsUTXOKeeper
+	var bc *rpcclient.Client
+	var netVer = config.GetNetVersion()
 
-			utxoKeeper := burner.NewBurnerAccountUTXOKeeper(cfg, log, db,
-				config.GetNetVersion(), interrupt)
-			utxoKeeper.SetClient(bc)
-			utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
-		} else {
-			log.Info("UTXO keeper is turned OFF")
-		}
+	// We can start the UTXO keeper if --burner-utxokeeperoff is not set
+	if noUTXOKeeper {
+		log.Info("UTXO keeper is turned OFF")
+		goto end
 	}
 
-	return status
+	// When the burner rpc server is not enabled, do not proceed with starting
+	// the UTXO keeper since it interacts with the burner chain via RPC.
+	if !ltcd.IsRPCOn() {
+		log.Warn("UTXO keeper is disabled because burner server RPC service is disabled")
+		goto end
+	}
+
+	// At this point, the burner RPC service is enabled, so
+	// we try to get a working client to it.
+	bc, err = burner.GetClient(rpcListen, rpcUser, rpcPass, noTLS)
+	if err != nil {
+		log.Warn("Failed to connect to burner RPC service", "Err", err.Error())
+		goto end
+	}
+
+	// Setup and start the UTXO keeper
+	utxoKeeper = burner.NewBurnerAccountUTXOKeeper(cfg, log, db, netVer, interrupt)
+	utxoKeeper.SetClient(bc)
+	utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
+	log.Info("UTXO keeper is turned ON")
+
+end:
+
+	// Create a burner API
+	burnerAPI := burner.NewAPI(db, cfg, bc, accountMgr)
+
+	return status, burnerAPI
 }
 
 // starts the node.
-// - Parse flags
-// - Validate node bind address
-// - Load an account
-// - create local node
-// - add hardcoded node as bootstrap node if any
-// - add bootstrap node from config file if any
-// - open database
-// - initialize protocol instance along with message handlers
-// - create global event handler
-// - create logic handler and pass it to the node
-// - start RPC server if enabled
-// - start console if enabled
-// - connect console to rpc server and prepare console vm if rpc server is enabled
 func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan struct{}) {
 
 	var err error
 
 	// Process flags
-	viper.BindPFlag("node.account", cmd.Flags().Lookup("account"))
+	viper.BindPFlag("node.id", cmd.Flags().Lookup("id"))
 	viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
 	viper.BindPFlag("node.bootstrapAddrs", cmd.Flags().Lookup("add-node"))
 	viper.BindPFlag("node.address", cmd.Flags().Lookup("address"))
@@ -248,17 +257,15 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 	viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpc-address"))
 	viper.BindPFlag("rpc.disableAuth", cmd.Flags().Lookup("rpc-disable-auth"))
 	viper.BindPFlag("rpc.sessionTTL", cmd.Flags().Lookup("rpc-session-ttl"))
-	viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
 	viper.BindPFlag("node.noNet", cmd.Flags().Lookup("no-net"))
 	viper.BindPFlag("node.syncDisabled", cmd.Flags().Lookup("sync-disabled"))
 
 	// Host chain config variables
-	account := viper.GetString("node.account")
+	nodeID := viper.GetString("node.id")
 	password := viper.GetString("node.password")
 	listeningAddr := viper.GetString("node.address")
 	startRPC := viper.GetBool("rpc.enabled")
 	rpcAddress := viper.GetString("rpc.address")
-	seed := viper.GetInt64("node.seed")
 	noNet := viper.GetBool("node.noNet")
 	syncDisabled := viper.GetBool("node.syncDisabled")
 
@@ -274,10 +281,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 		log.Fatal("invalid bind address provided")
 	}
 
-	// Load the coinbase account.
-	// Required for signing blocks, transactions and
-	// for receiving mining rewards.
-	coinbase, err := getKey(account, password, seed)
+	// Load the node key.
+	// Required for signing blocks, transactions and for receiving mining rewards.
+	nodeKey, err := getKey(nodeID, password)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -286,7 +292,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 	event := &emitter.Emitter{}
 
 	// Create the local node.
-	n, err := node.NewNode(cfg, listeningAddr, coinbase, log)
+	n, err := node.NewNode(cfg, listeningAddr, nodeKey, log)
 	if err != nil {
 		log.Fatal("failed to create local node", "Err", err.Error())
 	}
@@ -342,7 +348,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 	bChain.SetDB(n.DB())
 	bChain.SetInterrupt(interrupt)
 	bChain.SetEventEmitter(event)
-	bChain.SetCoinbase(coinbase)
+	bChain.SetNodeKey(nodeKey)
 
 	// Initialize rpc server
 	rpcServer := rpc.NewServer(n.DB(), rpcAddress, cfg, log, interrupt)
@@ -368,13 +374,10 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 	}
 
 	// Initialize the burner chain
-	burnerStatus := initBurnerServer(cmd, n.DB())
+	burnerStatus, burnerAPI := initBurnerServer(cmd, n.DB())
 
 	// Start the block manager and the node
 	n.Start()
-
-	// Create a burner API
-	burnerAPI := burner.NewAPI()
 
 	// Add the RPC APIs from various components.
 	rpcServer.AddAPI(
@@ -398,7 +401,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 
 		// Create the console.
 		// Configure the RPC client if the server has started
-		cs = console.New(coinbase, consoleHistoryFilePath, cfg, log)
+		cs = console.New(nodeKey, consoleHistoryFilePath, cfg, log)
 		cs.SetVersions(config.GetVersions().Protocol, BuildVersion, GoVersion, BuildCommit)
 		cs.SetRPCServer(rpcServer, false)
 

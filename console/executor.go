@@ -35,9 +35,9 @@ type Executor struct {
 	// rpc holds rpc client and config
 	rpc *RPCConfig
 
-	// coinbase is the loaded account used
+	// nodeKey is the loaded account used
 	// for signing blocks and transactions
-	coinbase *crypto.Key
+	nodeKey *crypto.Key
 
 	// authToken is the token derived from the last login() invocation
 	authToken string
@@ -59,11 +59,11 @@ type Executor struct {
 }
 
 // NewExecutor creates a new executor
-func newExecutor(coinbase *crypto.Key, l logger.Logger) *Executor {
+func newExecutor(nodeKey *crypto.Key, l logger.Logger) *Executor {
 	e := new(Executor)
 	e.vm = otto.New()
 	e.log = l
-	e.coinbase = coinbase
+	e.nodeKey = nodeKey
 	e.scripts = packr.NewBox("./scripts")
 	return e
 }

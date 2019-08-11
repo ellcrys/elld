@@ -18,49 +18,63 @@ import (
 	path "path/filepath"
 	"strconv"
 
-	"github.com/ellcrys/elld/burner"
-
 	"github.com/thoas/go-funk"
 
+	"github.com/ellcrys/elld/burner"
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	validate "gopkg.in/asaskevich/govalidator.v4"
 )
 
 // burnCmd represents the burn command
 var burnCmd = &cobra.Command{
-	Use:   "burn",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Use:   "burn <burner account>",
+	Short: "Buy block producer ticket by burning litecoins.",
+	Long: `Burn litecoins to acquire block producer tickets which will
+give the ticket owner a chance to create new blocks. Purchasing block producer
+ticket will lead to the purchase amount being burned.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+<burner account> is the address or index of a burner account that will pay the cost
+of acquiring the block producer ticket. It must have sufficient balance and must 
+exist in the burner account key directory on the node.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		burnerAddress, _ := cmd.Flags().GetString("account")
-		coinbaseAddress, _ := cmd.Flags().GetString("coinbase")
+
+		viper.BindPFlag("node.id", cmd.Flags().Lookup("id"))
+		viper.BindPFlag("producer.address", cmd.Flags().Lookup("producer"))
+		viper.BindPFlag("burner.pass", cmd.Flags().Lookup("pass"))
+		viper.BindPFlag("rpc.address", cmd.Flags().Lookup("rpc-address"))
+		viper.BindPFlag("burn.fee", cmd.Flags().Lookup("fee"))
+		nodeID := viper.GetString("node.id")
+		burnerAccountPass := viper.GetString("burner.pass")
+		rpcAddress := viper.GetString("rpc.address")
+		fee := viper.GetFloat64("burn.fee")
+
+		// The address of the producer account that will gain the block producer privilege
+		producerAddress := viper.GetString("producer.address")
+
+		// The amount of litecoins to burn
 		amount, _ := cmd.Flags().GetString("amount")
+
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 
-		// Ensure burner account is not empty
-		if validate.IsNull(burnerAddress) {
-			util.PrintCLIError("Burner account is required.")
-			return
+		// Ensure the purchasing account is provided
+		if len(args) == 0 {
+			log.Fatal("Address of the purchasing burner account is required.")
 		}
 
-		// Ensure coinbase account is not empty
-		if validate.IsNull(coinbaseAddress) {
-			util.PrintCLIError("Coinbase account is required.")
+		// Ensure block producer candidate account is provided
+		if validate.IsNull(producerAddress) {
+			util.PrintCLIError("Address of the block producer account is required.")
 			return
 		}
 
 		// Ensure amount is not empty and it is numeric
 		if validate.IsNull(amount) {
-			util.PrintCLIError("Burn amount is required.")
+			util.PrintCLIError("Amount of litecoins to burn is required.")
 			return
 		} else if !validate.IsFloat(amount) && !validate.IsNumeric(amount) {
 			util.PrintCLIError("Burn amount must be numeric.")
@@ -75,6 +89,7 @@ to quickly create a Cobra application.`,
 		}
 
 		var selectedBurnAccount *accountmgr.StoredAccount
+		burnerAddress := args[0]
 
 		// If burner address is numeric, we are expected to use the
 		// burner account at the specified index
@@ -110,44 +125,64 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		var selectedCoinbaseAccount *accountmgr.StoredAccount
+		var selectedProducerAccount *accountmgr.StoredAccount
 
-		// If coinbase address is numeric, we are expected to use the
-		// burner account at the specified index
-		if validate.IsNumeric(coinbaseAddress) {
-			index, _ := strconv.Atoi(coinbaseAddress)
+		// If block producer address is numeric, we are expected
+		// to use the account at the specified index
+		if validate.IsNumeric(producerAddress) {
+			index, _ := strconv.Atoi(producerAddress)
 			if len(accounts)-1 < index {
 				util.PrintCLIError("Coinbase account index is out of range.")
 				return
 			}
-			selectedCoinbaseAccount = accounts[index]
+			selectedProducerAccount = accounts[index]
 		} else {
 			result := funk.Find(accounts, func(account *accountmgr.StoredAccount) bool {
-				if account.Address == coinbaseAddress {
+				if account.Address == producerAddress {
 					return true
 				}
 				return false
 			})
 			if result != nil {
-				selectedCoinbaseAccount = result.(*accountmgr.StoredAccount)
+				selectedProducerAccount = result.(*accountmgr.StoredAccount)
 			}
 		}
 
-		// Return error if the coinbase address specified was not found
-		if selectedCoinbaseAccount == nil {
-			util.PrintCLIError("Coinbase account (%s) does not exist.", burnerAddress)
+		// Return error if the producer address specified was not found
+		if selectedProducerAccount == nil {
+			util.PrintCLIError("Producer account (%s) does not exist.", producerAddress)
 			return
 		}
 
-		pwd, _ := cmd.Flags().GetString("pwd")
-		burner.BurnCmd(selectedCoinbaseAccount, selectedBurnAccount, pwd, amount)
+		// if node id is not set, use default account
+		if nodeID == "" {
+			defAct, err := accountMgr.GetDefault()
+			if err != nil {
+				util.PrintCLIError(`No default account found. Node environment has ` +
+					`not been initialized. Run 'elld init' to initialize the node or specify ` +
+					`an existing account using '--account' flag.`)
+				return
+			}
+			nodeID = defAct.Address
+		}
+
+		// Now that we have all the right information we need,
+		// run the burn command business logic.
+		burner.BurnCmd(cfg,
+			selectedProducerAccount,
+			rpcAddress,
+			selectedBurnAccount,
+			burnerAccountPass,
+			producerAddress,
+			amount, fee)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(burnCmd)
-	burnCmd.Flags().String("pwd", "", "Providing the burner account password or path to a file containing it (No interactive mode)")
-	burnCmd.Flags().StringP("account", "a", "", "The Litecoin burner account to burn coins from. Accepts account index or address.")
-	burnCmd.Flags().StringP("coinbase", "c", "", "The client account that will be granted mining privilege.")
-	burnCmd.Flags().String("amount", "", "The amount of coins to burn")
+	burnCmd.Flags().String("producer", "", "The address that will be granted block producer privilege.")
+	burnCmd.Flags().String("amount", "", "The amount of coins to burn.")
+	burnCmd.Flags().String("pass", "", "The password used to open the <burner account> (file path also accepted).")
+	burnCmd.Flags().String("rpc-address", "127.0.0.1:8999", "The Address node's RPC server will listen on")
+	burnCmd.Flags().Float64("fee", 0, "The amount of fee to pay for the burn transaction.")
 }

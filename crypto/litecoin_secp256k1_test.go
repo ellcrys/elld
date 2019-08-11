@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("Secp256k1", func() {
+var _ = Describe("Secp256k1", func() {
 	Describe(".NewSecp256k1", func() {
 		When("different seeds are used to derive two keys", func() {
 			var sk, sk2 *Secp256k1Key
@@ -106,12 +106,26 @@ var _ = FDescribe("Secp256k1", func() {
 		})
 	})
 
-	FDescribe(".WIFToAddress", func() {
+	Describe(".WIFToAddress", func() {
 		It("", func() {
 			seed := int64(1)
 			sk, _ := NewSecp256k1(&seed, false, true)
 			wif, _ := sk.WIF()
 			WIFToAddress(wif)
+		})
+	})
+
+	Describe(".NewSecp256k1FromWIF", func() {
+		It("should recreate a matching wif", func() {
+			seed := int64(1)
+			sk, _ := NewSecp256k1(&seed, true, false)
+			wif, err := sk.WIF()
+			Expect(err).To(BeNil())
+
+			sk2 := NewSecp256k1FromWIF(wif)
+			Expect(sk2.Addr()).To(Equal(sk.Addr()))
+			Expect(sk2.testnet).To(Equal(sk.testnet))
+			Expect(sk2.compressed).To(Equal(sk.compressed))
 		})
 	})
 })

@@ -10,6 +10,7 @@ import (
 	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // initCmd represents the init command
@@ -23,8 +24,11 @@ has already been initialized, nothing will be done.`,
 			os.Exit(-1)
 		})
 
-		pwd, _ := cmd.Flags().GetString("pwd")
-		seed, _ := cmd.Flags().GetInt64("seed")
+		viper.BindPFlag("node.password", cmd.Flags().Lookup("pwd"))
+		viper.BindPFlag("node.seed", cmd.Flags().Lookup("seed"))
+		seed := viper.GetInt64("node.seed")
+		pwd := viper.GetString("node.password")
+
 		am := accountmgr.New(path.Join(cfg.DataDir(), config.AccountDirName))
 		defaultExist := accountmgr.HasDefaultAccount(am)
 		if defaultExist {
