@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
+	"github.com/ellcrys/ltcd/rpcclient"
 
 	"github.com/ellcrys/elld/elldb"
 
@@ -17,8 +17,8 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/ellcrys/elld/blockchain/txpool"
-	"github.com/ellcrys/elld/ltcsuite/ltcd"
 	"github.com/ellcrys/elld/params"
+	"github.com/ellcrys/ltcd"
 	"github.com/pkg/profile"
 
 	"github.com/olebedev/emitter"

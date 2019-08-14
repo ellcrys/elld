@@ -20,8 +20,8 @@ import (
 	"github.com/ellcrys/go-prompt"
 
 	"github.com/ellcrys/elld/accountmgr"
-	"github.com/ellcrys/elld/ltcsuite/ltcutil"
 	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/ltcutil"
 	"github.com/thoas/go-funk"
 )
 

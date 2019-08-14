@@ -3,7 +3,7 @@ package crypto
 import (
 	"crypto/ecdsa"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/chaincfg"
+	"github.com/ellcrys/ltcd/chaincfg"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

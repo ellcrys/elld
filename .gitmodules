@@ -1,9 +1,7 @@
 [submodule "ltcsuite/ltcd"]
 path = ltcsuite/ltcd
 ignore = dirty
-url = git@github.com:ltcsuite/ltcd.git
 
 [submodule "ltcsuite/ltcutil"]
 path = ltcsuite/ltcutil
 ignore = dirty
-url = git@github.com:ltcsuite/ltcutil.git

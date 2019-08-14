@@ -8,15 +8,15 @@ import (
 
 	"github.com/ellcrys/elld/config"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/chaincfg/chainhash"
+	"github.com/ellcrys/ltcd/chaincfg/chainhash"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/wire"
+	"github.com/ellcrys/ltcd/wire"
 
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
 	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/ltcd/rpcclient"
 	"github.com/olebedev/emitter"
 )
 

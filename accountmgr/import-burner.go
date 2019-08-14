@@ -9,7 +9,7 @@ import (
 	"github.com/ellcrys/elld/util"
 
 	"github.com/ellcrys/elld/crypto"
-	"github.com/ellcrys/elld/ltcsuite/ltcutil"
+	"github.com/ellcrys/ltcutil"
 	"github.com/fatih/color"
 
 	funk "github.com/thoas/go-funk"

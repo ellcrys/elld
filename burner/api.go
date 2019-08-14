@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
+	"github.com/ellcrys/ltcd/rpcclient"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd"
-	"github.com/ellcrys/elld/ltcsuite/ltcd/txscript"
+	"github.com/ellcrys/ltcd"
+	"github.com/ellcrys/ltcd/txscript"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/chaincfg/chainhash"
+	"github.com/ellcrys/ltcd/chaincfg/chainhash"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/wire"
+	"github.com/ellcrys/ltcd/wire"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcutil"
+	"github.com/ellcrys/ltcutil"
 
 	"github.com/ellcrys/elld/crypto"
 	"github.com/ellcrys/elld/params"

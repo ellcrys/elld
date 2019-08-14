@@ -1,6 +1,6 @@
 package burner
 
-import "github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
+import "github.com/ellcrys/ltcd/rpcclient"
 
 // GetClient returns a client to the burner chain RPC server
 func GetClient(host, rpcUser, rpcPass string, disableTLS bool) (*rpcclient.Client, error) {

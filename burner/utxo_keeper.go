@@ -18,11 +18,11 @@ import (
 
 	"github.com/thoas/go-funk"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/btcjson"
+	"github.com/ellcrys/ltcd/btcjson"
 
 	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
 	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/ltcd/rpcclient"
 )
 
 // AccountsUTXOKeeper is responsible for scanning the

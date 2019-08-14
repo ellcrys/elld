@@ -5,10 +5,10 @@ import (
 	"crypto/rand"
 	mrand "math/rand"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/chaincfg"
+	"github.com/ellcrys/ltcd/chaincfg"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcd/btcec"
-	"github.com/ellcrys/elld/ltcsuite/ltcutil"
+	"github.com/ellcrys/ltcd/btcec"
+	"github.com/ellcrys/ltcutil"
 )
 
 // Secp256k1Key represents a secp256k1 elliptic curve key

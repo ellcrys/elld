@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ellcrys/elld/ltcsuite/ltcutil"
+	"github.com/ellcrys/ltcutil"
 
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/ellcrys/elld/crypto"
