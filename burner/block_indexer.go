@@ -9,7 +9,6 @@ import (
 	"github.com/ellcrys/elld/config"
 
 	"github.com/ellcrys/elld/ltcsuite/ltcd/chaincfg/chainhash"
-	"github.com/k0kubun/pp"
 
 	"github.com/ellcrys/elld/ltcsuite/ltcd/wire"
 
@@ -131,7 +130,6 @@ func (bw *BlockIndexer) getStartHeight() (int64, error) {
 	}
 
 	if bestBlockHeight > 0 && int64(bestBlockHeight) < height {
-		pp.Println("Yeap", bestBlockHeight)
 		height = int64(bestBlockHeight) - 1
 	}
 
