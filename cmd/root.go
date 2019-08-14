@@ -149,6 +149,7 @@ func setStartFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("sync-disabled", false, "Disable block and transaction synchronization")
 
 	cmd.Flags().Bool("burner-testnet", false, "Run the burner server on the testnet")
+	cmd.Flags().String("burner-listen", "", "Add an interface to listen for connections")
 	cmd.Flags().String("burner-rpcuser", "", "RPC username of the burner server")
 	cmd.Flags().String("burner-rpcpass", "", "RPC password of the burner server")
 	cmd.Flags().Bool("burner-notls", false, "Run the burner server on the testnet")
@@ -159,4 +160,7 @@ func setStartFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("burner-utxokeeperreindex", false, "Force the UTXO keeper to re-index burner accounts")
 	cmd.Flags().String("burner-utxokeeperfocus", "", "Force the UTXO keeper to focus on a specific account")
 	cmd.Flags().Bool("burner-norpc", false, "Disable the burner RPC service")
+	cmd.Flags().Bool("burner-regtest", false, "Use the burn node regression test network")
+	cmd.Flags().String("burner-miningaddr", "", "Add the specified payment address to use for generated blocks")
+	cmd.Flags().String("burner-connect", "", "Connect the burner server only to the specified peer at start-up")
 }

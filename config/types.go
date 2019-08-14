@@ -62,6 +62,10 @@ type NodeConfig struct {
 	// UTXOKeeperIndexInterval is the number of seconds between
 	// every burner accounts utxo indexation execution
 	UTXOKeeperIndexInterval int64 `json:"utxoKeeperIndexInt" mapstructure:"utxoKeeperIndexInt"`
+
+	// BurnerBlockIndexInterval is the number of seconds between
+	// every burner block indexation execution
+	BurnerBlockIndexInterval int64 `json:"burnerBlockIndexInt" mapstructure:"burnerBlockIndexInt"`
 }
 
 // RPCConfig defines configuration for the RPC component

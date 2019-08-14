@@ -150,15 +150,28 @@ func makeBurnerChainArgs() []string {
 	if viper.GetBool("burner.norpc") {
 		args = append(args, "--norpc")
 	}
+	if viper.GetBool("burner.regtest") {
+		args = append(args, "--regtest")
+	}
+	if miningAddr := viper.GetString("burner.miningaddr"); len(miningAddr) > 0 {
+		args = append(args, []string{"--miningaddr", miningAddr}...)
+	}
+	if connect := viper.GetString("burner.connect"); len(connect) > 0 {
+		args = append(args, []string{"--connect", connect}...)
+	}
+	if listen := viper.GetString("burner.listent"); len(listen) > 0 {
+		args = append(args, []string{"--listen", listen}...)
+	}
 	return args
 }
 
-// initBurnerServer sets up the burner server.
+// initBurnerChainProcesses sets up the burner server.
 // It will return nil if the server stopped gracefully
 // or error if it was interrupted.
-func initBurnerServer(cmd *cobra.Command, db elldb.DB) (chan error, *burner.API) {
+func initBurnerChainProcesses(cmd *cobra.Command, db elldb.DB, evt *emitter.Emitter) (chan error, *burner.API) {
 
 	viper.BindPFlag("burner.testnet", cmd.Flags().Lookup("burner-testnet"))
+	viper.BindPFlag("burner.listen", cmd.Flags().Lookup("burner-listen"))
 	viper.BindPFlag("burner.rpcuser", cmd.Flags().Lookup("burner-rpcuser"))
 	viper.BindPFlag("burner.rpcpass", cmd.Flags().Lookup("burner-rpcpass"))
 	viper.BindPFlag("burner.notls", cmd.Flags().Lookup("burner-notls"))
@@ -169,6 +182,9 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) (chan error, *burner.API)
 	viper.BindPFlag("burner.utxokeeperreindex", cmd.Flags().Lookup("burner-utxokeeperreindex"))
 	viper.BindPFlag("burner.utxokeeperfocus", cmd.Flags().Lookup("burner-utxokeeperfocus"))
 	viper.BindPFlag("burner.norpc", cmd.Flags().Lookup("burner-norpc"))
+	viper.BindPFlag("burner.regtest", cmd.Flags().Lookup("burner-regtest"))
+	viper.BindPFlag("burner.miningaddr", cmd.Flags().Lookup("burner-miningaddr"))
+	viper.BindPFlag("burner.connect", cmd.Flags().Lookup("burner-connect"))
 
 	testnet := viper.GetBool("burner.testnet")
 	noTLS := viper.GetBool("burner.notls")
@@ -206,6 +222,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) (chan error, *burner.API)
 
 	var utxoKeeper *burner.AccountsUTXOKeeper
 	var bc *rpcclient.Client
+	var blockWatcher *burner.BlockIndexer
 	var netVer = config.GetNetVersion()
 
 	// We can start the UTXO keeper if --burner-utxokeeperoff is not set
@@ -218,6 +235,7 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) (chan error, *burner.API)
 	// the UTXO keeper since it interacts with the burner chain via RPC.
 	if !ltcd.IsRPCOn() {
 		log.Warn("UTXO keeper is disabled because burner server RPC service is disabled")
+		log.Warn("Block watcher is disabled because burner server RPC service is disabled")
 		goto end
 	}
 
@@ -234,6 +252,10 @@ func initBurnerServer(cmd *cobra.Command, db elldb.DB) (chan error, *burner.API)
 	utxoKeeper.SetClient(bc)
 	utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
 	log.Info("UTXO keeper is turned ON")
+
+	// Start the burner chain block watcher
+	blockWatcher = burner.NewBlockIndexer(cfg, log.Module("BurnerBlockWatcher"), db, evt, bc, interrupt)
+	blockWatcher.Begin()
 
 end:
 
@@ -373,8 +395,8 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 		log.Fatal("failed to load blockchain manager", "Err", err.Error())
 	}
 
-	// Initialize the burner chain
-	burnerStatus, burnerAPI := initBurnerServer(cmd, n.DB())
+	// Initialize the burner chain and related processes
+	burnerStatus, burnerAPI := initBurnerChainProcesses(cmd, n.DB(), event)
 
 	// Start the block manager and the node
 	n.Start()

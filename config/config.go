@@ -44,6 +44,7 @@ func setDefaultConfig() {
 	viper.SetDefault("node.maxInConnections", 115)
 	viper.SetDefault("node.conEstInt", 120)
 	viper.SetDefault("node.utxoKeeperIndexInt", 1800)
+	viper.SetDefault("node.burnerBlockIndexInt", 1800)
 	viper.SetDefault("node.messageTimeout", 30)
 	viper.SetDefault("txPool.capacity", 10000)
 	viper.SetDefault("miner.mode", 0)
@@ -60,6 +61,7 @@ func setDevDefaultConfig() {
 	viper.SetDefault("node.cleanUpInt", 1800)
 	viper.SetDefault("node.conEstInt", 10)
 	viper.SetDefault("node.utxoKeeperIndexInt", 120)
+	viper.SetDefault("node.burnerBlockIndexInt", 120)
 	viper.SetDefault("txPool.capacity", 100)
 }
 

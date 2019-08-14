@@ -21,11 +21,31 @@ import (
 
 var (
 	// TagLastScannedBlock is the tag for the key that stores the last scanned block
+	// TODO: shorten this value
 	TagLastScannedBlock = []byte("burner_lsb")
 
-	// TagAddressUTXO is the tag for the key that stores burner address UTXOs
+	// TagAddressUTXO is the tag for the key that stores burner address UTXOs'
+	// TODO: shorten this value
 	TagAddressUTXO = []byte("burner_addr_utxo")
+
+	// TagWatchedBlock is the tag for the key that stores the last watched burner block.
+	TagWatchedBlock = []byte("wb")
 )
+
+// MakeKeyWatchedBlock constructs a key for storing a blocks found by the block watcher.
+func MakeKeyWatchedBlock(blockNumber int64) []byte {
+	return elldb.MakeKey(
+		util.EncodeNumber(uint64(blockNumber)),
+		TagWatchedBlock,
+	)
+}
+
+// MakeQueryKeyWatchedBlock constructs a key for querying blocks found by the block watcher.
+func MakeQueryKeyWatchedBlock() []byte {
+	return elldb.MakePrefix(
+		TagWatchedBlock,
+	)
+}
 
 // MakeKeyLastScannedBlock returns the key for storing/fetching the last scanned block
 func MakeKeyLastScannedBlock(address string) []byte {

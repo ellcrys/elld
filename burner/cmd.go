@@ -20,7 +20,6 @@ import (
 	"github.com/ellcrys/go-prompt"
 
 	"github.com/ellcrys/elld/accountmgr"
-	"github.com/ellcrys/elld/ltcsuite/ltcd/rpcclient"
 	"github.com/ellcrys/elld/ltcsuite/ltcutil"
 	"github.com/ellcrys/elld/util"
 	"github.com/thoas/go-funk"
@@ -105,24 +104,6 @@ burn:
 	fmt.Println("Tx. Hash:          ", txHash)
 
 	return nil
-}
-
-// GetClient returns a client to the burner chain RPC server
-func GetClient(host, rpcUser, rpcPass string, disableTLS bool) (*rpcclient.Client, error) {
-	connCfg := &rpcclient.ConnConfig{
-		Host:       host,
-		Endpoint:   "ws",
-		User:       rpcUser,
-		Pass:       rpcPass,
-		DisableTLS: disableTLS,
-	}
-
-	client, err := rpcclient.New(connCfg, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
 }
 
 // burn executes the burn operation and returns the transaction hash or error
