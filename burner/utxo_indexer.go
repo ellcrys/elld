@@ -27,7 +27,6 @@ import (
 )
 
 type indexerResult int
-
 type indexResult struct {
 	err    error
 	status indexerResult
@@ -204,49 +203,56 @@ func (k *UTXOIndexer) index(address string, block *btcjson.GetBlockVerboseResult
 // The 'address' argument is the address whose UTXO are searched and indexed.
 // The 'skipToHeight' argument forces the algorithm to ignore blocks below the height.
 // The 'reIndex' argument overwrites the last scanned height to zero, forcing a rescan.
-func (k *UTXOIndexer) begin(workerID int, address string, skipToHeight int32,
-	reIndex bool, interrupt chan struct{}) *indexResult {
+func (k *UTXOIndexer) begin(
+	workerID int,
+	address string,
+	skipToHeight int32,
+	reIndex bool,
+	interrupt chan struct{}) *indexResult {
 begin:
 
 	k.log.Debug("Began account indexation", "Account", address, "WorkerID", workerID)
 
 	result := &indexResult{}
 
-	// Get the height of the best block on the chain
+	// Get the height of the best block on the upstream chain
 	bestHeight, err := k.getBestBlockHeight()
 	if err != nil {
-		err = fmt.Errorf("Failed to get best block height of the burner chain: %s", err)
-		result.err = err
+		result.err = fmt.Errorf("Failed to get best block height of the burner chain: %s", err)
 		return result
 	}
 
-	lastScannedHeight := int32(0)
+	lastIndexedHeight := int32(0)
 
-	// Get the last scanned block height only if re-index is not requested.
+	// Get the height of the last indexed block only
+	// if re-index is not requested. If re-index is
+	// is set, we leave the default value (0)
 	if !reIndex {
-		lastScannedHeight = k.getLastIndexedHeight(address)
+		lastIndexedHeight = k.getLastIndexedHeight(address)
 	}
 
 	// If skipToHeight is set and it is greater than the last scanned height,
-	// use the skip heigh value as the last scanned height
-	if skipToHeight > 0 && skipToHeight > lastScannedHeight {
-		lastScannedHeight = skipToHeight
+	// use the skip height value as the last scanned height
+	if skipToHeight > 0 && skipToHeight > lastIndexedHeight {
+		lastIndexedHeight = skipToHeight
 	}
 
-	// If the last scanned block height is at least equal to the
+	// If the height of the last indexed block is at least equal to the
 	// current best block height, we should do nothing.
-	if lastScannedHeight >= bestHeight {
+	if lastIndexedHeight >= bestHeight {
 		k.log.Debug("UTXO database of account is up to date", "Address", address)
 		result.status = indexUpToDate
 		return result
 	}
 
-	// At this point, the last scanned block height is less than the
-	// current best block height, it means we need to scan more blocks
-	// till we reach the bestHeight.
-	height := lastScannedHeight
+	// At this point, the height of last scanned block is less than the
+	// current best block height, it means we need to fetch more blocks
+	// till we reach the upstream best height.
+	height := lastIndexedHeight
 	for {
 
+		// Return immediately if shutdown request h
+		// had been received and effected.
 		if k.HasStopped() {
 			result.status = stoppedDueToShutdown
 			return result
@@ -254,6 +260,8 @@ begin:
 
 		height++
 
+		// Immediately return if worker interrupt
+		// signal is received.
 		if util.IsStructChanClosed(interrupt) {
 			result.status = stoppedDueToInterrupt
 			return result
@@ -261,27 +269,35 @@ begin:
 
 		k.log.Debug("Current Block", "CurrentHeight", height, "BestHeight", bestHeight,
 			"WorkerID", workerID)
+
+		// Exit loop immediately if height exceeds
+		// known upstream best height
 		if height > bestHeight {
 			break
 		}
 
+		// Immediately return if worker interrupt
+		// signal is received.
 		if util.IsStructChanClosed(interrupt) {
 			result.status = stoppedDueToInterrupt
 			return result
 		}
 
-		// We need to get the block hash at height
+		// Get the block hash at given height
 		block, err := k.getBlock(height)
 		if err != nil {
 			result.err = fmt.Errorf("failed to get block: %s", err)
 			return result
 		}
 
+		// Immediately return if worker interrupt
+		// signal is received.
 		if util.IsStructChanClosed(interrupt) {
 			result.status = stoppedDueToInterrupt
 			return result
 		}
 
+		// Index the UTXOs in the block that belongs to address
 		if err = k.index(address, block); err != nil {
 			result.err = fmt.Errorf("failed to index block (%d): %s", block.Height, err)
 			return result
@@ -348,8 +364,12 @@ func (k *UTXOIndexer) deleteIndexFrom(height uint64) error {
 }
 
 // Begin initiates the scanning and indexing process.
-func (k *UTXOIndexer) Begin(am *accountmgr.AccountManager,
-	numWorkers int, skipToHeight int32, reIndex bool, focusAddr string) error {
+func (k *UTXOIndexer) Begin(
+	am *accountmgr.AccountManager,
+	numWorkers int,
+	skipToHeight int32,
+	reIndex bool,
+	focusAddr string) error {
 
 	// Define an interrupt channel that will be passed to
 	// indexer workers so they can be interrupted whenever
@@ -376,11 +396,22 @@ func (k *UTXOIndexer) Begin(am *accountmgr.AccountManager,
 	go func() {
 		for evt := range k.bus.On(EventInvalidLocalBlock) {
 			pp.Println("LO AND BEHOLD", evt)
-			invalidHeight := evt.Args[0].(int64)
-			if !util.IsStructChanClosed(workersInterrupt) {
-				close(workersInterrupt)
-				k.deleteIndexFrom(uint64(invalidHeight))
+
+			if util.IsStructChanClosed(workersInterrupt) {
+				return
 			}
+
+			invalidHeight := evt.Args[0].(int64)
+
+			// We can only react if the workers have not been
+			// interrupted. If they aren't, we close the
+			// worker interrupt channel stops workers and then
+			// delete the invalid block and its descendants.
+			// After we are done, we reinitialize the worker
+			// interrupt channel.
+			close(workersInterrupt)
+			k.deleteIndexFrom(uint64(invalidHeight))
+			workersInterrupt = make(chan struct{})
 		}
 	}()
 
@@ -391,7 +422,7 @@ func (k *UTXOIndexer) Begin(am *accountmgr.AccountManager,
 	go func() {
 		for range k.indexerTicker.C {
 
-			// Reinitialize the worker interrupt chan only if
+			// Reinitialize the worker interrupt channel only if
 			// it was previously closed.
 			if util.IsStructChanClosed(workersInterrupt) {
 				workersInterrupt = make(chan struct{})
@@ -450,10 +481,19 @@ func (k *UTXOIndexer) Begin(am *accountmgr.AccountManager,
 						if acct == nil {
 							break
 						}
+
 						addr := acct.(*accountmgr.StoredAccount).Address
-						if r := k.begin(id, addr, skipToHeight, reIndex, workersInterrupt); r.err != nil {
+						r := k.begin(id, addr, skipToHeight, reIndex, workersInterrupt)
+						if r.err != nil {
 							k.log.Error("Failed to complete UTXO indexation",
 								"Account", addr, "Err", r.err)
+						}
+
+						// If the worker stopped processing due to
+						// receiving an interrupt signal, we need to
+						// let the worker stop
+						if r.status == stoppedDueToInterrupt {
+							break
 						}
 					}
 					wg.Done()
