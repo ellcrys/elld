@@ -74,7 +74,7 @@ func (api *API) apiBurnerAccountBalance(arg interface{}) *jsonrpc.Response {
 	}
 
 	return jsonrpc.Success(util.EncodeForJS(map[string]interface{}{
-		"balance": BalanceOf(api.db, burnerAddress),
+		"balance": balanceOf(api.db, burnerAddress),
 	}))
 }
 
@@ -175,7 +175,7 @@ func (api *API) apiBurn(arg interface{}) *jsonrpc.Response {
 	// Find utxos that can satisfy the burn amount
 	totalAmountUTXOS := decimal.Zero
 	var candidateUTXOs = []*DocUTXO{}
-	for _, utxo := range GetAllUTXO(api.db, address) {
+	for _, utxo := range getUTXOs(api.db, address) {
 
 		// Stop collecting UTXO if we have collected enough to cover
 		// the burn amount and transaction fee
@@ -197,7 +197,7 @@ func (api *API) apiBurn(arg interface{}) *jsonrpc.Response {
 
 	// Build the input
 	for _, utxo := range candidateUTXOs {
-		outHash, err := chainhash.NewHashFromStr(utxo.TxHash)
+		outHash, err := chainhash.NewHashFromStr(utxo.TxID)
 		if err != nil {
 			return jsonErr(types.ErrCodeUnexpected, "invalid utxo id", nil)
 		}

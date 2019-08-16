@@ -107,7 +107,7 @@ func (db *LevelDB) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject
 
 func (db *LevelDB) iterate(ldb *leveldb.Transaction, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
 	iter := ldb.NewIterator(util.BytesPrefix(prefix), nil)
-	iterater(iter, prefix, first, iterFunc)
+	iterate(iter, prefix, first, iterFunc)
 }
 
 // GetFirstOrLast returns one value matching a prefix.
@@ -169,6 +169,36 @@ func (db *LevelDB) Truncate() error {
 	return err
 }
 
+// TruncateWithFunc deletes items that predicate returns true for.
+// It accepts a 'prefix' to narrow the search space matching keys.
+// The 'first' argument determines whether to search from top or bottom.
+func (db *LevelDB) TruncateWithFunc(prefix []byte, first bool,
+	predicate func(kv *KVObject) bool) error {
+
+	if predicate == nil {
+		return fmt.Errorf("predicate function is required")
+	}
+
+	tx, err := db.ldb.OpenTransaction()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	db.iterate(tx, prefix, first, func(kv *KVObject) bool {
+		if !predicate(kv) {
+			return false
+		}
+		if _err := tx.Delete(kv.GetKey(), nil); _err != nil {
+			err = _err
+			return true
+		}
+		return false
+	})
+
+	return err
+}
+
 // NewTx creates a new transaction
 func (db *LevelDB) NewTx() (Tx, error) {
 	tx, err := db.ldb.OpenTransaction()
@@ -206,7 +236,7 @@ func (tx *Transaction) GetByPrefix(prefix []byte) []*KVObject {
 // If first is set to true, it begins from the first item, otherwise, the last
 func (tx *Transaction) Iterate(prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
 	iter := tx.ldb.NewIterator(util.BytesPrefix(prefix), nil)
-	iterater(iter, prefix, first, iterFunc)
+	iterate(iter, prefix, first, iterFunc)
 }
 
 // Commit the transaction
@@ -248,7 +278,7 @@ func getByPrefix(iter iterator.Iterator) []*KVObject {
 	return result
 }
 
-func iterater(iter iterator.Iterator, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
+func iterate(iter iterator.Iterator, prefix []byte, first bool, iterFunc func(kv *KVObject) bool) {
 	var key, val []byte
 
 	var f, f2 = iter.First, iter.Next

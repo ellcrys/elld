@@ -220,7 +220,7 @@ func initBurnerChainProcesses(cmd *cobra.Command, db elldb.DB, evt *emitter.Emit
 		os.Exit(1)
 	}
 
-	var utxoKeeper *burner.AccountsUTXOKeeper
+	var utxoKeeper *burner.UTXOIndexer
 	var bc *rpcclient.Client
 	var blockWatcher *burner.BlockIndexer
 	var netVer = config.GetNetVersion()
@@ -248,13 +248,13 @@ func initBurnerChainProcesses(cmd *cobra.Command, db elldb.DB, evt *emitter.Emit
 	}
 
 	// Setup and start the UTXO keeper
-	utxoKeeper = burner.NewBurnerAccountUTXOKeeper(cfg, log, db, netVer, interrupt)
+	utxoKeeper = burner.NewUTXOIndexer(cfg, log, db, netVer, evt, interrupt)
 	utxoKeeper.SetClient(bc)
 	utxoKeeper.Begin(accountMgr, utxoKeeperNumThread, utxoKeeperSkip, reIndex, focusAddr)
 	log.Info("UTXO keeper is turned ON")
 
 	// Start the burner chain block watcher
-	blockWatcher = burner.NewBlockIndexer(cfg, log.Module("BurnerBlockWatcher"), db, evt, bc, interrupt)
+	blockWatcher = burner.NewBlockIndexer(cfg, log, db, evt, bc, interrupt)
 	blockWatcher.Begin()
 
 end:

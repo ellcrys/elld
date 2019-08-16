@@ -28,22 +28,22 @@ var (
 	// TODO: shorten this value
 	TagAddressUTXO = []byte("burner_addr_utxo")
 
-	// TagWatchedBlock is the tag for the key that stores the last watched burner block.
-	TagWatchedBlock = []byte("wb")
+	// TagIndexerBlock is the tag for the key that stores the last watched burner block.
+	TagIndexerBlock = []byte("wb")
 )
 
-// MakeKeyWatchedBlock constructs a key for storing a blocks found by the block watcher.
-func MakeKeyWatchedBlock(blockNumber int64) []byte {
+// MakeKeyIndexerBlock constructs a key for storing a blocks found by the block indexer.
+func MakeKeyIndexerBlock(blockNumber int64) []byte {
 	return elldb.MakeKey(
 		util.EncodeNumber(uint64(blockNumber)),
-		TagWatchedBlock,
+		TagIndexerBlock,
 	)
 }
 
-// MakeQueryKeyWatchedBlock constructs a key for querying blocks found by the block watcher.
-func MakeQueryKeyWatchedBlock() []byte {
+// MakeQueryKeyIndexerBlock constructs a key for querying blocks found by the block indexer.
+func MakeQueryKeyIndexerBlock() []byte {
 	return elldb.MakePrefix(
-		TagWatchedBlock,
+		TagIndexerBlock,
 	)
 }
 
@@ -55,13 +55,20 @@ func MakeKeyLastScannedBlock(address string) []byte {
 	)
 }
 
+// MakeQueryKeyUTXO returns the key for fetching all utxos
+func MakeQueryKeyUTXO() []byte {
+	return elldb.MakePrefix(
+		TagAddressUTXO,
+	)
+}
+
 // MakeQueryKeyAddressUTXO returns the key for fetching a specific utxo
 // belonging to an address and transaction.
-func MakeQueryKeyAddressUTXO(address, txHash string, index uint32) []byte {
+func MakeQueryKeyAddressUTXO(address, txID string, index uint32) []byte {
 	return elldb.MakePrefix(
 		TagAddressUTXO,
 		[]byte(address),
-		[]byte(txHash),
+		[]byte(txID),
 		[]byte(fmt.Sprintf("%d", index)),
 	)
 }
@@ -77,20 +84,19 @@ func MakeQueryKeyAddressUTXOs(address string) []byte {
 
 // MakeKeyAddressUTXO returns the key for storing/fetching a specific utxo
 // belonging to a network, address and transaction.
-func MakeKeyAddressUTXO(blockHeight int64, address, txHash string, index uint32) []byte {
+func MakeKeyAddressUTXO(blockHeight int64, address, txID string, index uint32) []byte {
 	return elldb.MakeKey(
 		util.EncodeNumber(uint64(blockHeight)),
 		TagAddressUTXO,
 		[]byte(address),
-		[]byte(txHash),
+		[]byte(txID),
 		[]byte(fmt.Sprintf("%d", index)),
 	)
 }
 
 // DocUTXO describes a UTXO
 type DocUTXO struct {
-	TxHash      string
-	Index       uint32
-	PkScriptStr string
-	Value       float64
+	TxID  string
+	Index uint32
+	Value float64
 }

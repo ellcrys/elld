@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 
 	"github.com/mitchellh/go-homedir"
 
@@ -106,6 +108,57 @@ var _ = Describe("ELLDB", func() {
 
 			results := db.GetByPrefix(nil)
 			Expect(results).To(HaveLen(0))
+		})
+	})
+
+	Describe(".Truncate", func() {
+		It("should successfully get objects", func() {
+			objs := []*KVObject{
+				NewKVObject([]byte("object_1"), []byte("value1")),
+				NewKVObject([]byte("object_2"), []byte("value2")),
+			}
+			err = db.Put(objs)
+			Expect(err).To(BeNil())
+
+			err = db.Truncate()
+			Expect(err).To(BeNil())
+
+			results := db.GetByPrefix(nil)
+			Expect(results).To(HaveLen(0))
+		})
+	})
+
+	FDescribe(".TruncateWithFunc", func() {
+
+		It("should return false if predicate is not set", func() {
+			err := db.TruncateWithFunc([]byte("object"), true, nil)
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(Equal("predicate function is required"))
+		})
+
+		It("should successfully delete objects with int suffix >= 2", func() {
+
+			objs := []*KVObject{
+				NewKVObject([]byte("object_1"), []byte("value1")),
+				NewKVObject([]byte("object_2"), []byte("value2")),
+				NewKVObject([]byte("object_3"), []byte("value2")),
+				NewKVObject([]byte("other"), []byte("value2")),
+				NewKVObject([]byte("object_4"), []byte("value2")),
+			}
+			err = db.Put(objs)
+			Expect(err).To(BeNil())
+
+			err = db.TruncateWithFunc([]byte("object"), true, func(kv *KVObject) bool {
+				key := string(kv.Key)
+				i, _ := strconv.Atoi(strings.Split(key, "_")[1])
+				return i >= 2
+			})
+			Expect(err).To(BeNil())
+
+			results := db.GetByPrefix(nil)
+			Expect(results).To(HaveLen(2))
+			Expect(string(results[0].Key)).To(Equal("object_1"))
+			Expect(string(results[1].Key)).To(Equal("other"))
 		})
 	})
 

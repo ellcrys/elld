@@ -16,7 +16,6 @@ import (
 
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/util/logger"
-	"github.com/ellcrys/ltcd/rpcclient"
 	"github.com/olebedev/emitter"
 )
 
@@ -32,7 +31,7 @@ type LocalBlockHeader struct {
 // minStartHeight is the minimum block height to start the watcher on.
 // We set this to avoid indexing blocks well before the launch of
 // the network and far in the history of the burn chain
-const minStartHeight = 0
+var minStartHeight = int64(0)
 
 // BlockIndexer determines maintains a light representation of the burn
 // server best chain. When a new block on the burner chain
@@ -43,7 +42,7 @@ type BlockIndexer struct {
 	*sync.Mutex
 	bus        *emitter.Emitter
 	db         elldb.DB
-	client     *rpcclient.Client
+	client     RPCClient
 	log        logger.Logger
 	lastHeight int64
 	stop       bool
@@ -54,7 +53,8 @@ type BlockIndexer struct {
 
 // NewBlockIndexer creates an instance of BlockWatcher
 func NewBlockIndexer(cfg *config.EngineConfig, log logger.Logger, db elldb.DB, bus *emitter.Emitter,
-	client *rpcclient.Client, interrupt <-chan struct{}) *BlockIndexer {
+	client RPCClient, interrupt <-chan struct{}) *BlockIndexer {
+	log = log.Module("BlockIndexer")
 	return &BlockIndexer{
 		Mutex:     &sync.Mutex{},
 		bus:       bus,
@@ -66,10 +66,11 @@ func NewBlockIndexer(cfg *config.EngineConfig, log logger.Logger, db elldb.DB, b
 	}
 }
 
-// getLatestLocalBlock returns the most recently index block header
+// getLatestLocalBlock returns the most recently
+// indexed block header
 func (bw *BlockIndexer) getLatestLocalBlock() (*LocalBlockHeader, error) {
 	var lastObj *elldb.KVObject
-	key := MakeQueryKeyWatchedBlock()
+	key := MakeQueryKeyIndexerBlock()
 	bw.db.Iterate(key, false, func(kv *elldb.KVObject) bool {
 		lastObj = kv
 		return true
@@ -84,9 +85,9 @@ func (bw *BlockIndexer) getLatestLocalBlock() (*LocalBlockHeader, error) {
 	return &header, nil
 }
 
-// getLocalBlock gets an indexed block header by the given height
+// getLocalBlock gets an indexed block header by height.
 func (bw *BlockIndexer) getLocalBlock(height int64) (*LocalBlockHeader, error) {
-	key := MakeKeyWatchedBlock(height)
+	key := MakeKeyIndexerBlock(height)
 	kv := bw.db.GetFirstOrLast(key, true)
 	if kv == nil {
 		return nil, errHeaderNotFound
@@ -99,21 +100,14 @@ func (bw *BlockIndexer) getLocalBlock(height int64) (*LocalBlockHeader, error) {
 }
 
 // getStartHeight returns the block height from which to start indexing blocks.
-// If the last known block height is less that minimum start height, the
-// minimum start height is returned.
-// However, if the burner chain's best block height is less than the
-// known block height of the watcher, we return the [best block height]
-// - 1 to force the watcher to
-// try to continue and most likely detect a problem or a re-org.
 func (bw *BlockIndexer) getStartHeight() (int64, error) {
 	bw.Lock()
 	defer bw.Unlock()
 
-	var height int64
-
-	if bw.lastHeight > 0 {
-		height = bw.lastHeight
-	} else {
+	// First try to find the last indexed height
+	// from memory before querying the database.
+	height := bw.lastHeight
+	if height == 0 {
 		h, err := bw.getLatestLocalBlock()
 		if err != nil {
 			if err != errHeaderNotFound {
@@ -124,15 +118,24 @@ func (bw *BlockIndexer) getStartHeight() (int64, error) {
 		}
 	}
 
+	// Get the upstream chain best block height.
 	_, bestBlockHeight, err := bw.client.GetBestBlock()
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch best block height: %s", err)
 	}
 
+	// Compare the upstream chain height with the known last
+	// indexed height; If the last indexed height is greater,
+	// it means for some reason the indexer previously synced
+	// a much more superior chain than the current upstream
+	// chain. As such, we try to correct by moving one step
+	// backwards. (Note: This should never happen)
 	if bestBlockHeight > 0 && int64(bestBlockHeight) < height {
 		height = int64(bestBlockHeight) - 1
 	}
 
+	// If at this point, the height is less than the minimum
+	// start height, we have to set the height to the minimum.
 	if height < minStartHeight {
 		height = minStartHeight
 	}
@@ -140,7 +143,7 @@ func (bw *BlockIndexer) getStartHeight() (int64, error) {
 	return height, nil
 }
 
-// detectReorg checks if a new block shares a parent block
+// detectReorg checks if a new upstream block shares a parent block
 // that occupies the same height on the local block index.
 func (bw *BlockIndexer) detectReorg(newBlock *wire.BlockHeader, newBlockHeight int64) (bool, error) {
 
@@ -148,22 +151,36 @@ func (bw *BlockIndexer) detectReorg(newBlock *wire.BlockHeader, newBlockHeight i
 		return false, nil
 	}
 
-	// Get the header of the local block in height [main chain header] - 1
-	prevLightHeader, err := bw.getLocalBlock(newBlockHeight - 1)
-	if err != nil {
-		if err == errHeaderNotFound {
-			errMsg := "local block index is missing a common block (%d)"
-			return false, fmt.Errorf(errMsg, newBlockHeight-1)
-		}
+	upstreamBlockParentHeight := newBlockHeight - 1
+
+	// Get the block header of the local block on
+	// same height as the new upstream block's parent.
+	prevLocalHeader, err := bw.getLocalBlock(upstreamBlockParentHeight)
+	if err != nil && err != errHeaderNotFound {
 		return false, err
 	}
 
-	prevHash, _ := chainhash.NewHash(prevLightHeader.Hash)
+	// Here, we have found that the upstream block does not share
+	// a known parent, so we can't append it. It also means that
+	// the local chain has diverged some where.
+	if err == errHeaderNotFound {
+		errMsg := "local block index is missing a common block (%d)"
+		return false, fmt.Errorf(errMsg, upstreamBlockParentHeight)
+	}
 
-	return !newBlock.PrevBlock.IsEqual(prevHash), nil
+	// So, if the new block's parent hash matches the hash
+	// of the block with same height, then no re-org happened.
+	// Otherwise, a re-org has happened.
+	prevHash, _ := chainhash.NewHash(prevLocalHeader.Hash)
+	if newBlock.PrevBlock.IsEqual(prevHash) {
+		return false, nil
+	}
+
+	return true, nil
 }
 
-// getUpstreamBlock requests a block by height from the burner server
+// getUpstreamBlock requests a block by height
+// from the burner server blockchain
 func (bw *BlockIndexer) getUpstreamBlock(height int64) (*wire.BlockHeader, error) {
 	hash, err := bw.client.GetBlockHash(height)
 	if err != nil {
@@ -183,7 +200,7 @@ func (bw *BlockIndexer) getUpstreamBlock(height int64) (*wire.BlockHeader, error
 func (bw *BlockIndexer) deleteBlocksFrom(height int64) error {
 	startHeight := height
 	for {
-		key := MakeKeyWatchedBlock(startHeight)
+		key := MakeKeyIndexerBlock(startHeight)
 		if bw.db.GetFirstOrLast(key, true) == nil {
 			break
 		}
@@ -212,15 +229,22 @@ func (bw *BlockIndexer) Begin() {
 	dur := time.Duration(bw.cfg.Node.BurnerBlockIndexInterval) * time.Second
 	bw.ticker = time.NewTicker(dur)
 
+	// Start a goroutine that listens for general application
+	// interrupt signal. If interrupted, it stops indexer.
 	go func() {
 		<-bw.interrupt
 		bw.Stop()
-		bw.log.Info("Block indexer has been interrupted and is stopping")
+		bw.log.Info("Block indexer has been interrupted and has stopped")
 	}()
 
+	// Here we run a goroutine that waits for ticks from
+	// the indexer ticker. On each tick, it attempts to
+	// find new blocks and index them
 	go func() {
 		for range bw.ticker.C {
+
 			// Get the block height that was last indexed
+			// or is the best height to start the search from.
 			lastHeight, err := bw.getStartHeight()
 			if err != nil {
 				bw.log.Error("Failed to determine the last indexed block height")
@@ -231,20 +255,12 @@ func (bw *BlockIndexer) Begin() {
 			cursor := lastHeight + 1
 			for {
 
-				// Get the hash of the block.
-				hash, err := bw.client.GetBlockHash(cursor)
+				// Find the header of the block at the given height
+				header, err := bw.getUpstreamBlock(cursor)
 				if err != nil {
 					if strings.Index(err.Error(), "Block number out of range") != -1 {
-						bw.log.Debug("Block not found", "Height", cursor)
 						break
 					}
-					bw.log.Error("Failed to find block", "Err", err.Error())
-					return
-				}
-
-				// Get the header of the block using the given hash
-				header, err := bw.client.GetBlockHeader(hash)
-				if err != nil {
 					bw.log.Error("Failed to fetch block header", "Err", err.Error())
 					return
 				}
@@ -253,7 +269,7 @@ func (bw *BlockIndexer) Begin() {
 				// parent block matches the hash of the most recent block.
 				// If they do not match, it means there was a reorg in the burner
 				// chain. As such, we need to delete recent block and its lineage
-				//  and move the cursor 1 height back.
+				// and move the cursor 1 height back.
 				ok, err := bw.detectReorg(header, cursor)
 				if err != nil {
 					bw.log.Error("Failed to complete re-org detection", "Err", err.Error())
@@ -274,11 +290,12 @@ func (bw *BlockIndexer) Begin() {
 					cursor = reorgedHeight
 
 					// Emit a reorg event for other processes to react
-					bw.bus.Emit(EventBurnerChainReorg, reorgedHeight)
+					bw.bus.Emit(EventInvalidLocalBlock, reorgedHeight)
 
 					continue
 				}
 
+				hash := header.BlockHash()
 				localBlockHeader := &LocalBlockHeader{
 					Number:        cursor,
 					Hash:          hash[:],
@@ -286,7 +303,7 @@ func (bw *BlockIndexer) Begin() {
 				}
 
 				// Save the block
-				key := MakeKeyWatchedBlock(cursor)
+				key := MakeKeyIndexerBlock(cursor)
 				kv := elldb.NewKVObject(key, util.ObjectToBytes(localBlockHeader))
 				if err := bw.db.Put([]*elldb.KVObject{kv}); err != nil {
 					bw.log.Error("Failed to stored block header", "Err", err.Error())

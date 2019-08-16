@@ -147,6 +147,11 @@ type DB interface {
 	// Truncate removes all items
 	Truncate() error
 
+	// TruncateWithFunc deletes items that predicate returns true for.
+	// It accepts prefix to filter out keys. The 'first' argument
+	// determines whether to search from top or bottom.
+	TruncateWithFunc(prefix []byte, first bool, predicate func(kv *KVObject) bool) error
+
 	// NewTx creates a transaction
 	NewTx() (Tx, error)
 }
