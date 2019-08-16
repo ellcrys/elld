@@ -128,7 +128,7 @@ var _ = Describe("ELLDB", func() {
 		})
 	})
 
-	FDescribe(".TruncateWithFunc", func() {
+	Describe(".TruncateWithFunc", func() {
 
 		It("should return false if predicate is not set", func() {
 			err := db.TruncateWithFunc([]byte("object"), true, nil)
