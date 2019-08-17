@@ -5,25 +5,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ellcrys/elld/accountmgr"
 	"github.com/ellcrys/elld/config"
+	"github.com/ellcrys/elld/elldb"
+	"github.com/ellcrys/elld/util"
+	"github.com/ellcrys/elld/util/logger"
+	"github.com/ellcrys/ltcd/btcjson"
+	"github.com/fatih/color"
 	"github.com/k0kubun/pp"
 	"github.com/olebedev/emitter"
-
-	"gopkg.in/oleiade/lane.v1"
-
-	"github.com/ellcrys/elld/accountmgr"
-
-	"github.com/fatih/color"
 	"github.com/shopspring/decimal"
-
-	"github.com/ellcrys/elld/util"
-
 	"github.com/thoas/go-funk"
-
-	"github.com/ellcrys/ltcd/btcjson"
-
-	"github.com/ellcrys/elld/elldb"
-	"github.com/ellcrys/elld/util/logger"
+	"gopkg.in/oleiade/lane.v1"
 )
 
 type indexerResult int
@@ -214,6 +207,13 @@ begin:
 	k.log.Debug("Began account indexation", "Account", address, "WorkerID", workerID)
 
 	result := &indexResult{}
+
+	// Immediately return if worker interrupt
+	// signal is received.
+	if util.IsStructChanClosed(interrupt) {
+		result.status = stoppedDueToInterrupt
+		return result
+	}
 
 	// Get the height of the best block on the upstream chain
 	bestHeight, err := k.getBestBlockHeight()
