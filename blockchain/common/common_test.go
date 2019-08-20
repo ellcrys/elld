@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/testutil"
@@ -19,13 +21,14 @@ var _ = Describe("Common", func() {
 	var cfg *config.EngineConfig
 	var err error
 	var db elldb.DB
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		var err error
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 	})
 

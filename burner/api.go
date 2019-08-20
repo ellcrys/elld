@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/olebedev/emitter"
+
 	"github.com/ellcrys/ltcd/rpcclient"
 
 	"github.com/ellcrys/ltcd"
@@ -29,6 +31,8 @@ import (
 	"github.com/ellcrys/elld/types"
 )
 
+var ticketOpReturnPrefix = []byte("t@")
+
 // API exposes JSON-RPC methods that perform
 // coin burning operations
 type API struct {
@@ -36,6 +40,7 @@ type API struct {
 	cfg        *config.EngineConfig
 	rpcClient  *rpcclient.Client
 	accountMgr *accountmgr.AccountManager
+	evt        *emitter.Emitter
 }
 
 type burnBody struct {
@@ -48,13 +53,16 @@ type burnBody struct {
 var jsonErr = jsonrpc.Error
 
 // NewAPI creates an instance of API
-func NewAPI(db elldb.DB, cfg *config.EngineConfig,
+func NewAPI(db elldb.DB,
+	cfg *config.EngineConfig,
+	evt *emitter.Emitter,
 	rpcClient *rpcclient.Client, am *accountmgr.AccountManager) *API {
 	return &API{
 		db:         db,
 		cfg:        cfg,
 		rpcClient:  rpcClient,
 		accountMgr: am,
+		evt:        evt,
 	}
 }
 
@@ -208,9 +216,10 @@ func (api *API) apiBurn(arg interface{}) *jsonrpc.Response {
 	// Build the outputs.
 	// One will be the OP_RETURN output that spends coins.
 	// The other will send change to the change address.
-	decodedAddr, _ := crypto.DecodeAddrOnly(address)
-	opReturnOutData := decodedAddr[:]
-	opReturnOutScript, err := txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).
+	decodedProducerAddr, err := crypto.DecodeAddrOnly(burnBody.Producer)
+	opReturnOutData := append(ticketOpReturnPrefix, decodedProducerAddr[:]...)
+	opReturnOutScript, err := txscript.NewScriptBuilder().
+		AddOp(txscript.OP_RETURN).
 		AddData(opReturnOutData).Script()
 	if err != nil {
 		return jsonErr(types.ErrCodeUnexpected, "failed to create op_return output", nil)
@@ -266,6 +275,28 @@ func (api *API) apiBurn(arg interface{}) *jsonrpc.Response {
 	})
 }
 
+// apiInvalidateBlock emits EventInvalidLocalBlock
+func (api *API) apiInvalidateBlock(arg interface{}) *jsonrpc.Response {
+
+	if !api.cfg.IsDev() {
+		return jsonrpc.Success(map[string]interface{}{
+			"done":    false,
+			"message": "api restricted to development mode",
+		})
+	}
+
+	height, ok := arg.(float64)
+	if !ok {
+		return jsonErr(types.ErrCodeUnexpectedArgType, rpc.ErrMethodArgType("Integer").Error(), nil)
+	}
+
+	api.evt.Emit(EventInvalidLocalBlock, int64(height))
+
+	return jsonrpc.Success(map[string]interface{}{
+		"done": true,
+	})
+}
+
 // APIs returns all API handlers
 func (api *API) APIs() jsonrpc.APISet {
 	return map[string]jsonrpc.APIInfo{
@@ -280,6 +311,12 @@ func (api *API) APIs() jsonrpc.APISet {
 			Namespace:   types.NamespaceBurner,
 			Description: "Creates a Litecoin transaction that burns litecoins.",
 			Func:        api.apiBurn,
+		},
+
+		"invalidateBlock": {
+			Namespace:   types.NamespaceDebug,
+			Description: "Fire an event.EventInvalidLocalBlock event",
+			Func:        api.apiInvalidateBlock,
 		},
 	}
 }

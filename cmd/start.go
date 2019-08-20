@@ -125,7 +125,10 @@ func getKey(accountID, password string) (*crypto.Key, error) {
 		return nil, fmt.Errorf("account unlock failed. %s", err)
 	}
 
-	return storedAccount.GetKey().(*crypto.Key), nil
+	key := storedAccount.GetKey().(*crypto.Key)
+	cfg.G().NodeKey = key
+
+	return key, nil
 }
 
 // makeBurnerChainArgs returns arguments
@@ -165,10 +168,10 @@ func makeBurnerChainArgs() []string {
 	return args
 }
 
-// initBurnerChainProcesses sets up the burner server.
+// startBurnerProcess sets up the burner server.
 // It will return nil if the server stopped gracefully
 // or error if it was interrupted.
-func initBurnerChainProcesses(cmd *cobra.Command, db elldb.DB, evt *emitter.Emitter) (chan error, *burner.API) {
+func startBurnerProcess(cmd *cobra.Command, db elldb.DB, evt *emitter.Emitter) (chan error, *burner.API) {
 
 	viper.BindPFlag("burner.testnet", cmd.Flags().Lookup("burner-testnet"))
 	viper.BindPFlag("burner.listen", cmd.Flags().Lookup("burner-listen"))
@@ -222,7 +225,8 @@ func initBurnerChainProcesses(cmd *cobra.Command, db elldb.DB, evt *emitter.Emit
 
 	var utxoKeeper *burner.UTXOIndexer
 	var bc *rpcclient.Client
-	var blockWatcher *burner.BlockIndexer
+	// var blockWatcher *burner.BlockIndexer
+	var tickman *burner.TicketManager
 	var netVer = config.GetNetVersion()
 
 	// We can start the UTXO keeper if --burner-utxokeeperoff is not set
@@ -254,13 +258,19 @@ func initBurnerChainProcesses(cmd *cobra.Command, db elldb.DB, evt *emitter.Emit
 	log.Info("UTXO keeper is turned ON")
 
 	// Start the burner chain block watcher
-	blockWatcher = burner.NewBlockIndexer(cfg, log, db, evt, bc, interrupt)
-	blockWatcher.Begin()
+	// blockWatcher = burner.NewBlockIndexer(cfg, log, db, evt, bc, interrupt)
+	// blockWatcher.Begin()
+
+	// Start the ticket manager
+	tickman = burner.NewTicketManager(cfg, bc, interrupt)
+	if err := tickman.Begin(); err != nil {
+		log.Fatal("Failed to start ticket manager", "Err", err.Error())
+	}
 
 end:
 
 	// Create a burner API
-	burnerAPI := burner.NewAPI(db, cfg, bc, accountMgr)
+	burnerAPI := burner.NewAPI(db, cfg, evt, bc, accountMgr)
 
 	return status, burnerAPI
 }
@@ -364,6 +374,9 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 
 	log.Info("Ready for connections", "Addr", n.GetAddress().ConnectionString())
 
+	cfg.G().Bus = event
+	cfg.G().DB = n.DB()
+
 	// Initialize and set the blockchain manager's db,
 	// event emitter and pass it to the engine
 	bChain := blockchain.New(n.GetTxPool(), cfg, log)
@@ -396,7 +409,7 @@ func start(cmd *cobra.Command, args []string, startConsole bool, interrupt chan 
 	}
 
 	// Initialize the burner chain and related processes
-	burnerStatus, burnerAPI := initBurnerChainProcesses(cmd, n.DB(), event)
+	burnerStatus, burnerAPI := startBurnerProcess(cmd, n.DB(), event)
 
 	// Start the block manager and the node
 	n.Start()

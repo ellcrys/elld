@@ -23,8 +23,6 @@ import (
 	"github.com/ellcrys/elld/testutil"
 	. "github.com/onsi/ginkgo"
 
-	"github.com/ellcrys/elld/util"
-
 	"github.com/ellcrys/elld/util/logger"
 )
 
@@ -53,8 +51,8 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 		panic(err)
 	}
 
-	db := elldb.NewDB(cfg.NetDataDir())
-	err = db.Open(util.RandString(5))
+	db := elldb.NewDB(log)
+	err = db.Open(cfg.NetDataDir())
 	if err != nil {
 		panic(err)
 	}

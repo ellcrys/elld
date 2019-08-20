@@ -18,7 +18,7 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/util"
 	libp2p "github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-host"
+	host "github.com/libp2p/go-libp2p-host"
 	net "github.com/libp2p/go-libp2p-net"
 	homedir "github.com/mitchellh/go-homedir"
 )
@@ -71,5 +71,6 @@ func SetTestCfg() (*config.EngineConfig, error) {
 	cfg := config.InitConfig(rootCmd)
 	cfg.Node.Mode = config.ModeTest
 	cfg.Node.MaxAddrsExpected = 5
+
 	return cfg, err
 }

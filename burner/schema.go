@@ -55,6 +55,13 @@ func MakeKeyLastScannedBlock(address string) []byte {
 	)
 }
 
+// MakeKeyLastScannedKeys returns the keys for storing/fetching the last scanned block height
+func MakeKeyLastScannedKeys() []byte {
+	return elldb.MakePrefix(
+		TagLastScannedBlock,
+	)
+}
+
 // MakeQueryKeyUTXO returns the key for fetching all utxos
 func MakeQueryKeyUTXO() []byte {
 	return elldb.MakePrefix(

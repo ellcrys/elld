@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/ellcrys/elld/testutil"
 
 	"github.com/ellcrys/elld/blockchain"
@@ -15,7 +17,6 @@ import (
 	"github.com/ellcrys/elld/config"
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/types"
-	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -46,13 +47,14 @@ var _ = Describe("Manager", func() {
 		var genesisBlock types.Block
 		var genesisChain *blockchain.Chain
 		var nodeKey, sender, receiver *crypto.Key
+		var log = logger.NewLogrusNoOp()
 
 		BeforeEach(func() {
 			cfg, err = testutil.SetTestCfg()
 			Expect(err).To(BeNil())
 
-			db = elldb.NewDB(cfg.NetDataDir())
-			err = db.Open(util.RandString(5))
+			db = elldb.NewDB(log)
+			err = db.Open(cfg.NetDataDir())
 			Expect(err).To(BeNil())
 
 			sender = crypto.NewKeyFromIntSeed(1)

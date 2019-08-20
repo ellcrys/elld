@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/ellcrys/elld/blockchain/common"
 	. "github.com/ellcrys/elld/blockchain/testutil"
 	"github.com/ellcrys/elld/blockchain/txpool"
@@ -29,13 +31,14 @@ var _ = Describe("Process", func() {
 	var genesisBlock types.Block
 	var genesisChain *Chain
 	var sender, receiver *crypto.Key
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 
 		sender = crypto.NewKeyFromIntSeed(1)
@@ -418,13 +421,14 @@ var _ = Describe("ExecBlock", func() {
 	var genesisBlock types.Block
 	var genesisChain *Chain
 	var sender, receiver *crypto.Key
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 
 		sender = crypto.NewKeyFromIntSeed(1)
@@ -527,13 +531,14 @@ var _ = Describe("ProcessBlock", func() {
 	var genesisBlock types.Block
 	var genesisChain *Chain
 	var sender, receiver *crypto.Key
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 
 		sender = crypto.NewKeyFromIntSeed(1)
@@ -778,6 +783,7 @@ var _ = Describe("ProcessBlock", func() {
 		var parent1, orphanParent, orphan types.Block
 		var bc2 *Blockchain
 		var db elldb.DB
+		var log = logger.NewLogrusNoOp()
 
 		// Create a blockchain (bc2) with a main chain of 4 blocks
 		// e.g: [1]-[2]-[3]-[4]
@@ -787,8 +793,8 @@ var _ = Describe("ProcessBlock", func() {
 		// that some blocks are considered orphans.
 		BeforeEach(func() {
 
-			db = elldb.NewDB(cfg.NetDataDir())
-			err = db.Open(util.RandString(5))
+			db = elldb.NewDB(log)
+			err = db.Open(cfg.NetDataDir())
 
 			bc2 = New(bc.txPool, cfg, log)
 			bc2.SetDB(db)

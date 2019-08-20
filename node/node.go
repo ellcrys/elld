@@ -231,35 +231,22 @@ func NewTestNodeWithAddress(address ma.Multiaddr) *Node {
 	}
 }
 
-// GetDB instantiate a database
-func GetDB(cfg *config.EngineConfig, namespace string) (elldb.DB, error) {
-	db := elldb.NewDB(cfg.NetDataDir())
-	ns := ""
-	if cfg.Node.Mode == config.ModeDev {
-		if namespace == "" {
-			return nil, fmt.Errorf("namespace is required in dev mode")
-		}
-		ns = namespace
-	}
-
-	if err := db.Open(ns); err != nil {
-		return nil, err
-	}
-
-	return db, nil
-}
-
 // OpenDB opens the database.
 // In dev mode, create a namespace and open
 // database file prefixed with the namespace.
 func (n *Node) OpenDB() error {
+
 	if n.db != nil {
 		return fmt.Errorf("db already open")
 	}
 
-	var err error
-	n.db, err = GetDB(n.cfg, n.nodeKey.Addr().String())
-	return err
+	db := elldb.NewDB(n.log)
+	if err := db.Open(n.cfg.GetDBDir()); err != nil {
+		return err
+	}
+
+	n.db = db
+	return nil
 }
 
 // DB returns the database instance

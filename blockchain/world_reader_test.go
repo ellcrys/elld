@@ -3,6 +3,8 @@ package blockchain
 import (
 	"os"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	. "github.com/onsi/ginkgo"
 
 	. "github.com/ellcrys/elld/blockchain/testutil"
@@ -28,13 +30,14 @@ var _ = Describe("WorldReader", func() {
 	var genesisChain *Chain
 	var sender *crypto.Key
 	var wr *WorldReader
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 
 		sender = crypto.NewKeyFromIntSeed(1)

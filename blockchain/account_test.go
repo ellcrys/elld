@@ -3,6 +3,8 @@ package blockchain
 import (
 	"os"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/ellcrys/elld/crypto"
 
 	. "github.com/onsi/ginkgo"
@@ -14,7 +16,6 @@ import (
 	"github.com/ellcrys/elld/types"
 	"github.com/ellcrys/elld/types/core"
 
-	"github.com/ellcrys/elld/util"
 	. "github.com/onsi/gomega"
 )
 
@@ -26,13 +27,14 @@ var _ = Describe("Account", func() {
 	var db elldb.DB
 	var genesisBlock types.Block
 	var genesisChain *Chain
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 
 		bc = New(txpool.New(100), cfg, log)

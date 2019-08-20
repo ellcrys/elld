@@ -52,6 +52,10 @@ const (
 	// NamespaceBurner is the namespace for RPC methods
 	// for burning coins
 	NamespaceBurner = "burner"
+
+	// NamespaceDebug is the namespace for RPC methods
+	// that offer debugging features
+	NamespaceDebug = "debug"
 )
 
 // ValidationContext is used to

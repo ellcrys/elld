@@ -1,7 +1,8 @@
 package config
 
 import (
-	"github.com/ellcrys/elld/util/logger"
+	"fmt"
+	"path/filepath"
 )
 
 const (
@@ -66,6 +67,10 @@ type NodeConfig struct {
 	// BurnerBlockIndexInterval is the number of seconds between
 	// every burner block indexation execution
 	BurnerBlockIndexInterval int64 `json:"burnerBlockIndexInt" mapstructure:"burnerBlockIndexInt"`
+
+	// BurnerTicketIndexInterval is the number of seconds between
+	// every ticket indexation execution
+	BurnerTicketIndexInterval int64 `json:"burnerTicketIndexInt" mapstructure:"burnerTicketIndexInt"`
 }
 
 // RPCConfig defines configuration for the RPC component
@@ -138,8 +143,10 @@ type EngineConfig struct {
 	// VersionInfo holds version information
 	VersionInfo *VersionInfo `json:"-" mapstructure:"-"`
 
-	// Log is the application logger
-	Log logger.Logger `json:"-" mapstructure:"-"`
+	// g stores references to global objects that can be
+	// used anywhere a config is required. Can help to reduce
+	// the complexity method definition
+	g *Globals
 }
 
 // SetNetDataDir sets the network's data directory
@@ -160,4 +167,29 @@ func (c *EngineConfig) DataDir() string {
 // SetDataDir sets the application's data directory
 func (c *EngineConfig) SetDataDir(d string) {
 	c.dataDir = d
+}
+
+// GetDBDir returns the path where database files are stored
+func (c *EngineConfig) GetDBDir() string {
+	var ns string
+	var dbFile = "data%s.db"
+	if c.Node.Mode == ModeDev {
+		ns = "_" + c.g.NodeKey.Addr().String()
+	}
+	return filepath.Join(c.NetDataDir(), fmt.Sprintf(dbFile, ns))
+}
+
+// GetTicketDBPath returns the path to the ticket database
+func (c *EngineConfig) GetTicketDBPath() string {
+	var ns string
+	var dbFile = "ticket%s.db"
+	if c.Node.Mode == ModeDev {
+		ns = "_" + c.g.NodeKey.Addr().String()
+	}
+	return filepath.Join(c.NetDataDir(), fmt.Sprintf(dbFile, ns))
+}
+
+// IsDev checks whether the current environment is 'development'
+func (c *EngineConfig) IsDev() bool {
+	return c.Node.Mode == ModeDev
 }

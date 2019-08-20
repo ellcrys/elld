@@ -12,7 +12,6 @@ import (
 	"github.com/ellcrys/elld/elldb"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/olebedev/emitter"
 	. "github.com/onsi/ginkgo"
@@ -53,8 +52,8 @@ func makeTestNodeWith(port int, seed int) *Node {
 		panic(err)
 	}
 
-	db := elldb.NewDB(cfg.NetDataDir())
-	err = db.Open(util.RandString(5))
+	db := elldb.NewDB(log)
+	err = db.Open(cfg.NetDataDir())
 	if err != nil {
 		panic(err)
 	}
@@ -87,6 +86,7 @@ func makeTestNodeWith(port int, seed int) *Node {
 }
 
 func closeNode(n *Node) {
+	// TODO: close node by cancelling context
 	go n.GetHost().Close()
 	err := os.RemoveAll(n.GetCfg().DataDir())
 	Expect(err).To(BeNil())

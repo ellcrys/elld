@@ -36,12 +36,12 @@ var _ = Describe("UTXOIndexer", func() {
 
 	BeforeEach(func() {
 		var err error
+		log = logger.NewLogrusNoOp()
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
-		log = logger.NewLogrusNoOp()
 		bus = &emitter.Emitter{}
-		db = elldb.NewDB(cfg.NetDataDir())
-		Expect(db.Open("")).To(BeNil())
+		db = elldb.NewDB(log)
+		Expect(db.Open(cfg.NetDataDir())).To(BeNil())
 	})
 
 	AfterEach(func() {
@@ -60,7 +60,7 @@ var _ = Describe("UTXOIndexer", func() {
 		})
 	})
 
-	Describe(".lastScannedHeight", func() {
+	Describe(".getLastIndexedHeight", func() {
 		var client *RPCClientMock
 		var indexer *UTXOIndexer
 		var addr = "addr"
@@ -113,6 +113,51 @@ var _ = Describe("UTXOIndexer", func() {
 		It("should successfully set/get the last scanned height", func() {
 			actual := indexer.getLastIndexedHeight(addr)
 			Expect(actual).To(Equal(int32(20)))
+		})
+	})
+
+	Describe(".resetLastScannedHeightTo", func() {
+		var client *RPCClientMock
+		var indexer *UTXOIndexer
+		var addr = "addr"
+		var addr2 = "addr2"
+
+		BeforeEach(func() {
+			client = NewRPCClientMock(GinkgoT())
+			indexer = NewUTXOIndexer(cfg, log, db, netVersion, bus, interrupt)
+			indexer.SetClient(client)
+		})
+
+		When("last scanned height for two keys are set to 20 (addr) and 30 (addr2)", func() {
+			BeforeEach(func() {
+				tx, err := db.NewTx()
+				Expect(err).To(BeNil())
+				defer tx.Commit()
+				err = indexer.setLastScannedHeight(tx, addr, int64(20))
+				Expect(err).To(BeNil())
+				err = indexer.setLastScannedHeight(tx, addr2, int64(30))
+				Expect(err).To(BeNil())
+			})
+
+			When("the reset height is 25", func() {
+
+				BeforeEach(func() {
+					err := indexer.resetLastScannedHeightTo(25)
+					Expect(err).To(BeNil())
+				})
+
+				It("should leave addr unchanged", func() {
+					kv := db.GetFirstOrLast(MakeKeyLastScannedBlock(addr), true)
+					Expect(kv).ToNot(BeNil())
+					Expect(util.DecodeNumber(kv.Value)).To(Equal(uint64(20)))
+				})
+
+				It("should change addr2 to 25", func() {
+					kv := db.GetFirstOrLast(MakeKeyLastScannedBlock(addr2), true)
+					Expect(kv).ToNot(BeNil())
+					Expect(util.DecodeNumber(kv.Value)).To(Equal(uint64(25)))
+				})
+			})
 		})
 	})
 
@@ -319,7 +364,7 @@ var _ = Describe("UTXOIndexer", func() {
 			It("should return error if unable to create db transaction", func() {
 				e := fmt.Errorf("failed to create db transaction")
 				dbMock.NewTxMock.Return(nil, e)
-				err := indexer.index("", nil)
+				err := indexer.index("", nil, nil)
 				Expect(err).ToNot(BeNil())
 				Expect(err.Error()).To(Equal(e.Error()))
 			})
@@ -336,7 +381,7 @@ var _ = Describe("UTXOIndexer", func() {
 			})
 
 			It("should set the block's height as the last scanned height", func() {
-				err := indexer.index(addr, block)
+				err := indexer.index(addr, block, nil)
 				Expect(err).To(BeNil())
 				res := indexer.getLastIndexedHeight(addr)
 				Expect(res).To(Equal(height))
@@ -350,7 +395,7 @@ var _ = Describe("UTXOIndexer", func() {
 				block.Height = int64(height)
 				block.RawTx[0].Vout[0].ScriptPubKey.Addresses = []string{addr}
 				indexer = NewUTXOIndexer(cfg, log, db, netVersion, bus, interrupt)
-				err := indexer.index(addr, block)
+				err := indexer.index(addr, block, nil)
 				Expect(err).To(BeNil())
 			})
 
@@ -370,7 +415,7 @@ var _ = Describe("UTXOIndexer", func() {
 				indexer = NewUTXOIndexer(cfg, log, db, netVersion, bus, interrupt)
 				block.Height = int64(height)
 				block.RawTx[0].Vout[0].ScriptPubKey.Addresses = []string{"unknown"}
-				err := indexer.index(addr, block)
+				err := indexer.index(addr, block, nil)
 				Expect(err).To(BeNil())
 			})
 
@@ -407,7 +452,7 @@ var _ = Describe("UTXOIndexer", func() {
 			BeforeEach(func() {
 				block.Height = int64(height)
 				block.RawTx[0].Vout[0].ScriptPubKey.Addresses = []string{addr}
-				err := indexer.index(addr, block)
+				err := indexer.index(addr, block, nil)
 				Expect(err).To(BeNil())
 			})
 
@@ -431,7 +476,7 @@ var _ = Describe("UTXOIndexer", func() {
 				block.Height = int64(height)
 				block.RawTx[0].Vout[0].ScriptPubKey.Addresses = []string{addr}
 				indexer = NewUTXOIndexer(cfg, log, db, netVersion, bus, interrupt)
-				err := indexer.index(addr, block)
+				err := indexer.index(addr, block, nil)
 				Expect(err).To(BeNil())
 
 				txID := block.RawTx[0].Txid
@@ -460,7 +505,7 @@ var _ = Describe("UTXOIndexer", func() {
 
 				Specify("that the output is removed", func() {
 					indexer = NewUTXOIndexer(cfg, log, db, netVersion, bus, interrupt)
-					err := indexer.index(addr, block)
+					err := indexer.index(addr, block, nil)
 					Expect(err).To(BeNil())
 
 					key := MakeQueryKeyAddressUTXO(addr, txID, outIndex)
@@ -532,21 +577,18 @@ var _ = Describe("UTXOIndexer", func() {
 					Expect(r.status).To(Equal(stoppedDueToShutdown))
 				})
 			})
+		})
 
-			When("the `interrupt` chan is closed", func() {
+		When("the `interrupt` chan is closed", func() {
 
-				BeforeEach(func() {
-					key := MakeKeyLastScannedBlock(addr)
-					kv := elldb.NewKVObject(key, util.EncodeNumber(1))
-					dbMock.GetFirstOrLastMock.Return(kv)
-					close(interrupt)
-				})
+			BeforeEach(func() {
+				close(interrupt)
+			})
 
-				It("should return status = indexUpToDate", func() {
-					r := indexer.begin(1, addr, 0, false, interrupt)
-					Expect(r.err).To(BeNil())
-					Expect(r.status).To(Equal(stoppedDueToInterrupt))
-				})
+			It("should return status = indexUpToDate", func() {
+				r := indexer.begin(1, addr, 0, false, interrupt)
+				Expect(r.err).To(BeNil())
+				Expect(r.status).To(Equal(stoppedDueToInterrupt))
 			})
 		})
 

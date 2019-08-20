@@ -3,8 +3,9 @@ package elldb
 
 import (
 	"fmt"
-	path "path/filepath"
 	"sync"
+
+	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -14,41 +15,34 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-const dbfile = "data%s.db"
-
 // LevelDB provides local data storage and functionalities for various purpose.
 // It implements DB interface
 type LevelDB struct {
 	sync.Mutex
-	dataDir string
-	ldb     *leveldb.DB
+	ldb *leveldb.DB
+	log logger.Logger
 }
 
 // NewDB creates a new instance of the Ellcrys DB
-func NewDB(dataDir string) *LevelDB {
-	db := new(LevelDB)
-	db.dataDir = dataDir
-	return db
+func NewDB(log logger.Logger) *LevelDB {
+	return &LevelDB{
+		log: log,
+	}
 }
 
 // Open opens the database.
 // namespace is used as a suffix on the database name
-func (db *LevelDB) Open(namespace string) error {
-
-	if namespace != "" {
-		namespace = "_" + namespace
-	}
+func (db *LevelDB) Open(dbPath string) error {
 
 	o := &opt.Options{
 		Filter: filter.NewBloomFilter(20),
 	}
 
-	file := path.Join(db.dataDir, fmt.Sprintf(dbfile, namespace))
-	ldb, err := leveldb.OpenFile(file, o)
+	ldb, err := leveldb.OpenFile(dbPath, o)
 
 	// If database file is corrupted, attempt to recover
 	if _, corrupted := err.(*errors.ErrCorrupted); corrupted {
-		ldb, err = leveldb.RecoverFile(file, nil)
+		ldb, err = leveldb.RecoverFile(dbPath, nil)
 	}
 
 	if err != nil {

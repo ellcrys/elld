@@ -44,10 +44,10 @@ var _ = Describe("NodeUnitTest", func() {
 				Expect(err.Error()).To(Equal("failed to parse address. Expects 'ip:port' format"))
 			})
 
-			It("return err.Error('failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0') when address is invalid and port is valid", func() {
+			It("return err.Error('failed to create host > failed to parse multiaddr \"/ip4/127.0.0/tcp/40000\": invalid value \"127.0.0\" for protocol ip4: failed to parse ip4 addr: 127.0.0') when address is invalid and port is valid", func() {
 				_, err := NewNode(cfg, "127.0.0:40000", crypto.NewKeyFromIntSeed(1), log)
 				Expect(err).NotTo(BeNil())
-				Expect(err.Error()).To(Equal("failed to create host > failed to parse ip4: 127.0.0 failed to parse ip4 addr: 127.0.0"))
+				Expect(err.Error()).To(Equal("failed to create host > failed to parse multiaddr \"/ip4/127.0.0/tcp/40000\": invalid value \"127.0.0\" for protocol ip4: failed to parse ip4 addr: 127.0.0"))
 			})
 
 			It("return nil if address is ':40000'", func() {

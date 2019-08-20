@@ -141,11 +141,19 @@ func (p *PubKey) Verify(data, sig []byte) (bool, error) {
 // Addr computes an address from the public key
 func (p *PubKey) Addr() util.String {
 	pk, _ := p.Bytes()
+
+	// Step 1: sha3 hash public key
 	pubSha256 := sha3.Sum256(pk)
+
+	// Step 2: RIPEMD160 hash the sha3 output
 	r := ripemd160.New()
 	r.Write(pubSha256[:])
 	addr := r.Sum(nil)
-	return util.String(base58.CheckEncode(addr, AddressVersion))
+
+	// Step 3: Base58 checksum step2 output
+	var addr20 [20]byte
+	copy(addr20[:], addr[:])
+	return RIPEMD160ToAddr(addr20)
 }
 
 // Bytes returns the byte equivalent of the public key
@@ -201,6 +209,11 @@ func IsValidAddr(addr string) error {
 	}
 
 	return nil
+}
+
+// RIPEMD160ToAddr returns a 20 byte slice to an address
+func RIPEMD160ToAddr(hash [20]byte) util.String {
+	return util.String(base58.CheckEncode(hash[:], AddressVersion))
 }
 
 // DecodeAddr validates an address, decodes it and returns

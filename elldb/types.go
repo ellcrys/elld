@@ -121,7 +121,7 @@ type Tx interface {
 type DB interface {
 
 	// Open opens the database
-	Open(namespace string) error
+	Open(dbPath string) error
 
 	// Close closes the database
 	Close() error

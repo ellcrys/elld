@@ -24,18 +24,17 @@ var _ = Describe("UTXOIndexer", func() {
 	var log logger.Logger
 	var bus *emitter.Emitter
 	var interrupt <-chan struct{}
-	// var netVersion = "test"
 	var db elldb.DB
 
 	BeforeEach(func() {
 		var err error
+		log = logger.NewLogrusNoOp()
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
-		log = logger.NewLogrusNoOp()
 		bus = &emitter.Emitter{}
-		db = elldb.NewDB(cfg.NetDataDir())
-		Expect(db.Open("")).To(BeNil())
-		minStartHeight = 0
+		db = elldb.NewDB(log)
+		Expect(db.Open(cfg.NetDataDir())).To(BeNil())
+		minBlockIndexerStartHeight = 0
 	})
 
 	AfterEach(func() {
@@ -147,7 +146,7 @@ var _ = Describe("UTXOIndexer", func() {
 		Context("when a minimum start height is 10", func() {
 			BeforeEach(func() {
 				client.GetBestBlockMock.Return(nil, 0, nil)
-				minStartHeight = 10
+				minBlockIndexerStartHeight = 10
 			})
 
 			It("should return minimum start height if local height is lesser", func() {

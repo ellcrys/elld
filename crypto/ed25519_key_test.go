@@ -269,6 +269,22 @@ var _ = Describe("Key", func() {
 		})
 	})
 
+	Describe(".RIPEMD160ToAddr", func() {
+		It("should return expected address", func() {
+			addr := "eDFPdimzRqfFKetEMSmsSLTLHCLSniZQwD"
+			addrBs, err := DecodeAddrOnly(addr)
+			Expect(err).To(BeNil())
+			Expect(addrBs).To(HaveLen(20))
+			Expect(addrBs).To(Equal([20]uint8{
+				0x7a, 0x58, 0x28, 0x74, 0x48, 0xab, 0x42, 0x94, 0x98, 0x5b, 0x71, 0x8e, 0x3d, 0x6b, 0xe6, 0xa7,
+				0x81, 0x82, 0x4e, 0xfc,
+			}))
+
+			res := RIPEMD160ToAddr(addrBs)
+			Expect(res.String()).To(Equal(addr))
+		})
+	})
+
 	Describe(".IsValidPubKey", func() {
 		It("should return error.Error(empty pub key)", func() {
 			err := IsValidPubKey("")

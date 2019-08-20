@@ -62,12 +62,16 @@ func setDevDefaultConfig() {
 	viper.SetDefault("node.conEstInt", 10)
 	viper.SetDefault("node.utxoKeeperIndexInt", 20)
 	viper.SetDefault("node.burnerBlockIndexInt", 20)
+	viper.SetDefault("node.burnerTicketIndexInt", 20)
 	viper.SetDefault("txPool.capacity", 100)
 }
 
 // InitConfig reads in config file and ENV variables if set.
 func InitConfig(rootCommand *cobra.Command) *EngineConfig {
-	var c = EngineConfig{Node: &NodeConfig{Mode: ModeProd}}
+	var c = EngineConfig{
+		Node: &NodeConfig{Mode: ModeProd},
+		g:    &Globals{},
+	}
 	var homeDir, _ = homedir.Dir()
 	var dataDir = path.Join(homeDir, ".ellcrys")
 	devMode, _ := rootCommand.Flags().GetBool("dev")
@@ -138,7 +142,7 @@ func InitConfig(rootCommand *cobra.Command) *EngineConfig {
 	logPath := path.Join(c.NetDataDir(), "logs")
 	os.MkdirAll(logPath, 0700)
 	logFile := path.Join(logPath, "elld.log")
-	c.Log = logger.NewLogrusWithFileRotation(logFile)
+	c.G().Log = logger.NewLogrusWithFileRotation(logFile)
 
 	// Set default version information
 	c.VersionInfo = &VersionInfo{}

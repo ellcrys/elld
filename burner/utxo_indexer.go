@@ -11,8 +11,6 @@ import (
 	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 	"github.com/ellcrys/ltcd/btcjson"
-	"github.com/fatih/color"
-	"github.com/k0kubun/pp"
 	"github.com/olebedev/emitter"
 	"github.com/shopspring/decimal"
 	"github.com/thoas/go-funk"
@@ -29,7 +27,10 @@ var (
 	indexUpToDate         indexerResult = 0x01
 	stoppedDueToShutdown  indexerResult = 0x02
 	stoppedDueToInterrupt indexerResult = 0x03
+	blockIndexOutOfRange  indexerResult = 0x04
 )
+
+var errInterrupted = fmt.Errorf("interrupted")
 
 // UTXOIndexer is responsible for scanning the
 // Litecoin blockchain to find and index unspent outputs.
@@ -88,6 +89,27 @@ func (k *UTXOIndexer) setLastScannedHeight(db elldb.Tx, address string, height i
 	return nil
 }
 
+// resetLastScannedHeightTo resets all stored scanned height flags for
+// all addresses to the given height only if the current height is greater.
+// This method is used to reset the cursors after a set of blocks have been
+// invalidated and removed.
+func (k *UTXOIndexer) resetLastScannedHeightTo(height uint64) error {
+	key := MakeKeyLastScannedKeys()
+	result := k.db.GetByPrefix(key)
+
+	for _, kv := range result {
+		if util.DecodeNumber(kv.Value) < height {
+			continue
+		}
+		kv.Value = util.EncodeNumber(height)
+		if err := k.db.Put([]*elldb.KVObject{kv}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // getBestBlockHeight the height of the best block
 func (k *UTXOIndexer) getBestBlockHeight() (int32, error) {
 	_, height, err := k.client.GetBestBlock()
@@ -114,7 +136,10 @@ func (k *UTXOIndexer) getBlock(height int32) (*btcjson.GetBlockVerboseResult, er
 // If a output that belongs to the address is found as an input field, it
 // is removed from the database of unspent utxo for that address.
 // If a utxo is found in the output, it is added as an unspent output.
-func (k *UTXOIndexer) index(address string, block *btcjson.GetBlockVerboseResult) error {
+// If interrupt is closed, it returns immediately
+func (k *UTXOIndexer) index(address string,
+	block *btcjson.GetBlockVerboseResult,
+	interrupt chan struct{}) error {
 
 	db, err := k.db.NewTx()
 	if err != nil {
@@ -150,6 +175,10 @@ func (k *UTXOIndexer) index(address string, block *btcjson.GetBlockVerboseResult
 				Value: out.Value,
 			}
 
+			if util.IsStructChanClosed(interrupt) {
+				return errInterrupted
+			}
+
 			// Store the utxo object
 			kvObj := elldb.NewKVObject(key, util.ObjectToBytes(doc))
 			if err := db.Put([]*elldb.KVObject{kvObj}); err != nil {
@@ -167,9 +196,12 @@ func (k *UTXOIndexer) index(address string, block *btcjson.GetBlockVerboseResult
 			key := MakeQueryKeyAddressUTXO(address, in.Txid, in.Vout)
 
 			// Check whether the UTXO is already indexed
-			res := db.GetByPrefix(key)
-			if len(res) == 0 {
+			if len(db.GetByPrefix(key)) == 0 {
 				continue
+			}
+
+			if util.IsStructChanClosed(interrupt) {
+				return errInterrupted
 			}
 
 			// At this point the UTXO exists, we need to delete it
@@ -178,7 +210,7 @@ func (k *UTXOIndexer) index(address string, block *btcjson.GetBlockVerboseResult
 				return fmt.Errorf("failed to delete spent utxo")
 			}
 
-			k.log.Debug(color.RedString("Spent UTXO has been deleted"))
+			k.log.Debug("Spent UTXO has been deleted")
 		}
 
 	}
@@ -298,8 +330,12 @@ begin:
 		}
 
 		// Index the UTXOs in the block that belongs to address
-		if err = k.index(address, block); err != nil {
-			result.err = fmt.Errorf("failed to index block (%d): %s", block.Height, err)
+		if err = k.index(address, block, interrupt); err != nil {
+			if err != errInterrupted {
+				result.err = fmt.Errorf("failed to index block (%d): %s", block.Height, err)
+			} else {
+				result.status = stoppedDueToInterrupt
+			}
 			return result
 		}
 	}
@@ -355,12 +391,15 @@ func (k *UTXOIndexer) Stop() {
 }
 
 // deleteIndexFrom deletes indexed UTXO associated with blocks
-// with height greater than or equal to the given height
+// whose height is greater than or equal to the given height. It
+// also resets the last scanned height flags for all addresses
+// whose height is greater than the given height - 1
 func (k *UTXOIndexer) deleteIndexFrom(height uint64) error {
-	return k.db.TruncateWithFunc(MakeQueryKeyUTXO(), true, func(kv *elldb.KVObject) bool {
+	k.db.TruncateWithFunc(MakeQueryKeyUTXO(), true, func(kv *elldb.KVObject) bool {
 		h := util.DecodeNumber(kv.Key)
 		return h >= height
 	})
+	return k.resetLastScannedHeightTo(height - 1)
 }
 
 // Begin initiates the scanning and indexing process.
@@ -389,19 +428,21 @@ func (k *UTXOIndexer) Begin(
 	dur := time.Duration(k.cfg.Node.UTXOKeeperIndexInterval) * time.Second
 	k.indexerTicker = time.NewTicker(dur)
 
-	// Start a goroutine that listens for worker invalid
-	// block event; It reacts by interrupting the workers
+	// Start a goroutine that listens for invalid
+	// block / re-org event; It reacts by interrupting the workers
 	// and deleting UTXO found on the invalid block and
 	// its descendants.
 	go func() {
 		for evt := range k.bus.On(EventInvalidLocalBlock) {
-			pp.Println("LO AND BEHOLD", evt)
 
 			if util.IsStructChanClosed(workersInterrupt) {
 				return
 			}
 
 			invalidHeight := evt.Args[0].(int64)
+
+			k.log.Debug("Invalid local block detected. Deleting any invalidated UTXOs...",
+				"Height", invalidHeight)
 
 			// We can only react if the workers have not been
 			// interrupted. If they aren't, we close the
@@ -412,6 +453,7 @@ func (k *UTXOIndexer) Begin(
 			close(workersInterrupt)
 			k.deleteIndexFrom(uint64(invalidHeight))
 			workersInterrupt = make(chan struct{})
+			k.log.Debug("Invalid UTXOs removal process completed")
 		}
 	}()
 
@@ -471,7 +513,6 @@ func (k *UTXOIndexer) Begin(
 			// Start indexer workers to process the queue.
 			// Each worker will continuously fetch work from
 			// the queue until it is emptied.
-			numWorkers = 1
 			wg := &sync.WaitGroup{}
 			for i := 0; i < numWorkers; i++ {
 				wg.Add(1)

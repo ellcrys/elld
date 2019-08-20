@@ -81,4 +81,12 @@ var (
 
 	// DefaultBurnTxFee is the default fee to use during coin burning
 	DefaultBurnTxFee = 0.01
+
+	// TicketMaturityDur is the amount of block confirmations
+	// before a ticket is considered mature
+	TicketMaturityDur int64 = 10
+
+	// TicketDecayDur is the amount of block confirmations after
+	// a matured ticket is considered decayed.
+	TicketDecayDur int64 = 30
 )

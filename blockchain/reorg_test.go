@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/ellcrys/elld/params"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -32,13 +34,14 @@ var _ = Describe("ReOrg", func() {
 	var genesisBlock types.Block
 	var genesisChain *Chain
 	var sender, receiver *crypto.Key
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
 		Expect(err).To(BeNil())
 
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 
 		sender = crypto.NewKeyFromIntSeed(1)

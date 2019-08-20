@@ -122,7 +122,7 @@ func init() {
 func initConfig() {
 	cfg = config.InitConfig(rootCmd)
 	devMode = cfg.Node.Mode == config.ModeDev
-	log = cfg.Log
+	log = cfg.G().Log
 
 	// Set account manager
 	accountMgr = accountmgr.New(path.Join(cfg.DataDir(), "accounts"))

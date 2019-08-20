@@ -28,10 +28,11 @@ type LocalBlockHeader struct {
 	PrevBlockHash []byte `json:"prevHash"`
 }
 
-// minStartHeight is the minimum block height to start the watcher on.
+// minBlockIndexerStartHeight is the minimum block height to start the indexer from.
 // We set this to avoid indexing blocks well before the launch of
 // the network and far in the history of the burn chain
-var minStartHeight = int64(0)
+// TODO: Set to a real value before mainnet
+var minBlockIndexerStartHeight = int64(0)
 
 // BlockIndexer determines maintains a light representation of the burn
 // server best chain. When a new block on the burner chain
@@ -136,8 +137,8 @@ func (bw *BlockIndexer) getStartHeight() (int64, error) {
 
 	// If at this point, the height is less than the minimum
 	// start height, we have to set the height to the minimum.
-	if height < minStartHeight {
-		height = minStartHeight
+	if height < minBlockIndexerStartHeight {
+		height = minBlockIndexerStartHeight
 	}
 
 	return height, nil

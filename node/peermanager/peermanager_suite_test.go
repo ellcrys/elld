@@ -17,7 +17,6 @@ import (
 	"github.com/ellcrys/elld/node/peermanager"
 	"github.com/ellcrys/elld/params"
 	"github.com/ellcrys/elld/testutil"
-	"github.com/ellcrys/elld/util"
 	"github.com/ellcrys/elld/util/logger"
 
 	"github.com/imdario/mergo"
@@ -57,8 +56,8 @@ func makeTestNodeWith(port int, seed int) *node.Node {
 		panic(err)
 	}
 
-	db := elldb.NewDB(cfg.NetDataDir())
-	err = db.Open(util.RandString(5))
+	db := elldb.NewDB(log)
+	err = db.Open(cfg.NetDataDir())
 	if err != nil {
 		panic(err)
 	}

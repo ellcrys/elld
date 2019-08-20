@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/mitchellh/go-homedir"
 
 	. "github.com/onsi/ginkgo"
@@ -17,6 +19,7 @@ var _ = Describe("ELLDB", func() {
 	var testCfgDir string
 	var db DB
 	var err error
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		home, _ := homedir.Dir()
@@ -26,8 +29,8 @@ var _ = Describe("ELLDB", func() {
 	})
 
 	BeforeEach(func() {
-		db = NewDB(testCfgDir)
-		err = db.Open("")
+		db = NewDB(log)
+		err = db.Open(testCfgDir)
 		Expect(err).To(BeNil())
 	})
 
@@ -42,8 +45,8 @@ var _ = Describe("ELLDB", func() {
 
 	Describe(".Open", func() {
 		It("should return error if unable to open database", func() {
-			db = NewDB(testCfgDir)
-			err = db.Open("")
+			db = NewDB(log)
+			err = db.Open(testCfgDir)
 			Expect(err).ToNot(BeNil())
 			Expect(err.Error()).To(Equal("failed to create database. resource temporarily unavailable"))
 		})

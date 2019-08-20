@@ -4,6 +4,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/ellcrys/elld/util/logger"
+
 	"github.com/ellcrys/elld/crypto"
 
 	"github.com/ellcrys/elld/blockchain/common"
@@ -25,6 +27,7 @@ var _ = Describe("Store", func() {
 	var cfg *config.EngineConfig
 	var store *ChainStore
 	var chainID = util.String("main")
+	var log = logger.NewLogrusNoOp()
 
 	BeforeEach(func() {
 		cfg, err = testutil.SetTestCfg()
@@ -38,8 +41,8 @@ var _ = Describe("Store", func() {
 	})
 
 	BeforeEach(func() {
-		db = elldb.NewDB(cfg.NetDataDir())
-		err = db.Open(util.RandString(5))
+		db = elldb.NewDB(log)
+		err = db.Open(cfg.NetDataDir())
 		Expect(err).To(BeNil())
 	})
 
